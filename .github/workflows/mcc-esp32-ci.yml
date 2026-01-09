@@ -57,9 +57,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pio-toolchains-
 
-      - name: List PlatformIO environments
-        run: pio env list
-
       - name: Build all environments
         run: |
           echo "Building all PlatformIO environments..."
@@ -90,6 +87,7 @@ jobs:
           path: |
             mcc-esp32/.pio/test/**/test_output.xml
             mcc-esp32/.pio/test/**/test_output.json
+          if-no-files-found: ignore
           retention-days: 7
 
   test-summary:
