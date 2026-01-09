@@ -1,0 +1,37 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+
+{% block content %}
+{{ block.super }}
+
+<div class="module">
+    <table>
+        <caption>
+            <a href="{% url 'admin:api_analytics_dashboard' %}" class="section" title="{% trans 'Historical Reports & Analytics' %}">
+                {% trans "Historical Reports & Analytics" %}
+            </a>
+        </caption>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:api_analytics_dashboard' %}">{% trans "Analytics Dashboard" %}</a>
+            </th>
+            <td>
+                <a href="{% url 'admin:api_analytics_dashboard' %}" class="addlink">
+                    {% trans "View Reports" %}
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:api_analytics_hierarchy' %}">{% trans "Hierarchy Breakdown" %}</a>
+            </th>
+            <td>
+                <a href="{% url 'admin:api_analytics_hierarchy' %}" class="addlink">
+                    {% trans "View Breakdown" %}
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+{% endblock %}
+

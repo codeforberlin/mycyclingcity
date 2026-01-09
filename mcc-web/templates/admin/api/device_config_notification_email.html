@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Configuration Differences Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+        }
+        .summary {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .device-section {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .device-section h2 {
+            margin-top: 0;
+            color: #dc3545;
+        }
+        .diff-item {
+            background-color: white;
+            border-left: 4px solid #dc3545;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .diff-item .field-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .diff-item .server-value {
+            color: #28a745;
+        }
+        .diff-item .device-value {
+            color: #dc3545;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Gerätekonfigurationsunterschiede-Bericht</h1>
+        <p><strong>Berichtsdatum:</strong> {{ report_date }}</p>
+    </div>
+
+    <div class="summary">
+        <h2>Zusammenfassung</h2>
+        <p><strong>Gesamt Geräte mit Unterschieden:</strong> {{ total_devices }}</p>
+        <p><strong>Gesamt Unterschiede:</strong> {{ total_differences }}</p>
+    </div>
+
+    {% for device_name, device_data in devices_with_diffs.items %}
+    <div class="device-section">
+        <h2>Gerät: {{ device_name }}</h2>
+        <p><strong>Geräte-ID:</strong> {{ device_data.device.name }}</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Feld</th>
+                    <th>Server-Wert</th>
+                    <th>Geräte-Wert</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for diff in device_data.diffs %}
+                <tr>
+                    <td><strong>{{ diff.field_name }}</strong></td>
+                    <td class="server-value">{{ diff.server_value|default:"-" }}</td>
+                    <td class="device-value">{{ diff.device_value|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <div class="footer">
+        <p>Bitte überprüfen und lösen Sie diese Unterschiede im Admin-GUI.</p>
+        <p>Dies ist eine automatisierte E-Mail vom MCC-Geräteverwaltungssystem.</p>
+    </div>
+</body>
+</html>
+

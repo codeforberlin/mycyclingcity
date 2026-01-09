@@ -1,0 +1,13 @@
+/* Limit width of short_name field in list view (list_editable) */
+.field-short_name input,
+#result_list .field-short_name input {
+    width: 180px !important;
+    max-width: 180px !important;
+}
+
+/* Also limit width in change form view */
+.field-short_name input[type="text"] {
+    width: 180px !important;
+    max-width: 180px !important;
+}
+

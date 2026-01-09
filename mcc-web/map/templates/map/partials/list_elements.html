@@ -1,0 +1,5 @@
+<div id="children-{{ parent_id }}">
+    {% for x in items %}
+        {% include "map/partials/item_row.html" with item=x level=level type=type %}
+    {% endfor %}
+</div>

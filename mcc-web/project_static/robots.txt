@@ -1,0 +1,18 @@
+##
+#
+# file: robots.txt for MycyclingCity.de
+#
+##
+
+User-agent: *
+
+# Schließt die Hauptanwendungs-Pfade aus
+Disallow: /game/
+Disallow: /map/
+# Schließt den Admin-Bereich aus
+Disallow: /admin/ 
+
+# Wichtig:
+# Wenn Ihre API-Pfade direkt unter /api/game/ beginnen, 
+# und NICHT /game/api/game/, müssen Sie den API-Pfad separat ausschließen:
+Disallow: /api/

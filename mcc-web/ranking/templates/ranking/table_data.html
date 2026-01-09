@@ -1,0 +1,263 @@
+{% load i18n ranking_filters %}
+<style>
+    .rk-group-container { background: white; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; }
+    .rk-group-header { 
+        background: #1877f2; color: white; padding: 15px 25px; cursor: pointer;
+        display: flex; justify-content: space-between; align-items: center; font-size: 1.4rem;
+    }
+    .rk-group-content { padding: 15px; display: none; }
+    
+    /* Im Kiosk-Modus oder wenn aktiv: Immer offen */
+    .rk-is-open .rk-group-content, .rk-kiosk-mode .rk-group-content { display: block !important; }
+    
+    .rk-toggle-icon::before { content: '▶'; display: inline-block; transition: transform 0.3s; margin-right: 10px; }
+    .rk-is-open .rk-toggle-icon::before { transform: rotate(90deg); }
+    
+    /* Kiosk-spezifische Anpassungen */
+    .rk-kiosk-mode .rk-toggle-icon { display: none; }
+    .rk-kiosk-mode .rk-group-header { cursor: default; }
+</style>
+
+<div class="rk-table-wrapper {% if is_kiosk %}rk-kiosk-mode{% endif %}" style="max-width: 1200px; margin: auto;">
+    {% if not hierarchy %}
+    <div style="padding: 20px; text-align: center; color: #666;">
+        {% trans "Keine Gruppen ausgewählt" %}
+    </div>
+    {% endif %}
+    {% for group in hierarchy %}
+    <div class="rk-group-container" id="rk-group-{{ forloop.counter }}">
+        <div class="rk-group-header" onclick="rkToggleGroup('rk-group-{{ forloop.counter }}')">
+            <span><span class="rk-toggle-icon"></span>🏢 {{ group.name }}</span>
+            <span style="font-weight: bold;">{{ group.km|default:0|format_km_de:2 }} km</span>
+        </div>
+        
+        <div class="rk-group-content">
+            {% for sub in group.subgroups %}
+            <div class="rk-subgroup-container" data-group-id="{{ sub.id }}" data-parent-id="{{ group.id }}" style="border-left: 6px solid #1877f2; margin: 10px 0; padding: 12px; background: #f8f9fa; border-radius: 0 8px 8px 0;">
+                <div style="font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between;">
+                    {% if not target_group %}
+                    <span>👥 {{ sub.name }}</span>
+                    {% else %}
+                    <span>👥 {% trans "Cyclists" %}</span>
+                    {% endif %}
+                    <span>{{ sub.km|default:0|format_km_de:2 }} km</span>
+                </div>
+                
+                {% if show_cyclists and sub.members %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                    {% for m in sub.members %}
+                    <div style="background: white; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 1rem;">
+                        👤 {{ m.name }}: <strong>{{ m.km|default:0|format_km_de:2 }} km</strong>
+                        {% if m.session_km %}
+                        <span style="color: #28a745; font-size: 0.9rem;">({% trans "Session" %}: {{ m.session_km|default:0|format_km_de:2 }} km)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 50px; color: #6c757d;">{% trans "Keine aktiven Gruppen gefunden." %}</div>
+    {% endfor %}
+    
+    {% if events_data %}
+    <div style="margin-top: 40px; border-top: 3px solid #28a745; padding-top: 20px;">
+        <h2 style="color: #28a745; margin-bottom: 20px; font-size: 1.8rem;">🎉 {% trans "Events" %}</h2>
+        {% for event in events_data %}
+        {% if event.is_ended %}
+        <div class="rk-group-container" id="rk-event-{{ event.id }}" style="background: #f5f5f5; border: 2px solid #6c757d;">
+            <div class="rk-group-header" onclick="rkToggleGroup('rk-event-{{ event.id }}')" style="background: #6c757d;">
+                <span><span class="rk-toggle-icon"></span>🏁 {{ event.name }} <small style="font-size: 0.9rem; opacity: 0.9;">({{ event.event_type }})</small> <span style="font-size: 0.85rem; opacity: 0.8;">- {% trans "Beendet" %}</span></span>
+                <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {{ event.total_km|default:0|format_km_de:2 }} km</span>
+            </div>
+        {% else %}
+        <div class="rk-group-container" id="rk-event-{{ event.id }}" style="background: #f0f9ff; border: 2px solid #28a745;">
+            <div class="rk-group-header" onclick="rkToggleGroup('rk-event-{{ event.id }}')" style="background: #28a745;">
+                <span><span class="rk-toggle-icon"></span>🎉 {{ event.name }} <small style="font-size: 0.9rem; opacity: 0.9;">({{ event.event_type }})</small></span>
+                <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {{ event.total_km|default:0|format_km_de:2 }} km</span>
+            </div>
+        {% endif %}
+            
+            <div class="rk-group-content">
+                {% if event.start_time or event.end_time %}
+                <div style="padding: 10px; margin-bottom: 15px; background: {% if event.is_ended %}#e9ecef{% else %}#e8f5e9{% endif %}; border-radius: 6px; border-left: 4px solid {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">
+                    <div style="font-weight: bold; color: {% if event.is_ended %}#495057{% else %}#2e7d32{% endif %}; margin-bottom: 5px;">📅 {% trans "Zeitraum" %}:</div>
+                    {% if event.start_time %}
+                    <div style="color: #495057;">{% trans "Start" %}: <strong data-utc-datetime="{{ event.start_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.start_time|date:"d.m.Y H:i" }}</strong></div>
+                    {% endif %}
+                    {% if event.end_time %}
+                    <div style="color: #495057;">{% trans "Ende" %}: <strong data-utc-datetime="{{ event.end_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.end_time|date:"d.m.Y H:i" }}</strong>{% if event.is_ended %} <span style="color: #dc3545; font-weight: bold;">({% trans "Beendet" %})</span>{% endif %}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                {% if event.description %}
+                <div style="padding: 10px; margin-bottom: 15px; background: white; border-radius: 6px; font-style: italic; color: #495057;">
+                    {{ event.description }}
+                </div>
+                {% endif %}
+                
+                {% for group in event.groups %}
+                <div style="border-left: 6px solid {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %}; margin: 10px 0; padding: 12px; background: white; border-radius: 0 8px 8px 0;">
+                    <div style="font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between;">
+                        <span>👥 {{ group.name }}</span>
+                        <span>{{ group.km|default:0|format_km_de:2 }} km</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Store open groups in localStorage to persist across HTMX reloads
+    function rkSaveOpenGroups() {
+        const openGroups = [];
+        document.querySelectorAll('.rk-group-container.rk-is-open').forEach(function(el) {
+            if (el.id) {
+                openGroups.push(el.id);
+            }
+        });
+        localStorage.setItem('rk_open_groups', JSON.stringify(openGroups));
+    }
+    
+    // Function to open all groups in kiosk mode
+    function rkOpenAllGroupsInKioskMode() {
+        var wrapper = document.querySelector('.rk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('rk-kiosk-mode')) {
+            // In kiosk mode, open all groups
+            document.querySelectorAll('.rk-group-container').forEach(function(el) {
+                if (el) {
+                    el.classList.add('rk-is-open');
+                }
+            });
+            // Also open all event containers
+            document.querySelectorAll('[id^="rk-event-"]').forEach(function(el) {
+                if (el) {
+                    el.classList.add('rk-is-open');
+                }
+            });
+        }
+    }
+    
+    function rkRestoreOpenGroups() {
+        // In kiosk mode, don't restore from localStorage, just open all
+        var wrapper = document.querySelector('.rk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('rk-kiosk-mode')) {
+            rkOpenAllGroupsInKioskMode();
+            return;
+        }
+        
+        try {
+            const stored = localStorage.getItem('rk_open_groups');
+            if (stored) {
+                const openGroups = JSON.parse(stored);
+                // Use requestAnimationFrame to ensure DOM is ready
+                requestAnimationFrame(function() {
+                    openGroups.forEach(function(groupId) {
+                        const el = document.getElementById(groupId);
+                        if (el) {
+                            el.classList.add('rk-is-open');
+                        }
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Error restoring open groups:', e);
+        }
+    }
+    
+    function rkToggleGroup(id) {
+        // Nur im normalen Modus umschalten, im Kiosk-Modus nichts tun
+        var wrapper = document.querySelector('.rk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('rk-kiosk-mode')) return;
+        
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.toggle('rk-is-open');
+            rkSaveOpenGroups(); // Save state after toggle
+        }
+    }
+    
+    // Restore open groups when page/table loads
+    function rkInitGroupState() {
+        // In kiosk mode, open all groups
+        rkOpenAllGroupsInKioskMode();
+        // Try immediately
+        rkRestoreOpenGroups();
+        // Try after a short delay
+        setTimeout(function() {
+            rkOpenAllGroupsInKioskMode();
+            rkRestoreOpenGroups();
+        }, 50);
+        // Try after a longer delay
+        setTimeout(function() {
+            rkOpenAllGroupsInKioskMode();
+            rkRestoreOpenGroups();
+        }, 200);
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', rkInitGroupState);
+    } else {
+        rkInitGroupState();
+    }
+    
+    // Also restore after HTMX swaps (when table is reloaded)
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (!event || !event.target) return;
+        
+        try {
+            var target = event.target;
+            var isTableContent = target.id === 'rk-dynamic-table-content' || target.closest('#rk-dynamic-table-content');
+            
+            if (isTableContent) {
+                setTimeout(function() {
+                    rkOpenAllGroupsInKioskMode();
+                    rkRestoreOpenGroups();
+                }, 10);
+                setTimeout(function() {
+                    rkOpenAllGroupsInKioskMode();
+                    rkRestoreOpenGroups();
+                }, 100);
+                setTimeout(function() {
+                    rkOpenAllGroupsInKioskMode();
+                    rkRestoreOpenGroups();
+                }, 300);
+            }
+        } catch (e) {
+            console.error('Error in htmx:afterSwap handler:', e);
+        }
+    });
+    
+    // Also listen for htmx:load event
+    document.body.addEventListener('htmx:load', function(event) {
+        if (!event || !event.target) return;
+        
+        try {
+            var target = event.target;
+            var isTableContent = target.id === 'rk-dynamic-table-content' || target.closest('#rk-dynamic-table-content');
+            
+            if (isTableContent) {
+                setTimeout(function() {
+                    rkOpenAllGroupsInKioskMode();
+                    rkRestoreOpenGroups();
+                }, 50);
+                setTimeout(function() {
+                    rkOpenAllGroupsInKioskMode();
+                    rkRestoreOpenGroups();
+                }, 200);
+            }
+        } catch (e) {
+            console.error('Error in htmx:load handler:', e);
+        }
+    });
+</script>
+
+

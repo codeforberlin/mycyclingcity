@@ -1,0 +1,12 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{{ bulk_create_url }}" class="addlink">
+            {% trans "Massenerstellung: Schule, Klassen & Radler" %}
+        </a>
+    </li>
+{% endblock %}
+

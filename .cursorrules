@@ -1,0 +1,128 @@
+# MyCyclingCity - Cursor AI Source of Truth
+
+## Project Structure
+
+This is a **Mono-Repo** containing two main sub-projects:
+
+- **`mcc-esp32/`**: ESP32 C++ Firmware (PlatformIO)
+- **`mcc-web/`**: Django Web Application (Python)
+
+## Tech Stack
+
+### Hardware/Firmware (`mcc-esp32/`)
+- **Platform**: ESP32 (PlatformIO)
+- **Framework**: Arduino
+- **Language**: C++
+- **Supported Boards**:
+  - Heltec WiFi LoRa 32 V3
+  - Heltec WiFi LoRa 32 V2
+  - Wemos D1 Mini32
+- **Testing**: Unity Framework (native tests, no hardware required)
+
+### Web Application (`mcc-web/`)
+- **Framework**: Django (Python)
+- **Language**: Python
+- **Testing**: pytest + Django Test Framework
+- **UI**: Tailwind CSS, Glassmorphism design
+- **Internationalization**: Django i18n (`{% trans %}`)
+
+## Coding Standards
+
+### Language & Comments
+- **Code Comments & Documentation**: MUST be in **English** (as of 2025-12-25)
+- **HTML/Web-UI Strings**: MUST remain in **German** - DO NOT translate these strings
+- **Code Logic**: English variable names, English function names, English comments
+
+### Code Style
+- **Web**: Use i18n (`{% trans %}`) for user-facing strings
+- **Numbers**: Use `format_km_de` for number formatting
+- **UI**: State-of-the-art Glassmorphism, Tailwind CSS
+- **Hardware**: API compatibility between `mcc-esp32` and `mcc-web/iot` is critical
+
+## Hardware Pin Definitions
+
+### Wemos D1 Mini32 (`wemos_d1_mini32`)
+- `PulseMeasurePin=4` - Pulse measurement pin for tachometer
+- `LED_PIN=2` - Internal LED
+- `BUZZER_PIN=14` - Active buzzer pin
+- `OLED_SDA_PIN=21` - I2C SDA for OLED display
+- `OLED_SCL_PIN=22` - I2C SCL for OLED display
+- `OLED_RST_PIN=-1` - Reset pin (not used)
+- Board Flag: `BOARD_D1`
+
+### Heltec WiFi LoRa 32 V3 (`heltec_wifi_lora_32_V3`)
+- `PulseMeasurePin=2` - Pulse measurement pin
+- `LED_PIN=35` - Internal LED
+- `VEXT_PIN=36` - Pin to enable integrated OLED panel
+- `BUZZER_PIN=14` - Active buzzer pin
+- Board Flag: `BOARD_HELTEC`
+
+### Heltec WiFi LoRa 32 V2 (`heltec_wifi_lora_32_V2`)
+- `PulseMeasurePin=13` - Pulse measurement pin
+- `LED_PIN=25` - Internal LED
+- `VEXT_PIN=36` - Pin to enable integrated OLED panel
+- `BUZZER_PIN=14` - Active buzzer pin
+- Board Flag: `BOARD_HELTEC`
+
+**CRITICAL**: Always verify pin assignments match the target hardware board. Pin definitions are set via build flags in `platformio.ini`.
+
+## Environment & Paths
+
+### PlatformIO
+- **CLI Path**: `~/.platformio/penv/bin/pio`
+- **Project Config**: `mcc-esp32/platformio.ini`
+- **Build Environments**: `heltec_wifi_lora_32_V3`, `heltec_wifi_lora_32_V2`, `wemos_d1_mini32`, `test_mode`, `native`
+
+### Python/Django
+- **Virtual Environment**: Stored locally in user's home directory (not in project folder)
+- **Project Path**: `/data/games/mcc/mcc-web` (production)
+- **Development Path**: `mcc-web/` (relative to repo root)
+- **Settings**: `mcc-web/config/settings.py`
+- **Environment Variables**: Use `python-decouple` (`.env` file in `mcc-web/`)
+
+## Project-Specific Rules
+
+### Hardware-First Approach
+This project prioritizes hardware compatibility. When making changes:
+1. Verify ESP32 firmware compatibility with `mcc-web/iot` API
+2. Test on actual hardware when possible
+3. Use native test environment for unit tests (no hardware required)
+
+### API Compatibility
+- The `mcc-esp32` firmware communicates with `mcc-web/iot` endpoints
+- API changes must be coordinated across both modules
+- Always verify backward compatibility
+
+### Testing
+- **ESP32**: Run `pio test -e native` for unit tests
+- **Django**: Run `pytest api/tests/` or `make test` in `mcc-web/`
+- **CI/CD**: GitHub Actions workflows for automated testing
+
+## File Organization
+
+- **Firmware Source**: `mcc-esp32/src/`
+- **Firmware Tests**: `mcc-esp32/test/`
+- **Django Apps**: `mcc-web/api/`, `mcc-web/iot/`, `mcc-web/kiosk/`, etc.
+- **Django Tests**: `mcc-web/api/tests/`
+- **Documentation**: `mcc-web/docs/`, `mcc-esp32/README.md`
+
+## Common Commands
+
+### ESP32 Development
+```bash
+cd mcc-esp32
+pio run -e wemos_d1_mini32          # Build for Wemos D1 Mini32
+pio run -e heltec_wifi_lora_32_V3   # Build for Heltec V3
+pio upload -e wemos_d1_mini32        # Upload to device
+pio device monitor                  # Open serial monitor
+pio test -e native                  # Run unit tests
+```
+
+### Django Development
+```bash
+cd mcc-web
+python manage.py runserver          # Run development server
+pytest api/tests/                   # Run tests
+make test                           # Run test suite
+python manage.py migrate            # Run migrations
+```

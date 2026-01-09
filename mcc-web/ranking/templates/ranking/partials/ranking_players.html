@@ -1,0 +1,13 @@
+{% load i18n ranking_filters %}
+<table class="rk-ranking-table" style="width: 100%; border-collapse: collapse;">
+    <thead><tr style="text-align: left; color: #65676b; border-bottom: 2px solid #f0f2f5;"><th style="padding: 10px;">{% trans "Rang" %}</th><th>{% trans "Spieler" %}</th><th style="text-align: right;">{% trans "Distanz" %}</th></tr></thead>
+    {% for p in items %}
+    <tr style="border-bottom: 1px solid #f0f2f5;">
+        <td style="padding: 12px;">#{{ forloop.counter }}</td>
+        <td>👤 {{ p.user_id }}</td>
+        <td style="text-align: right;"><span class="rk-km-badge">{% format_km_de_tag p.distance_total 3 %} km</span></td>
+    </tr>
+    {% endfor %}
+</table>
+
+

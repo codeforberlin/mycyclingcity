@@ -1,0 +1,96 @@
+Du bist ein Experte für Django, HTMX und Tailwind CSS.
+Folge diesen Regeln für alle Code-Generierungen:
+
+1. Django-Struktur:
+   - Nutze klassische Django-Views (Class-based oder Function-based).
+   - Logik gehört ins Backend, nicht in schweres JavaScript.
+   - Nutze Django Forms für die Validierung.
+
+2. HTMX-Prinzipien:
+   - Bevorzuge HTMX-Attribute (hx-get, hx-post, hx-target, hx-swap) gegenüber komplexem Vanilla JS.
+   - Wenn eine View einen HTMX-Request erkennt (request.htmx), antworte mit einem HTML-Fragment (Partial) statt einer kompletten Seite.
+   - Nutze "hx-swap='outerHTML'" für Ersetzungen von Elementen.
+
+3. JavaScript:
+   - Nutze JavaScript nur für rein clientseitige UI-Effekte oder Web-Components, wenn HTMX nicht ausreicht.
+   - Halte JS-Code so minimal wie möglich.
+
+4. Coding-Stil:
+   - Nutze moderne Python-Features (Type Hints).
+   - Schreibe saubere HTML-Templates mit Tailwind CSS Klassen.
+
+5. Python-Spezifikationen:
+   - Verwende konsequent Python Type Hints (Typ-Annotationen).
+   - Nutze für Django-Views immer die Typen 'HttpRequest' und 'HttpResponse'.
+   - Bevorzuge moderne Python 3.10+ Syntax (z.B. '|' statt 'Optional' oder 'Union').
+   - Schreibe Docstrings im Google-Style für komplexe Funktionen.
+
+6. Language Policy:
+   - All comments, docstrings, and commit messages must be written in English.
+   - Variable names and function names must be in English (standard for Django/Python).
+   - User-facing strings in templates (HTML) can remain in German if specified, but all developer-facing documentation must be English.
+
+Project Environment:
+- The python virtual environment is located outside the project folder at: /home/roland/venv_mcc
+- Always use the packages from this environment for linting and code analysis.
+
+## Architecture & Coding Patterns
+
+### 1. Django & HTMX Pattern
+- **Partial Rendering:** Views, die auf HTMX-Anfragen (check for `request.htmx`) reagieren, müssen Teil-Templates (Partials) zurückgeben, keine vollständigen HTML-Seiten.
+- **Naming Convention:** Benenne Partials mit einem Unterstrich (z.B. `_product_row.html`), um sie von vollständigen Templates zu unterscheiden.
+- **HTMX Responses:** Nutze `django-htmx` Header für clientseitige Events (z.B. `HX-Trigger`), anstatt JavaScript im Template zu hartcodieren.
+- **Deletions:** Löschvorgänge via `hx-delete` müssen bei Erfolg einen leeren `HttpResponse` mit Status 200 zurückgeben, damit HTMX das Element gemäß `hx-target` entfernen kann.
+
+### 2. Logic Placement
+- **Fat Models, Thin Views:** Geschäftslogik gehört in die Model-Methoden oder separate Service-Layer, nicht in die Views.
+- **DRY Templates:** Nutze Django-Tags und Inclusions, um HTML-Redundanz zu vermeiden, besonders bei Tailwind-Komponenten.
+
+### 3. Safety & Performance
+- **Database Access:** Nutze `select_related` und `prefetch_related` konsequent, um N+1 Probleme zu vermeiden. Cursor muss jede Query daraufhin prüfen.
+- **Transactions:** Operationen, die mehrere Datenbank-Schreibvorgänge beinhalten, müssen in `transaction.atomic()` gewrappt sein.
+- **Validation:** Formular-Validierung findet primär in `forms.py` statt. Nutze HTMX `hx-post` für Inline-Validierung während der Eingabe.
+
+### 3.1. Debugging & Logging
+- **Always Use Logging for Debugging:** When investigating bugs or unexpected behavior, ALWAYS add comprehensive logging statements using Python's `logging` module before attempting fixes.
+- **Log Levels:** Use appropriate log levels:
+  - `logger.debug()` for detailed diagnostic information
+  - `logger.info()` for general informational messages
+  - `logger.warning()` for warning conditions
+  - `logger.error()` for error conditions (visible in Gunicorn logs)
+- **Keep Debug Logs in Code:** All logging statements (including DEBUG level) should remain in the production code. This allows changing the logging level at runtime (e.g., via Django settings) without code changes. Never remove logging statements after debugging is complete.
+- **Error Context:** When logging errors, always include `exc_info=True` in `logger.error()` calls to capture full tracebacks.
+- **Debugging Workflow:** When a user reports a bug:
+  1. First add logging to understand the code flow and identify where the issue occurs
+  2. Use appropriate log levels (DEBUG for detailed info, INFO for flow tracking, ERROR for critical issues)
+  3. Include relevant context (variable values, object states, etc.) in log messages
+  4. Keep all logging statements in the code after fixing the issue
+  5. Only after understanding the root cause, implement the fix
+- **Production Visibility:** Remember that INFO and DEBUG logs may not appear in Gunicorn logs by default; they can be enabled by changing the logging configuration. Use ERROR level for critical debugging information that must always be visible in production.
+
+### 4. Language & Documentation (Strict)
+- **Code Language:** Sämtliche Logik, Kommentare und Docstrings sind ausnahmslos in Englisch zu verfassen.
+- **Type Hints:** Jede Funktion MUSS vollständige Python Type Hints enthalten (inkl. `request: HttpRequest` und Rückgabetyp).
+
+### UI Consistency Rules
+- **Component Reuse:** Eventboards and Leaderboards must share the same template fragments or CSS classes for tiles.
+- **Visual Mapping:** Any metric (mileage, rank, live-status) must occupy the same relative position on a tile across different board types.
+- **Unified Transitions:** Use identical transition durations (e.g., duration-1000) for all focus-dimming and view-switching animations.
+
+### Reporting & Analytics Rules
+- **Hierarchical Aggregation:** Always allow summing up data from the lowest level (Player/Tag) to the highest level (Event).
+- **Efficient Queries:** Use `select_related` and `prefetch_related` for hierarchy lookups to avoid N+1 query problems in reports.
+- **Chart.js Integration:** Use CDNs for Chart.js in admin templates; keep charts responsive.
+- **Data Integrity:** Hourly data points must be treated as delta-values or cumulative based on the `MileageEntry` logic.
+
+### Localization & Number Formatting
+- **Display Standard (Frontend):** Use German number formatting for all user-facing displays. Use the dot (.) for thousands and the comma (,) for decimals (Example: 1.234,56 km).
+- **Data Standard (Backend):** Always use standard Python/Django float/decimal notation with a dot (.) for calculations and database storage. Never store formatted strings as numbers.
+- **Django L10N:** Prefer using Django's built-in localization tags `{% load l10n %}` and `{{ value|localize }}` to ensure consistency if the system language scales.
+- **Reporting/CSV:** When generating CSVs for German locales, use a semicolon (;) delimiter and localized decimal commas.
+
+### Testing Standards
+- **Framework:** Use `pytest` and `pytest-django`.
+- **Live Testing:** All API endpoints must have a corresponding live-test case that can be run against a production-like environment (Gunicorn).
+- **Data Privacy:** Never use real production data in tests; use factories instead.
+- **L10N Validation:** Every test that checks numeric output must assert the correct German number formatting (e.g., `assert "," in response_value`).

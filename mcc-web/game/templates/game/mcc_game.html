@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCC Spiel: Kilometer-Challenge</title>
+    {% load static %}
+    {% load i18n %}
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        /* ... CSS bleibt unverändert ... */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; display: flex; flex-direction: column; min-height: 100vh; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); flex: 1; }
+        .header-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 10px; }
+        h1 { color: #333; text-align: center; margin: 0; flex-grow: 1; }
+        .two-column-layout { display: flex; justify-content: space-between; gap: 20px; }
+        .two-column-layout > div { flex: 1; display: flex; flex-direction: column; gap: 15px; align-items: center; text-align: center; }
+        .controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
+        .controls h3 { margin-top: 0; text-align: center; }
+        .controls label { font-weight: bold; }
+        select, input[type="range"], input[type="number"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        .assignments { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .top-controls { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #startButton { background-color: #28a745; color: white; }
+        #stopButton { background-color: #dc3545; color: white; }
+        #clearAssignmentsButton { background-color: #ffc107; color: #333; }
+        .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .results-table th { background-color: #f2f2f2; text-align: center; }
+        .results-table td:nth-child(3), .results-table td:nth-child(4) { text-align: center; }
+        footer { margin-top: 20px; text-align: center; padding: 10px; color: #777; }
+        .remove-checkbox { cursor: pointer; width: 20px; height: 20px; margin: 0 auto; display: block; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 40px; border-radius: 10px; text-align: center; box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); max-width: 90%; min-width: 300px; position: relative; }
+        .modal-content h2 { font-size: 2.5em; color: #28a745; margin-top: 0; }
+        .modal-content p { font-size: 1.5em; font-weight: bold; color: #333; margin-bottom: 20px; }
+        .modal-content img { max-width: 100%; height: auto; border-radius: 5px; }
+        .modal-close { position: absolute; top: 10px; right: 15px; font-size: 2em; cursor: pointer; color: #aaa; }
+        .logo-left, .logo-right { max-height: 80px; width: auto; }
+        input[type="range"] { width: 90%; margin: 0 auto; }
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-container">
+        <img id="logo-left" class="logo-left" src="{% static logo_left %}" alt="Left Logo">
+        <div>
+            <h1>MyCyclingCity</h1>
+            <p style="text-align: center; margin: 0;">{% trans "Kilometer-Challenge" %}</p>
+        </div>
+        <img id="logo-right" class="logo-right" src="{% static logo_right %}" alt="Right Logo">
+    </div>
+
+    <p style="text-align: center;">{% trans "Willkommen zur Kilometer-Challenge! Wähle die Spieler und ihre zugewiesenen Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst." %}</p>
+
+    <div class="top-controls">
+        {% csrf_token %}
+
+        <button id="startButton"
+                hx-post="{% url 'game:start_game' %}"
+                hx-target="#startButton"
+                hx-swap="none"
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-on::after-request="
+                    if (event.detail.successful) {
+                        // KRITISCHE KORREKTUR: Verwende setTimeout zur Sicherstellung der DOM-Bereitschaft
+                        setTimeout(() => {
+                           const tbody = document.getElementById('resultsTableBody');
+                           if (tbody) tbody.click();
+                        }, 50);
+                    } else {
+                        alert('{% trans "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)." %}');
+                    }
+                ">{% trans "Spiel starten" %}</button>
+
+        <button id="stopButton"
+                hx-post="{% url 'game:start_game' %}"
+                name="action" value="stop"
+                hx-include="[name='csrfmiddlewaretoken']"
+
+                hx-on::after-request="
+                    if (event.detail.successful) {
+                        // Erzwinge das Neuladen der Tabelle, um den periodischen Trigger zu entfernen
+                        document.getElementById('resultsTableBody').click();
+                    } else {
+                        alert('{% trans "Spiel konnte nicht gestoppt werden." %}');
+                    }
+                "
+                disabled>{% trans "Spiel stoppen" %}</button>
+    </div>
+
+    <div>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>{% trans "Spieler" %}</th>
+                    <th>{% trans "Gerät" %}</th>
+                    <th>{% trans "Kilometer (km)" %}</th>
+                    <th>{% trans "MCC-Coins" %}</th>
+                    <th>{% trans "Entfernen" %}</th>
+                </tr>
+            </thead>
+            <tbody id="resultsTableBody"
+                 hx-get="{% url 'game:render_results_table' %}"
+                 hx-target="this"
+                 hx-swap="outerHTML"
+                 hx-include="#targetKm"
+                 hx-trigger="load once"> {# CRITICAL: Adds the trigger for the initial load #}
+                {# Content is now fetched from the backend via hx-trigger="load once" #}
+            </tbody>
+        </table>
+    </div>
+
+    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
+
+    <div class="controls">
+        <div class="two-column-layout">
+            <div id="player-device-assignment">
+                <h3>{% trans "Spieler & Geräte zuweisen" %}</h3>
+
+                <form hx-post="{% url 'game:handle_assignment_form' %}"
+                      hx-target="#resultsTableBody"
+                      hx-swap="outerHTML"
+                      hx-vals='{"action": "add"}'>
+                    {% csrf_token %}
+                    <div class="assignments">
+                        <label for="cyclistSelect">{% trans "Radler" %}:</label>
+                        <select id="cyclistSelect" name="cyclist">
+                            <option value="">{% trans "Wähle einen Spieler" %}</option>
+                            {% for cyclist in cyclists %}
+                            <option value="{{ cyclist.user_id }}">{{ cyclist.user_id }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label for="deviceSelect">{% trans "Gerät" %}:</label>
+                        <select id="deviceSelect" name="device">
+                            <option value="">{% trans "Wähle ein Gerät" %}</option>
+                            {% for device in devices %}
+                            <option value="{{ device.name }}">{{ device.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" style="margin-top: 10px;">{% trans "Zuweisung hinzufügen" %}</button>
+                </form>
+
+                <button
+                    hx-post="{% url 'game:handle_assignment_form' %}"
+                    hx-target="#resultsTableBody"
+                    hx-swap="outerHTML"
+                    hx-vals='{"action": "clear"}'
+                    id="clearAssignmentsButton">{% trans "Alle Zuweisungen löschen" %}</button>
+
+            </div>
+
+            <div>
+                <h3>{% trans "Ziel-Einstellungen" %}</h3>
+
+                <label for="targetKm" style="text-align:center;">{% trans "Zielkilometer (optional)" %}:</label>
+                <input type="number" id="targetKm" name="target_km" min="1" placeholder="{% trans 'Ziel-km eingeben' %}" style="max-width: 200px;"
+                       hx-trigger="input changed delay:500ms"
+                       hx-get="{% url 'game:render_results_table' %}"
+                       hx-target="#resultsTableBody"
+                       hx-swap="outerHTML">
+
+                {# NEU: Button zum Session-Reset #}
+                <button id="endSessionButton"
+                        style="background-color: #f4a261; color: white; margin-top: 15px;"
+                        hx-post="{% url 'game:end_session' %}"
+                        hx-include="[name='csrfmiddlewaretoken']"
+                        hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
+                        hx-on::after-request="window.location.reload();">
+                    {% trans "Session beenden / Zurücksetzen" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2025 <a href="https://sai-lab.de" target="_blank">SAI-LAB Berlin</a> | <a href="https://sai-lab.de/index.php/de/impressum" target="_blank">Impressum</a> | <a href="{% url 'privacy_policy' %}">{% trans "Datenschutzerklärung" %}</a></p>
+</footer>
+
+<div id="winnerModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>{% trans "Kilometerweltmeister!" %}</h2>
+        <p id="winnerName"></p>
+        <img id="winnerPhoto" src="{% static winner_photo %}" alt="{% trans 'Foto des Gewinners' %}">
+    </div>
+</div>
+
+<script>
+    const winnerSoundUrl = '{% url "game:serve_goal_sound" %}';
+    let winnerAnnounced = false;
+
+    function showWinnerPopupAndPlaySound(winnerNames) {
+        if (winnerAnnounced) return;
+        winnerAnnounced = true;
+
+        document.getElementById('winnerName').textContent = winnerNames;
+        document.getElementById('winnerModal').style.display = 'flex';
+
+        const audio = new Audio(winnerSoundUrl);
+        audio.preload = 'auto';
+
+        audio.addEventListener('canplaythrough', function() {
+            audio.play().catch(e => console.error("Error playing goal sound:", e));
+        }, { once: true });
+
+        audio.load();
+    }
+
+    function closeModal() {
+        document.getElementById('winnerModal').style.display = 'none';
+
+        const tbody = document.getElementById('resultsTableBody');
+        const isActive = tbody.dataset.gameActive === 'true';
+        const isStopped = tbody.dataset.gameStopped === 'true';
+
+        // Reset flag when game is no longer running
+        if (!isActive || isStopped) {
+            winnerAnnounced = false;
+        }
+    }
+    window.closeModal = closeModal;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Schieberegler-Logik entfernt
+    });
+
+    // Global button and state control logic (executed after EVERY HTMX swap)
+    document.addEventListener('htmx:afterSwap', function(event) {
+        if (event.target.id === 'resultsTableBody') {
+            const tbody = event.target;
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+
+            // Read state variables from data attributes
+            const isActive = tbody.dataset.gameActive === 'true';
+            const isStopped = tbody.dataset.gameStopped === 'true';
+            const winnerName = tbody.dataset.winnerName;
+
+            // Game is running if it is active AND NOT stopped
+            const isRunning = isActive && !isStopped;
+
+            if (startButton && stopButton) {
+                if (isRunning) {
+                    // Game is running
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                } else {
+                    // Game inactive (before start, stopped, or winner)
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                }
+            }
+
+            // Winner check and sound trigger
+            if (winnerName) {
+                showWinnerPopupAndPlaySound(winnerName);
+            } else {
+                if (!isRunning) {
+                     winnerAnnounced = false;
+                }
+            }
+        }
+    });
+</script>

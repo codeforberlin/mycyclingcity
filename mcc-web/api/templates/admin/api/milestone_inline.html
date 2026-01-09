@@ -1,0 +1,983 @@
+{% load i18n admin_urls static %}
+
+<div class="inline-group" id="{{ inline_admin_formset.formset.prefix }}-group">
+    <h2>{% trans "Meilensteine auf dem Track setzen" %}</h2>
+    
+    <div id="milestone-map-admin" style="height: 500px; width: 100%; margin-bottom: 20px; border: 2px solid #1877f2; border-radius: 8px; position: relative; background: #f0f0f0;">
+        <div style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9em; max-width: 350px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <strong>{% trans "Instructions:" %}</strong><br>
+            {% trans "Click on the map to position a milestone." %}<br>
+            {% trans "The click point will automatically snap to the nearest point on the blue track line." %}<br>
+            {% trans "The GPS coordinates and the distance along the track are automatically calculated." %}
+        </div>
+        <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <button id="recalculate-all-distances" type="button" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                {% trans "Recalculate all KM markers" %}
+            </button>
+        </div>
+    </div>
+
+    <style>
+        /* stylelint-disable */
+        /* Anpassung der Tabellenspaltenbreiten */
+        .inline-group table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            max-width: 100% !important;
+        }
+        
+        .inline-group table th,
+        .inline-group table td {
+            padding: 4px 3px !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: nowrap !important;
+            vertical-align: middle !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Zeilenhöhe reduzieren */
+        .inline-group table tbody tr {
+            height: auto !important;
+            min-height: 32px !important;
+            max-height: 40px !important;
+        }
+        
+        /* Spezifische Spaltenbreiten werden per JavaScript dynamisch gesetzt */
+        
+        /* Input-Felder anpassen */
+        .inline-group table input[type="text"],
+        .inline-group table input[type="number"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            font-size: 0.85em !important;
+            padding: 2px 4px !important;
+            margin: 0 !important;
+            height: 24px !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Readonly fields styling */
+        .inline-group table input.readonly-field,
+        .inline-group table input[readonly] {
+            background-color: #f5f5f5 !important;
+            color: #666 !important;
+            cursor: not-allowed !important;
+            text-align: right;
+        }
+        
+        /* Hide first column (object representation) completely */
+        .inline-group table thead th:first-child,
+        .inline-group table tbody td:first-child {
+            display: none !important;
+        }
+        
+        /* Select-Felder kompakter */
+        .inline-group table select {
+            font-size: 0.85em !important;
+            padding: 2px 4px !important;
+            margin: 0 !important;
+            height: 24px !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Labels kompakter */
+        .inline-group table label {
+            font-size: 0.85em !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Horizontales Scrollen falls nötig */
+        .inline-group {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        /* stylelint-enable */
+    </style>
+
+    {% include "admin/edit_inline/tabular.html" %}
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js"></script>
+    <script>
+        (function() {
+            'use strict';
+            
+            var map = null;
+            var trackPolyline = null;
+            var milestoneMarkers = null;
+            var trackData = [];
+            var formsetPrefix = '{{ inline_admin_formset.formset.prefix }}';
+            var targetRowId = null; // ID der permanenten Zielzeile
+            var totalTrackLength = 0; // Gesamtlänge des Tracks
+            var isEnsuringTargetRow = false; // Flag, um zu verhindern, dass ensureTargetRow mehrfach gleichzeitig läuft
+            
+            function initMap() {
+                // Prüfe, ob Leaflet geladen ist
+                if (typeof L === 'undefined') {
+                    setTimeout(initMap, 100);
+                    return;
+                }
+                if (typeof L.GeometryUtil === 'undefined') {
+                    setTimeout(initMap, 100);
+                    return;
+                }
+                
+                var mapDiv = document.getElementById('milestone-map-admin');
+                if (!mapDiv) {
+                    console.error('Karten-Container nicht gefunden');
+                    return;
+                }
+                
+                // Initialisiere Karte
+                map = L.map('milestone-map-admin', {
+                    center: [51.16, 10.45],
+                    zoom: 6,
+                    zoomControl: true
+                });
+                
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors',
+                    maxZoom: 19
+            }).addTo(map);
+
+                milestoneMarkers = L.layerGroup().addTo(map);
+                
+                // Track-Daten laden
+                try {
+                    var trackDataStr = '{{ original.geojson_data|safe|default:"[]" }}';
+                    if (trackDataStr && trackDataStr !== '[]') {
+                        trackData = JSON.parse(trackDataStr);
+                        console.log('Track-Daten geladen:', trackData.length, 'Punkte');
+            
+            if (trackData.length > 0) {
+                            trackPolyline = L.polyline(trackData, {
+                                color: '#1877f2',
+                                weight: 6,
+                                opacity: 0.75
+                            }).addTo(map);
+                            
+                            map.fitBounds(trackPolyline.getBounds());
+
+                            // Berechne Gesamtlänge des Tracks
+                            totalTrackLength = 0;
+                            for (var i = 0; i < trackData.length - 1; i++) {
+                                var p1 = L.latLng(trackData[i][0], trackData[i][1]);
+                                var p2 = L.latLng(trackData[i+1][0], trackData[i+1][1]);
+                                totalTrackLength += p1.distanceTo(p2) / 1000; // in km
+                            }
+                            
+                            // Erstelle/aktualisiere Zielzeile
+                            setTimeout(function() {
+                                ensureTargetRow();
+                            }, 500);
+                        }
+                    }
+                } catch(e) {
+                    console.error('Fehler beim Laden der Track-Daten:', e);
+                }
+                
+                // Bestehende Meilensteine anzeigen
+                var milestonesFromDB = [];
+                {% if milestones_json %}
+                try {
+                    milestonesFromDB = {{ milestones_json|safe }};
+                } catch(e) {
+                    console.error('Fehler beim Laden der Meilensteine:', e);
+                }
+                {% endif %}
+                
+                milestonesFromDB.forEach(function(m) {
+                    if (m.lat && m.lon) {
+                        // Verwende addMilestoneMarker für konsistentes Design (inkl. Zielmeilenstein-Erkennung)
+                        addMilestoneMarker(L.latLng(m.lat, m.lon), m.name || 'Unbenannt', m.distance || 0);
+                    }
+                });
+                
+                // Klick-Handler für neue Meilensteine
+                if (trackPolyline) {
+                    map.on('click', function(e) {
+                        var clickedPoint = e.latlng;
+                        var snappedPoint = L.GeometryUtil.closest(map, trackPolyline, clickedPoint);
+                    
+                        // Visuelles Feedback
+                        var tempMarker = L.circleMarker(snappedPoint, {
+                            radius: 8,
+                            color: '#f1c40f',
+                            fillColor: '#f39c12',
+                            fillOpacity: 1,
+                            weight: 3
+                        }).addTo(map);
+                        
+                        setTimeout(function() {
+                            map.removeLayer(tempMarker);
+                        }, 2000);
+                        
+                        // Finde leere Zeile oder erstelle neue
+                        var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                        if (!formsetContainer) return;
+                        
+                        var rows = formsetContainer.querySelectorAll('tbody tr');
+                        if (rows.length === 0) {
+                            rows = formsetContainer.querySelectorAll('.form-row');
+                        }
+                        
+                        var targetRow = null;
+                        for (var i = 0; i < rows.length; i++) {
+                            var row = rows[i];
+                            var latInput = row.querySelector('input[id*="latitude"], input[name*="latitude"]');
+                            var lonInput = row.querySelector('input[id*="longitude"], input[name*="longitude"]');
+                            if (latInput && lonInput && (!latInput.value || !lonInput.value)) {
+                                targetRow = row;
+                                break;
+                            }
+                        }
+                        
+                        if (!targetRow) {
+                            var addButton = formsetContainer.querySelector('.add-row a, .add-row button, a.add-row, button.add-row');
+                            if (addButton) {
+                                addButton.click();
+                                setTimeout(function() {
+                                    var newRows = formsetContainer.querySelectorAll('tbody tr');
+                                    if (newRows.length === 0) {
+                                        newRows = formsetContainer.querySelectorAll('.form-row');
+                                    }
+                                    if (newRows.length > rows.length) {
+                                        targetRow = newRows[newRows.length - 1];
+                                        fillRow(targetRow, snappedPoint);
+                                    }
+                                }, 300);
+                                return;
+                            } else if (rows.length > 0) {
+                                targetRow = rows[rows.length - 1];
+                            }
+                        }
+                        
+                        if (targetRow) {
+                            fillRow(targetRow, snappedPoint);
+                        }
+                    });
+                }
+                
+                // Karten-Größe korrigieren
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 300);
+                
+                // Observer für Formset-Änderungen
+                var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                if (formsetContainer) {
+                    var observer = new MutationObserver(function(mutations) {
+                        // Prüfe, ob es sich um eine relevante Änderung handelt (nicht nur Text-Änderungen)
+                        var relevantChange = false;
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                                // Nur bei hinzugefügten Zeilen reagieren
+                                relevantChange = true;
+                            }
+                        });
+                        
+                        if (relevantChange) {
+                            setTimeout(function() {
+                                updateMarkersFromFormset();
+                                // ensureTargetRow nur einmal beim Laden aufrufen, nicht bei jeder Mutation
+                                // ensureTargetRow(); 
+                                // Korrigiere Spaltenausrichtung nach Änderungen
+                                var table = formsetContainer.querySelector('table');
+                                if (table) {
+                                    adjustColumnAlignment(table);
+                                }
+                            }, 200);
+                        }
+                    });
+                    observer.observe(formsetContainer, { childList: true, subtree: false }); // subtree: false, um weniger Events zu bekommen
+                    
+                    formsetContainer.addEventListener('input', function(e) {
+                        if (e.target.name && (e.target.name.includes('gps_latitude') || e.target.name.includes('gps_longitude') || e.target.name.includes('name'))) {
+                            setTimeout(updateMarkersFromFormset, 100);
+                        }
+                    });
+                    
+                    formsetContainer.addEventListener('change', function(e) {
+                        if (e.target.name && (e.target.name.includes('gps_latitude') || e.target.name.includes('gps_longitude') || e.target.name.includes('name'))) {
+                            setTimeout(updateMarkersFromFormset, 100);
+                        }
+                    });
+                    
+                    // Initiale Aktualisierung nach kurzer Verzögerung
+                    setTimeout(updateMarkersFromFormset, 1000);
+                    setTimeout(updateMarkersFromFormset, 2000);
+                    
+                    // Format distance_km inputs to 3 decimal places
+                    function formatDistanceInputs() {
+                        var distanceInputs = formsetContainer.querySelectorAll('input[name*="distance_km"]');
+                        distanceInputs.forEach(function(input) {
+                            if (input.value && !isNaN(parseFloat(input.value))) {
+                                var value = parseFloat(input.value);
+                                input.value = value.toFixed(3);
+                            }
+                        });
+                    }
+                    
+                    // Format on load and on change
+                    setTimeout(formatDistanceInputs, 500);
+                    setTimeout(formatDistanceInputs, 1500);
+                    formsetContainer.addEventListener('input', function(e) {
+                        if (e.target.name && e.target.name.includes('distance_km')) {
+                            setTimeout(formatDistanceInputs, 100);
+                        }
+                    });
+                    
+                    // Verstecke Objekt-Repräsentation in Zielzeilen und korrigiere Ausrichtung
+                    setTimeout(function() {
+                        hideObjectRepresentation();
+                        var table = formsetContainer.querySelector('table');
+                        if (table) {
+                            adjustColumnAlignment(table);
+                        }
+                    }, 500);
+                    setTimeout(function() {
+                        hideObjectRepresentation();
+                        var table = formsetContainer.querySelector('table');
+                        if (table) {
+                            adjustColumnAlignment(table);
+                        }
+                    }, 1500);
+                }
+            }
+            
+            function fillRow(row, point) {
+                var allInputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+                var latInput = null;
+                var lonInput = null;
+                var distanceInput = null;
+                var nameInput = null;
+                
+                allInputs.forEach(function(input) {
+                    var name = (input.name || input.id || '').toLowerCase();
+                    if (name.includes('gps_latitude') || name.includes('latitude')) {
+                        latInput = input;
+                    } else if (name.includes('gps_longitude') || name.includes('longitude')) {
+                        lonInput = input;
+                    } else if (name.includes('distance_km') || (name.includes('distance') && !name.includes('total'))) {
+                        distanceInput = input;
+                    } else if (name.includes('name') && !name.includes('user') && !name.includes('display')) {
+                        nameInput = input;
+                    }
+                });
+                
+                if (latInput && lonInput) {
+                    latInput.value = point.lat.toFixed(6);
+                    lonInput.value = point.lng.toFixed(6);
+                    latInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    lonInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    var distance = 0;
+                    if (distanceInput && trackData.length > 0) {
+                        distance = calculateDistance(trackData, point);
+                        // Skip milestones at 0 km (start point) - don't set coordinates or create marker
+                        if (Math.abs(distance) < 0.001) {
+                            // Clear coordinates and distance to prevent creating a milestone at start point
+                            latInput.value = '';
+                            lonInput.value = '';
+                            distanceInput.value = '';
+                            return; // Don't create marker or fill row
+                        }
+                        distanceInput.value = distance.toFixed(5);
+                        distanceInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        distanceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    
+                    // Erstelle sofort einen permanenten Marker für den neuen Meilenstein
+                    setTimeout(function() {
+                        addMilestoneMarker(point, nameInput ? nameInput.value || 'Unbenannt' : 'Unbenannt', distance);
+                    }, 100);
+                }
+            }
+            
+            function addMilestoneMarker(point, name, distance) {
+                // Prüfe, ob bereits ein Marker an dieser Position existiert
+                var existing = false;
+                milestoneMarkers.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        var pos = layer.getLatLng();
+                        if (Math.abs(pos.lat - point.lat) < 0.0001 && Math.abs(pos.lng - point.lng) < 0.0001) {
+                            existing = true;
+                        }
+                    }
+                });
+                
+                if (!existing) {
+                    // Prüfe, ob es sich um einen Zielmeilenstein handelt
+                    var isTarget = false;
+                    if (name && (name.toLowerCase().includes('ziel') || name.toLowerCase().includes('target'))) {
+                        isTarget = true;
+                    } else if (trackData.length > 0) {
+                        // Prüfe, ob der Punkt am Ende des Tracks ist
+                        var endPoint = trackData[trackData.length - 1];
+                        var endLatLng = L.latLng(endPoint[0], endPoint[1]);
+                        if (point.distanceTo(endLatLng) < 100) { // Innerhalb von 100m vom Endpunkt
+                            isTarget = true;
+                        }
+                    }
+                    
+                    var icon, popup;
+                    if (isTarget) {
+                        // Zielmeilenstein: Grün mit Flaggen-Symbol
+                        icon = L.divIcon({
+                            className: 'target-milestone-marker',
+                            html: '<div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: 4px solid #155724; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transform: rotate(-5deg);">🏁</div>',
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20]
+                        });
+                        popup = '<strong style="color: #28a745;">🏁 ' + (name || 'Ziel') + '</strong><br>' + distance.toFixed(1) + ' km<br><em style="color: #28a745;">Ziel erreicht!</em>';
+                    } else {
+                        // Normaler Meilenstein: Gold mit Trophäe
+                        icon = L.divIcon({
+                            className: 'milestone-marker',
+                            html: '<div style="background: #ffd700; border: 3px solid #ff8c00; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🏆</div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        });
+                        popup = '<strong>' + (name || 'Unbenannt') + '</strong><br>' + distance.toFixed(1) + ' km';
+                    }
+                    
+                    var marker = L.marker([point.lat, point.lng], {icon: icon}).addTo(milestoneMarkers);
+                    marker.bindPopup(popup);
+                }
+            }
+            
+            function updateMarkersFromFormset() {
+                var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                if (!formsetContainer) return;
+                
+                var rows = formsetContainer.querySelectorAll('tbody tr');
+                if (rows.length === 0) {
+                    rows = formsetContainer.querySelectorAll('.form-row');
+                }
+                
+                // Entferne alle Marker, die nicht in der DB sind (nur Formset-Marker)
+                var formsetMarkers = [];
+                rows.forEach(function(row) {
+                    var allInputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+                    var latInput = null;
+                    var lonInput = null;
+                    var nameInput = null;
+                    var distanceInput = null;
+                    
+                    allInputs.forEach(function(input) {
+                        var name = (input.name || input.id || '').toLowerCase();
+                        if (name.includes('gps_latitude') || name.includes('latitude')) {
+                            latInput = input;
+                        } else if (name.includes('gps_longitude') || name.includes('longitude')) {
+                            lonInput = input;
+                        } else if (name.includes('name') && !name.includes('user') && !name.includes('display')) {
+                            nameInput = input;
+                        } else if (name.includes('distance_km') || (name.includes('distance') && !name.includes('total'))) {
+                            distanceInput = input;
+                        }
+                    });
+                    
+                    if (latInput && lonInput && latInput.value && lonInput.value) {
+                        var lat = parseFloat(latInput.value);
+                        var lon = parseFloat(lonInput.value);
+                        var distance = distanceInput ? parseFloat(distanceInput.value) || 0 : 0;
+                        // Skip milestones at 0 km (start point) - also clear coordinates if distance is 0
+                        if (Math.abs(distance) < 0.001) {
+                            // Clear coordinates for start point milestones
+                            latInput.value = '';
+                            lonInput.value = '';
+                            if (distanceInput) {
+                                distanceInput.value = '';
+                            }
+                            return; // Skip this row
+                        }
+                        if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+                            formsetMarkers.push({
+                                lat: lat,
+                                lon: lon,
+                                name: nameInput ? (nameInput.value || 'Unbenannt') : 'Unbenannt',
+                                distance: distance
+                            });
+                        }
+                    }
+                });
+                
+                // Entferne Marker, die nicht mehr im Formset sind
+                var markersToRemove = [];
+                milestoneMarkers.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        var pos = layer.getLatLng();
+                        var found = false;
+                        formsetMarkers.forEach(function(fm) {
+                            if (Math.abs(pos.lat - fm.lat) < 0.0001 && Math.abs(pos.lng - fm.lon) < 0.0001) {
+                                found = true;
+                            }
+                        });
+                        if (!found) {
+                            markersToRemove.push(layer);
+                        }
+                    }
+                });
+                markersToRemove.forEach(function(marker) {
+                    milestoneMarkers.removeLayer(marker);
+                });
+                
+                // Füge neue Marker hinzu
+                formsetMarkers.forEach(function(fm) {
+                    var existing = false;
+                    milestoneMarkers.eachLayer(function(layer) {
+                        if (layer instanceof L.Marker) {
+                            var pos = layer.getLatLng();
+                            if (Math.abs(pos.lat - fm.lat) < 0.0001 && Math.abs(pos.lng - fm.lon) < 0.0001) {
+                                existing = true;
+                            }
+                        }
+                    });
+                    if (!existing) {
+                        addMilestoneMarker(L.latLng(fm.lat, fm.lon), fm.name, fm.distance);
+                    }
+                });
+            }
+            
+            function calculateDistance(path, targetPoint) {
+                if (!path || path.length < 2) return 0;
+                
+            var totalDist = 0;
+                var minDistance = Infinity;
+                var closestSegmentIndex = -1;
+                var closestPointOnSegment = null;
+            
+            for (var i = 0; i < path.length - 1; i++) {
+                var p1 = L.latLng(path[i][0], path[i][1]);
+                var p2 = L.latLng(path[i+1][0], path[i+1][1]);
+                    var segment = L.polyline([p1, p2]);
+                    var closestOnSegment = L.GeometryUtil.closest(map, segment, targetPoint);
+                    var distToSegment = targetPoint.distanceTo(closestOnSegment);
+                    
+                    if (distToSegment < minDistance) {
+                        minDistance = distToSegment;
+                        closestSegmentIndex = i;
+                        closestPointOnSegment = closestOnSegment;
+                    }
+                }
+                
+                if (closestSegmentIndex === -1) return 0;
+                
+                for (var i = 0; i <= closestSegmentIndex; i++) {
+                    if (i < path.length - 1) {
+                        var p1 = L.latLng(path[i][0], path[i][1]);
+                        var p2 = L.latLng(path[i+1][0], path[i+1][1]);
+                        
+                        if (i === closestSegmentIndex) {
+                            totalDist += p1.distanceTo(closestPointOnSegment) / 1000;
+                        } else {
+                            totalDist += p1.distanceTo(p2) / 1000;
+                        }
+                    }
+                }
+                
+                return totalDist;
+            }
+            
+            function recalculateAllDistances() {
+                if (!trackData || trackData.length < 2) {
+                    alert('Keine Track-Daten verfügbar!');
+                    return;
+                }
+                
+                if (!trackPolyline) {
+                    alert('Track-Linie nicht verfügbar!');
+                    return;
+                }
+                
+                var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                if (!formsetContainer) {
+                    alert('Formset-Container nicht gefunden!');
+                    return;
+                }
+                
+                var rows = formsetContainer.querySelectorAll('tbody tr');
+                if (rows.length === 0) {
+                    rows = formsetContainer.querySelectorAll('.form-row');
+                }
+                
+                var recalculated = 0;
+                var errors = 0;
+                
+                rows.forEach(function(row) {
+                    var allInputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+                    var latInput = null;
+                    var lonInput = null;
+                    var distanceInput = null;
+                    
+                    allInputs.forEach(function(input) {
+                        var name = (input.name || input.id || '').toLowerCase();
+                        if (name.includes('gps_latitude') || name.includes('latitude')) {
+                            latInput = input;
+                        } else if (name.includes('gps_longitude') || name.includes('longitude')) {
+                            lonInput = input;
+                        } else if (name.includes('distance_km') || (name.includes('distance') && !name.includes('total'))) {
+                            distanceInput = input;
+                        }
+                    });
+                    
+                    if (latInput && lonInput && distanceInput) {
+                        var lat = parseFloat(latInput.value);
+                        var lon = parseFloat(lonInput.value);
+                        
+                        if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+                            try {
+                                var point = L.latLng(lat, lon);
+                                var snappedPoint = L.GeometryUtil.closest(map, trackPolyline, point);
+                                var distance = calculateDistance(trackData, snappedPoint);
+                                
+                                // Skip milestones at 0 km (start point) - clear coordinates and distance
+                                if (Math.abs(distance) < 0.001) {
+                                    // Clear coordinates and distance to prevent creating a milestone at start point
+                                    latInput.value = '';
+                                    lonInput.value = '';
+                                    distanceInput.value = '';
+                                    return; // Skip this row in forEach
+                                }
+                                
+                                distanceInput.value = distance.toFixed(5);
+                                distanceInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                distanceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                recalculated++;
+                            } catch (error) {
+                                console.error('Fehler bei Neuberechnung:', error);
+                                errors++;
+                            }
+                        }
+                    }
+                });
+                
+                alert('Neuberechnung abgeschlossen!\n' + recalculated + ' Meilensteine aktualisiert' + (errors > 0 ? '\n' + errors + ' Fehler' : ''));
+            }
+            
+            // Event-Listener für Neuberechnungs-Button
+            function setupButton() {
+                var button = document.getElementById('recalculate-all-distances');
+                if (button) {
+                    button.addEventListener('click', function() {
+                        if (confirm('Möchten Sie wirklich alle KM-Marken für alle Meilensteine auf diesem Track neu berechnen?')) {
+                            recalculateAllDistances();
+                        }
+                    });
+                } else {
+                    setTimeout(setupButton, 500);
+                }
+            }
+            
+            function ensureTargetRow() {
+                // Verhindere mehrfache gleichzeitige Ausführung
+                if (isEnsuringTargetRow) return;
+                isEnsuringTargetRow = true;
+                
+                var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                if (!formsetContainer) {
+                    isEnsuringTargetRow = false;
+                    return;
+                }
+                
+                var rows = formsetContainer.querySelectorAll('tbody tr');
+                if (rows.length === 0) {
+                    rows = formsetContainer.querySelectorAll('.form-row');
+                }
+                
+                // Suche nach bestehender Zielzeile
+                var targetRow = null;
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i];
+                    var nameInput = row.querySelector('input[id*="name"], input[name*="name"]');
+                    if (nameInput && nameInput.value && nameInput.value.toLowerCase().includes('ziel')) {
+                        targetRow = row;
+                        targetRowId = row.id || 'target-row-' + i;
+                        break;
+                    }
+                }
+                
+                // Wenn keine Zielzeile gefunden, erstelle eine
+                if (!targetRow) {
+                    var addButton = formsetContainer.querySelector('.add-row a, .add-row button, a.add-row, button.add-row');
+                    if (addButton) {
+                        addButton.click();
+                        setTimeout(function() {
+                            var newRows = formsetContainer.querySelectorAll('tbody tr');
+                            if (newRows.length === 0) {
+                                newRows = formsetContainer.querySelectorAll('.form-row');
+                            }
+                            if (newRows.length > rows.length) {
+                                targetRow = newRows[newRows.length - 1];
+                                targetRowId = targetRow.id || 'target-row-' + (newRows.length - 1);
+                                fillTargetRow(targetRow);
+                            }
+                            isEnsuringTargetRow = false;
+                        }, 300);
+                        return; // Warte auf setTimeout
+                    } else {
+                        isEnsuringTargetRow = false;
+                    }
+                } else {
+                    // Aktualisiere bestehende Zielzeile
+                    fillTargetRow(targetRow);
+                    isEnsuringTargetRow = false;
+                }
+                
+                // Verhindere Löschen der Zielzeile
+                if (targetRow) {
+                    var deleteCheckbox = targetRow.querySelector('input[type="checkbox"][name*="DELETE"]');
+                    if (deleteCheckbox) {
+                        deleteCheckbox.style.display = 'none';
+                        // NICHT disabled setzen, da Django das für die Validierung benötigt
+                        // deleteCheckbox.disabled = true;
+                    }
+                    
+                    // Markiere die Zeile visuell als Zielzeile
+                    targetRow.style.backgroundColor = '#fff9e6';
+                    targetRow.style.borderLeft = '4px solid #ff8c00';
+                    
+                    // Entferne den Text "Milestone object (13)" aus der ersten Spalte
+                    var firstCell = targetRow.querySelector('td:first-child');
+                    if (firstCell) {
+                        // Finde alle Text-Knoten und entferne nur diese, behalte alle Elemente (Inputs, etc.)
+                        var walker = document.createTreeWalker(
+                            firstCell,
+                            NodeFilter.SHOW_TEXT,
+                            null,
+                            false
+                        );
+                        var textNodes = [];
+                        var node;
+                        while (node = walker.nextNode()) {
+                            var text = node.textContent || node.nodeValue || '';
+                            if (text.includes('Milestone object') || text.includes('object (')) {
+                                textNodes.push(node);
+                            }
+                        }
+                        // Entferne nur die Text-Knoten, die "Milestone object" enthalten
+                        textNodes.forEach(function(textNode) {
+                            textNode.parentNode.removeChild(textNode);
+                        });
+                        firstCell.style.display = ''; // Stelle sicher, dass die Zelle sichtbar ist
+                    }
+                }
+            }
+            
+            // Funktion zum Anpassen der Spaltenausrichtung
+            function adjustColumnAlignment(table) {
+                if (!table) return;
+                
+                // Finde alle Header (alle sind jetzt sichtbar)
+                var headers = Array.from(table.querySelectorAll('thead th'));
+                
+                // Spaltenbreiten: Erste Spalte (leer), Name, KM-Marke, Breitengrad, Längengrad, Belohnung, Gewinner, Erreicht am
+                // Kompaktere Breiten für eine Zeile
+                var columnWidths = ['3%', '12%', '8%', '12%', '12%', '20%', '15%', '18%'];
+                var minWidths = ['20px', '80px', '60px', '90px', '90px', '120px', '100px', '120px'];
+                
+                // Setze Spaltenbreiten für alle Header
+                headers.forEach(function(header, index) {
+                    if (index < columnWidths.length) {
+                        header.style.width = columnWidths[index];
+                        header.style.minWidth = minWidths[index];
+                        header.style.maxWidth = columnWidths[index];
+                    }
+                });
+                
+                // Wende die gleichen Breiten auf alle Zeilen an
+                var rows = table.querySelectorAll('tbody tr');
+                rows.forEach(function(row) {
+                    var cells = Array.from(row.querySelectorAll('td'));
+                    cells.forEach(function(cell, index) {
+                        if (index < columnWidths.length) {
+                            cell.style.width = columnWidths[index];
+                            cell.style.minWidth = minWidths[index];
+                            cell.style.maxWidth = columnWidths[index];
+                            // Stelle sicher, dass der Inhalt auf einer Zeile bleibt
+                            cell.style.whiteSpace = 'nowrap';
+                            cell.style.overflow = 'hidden';
+                            cell.style.textOverflow = 'ellipsis';
+                        }
+                    });
+                });
+            }
+            
+            // Funktion zum Verstecken der Objekt-Repräsentation in Zielzeilen
+            function hideObjectRepresentation() {
+                var formsetContainer = document.querySelector('#' + formsetPrefix + '-group');
+                if (!formsetContainer) return;
+                
+                var table = formsetContainer.querySelector('table');
+                var firstHeader = null;
+                if (table) {
+                    firstHeader = table.querySelector('thead th:first-child');
+                }
+                
+                var rows = formsetContainer.querySelectorAll('tbody tr');
+                if (rows.length === 0) {
+                    rows = formsetContainer.querySelectorAll('.form-row');
+                }
+                
+                // Entferne ALLEN Text aus der ersten Spalte in allen Zeilen (nicht nur "Milestone object")
+                rows.forEach(function(row) {
+                    var firstCell = row.querySelector('td:first-child');
+                    if (firstCell) {
+                        // Finde alle Text-Knoten und entferne sie komplett
+                        var walker = document.createTreeWalker(
+                            firstCell,
+                            NodeFilter.SHOW_TEXT,
+                            null,
+                            false
+                        );
+                        var textNodes = [];
+                        var node;
+                        while (node = walker.nextNode()) {
+                            var text = (node.textContent || node.nodeValue || '').trim();
+                            // Entferne alle Text-Knoten, die nicht leer sind und keine Input-Felder enthalten
+                            if (text && !text.match(/^\s*$/)) {
+                                // Prüfe, ob der Text-Knoten Teil eines Input-Elements ist
+                                var parent = node.parentNode;
+                                var isInputText = false;
+                                while (parent && parent !== firstCell) {
+                                    if (parent.tagName === 'INPUT' || parent.tagName === 'SELECT' || parent.tagName === 'TEXTAREA') {
+                                        isInputText = true;
+                                        break;
+                                    }
+                                    parent = parent.parentNode;
+                                }
+                                if (!isInputText) {
+                                    textNodes.push(node);
+                                }
+                            }
+                        }
+                        // Entferne alle gefundenen Text-Knoten
+                        textNodes.forEach(function(textNode) {
+                            if (textNode.parentNode) {
+                                textNode.parentNode.removeChild(textNode);
+                            }
+                        });
+                        firstCell.style.display = ''; // Stelle sicher, dass die Zelle sichtbar ist
+                    }
+                });
+                
+                // Verstecke den ersten Header komplett
+                if (firstHeader) {
+                    firstHeader.style.display = 'none';
+                    firstHeader.textContent = '';
+                    firstHeader.innerHTML = '';
+                }
+                
+                // Verstecke auch die erste Spalte in allen Zeilen
+                rows.forEach(function(row) {
+                    var firstCell = row.querySelector('td:first-child');
+                    if (firstCell) {
+                        firstCell.style.display = 'none';
+                    }
+                });
+                
+                // Korrigiere die Spaltenausrichtung nach dem Verstecken
+                if (table) {
+                    setTimeout(function() {
+                        adjustColumnAlignment(table);
+                    }, 100);
+                }
+            }
+            
+            function fillTargetRow(row) {
+                if (!trackData || trackData.length === 0) return;
+                
+                var allInputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+                var nameInput = null;
+                var latInput = null;
+                var lonInput = null;
+                var distanceInput = null;
+                
+                allInputs.forEach(function(input) {
+                    var name = (input.name || input.id || '').toLowerCase();
+                    if (name.includes('name') && !name.includes('user') && !name.includes('display')) {
+                        nameInput = input;
+                    } else if (name.includes('gps_latitude') || name.includes('latitude')) {
+                        latInput = input;
+                    } else if (name.includes('gps_longitude') || name.includes('longitude')) {
+                        lonInput = input;
+                    } else if (name.includes('distance_km') || (name.includes('distance') && !name.includes('total'))) {
+                        distanceInput = input;
+                    }
+                });
+                
+                // Fülle die Zielzeile mit Endpunkt-Koordinaten
+                var endPoint = trackData[trackData.length - 1];
+                var endLatLng = L.latLng(endPoint[0], endPoint[1]);
+                
+                if (nameInput && !nameInput.value) {
+                    nameInput.value = 'Ziel';
+                }
+                
+                if (latInput && (!latInput.value || latInput.value === '0')) {
+                    latInput.value = endLatLng.lat.toFixed(6);
+                    latInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                if (lonInput && (!lonInput.value || lonInput.value === '0')) {
+                    lonInput.value = endLatLng.lng.toFixed(6);
+                    lonInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                if (distanceInput && (!distanceInput.value || distanceInput.value === '0')) {
+                    distanceInput.value = totalTrackLength.toFixed(5);
+                    distanceInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    distanceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                
+                // Erstelle Marker für Ziel
+                setTimeout(function() {
+                    addMilestoneMarker(endLatLng, nameInput ? nameInput.value : 'Ziel', totalTrackLength);
+                    
+                    // Entferne den Text "Milestone object" aus der ersten Spalte in der Zielzeile
+                    var firstCell = row.querySelector('td:first-child');
+                    if (firstCell) {
+                        // Finde alle Text-Knoten und entferne nur diese, behalte alle Elemente (Inputs, etc.)
+                        var walker = document.createTreeWalker(
+                            firstCell,
+                            NodeFilter.SHOW_TEXT,
+                            null,
+                            false
+                        );
+                        var textNodes = [];
+                        var node;
+                        while (node = walker.nextNode()) {
+                            var text = node.textContent || node.nodeValue || '';
+                            if (text.includes('Milestone object') || text.includes('object (')) {
+                                textNodes.push(node);
+                            }
+                        }
+                        // Entferne nur die Text-Knoten, die "Milestone object" enthalten
+                        textNodes.forEach(function(textNode) {
+                            textNode.parentNode.removeChild(textNode);
+                        });
+                        firstCell.style.display = ''; // Stelle sicher, dass die Zelle sichtbar ist
+                    }
+                }, 100);
+            }
+            
+            // Initialisierung
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(initMap, 500);
+                    setupButton();
+                });
+            } else {
+                setTimeout(initMap, 500);
+                setupButton();
+            }
+        })();
+    </script>
+</div>

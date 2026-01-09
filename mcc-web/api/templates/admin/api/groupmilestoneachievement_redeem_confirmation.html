@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:api_groupmilestoneachievement_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% trans 'Belohnung einlösen' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Belohnung einlösen" %}</h1>
+
+<div class="delete-confirmation">
+    <p>{% trans "Möchten Sie die Belohnung für diese Meilenstein-Erreichung wirklich einlösen?" %}</p>
+    
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Gruppe:" %}</strong> {{ achievement.group.name }}
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Meilenstein:" %}</strong> {{ achievement.milestone.name }}
+        </div>
+    </div>
+    
+    {% if achievement.reward_text %}
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Belohnung:" %}</strong> {{ achievement.reward_text }}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="form-row" style="margin-top: 20px; padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px;">
+        <div>
+            <strong style="color: #0c5460;">ℹ️ {% trans "Hinweis:" %}</strong>
+            <p style="margin: 10px 0 0 0; color: #0c5460;">
+                {% trans "Eine Belohnung kann nur einmal eingelöst werden. Nach dem Einlösen wird der Status auf 'Eingelöst' gesetzt und der Zeitpunkt der Einlösung gespeichert." %}
+            </p>
+        </div>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-top: 30px;">
+            <input type="submit" value="{% trans 'Ja, Belohnung einlösen' %}" class="default" style="background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            <a href="{% url 'admin:api_groupmilestoneachievement_changelist' %}" class="button cancel-link" style="margin-left: 10px; padding: 10px 20px; text-decoration: none; display: inline-block;">{% trans "Abbrechen" %}</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+

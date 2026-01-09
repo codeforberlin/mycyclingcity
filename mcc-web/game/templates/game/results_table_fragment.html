@@ -1,0 +1,54 @@
+{# mcc/game/templates/game/results_table_fragment.html #}
+{% load static %}
+{% load i18n %}
+
+<tbody id="resultsTableBody"
+    hx-get="{% url 'game:render_results_table' %}"
+    hx-target="this"
+    hx-swap="outerHTML"
+    hx-include="#targetKm" 
+    
+    {# Setze den Trigger nur, wenn das Spiel aktiv ist und kein Gewinner feststeht #}
+    {% if game_is_active and not winner_name %}
+        {# Fester Wert 10 Sekunden #}
+        hx-trigger="every 10s" 
+    {% else %}
+        {# KRITISCHE KORREKTUR: "none" verhindert Endlosschleifen nach POST/GET #}
+        hx-trigger="none" 
+    {% endif %}
+    
+    {# CRITICAL: Data attributes for JS control and winner check #}
+    data-game-active="{{ game_is_active|yesno:'true,false' }}"
+    data-game-stopped="{{ is_game_stopped|yesno:'true,false' }}"
+    data-winner-name="{{ winner_name|default:'' }}"
+    >
+    {% if game_results %}
+        {% for result in game_results %}
+        {% with is_winner=False %}
+            {% if winner_name and winner_name == result.cyclist_name %}
+                {% with is_winner=True %}{% endwith %}
+            {% endif %}
+        {% endwith %}
+        
+        <tr data-cyclist="{{ result.cyclist_name }}" data-device="{{ result.device_name }}" 
+            {% if is_winner %}style="background-color: #d4edda;"{% endif %}>
+            <td>{{ result.cyclist_name }}</td>
+            <td>{{ result.device_name }}</td>
+            <td>{{ result.distance_km|floatformat:2 }}</td>
+            <td>{{ result.coins|floatformat:0 }}</td>
+            <td>
+                <button hx-post="{% url 'game:handle_assignment_form' %}"
+                        hx-target="#resultsTableBody"
+                        hx-swap="outerHTML"
+                        hx-confirm="{% trans 'Sind Sie sicher, dass Sie die Zuweisung entfernen möchten?' %}"
+                        hx-vals='{"action": "remove", "cyclist": "{{ result.cyclist_name }}"}'
+                        style="background-color: #dc3545; color: white; padding: 5px 8px; font-size: 0.8em;">
+                    {% trans "Entfernen" %}
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="5" style="text-align:center;">{% trans "Warte auf Spielstart oder keine Zuweisungen aktiv." %}</td></tr>
+    {% endif %}
+</tbody>

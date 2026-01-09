@@ -1,0 +1,20 @@
+{% load i18n map_filters %}
+{% if active_cyclists %}
+    {% for cyclist in active_cyclists %}
+    <span class="ticker-item inline-block mr-8">
+        <strong>{{ cyclist.user_id }}</strong>
+        {% if not current_filter %}
+        {# Only show group short name when no filter is active #}
+        {% if cyclist.group_short_name %}
+        <span class="text-yellow-800">({{ cyclist.group_short_name }})</span>
+        {% endif %}
+        {% endif %}
+        <span class="mx-2">🚴</span>
+        <span class="text-green-500 font-semibold">{% format_km_de_tag cyclist.session_km 2 %} km</span>
+    </span>
+    {% endfor %}
+{% else %}
+    <span class="ticker-item inline-block mr-8">
+        {% trans "Ready to start? Get on the bikes!" %}
+    </span>
+{% endif %}

@@ -1,0 +1,267 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .hierarchy-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .breadcrumb a {
+        color: #417690;
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+    .filters-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    .filter-row {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        background: #417690;
+        color: white;
+    }
+    .btn:hover {
+        background: #205067;
+    }
+    .breakdown-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .breakdown-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .breakdown-table th,
+    .breakdown-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .breakdown-table th {
+        background: #417690;
+        color: white;
+        font-weight: 600;
+    }
+    .breakdown-table tr:hover {
+        background: #f8f9fa;
+    }
+    .breakdown-table a {
+        color: #417690;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .breakdown-table a:hover {
+        text-decoration: underline;
+    }
+    .distance-cell {
+        font-weight: 600;
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hierarchy-container">
+    <h1>{{ title }}</h1>
+    
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb">
+        <a href="{% url 'admin:api_analytics_dashboard' %}">{% trans "Analytics Dashboard" %}</a>
+        {% if event %}
+            &gt; <a href="?event_id={{ event.id }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ event.name }}</a>
+        {% endif %}
+        {% if parent_group %}
+            &gt; <a href="?event_id={{ event_id }}&parent_group_id={{ parent_group.id }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ parent_group.name }}</a>
+        {% endif %}
+        {% if group %}
+            &gt; {{ group.name }}
+        {% endif %}
+    </div>
+    
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="event_id">{% trans "Event" %}</label>
+                    <select id="event_id" name="event_id" required>
+                        <option value="">{% trans "Select Event" %}</option>
+                        {% for evt in events %}
+                            <option value="{{ evt.id }}" {% if event_id == evt.id|stringformat:"s" %}selected{% endif %}>
+                                {{ evt.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="start_date">{% trans "Start Date" %}</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" required>
+                </div>
+                <div class="filter-group">
+                    <label for="end_date">{% trans "End Date" %}</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" required>
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn">{% trans "Apply Filters" %}</button>
+                </div>
+            </div>
+            {% if parent_group_id %}
+                <input type="hidden" name="parent_group_id" value="{{ parent_group_id }}">
+            {% endif %}
+            {% if group_id %}
+                <input type="hidden" name="group_id" value="{{ group_id }}">
+            {% endif %}
+        </form>
+    </div>
+    
+    <!-- Breakdown Content -->
+    {% if breakdown_type == 'parent_groups' %}
+        <div class="breakdown-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>{% trans "Parent Group" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th>{% trans "Total Distance (km)" %}</th>
+                        <th>{% trans "Action" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for parent_group in parent_groups %}
+                        <tr>
+                            <td>{{ parent_group.name }}</td>
+                            <td>{{ parent_group.group_type }}</td>
+                            <td class="distance-cell">{{ parent_group.total_distance|default:0|floatformat:3 }} km</td>
+                            <td>
+                                <a href="?event_id={{ event_id }}&parent_group_id={{ parent_group.id }}&start_date={{ start_date }}&end_date={{ end_date }}">
+                                    {% trans "View Child Groups" %} &raquo;
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px;">
+                                {% trans "No data available for the selected filters." %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    
+    {% elif breakdown_type == 'child_groups' %}
+        <div class="breakdown-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>{% trans "Group" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th>{% trans "Total Distance (km)" %}</th>
+                        <th>{% trans "Action" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for child_group in child_groups %}
+                        <tr>
+                            <td>{{ child_group.name }}</td>
+                            <td>{{ child_group.group_type }}</td>
+                            <td class="distance-cell">{{ child_group.total_distance|default:0|floatformat:3 }} km</td>
+                            <td>
+                                <a href="?event_id={{ event_id }}&group_id={{ child_group.id }}&start_date={{ start_date }}&end_date={{ end_date }}">
+                                    {% trans "View Cyclists" %} &raquo;
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px;">
+                                {% trans "No child groups found." %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    
+    {% elif breakdown_type == 'players' %}
+        <div class="breakdown-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>{% trans "Cyclist" %}</th>
+                        <th>{% trans "ID Tag" %}</th>
+                        <th>{% trans "Total Distance (km)" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cyclist in players %}
+                        <tr>
+                            <td>{{ cyclist.user_id }}</td>
+                            <td>{{ cyclist.id_tag }}</td>
+                            <td class="distance-cell">{{ cyclist.total_distance|default:0|floatformat:3 }} km</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px;">
+                                {% trans "No cyclists found in this group." %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    
+    {% else %}
+        <div style="text-align: center; padding: 40px; background: white; border-radius: 8px;">
+            <p>{% trans "Please select an event and date range to view the hierarchy breakdown." %}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+

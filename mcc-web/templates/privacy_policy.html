@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Privacy Policy" %} - MCC{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">{% trans "Privacy Policy" %}</h1>
+
+    <div class="prose prose-lg max-w-none">
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "1. Responsible Party" %}</h2>
+            <p class="mb-4">
+                {% trans "The responsible party for data processing on this website is:" %}
+            </p>
+            <p class="mb-4">
+                <strong>{% trans "MyCyclingCity (MCC)" %}</strong><br>
+                {% trans "Email: mcc-kontakt@wirzaehlen.de" %}<br>
+                {% trans "Website: https://mycyclingcity.net" %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "2. Data Collection and Processing" %}</h2>
+            <h3 class="text-xl font-semibold mb-3">{% trans "2.1 Server Logs" %}</h3>
+            <p class="mb-4">
+                {% trans "When you visit our website, our server automatically collects and stores information in server log files that your browser transmits to us. This includes:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "IP address" %}</li>
+                <li>{% trans "Date and time of the request" %}</li>
+                <li>{% trans "Requested URL" %}</li>
+                <li>{% trans "HTTP status code" %}</li>
+                <li>{% trans "Browser type and version" %}</li>
+                <li>{% trans "Operating system" %}</li>
+            </ul>
+            <p class="mb-4">
+                {% trans "This data is collected for technical reasons to ensure the functionality and security of the website. The data is automatically deleted after 7 days." %}
+            </p>
+
+            <h3 class="text-xl font-semibold mb-3 mt-6">{% trans "2.2 Session Data" %}</h3>
+            <p class="mb-4">
+                {% trans "To provide our services, we store the following data in your session:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "Language preference (DE/EN)" %}</li>
+                <li>{% trans "Device assignments (for game functionality)" %}</li>
+                <li>{% trans "Start distances (for game functionality)" %}</li>
+                <li>{% trans "Game status information" %}</li>
+                <li>{% trans "Cyclist kilometer data (for map display)" %}</li>
+            </ul>
+            <p class="mb-4">
+                {% trans "This data is stored temporarily in your session and is automatically deleted when you close your browser or after a period of inactivity." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "3. Cookies" %}</h2>
+            <p class="mb-4">
+                {% trans "Our website uses cookies. Cookies are small text files that are stored on your device when you visit a website." %}
+            </p>
+
+            <h3 class="text-xl font-semibold mb-3">{% trans "3.1 Technically Necessary Cookies" %}</h3>
+            <p class="mb-4">
+                {% trans "We use the following technically necessary cookies that are required for the website to function:" %}
+            </p>
+
+            <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-2">{% trans "Cookie Name" %}</th>
+                            <th class="text-left py-2">{% trans "Purpose" %}</th>
+                            <th class="text-left py-2">{% trans "Storage Duration" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b">
+                            <td class="py-2"><code>sessionid</code></td>
+                            <td class="py-2">{% trans "Stores your session ID to maintain your session state (language preference, game data)" %}</td>
+                            <td class="py-2">{% trans "Until browser is closed or session expires (max. 2 weeks)" %}</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="py-2"><code>csrftoken</code></td>
+                            <td class="py-2">{% trans "Protects against Cross-Site Request Forgery (CSRF) attacks" %}</td>
+                            <td class="py-2">{% trans "1 year" %}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mb-4">
+                {% trans "These cookies are technically necessary and cannot be deactivated. They are set automatically when you use our website." %}
+            </p>
+
+            <h3 class="text-xl font-semibold mb-3 mt-6">{% trans "3.2 Cookie Settings" %}</h3>
+            <p class="mb-4">
+                {% trans "Since we only use technically necessary cookies, no cookie consent banner is required. However, you can control cookies through your browser settings:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "You can delete cookies at any time in your browser settings" %}</li>
+                <li>{% trans "You can configure your browser to notify you when cookies are set" %}</li>
+                <li>{% trans "You can generally prevent cookies from being set" %}</li>
+            </ul>
+            <p class="mb-4 text-sm text-gray-600">
+                <strong>{% trans "Note:" %}</strong> {% trans "If you disable cookies, some functions of our website may not work properly." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "4. Purpose and Legal Basis of Data Processing" %}</h2>
+            <p class="mb-4">
+                {% trans "We process your personal data for the following purposes:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "Provision and operation of the website" %}</li>
+                <li>{% trans "Ensuring the security and functionality of the website" %}</li>
+                <li>{% trans "Provision of game functionality (device assignments, distance tracking)" %}</li>
+                <li>{% trans "Display of live map data" %}</li>
+                <li>{% trans "Storage of language preferences" %}</li>
+            </ul>
+            <p class="mb-4">
+                {% trans "The legal basis for this processing is Art. 6 para. 1 lit. f GDPR (legitimate interest) and Art. 6 para. 1 lit. b GDPR (fulfillment of contract/pre-contractual measures)." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "5. Data Storage Duration" %}</h2>
+            <p class="mb-4">
+                {% trans "We store your personal data only for as long as necessary for the respective purpose:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "Server log files: 7 days" %}</li>
+                <li>{% trans "Session data: Until the browser is closed or after a period of inactivity (max. 2 weeks)" %}</li>
+                <li>{% trans "CSRF token: 1 year" %}</li>
+            </ul>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "6. Data Sharing" %}</h2>
+            <p class="mb-4">
+                {% trans "We do not share your personal data with third parties, except:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li>{% trans "If we are legally obligated to do so (e.g., by court order)" %}</li>
+                <li>{% trans "If this is necessary to protect our rights or the rights of third parties" %}</li>
+            </ul>
+            <p class="mb-4">
+                {% trans "We do not sell or rent your personal data to third parties." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "7. Your Rights" %}</h2>
+            <p class="mb-4">
+                {% trans "Under the General Data Protection Regulation (GDPR), you have the following rights regarding your personal data:" %}
+            </p>
+            <ul class="list-disc pl-6 mb-4">
+                <li><strong>{% trans "Right to information (Art. 15 GDPR)" %}</strong>: {% trans "You can request information about the personal data we process about you." %}</li>
+                <li><strong>{% trans "Right to rectification (Art. 16 GDPR)" %}</strong>: {% trans "You can request the correction of inaccurate data." %}</li>
+                <li><strong>{% trans "Right to erasure (Art. 17 GDPR)" %}</strong>: {% trans "You can request the deletion of your data." %}</li>
+                <li><strong>{% trans "Right to restriction of processing (Art. 18 GDPR)" %}</strong>: {% trans "You can request the restriction of data processing." %}</li>
+                <li><strong>{% trans "Right to data portability (Art. 20 GDPR)" %}</strong>: {% trans "You can request the transfer of your data." %}</li>
+                <li><strong>{% trans "Right to object (Art. 21 GDPR)" %}</strong>: {% trans "You can object to the processing of your data." %}</li>
+                <li><strong>{% trans "Right to lodge a complaint (Art. 77 GDPR)" %}</strong>: {% trans "You can file a complaint with a supervisory authority." %}</li>
+            </ul>
+            <p class="mb-4">
+                {% trans "To exercise these rights, please contact us using the contact information provided in section 1." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "8. Data Security" %}</h2>
+            <p class="mb-4">
+                {% trans "We use technical and organizational measures to protect your personal data against loss, destruction, manipulation, and unauthorized access. These measures are continuously reviewed and adapted to the state of the art." %}
+            </p>
+            <p class="mb-4">
+                {% trans "All data transmission is encrypted using HTTPS (SSL/TLS). Session cookies are only transmitted over secure connections in production." %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "9. Changes to this Privacy Policy" %}</h2>
+            <p class="mb-4">
+                {% trans "We reserve the right to update this privacy policy to reflect changes in our practices or for legal, operational, or regulatory reasons. The current version is always available on this page." %}
+            </p>
+            <p class="mb-4">
+                <strong>{% trans "Last updated:" %}</strong> {% now "F Y" %}
+            </p>
+        </section>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">{% trans "10. Contact" %}</h2>
+            <p class="mb-4">
+                {% trans "If you have questions about this privacy policy or wish to exercise your rights, please contact us:" %}
+            </p>
+            <p class="mb-4">
+                <strong>{% trans "MyCyclingCity (MCC)" %}</strong><br>
+                {% trans "Email: mcc-kontakt@wirzaehlen.de" %}<br>
+                {% trans "Website: https://mycyclingcity.net" %}
+            </p>
+        </section>
+    </div>
+</div>
+{% endblock %}

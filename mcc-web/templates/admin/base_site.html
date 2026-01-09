@@ -1,0 +1,80 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+{% load static %}
+<script src="{% static 'js/timezone-converter.js' %}"></script>
+<style>
+    .language-switcher {
+        display: inline-block;
+        margin-left: 15px;
+        padding-left: 15px;
+        border-left: 1px solid #ddd;
+    }
+    .language-switcher form {
+        display: inline-block;
+        margin: 0;
+        vertical-align: middle;
+    }
+    .language-switcher select {
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 500;
+        background: white;
+        color: #417690;
+        cursor: pointer;
+        min-width: 100px;
+    }
+    .language-switcher select:hover {
+        background: #f0f0f0;
+    }
+    .language-switcher select:focus {
+        outline: none;
+        border-color: #417690;
+        box-shadow: 0 0 0 2px rgba(65, 118, 144, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block userlinks %}
+    {% if site_url %}
+        <a href="{{ site_url }}">{% trans 'View site' %}</a> /
+    {% endif %}
+    {% if user.is_active and user.is_staff %}
+        {% url 'django-admindocs-docroot' as docsroot %}
+        {% if docsroot %}
+            <a href="{{ docsroot }}">{% trans 'Documentation' %}</a> /
+        {% endif %}
+    {% endif %}
+    {% if user.has_usable_password %}
+    <a href="{% url 'admin:password_change' %}">{% trans 'Change password' %}</a> /
+    {% endif %}
+    <!-- Language Switcher -->
+    <span class="language-switcher">
+        <form method="post" action="/i18n/setlang/" id="admin-language-form" style="display: inline-block; margin: 0;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% get_current_language as current_lang %}
+            <select name="language" onchange="document.getElementById('admin-language-form').submit();">
+                {% for lang_code, lang_name in LANGUAGES %}
+                    <option value="{{ lang_code }}" {% if lang_code == current_lang or lang_code|slice:":2" == current_lang|slice:":2" %}selected{% endif %}>
+                        {{ lang_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </span>
+    /
+    <a href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a>
+{% endblock %}

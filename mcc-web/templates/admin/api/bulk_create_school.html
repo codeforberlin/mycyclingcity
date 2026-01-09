@@ -1,0 +1,423 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .bulk-create-form {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 6px;
+        border-left: 4px solid #417690;
+    }
+    
+    .form-section h2 {
+        margin-top: 0;
+        color: #417690;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .form-group input[type="checkbox"] {
+        margin-right: 5px;
+    }
+    
+    .class-row {
+        display: grid;
+        grid-template-columns: 80px 80px 1fr 100px 80px;
+        gap: 10px;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .class-row input[type="checkbox"] {
+        width: auto;
+    }
+    
+    .class-row input[type="text"],
+    .class-row input[type="number"] {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .class-letters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    
+    .class-letter-checkbox {
+        display: flex;
+        align-items: center;
+        padding: 6px 12px;
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .class-letter-checkbox:hover {
+        background: #e0e0e0;
+    }
+    
+    .class-letter-checkbox input[type="checkbox"] {
+        margin-right: 5px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-primary {
+        background: #417690;
+        color: #fff;
+    }
+    
+    .btn-primary:hover {
+        background: #205067;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    
+    .preview-section {
+        margin-top: 20px;
+        padding: 15px;
+        background: #e8f4f8;
+        border-radius: 4px;
+        border: 1px solid #417690;
+    }
+    
+    .preview-section h3 {
+        margin-top: 0;
+        color: #417690;
+    }
+    
+    .preview-class {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 4px;
+    }
+    
+    .preview-cyclists {
+        margin-left: 20px;
+        font-size: 12px;
+        color: #666;
+    }
+    
+    #preview-container {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bulk-create-form">
+    <h1>{{ title }}</h1>
+    
+    <form method="post" id="bulk-create-form">
+        {% csrf_token %}
+        
+        <!-- School Section -->
+        <div class="form-section">
+            <h2>{% trans "Schule" %}</h2>
+            
+            <div class="form-group">
+                <label for="school_group_type">{% trans "Gruppentyp *" %}</label>
+                <select id="school_group_type" name="school_group_type" required>
+                    {% for group_type in group_types %}
+                        <option value="{{ group_type.id }}" {% if group_type.name == "Schule" %}selected{% endif %}>
+                            {{ group_type.name }}
+                        </option>
+                    {% empty %}
+                        <option value="">{% trans "Keine Gruppentypen verfügbar" %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="school_name">{% trans "Schulname *" %}</label>
+                <input type="text" id="school_name" name="school_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="school_short_name">{% trans "Kurzname (optional)" %}</label>
+                <input type="text" id="school_short_name" name="school_short_name" maxlength="15">
+                <small>{% trans "Wird für Klassen-Kurznamen verwendet (z.B. 'SchuleC')" %}</small>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="school_is_visible" checked>
+                    {% trans "In Map/Game anzeigen" %}
+                </label>
+            </div>
+        </div>
+        
+        <!-- Classes Section -->
+        <div class="form-section">
+            <h2>{% trans "Klassen" %}</h2>
+            
+            <div class="form-group">
+                <label>{% trans "Klassen auswählen" %}</label>
+                <div class="class-letters">
+                    {% for letter in "abcdefghijklmnopqrstuvwxyz"|make_list %}
+                    <label class="class-letter-checkbox">
+                        <input type="checkbox" class="class-letter-check" value="{{ letter }}" data-letter="{{ letter }}">
+                        {{ letter|upper }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_class_number">{% trans "Höchste Klassenstufe (1-13)" %}</label>
+                <input type="number" id="max_class_number" name="max_class_number" min="1" max="20" value="13">
+            </div>
+            
+            <div class="form-group">
+                <label for="default_cyclist_count">{% trans "Standard-Anzahl Radler pro Klasse" %}</label>
+                <input type="number" id="default_cyclist_count" name="default_cyclist_count" min="0" max="50" value="0">
+                <small>{% trans "Dieser Wert wird als Standard für alle generierten Klassen verwendet. Kann pro Klasse individuell angepasst werden." %}</small>
+            </div>
+            
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" onclick="generateClassRows()">{% trans "Klassen generieren" %}</button>
+            </div>
+            
+            <div id="classes-container">
+                <!-- Class rows will be generated here -->
+            </div>
+        </div>
+        
+        <!-- Cyclist Defaults Section -->
+        <div class="form-section">
+            <h2>{% trans "Standardwerte für Radler" %}</h2>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="cyclist_is_visible" checked>
+                    {% trans "In Map/Game anzeigen" %}
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="cyclist_is_km_enabled" checked>
+                    {% trans "Kilometer-Erfassung aktiv" %}
+                </label>
+            </div>
+        </div>
+        
+        <!-- Preview Section -->
+        <div id="preview-container" class="preview-section" style="display: none;">
+            <h3>{% trans "Vorschau" %}</h3>
+            <div id="preview-content"></div>
+        </div>
+        
+        <!-- Submit Buttons -->
+        <div style="margin-top: 30px; display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-primary">{% trans "Erstellen" %}</button>
+            <button type="button" class="btn btn-secondary" onclick="showPreview()">{% trans "Vorschau" %}</button>
+            <a href="{% url 'admin:api_group_changelist' %}" class="btn btn-secondary">{% trans "Abbrechen" %}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+let schoolShortName = '';
+let schoolName = '';
+
+document.getElementById('school_name').addEventListener('input', function() {
+    schoolName = this.value;
+    updateClassShortNames();
+});
+
+document.getElementById('school_short_name').addEventListener('input', function() {
+    schoolShortName = this.value || schoolName;
+    updateClassShortNames();
+});
+
+document.getElementById('default_cyclist_count').addEventListener('input', function() {
+    // Update all existing class cyclist count fields if they are still at the old default
+    const newDefault = parseInt(this.value) || 0;
+    const classCyclistCounts = document.querySelectorAll('.class-cyclist-count');
+    classCyclistCounts.forEach(input => {
+        // Only update if the value hasn't been manually changed (still matches old default)
+        const currentValue = parseInt(input.value) || 0;
+        const oldDefault = parseInt(input.dataset.oldDefault || '0') || 0;
+        if (currentValue === oldDefault) {
+            input.value = newDefault;
+            input.dataset.oldDefault = newDefault;
+        }
+    });
+});
+
+function generateClassRows() {
+    const maxNumber = parseInt(document.getElementById('max_class_number').value) || 13;
+    const defaultPlayerCount = parseInt(document.getElementById('default_cyclist_count').value) || 0;
+    const selectedLetters = Array.from(document.querySelectorAll('.class-letter-check:checked'))
+        .map(cb => cb.dataset.letter);
+    
+    if (selectedLetters.length === 0) {
+        alert('{% trans "Bitte wählen Sie mindestens einen Klassenbuchstaben aus." %}');
+        return;
+    }
+    
+    const container = document.getElementById('classes-container');
+    container.innerHTML = '';
+    
+    for (let num = 1; num <= maxNumber; num++) {
+        for (const letter of selectedLetters) {
+            const row = document.createElement('div');
+            row.className = 'class-row';
+            
+            const classBaseName = `${num}${letter}`;
+            // Generate unique class name: school-class
+            const schoolIdentifier = (schoolShortName || schoolName).replace(/[^\w\s-]/g, '').trim();
+            const className = `${schoolIdentifier}-${classBaseName}`;
+            
+            // Generate short name for display
+            let defaultShortName;
+            if (schoolShortName) {
+                defaultShortName = `${classBaseName}-${schoolShortName}`;
+            } else {
+                defaultShortName = classBaseName;
+            }
+            
+            row.innerHTML = `
+                <input type="checkbox" name="class_is_visible[]" checked>
+                <input type="text" name="class_number[]" value="${num}" readonly style="background: #f0f0f0;">
+                <input type="text" name="class_letter[]" value="${letter}" readonly style="background: #f0f0f0;">
+                <input type="text" name="class_short_name[]" value="${defaultShortName}" class="class-short-name">
+                <input type="number" name="class_cyclist_count[]" value="${defaultPlayerCount}" min="0" max="50" placeholder="Anzahl" class="class-cyclist-count" data-old-default="${defaultPlayerCount}">
+            `;
+            
+            container.appendChild(row);
+        }
+    }
+}
+
+function updateClassShortNames() {
+    const shortNameBase = schoolShortName || schoolName;
+    const schoolIdentifier = (schoolShortName || schoolName).replace(/[^\w\s-]/g, '').trim();
+    
+    document.querySelectorAll('.class-short-name').forEach(input => {
+        const row = input.closest('.class-row');
+        if (row) {
+            const classNumber = row.querySelector('input[name="class_number[]"]').value;
+            const classLetter = row.querySelector('input[name="class_letter[]"]').value;
+            const classBaseName = `${classNumber}${classLetter}`;
+            const currentValue = input.value;
+            
+            // Update short name based on school short name
+            if (schoolShortName) {
+                // Pattern: "1a-SchuleC" or just "1a"
+                if (currentValue === classBaseName || currentValue.startsWith(`${classBaseName}-`)) {
+                    input.value = `${classBaseName}-${schoolShortName}`;
+                }
+            } else {
+                // No school short name - use base name only
+                if (currentValue.startsWith(`${classBaseName}-`)) {
+                    input.value = classBaseName;
+                }
+            }
+            
+            // Update the class name display span
+            const classNameSpan = row.querySelector('span');
+            if (classNameSpan) {
+                classNameSpan.textContent = `${schoolIdentifier}-${classBaseName}`;
+            }
+        }
+    });
+}
+
+function showPreview() {
+    const form = document.getElementById('bulk-create-form');
+    const formData = new FormData(form);
+    
+    fetch('{% url "admin:api_group_bulk_create_school_preview" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.text();
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Fehler beim Laden der Vorschau');
+            });
+        }
+    })
+    .then(html => {
+        document.getElementById('preview-content').innerHTML = html;
+        document.getElementById('preview-container').style.display = 'block';
+    })
+    .catch(error => {
+        document.getElementById('preview-content').innerHTML = '<div style="color: red;">Fehler: ' + error.message + '</div>';
+        document.getElementById('preview-container').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}
+

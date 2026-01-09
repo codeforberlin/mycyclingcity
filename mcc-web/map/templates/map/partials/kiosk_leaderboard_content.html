@@ -1,0 +1,76 @@
+{% load i18n l10n %}
+{% load map_filters %}
+<div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 h-full overflow-y-auto p-8">
+    {% if groups %}
+    {% for group in groups %}
+    <div class="relative flex flex-col items-center justify-between p-6 rounded-2xl transition-all duration-1000
+        {% if forloop.counter == 1 %}bg-gradient-to-br from-yellow-600 to-yellow-800 shadow-2xl scale-105 z-20
+        {% elif forloop.counter == 2 %}bg-gradient-to-br from-gray-400 to-gray-600 shadow-xl
+        {% elif forloop.counter == 3 %}bg-gradient-to-br from-amber-700 to-amber-900 shadow-lg
+        {% elif group.state == 'active' %}bg-gradient-to-br from-green-600 to-green-800 shadow-xl scale-[1.02]
+        {% else %}bg-slate-700{% endif %}
+        {% if group.state == 'active' %}ring-4 ring-green-500 pulse-ring{% endif %}
+        {% if group.state == 'dormant' %}opacity-40 grayscale scale-95{% endif %}
+        border-l-[12px]" style="border-color: {{ parent_color_map|get_item:group.top_parent_id }};">
+        
+        <!-- Rank Badge -->
+        {% if forloop.counter <= 3 %}
+        <div class="absolute top-4 right-4 text-2xl">
+            {% if forloop.counter == 1 %}👑{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Active Indicator -->
+        {% if group.state == 'active' %}
+        <div class="absolute top-4 left-4 w-3 h-3 bg-green-500 rounded-full pulse-ring"></div>
+        {% endif %}
+        
+        <!-- Top: Parent Group Name (colored by top parent group) -->
+        <div class="text-base font-bold w-full text-center" style="color: {{ parent_color_map|get_item:group.top_parent_id }};">
+            🏫 {{ group.parent_group_name }}
+        </div>
+        
+        <!-- Center: Kiosk Label (text-4xl, font-bold) -->
+        <div class="text-4xl font-bold flex-1 flex items-center justify-center">
+            {{ group.kiosk_label }}
+        </div>
+        
+        <!-- Bottom: Daily and Total Distance -->
+        <div class="w-full text-center space-y-1">
+            <!-- Daily kilometers (larger) -->
+            <div class="text-3xl font-black
+                {% if forloop.counter == 1 %}text-yellow-100
+                {% elif forloop.counter == 2 %}text-gray-100
+                {% elif forloop.counter == 3 %}text-amber-100
+                {% else %}text-white{% endif %}">
+                {% format_km_de_tag group.daily_km 3 %} km
+            </div>
+            <!-- Total kilometers (smaller) -->
+            <div class="text-sm opacity-75
+                {% if forloop.counter == 1 %}text-yellow-200
+                {% elif forloop.counter == 2 %}text-gray-200
+                {% elif forloop.counter == 3 %}text-amber-200
+                {% else %}text-gray-300{% endif %}">
+                {% trans "Total" %}: {% format_km_de_tag group.distance_total 3 %} km
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <!-- No groups found message -->
+    <div class="col-span-full flex items-center justify-center h-full">
+        <div class="text-center">
+            <div class="text-2xl font-bold text-gray-400 mb-2">
+                {% if current_filter %}
+                    {% trans "No groups found for" %} "{{ current_filter }}"
+                {% else %}
+                    {% trans "No groups found" %}
+                {% endif %}
+            </div>
+            <div class="text-sm text-gray-500">
+                {% trans "No leaf-groups with members found." %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>

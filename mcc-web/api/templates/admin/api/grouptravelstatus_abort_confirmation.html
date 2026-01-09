@@ -1,0 +1,56 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:api_grouptravelstatus_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% trans 'Reise abbrechen' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Reise abbrechen" %}</h1>
+
+<div class="delete-confirmation">
+    <p>{% trans "Möchten Sie die Reise für diese Gruppe wirklich abbrechen?" %}</p>
+    
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Gruppe:" %}</strong> {{ group_name }}
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Aktuelle Reise:" %}</strong> {{ track_name }}
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div>
+            <strong>{% trans "Aktuelle Reisekilometer:" %}</strong> {{ current_km }}
+        </div>
+    </div>
+    
+    <div class="form-row" style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+        <div>
+            <strong style="color: #856404;">⚠️ {% trans "Warnung:" %}</strong>
+            <p style="margin: 10px 0 0 0; color: #856404;">
+                {% trans "Wenn Sie die Reise abbrechen, werden die aktuellen Reisekilometer in der Historie gespeichert, aber die Gruppe wird von der Reise entfernt. Die Gruppe kann danach einer neuen Reise zugeordnet werden." %}
+            </p>
+        </div>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-top: 30px;">
+            <input type="submit" value="{% trans 'Ja, Reise abbrechen' %}" class="default" style="background-color: #ba2121; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            <a href="{% url 'admin:api_grouptravelstatus_changelist' %}" class="button cancel-link" style="margin-left: 10px; padding: 10px 20px; text-decoration: none; display: inline-block;">{% trans "Abbrechen" %}</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+

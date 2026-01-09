@@ -1,0 +1,114 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+{{ block.super }}
+{% if original.pk %}
+<div class="submit-row" style="background: #f8f9fa; border-top: 1px solid #ddd; padding: 10px; margin-top: 10px;">
+    <p style="margin: 0 0 10px 0; font-weight: bold;">{% trans "Trip Management" %}:</p>
+    <a href="{% url 'admin:api_traveltrack_restart' original.pk %}"
+       class="button"
+       style="background: #ba2121; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; margin-right: 10px;"
+       onclick="return confirm('{% trans "Are you sure you want to restart this trip? Current progress will be saved to history." %}');">
+        {% trans "Restart Trip" %}
+    </a>
+    <a href="{% url 'admin:api_traveltrack_save_history' original.pk %}"
+       class="button"
+       style="background: #417690; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;"
+       onclick="return confirm('{% trans "Save current trip progress to history?" %}');">
+        {% trans "Save to History" %}
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% if groups_with_travel_status_json %}
+<script>
+    // Make groups with travel status data available to JavaScript
+    window.groupsWithTravelStatus = {{ groups_with_travel_status_json|safe }};
+    console.log('[TravelTrack] Groups with travel status loaded:', window.groupsWithTravelStatus);
+    
+    // Inline script to handle group selection changes
+    (function($) {
+        $(document).ready(function() {
+            console.log('[TravelTrack] Document ready, initializing group travel status handler');
+            
+            function checkGroupTravelStatus(selectElement) {
+                if (!selectElement) return;
+                
+                var $select = $(selectElement);
+                var $row = $select.closest('tr');
+                var groupId = $select.val();
+                
+                console.log('[TravelTrack] Checking group:', groupId);
+                
+                // Find or create placeholder
+                var $placeholder = $row.find('.abort-trip-placeholder');
+                if ($placeholder.length === 0) {
+                    var $actionCell = $row.find('td').last();
+                    if ($actionCell.length) {
+                        $actionCell.append('<span class="abort-trip-placeholder" style="display: none;"></span>');
+                        $placeholder = $actionCell.find('.abort-trip-placeholder');
+                    } else {
+                        return;
+                    }
+                }
+                
+                if (!groupId) {
+                    $placeholder.hide().html('');
+                    $row.next('.group-travel-status-warning').remove();
+                    return;
+                }
+                
+                var groupsWithStatus = window.groupsWithTravelStatus || {};
+                var statusInfo = groupsWithStatus[groupId];
+                
+                if (statusInfo) {
+                    console.log('[TravelTrack] Found status info for group:', groupId, statusInfo);
+                    var abortUrl = '/admin/api/grouptravelstatus/' + statusInfo.status_id + '/abort_trip/';
+                    var currentKm = parseFloat(statusInfo.current_km).toLocaleString('de-DE', {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    }).replace('.', ',');
+                    
+                    var buttonHtml = '<a href="' + abortUrl + '" class="button" ' +
+                        'onclick="return confirm(\'Möchten Sie die Reise für diese Gruppe wirklich abbrechen? Die aktuellen Reisekilometer (' + currentKm + ' km) gehen verloren.\');">' +
+                        'Reise abbrechen</a>';
+                    
+                    $placeholder.html(buttonHtml).show();
+                    
+                    var warningHtml = '<div style="margin-top: 5px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">' +
+                        '<strong style="color: #856404;">⚠️ Warnung:</strong> ' +
+                        '<span style="color: #856404;">Die Gruppe "' + statusInfo.group_name + '" ist bereits der Reise "' + statusInfo.track_name + '" zugeordnet (' + currentKm + ' km). ' +
+                        'Bitte brechen Sie die aktuelle Reise ab, bevor Sie die Gruppe einer neuen Reise zuordnen.</span>' +
+                        '</div>';
+                    
+                    $row.next('.group-travel-status-warning').remove();
+                    $row.after('<tr class="group-travel-status-warning"><td colspan="3">' + warningHtml + '</td></tr>');
+                } else {
+                    $placeholder.hide().html('');
+                    $row.next('.group-travel-status-warning').remove();
+                }
+            }
+            
+            // Handle group selection change
+            $(document).on('change', 'select[name$="-group"]', function() {
+                console.log('[TravelTrack] Group selection changed');
+                setTimeout(function() {
+                    checkGroupTravelStatus(this);
+                }.bind(this), 100);
+            });
+            
+            // Check existing forms on load
+            setTimeout(function() {
+                $('select[name$="-group"]').each(function() {
+                    checkGroupTravelStatus(this);
+                });
+            }, 500);
+        });
+    })(django.jQuery || jQuery);
+</script>
+{% endif %}
+{% endblock %}

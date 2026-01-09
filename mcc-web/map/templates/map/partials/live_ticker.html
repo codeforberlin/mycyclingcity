@@ -1,0 +1,17 @@
+{% load i18n map_filters %}
+<div class="ticker-scroll">
+    ⚡ {% trans "AKTUELL AM START" %}: 
+    {% for cyclist in active_cyclists %}
+        <span class="ticker-item">
+            ● 
+            <strong>{{ cyclist.user_id }}</strong>
+            {% if cyclist.group_short_name %}
+            <span style="color: #666;">({{ cyclist.group_short_name }})</span>
+            {% endif %}
+            <span style="margin: 0 8px;">🚴</span>
+            <span style="color: #28a745; font-weight: bold;">{% format_km_de_tag cyclist.session_km 2 %} km</span>
+        </span>
+    {% empty %}
+        <span class="ticker-item">{% trans "Warten auf Radler..." %}</span>
+    {% endfor %}
+</div>

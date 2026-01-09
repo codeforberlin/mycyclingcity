@@ -1,0 +1,949 @@
+{
+  "start_time": "2026-01-01T14:12:43.240469",
+  "base_url": "http://127.0.0.1:8000",
+  "iterations": 10,
+  "devices_tested": 3,
+  "players_tested": 5,
+  "updates_sent": 50,
+  "updates_successful": 50,
+  "updates_failed": 0,
+  "leaderboard_tests": [
+    {
+      "test": "players_total",
+      "sort": "total",
+      "success": true,
+      "entries_count": 0,
+      "data": {
+        "sort": "total",
+        "limit": 10,
+        "players": [
+          {
+            "player_id": 5,
+            "user_id": "Test/5",
+            "id_tag": "test-player-005",
+            "mc_username": null,
+            "distance_total": 41.19941,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 1
+          },
+          {
+            "player_id": 2,
+            "user_id": "Test/2",
+            "id_tag": "test-player-002",
+            "mc_username": null,
+            "distance_total": 38.61468,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 2
+          },
+          {
+            "player_id": 1,
+            "user_id": "Test/1",
+            "id_tag": "test-player-001",
+            "mc_username": null,
+            "distance_total": 29.83437,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 3
+          },
+          {
+            "player_id": 4,
+            "user_id": "Test/4",
+            "id_tag": "test-player-004",
+            "mc_username": null,
+            "distance_total": 19.99457,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 4
+          },
+          {
+            "player_id": 3,
+            "user_id": "Test/3",
+            "id_tag": "test-player-003",
+            "mc_username": null,
+            "distance_total": 6.93805,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 5
+          }
+        ]
+      }
+    },
+    {
+      "test": "players_daily",
+      "sort": "daily",
+      "success": true,
+      "entries_count": 0,
+      "data": {
+        "sort": "daily",
+        "limit": 10,
+        "players": [
+          {
+            "player_id": 5,
+            "user_id": "Test/5",
+            "id_tag": "test-player-005",
+            "mc_username": null,
+            "distance_total": 41.19941,
+            "distance_daily": 41.19941,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 1
+          },
+          {
+            "player_id": 2,
+            "user_id": "Test/2",
+            "id_tag": "test-player-002",
+            "mc_username": null,
+            "distance_total": 38.61468,
+            "distance_daily": 38.61468,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 2
+          },
+          {
+            "player_id": 1,
+            "user_id": "Test/1",
+            "id_tag": "test-player-001",
+            "mc_username": null,
+            "distance_total": 29.83437,
+            "distance_daily": 29.83437,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 3
+          },
+          {
+            "player_id": 4,
+            "user_id": "Test/4",
+            "id_tag": "test-player-004",
+            "mc_username": null,
+            "distance_total": 19.99457,
+            "distance_daily": 19.99457,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 4
+          },
+          {
+            "player_id": 3,
+            "user_id": "Test/3",
+            "id_tag": "test-player-003",
+            "mc_username": null,
+            "distance_total": 6.93805,
+            "distance_daily": 6.93805,
+            "group_name": "Testschule",
+            "group_short_name": "Test",
+            "rank": 5
+          }
+        ]
+      }
+    },
+    {
+      "test": "groups_total",
+      "sort": "total",
+      "success": true,
+      "entries_count": 0,
+      "data": {
+        "sort": "total",
+        "limit": 10,
+        "groups": [
+          {
+            "group_id": 1,
+            "name": "Testschule",
+            "short_name": "Test",
+            "group_type": "Schule",
+            "distance_total": 136.58107,
+            "distance_period": null,
+            "parent_group_name": null,
+            "rank": 1
+          }
+        ]
+      }
+    },
+    {
+      "test": "groups_daily",
+      "sort": "daily",
+      "success": true,
+      "entries_count": 0,
+      "data": {
+        "sort": "daily",
+        "limit": 10,
+        "groups": [
+          {
+            "group_id": 1,
+            "name": "Testschule",
+            "short_name": "Test",
+            "group_type": "Schule",
+            "distance_total": 136.58107,
+            "distance_period": 136.58108,
+            "parent_group_name": null,
+            "rank": 1
+          }
+        ]
+      }
+    }
+  ],
+  "live_leaderboard_snapshots": [
+    {
+      "timestamp": "2026-01-01T14:12:43.692416",
+      "iteration": 1,
+      "active_players": [
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 5.56737,
+          "distance_total": 5.56737,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:43.431743+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 3.21401,
+          "distance_total": 3.21401,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:43.519898+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 1.3669,
+          "distance_total": 6.3669,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:43.479262+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 3.61498,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.324344+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:44.283861",
+      "iteration": 2,
+      "active_players": [
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 1.3669,
+          "distance_total": 6.3669,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:43.479262+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.94307,
+          "distance_total": 7.32393,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:44.107515+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 13.27186,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:44.057591+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 3.61498,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.324344+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:44.830312",
+      "iteration": 3,
+      "active_players": [
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 7.40107,
+          "distance_total": 13.76797,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:44.636854+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 4.8408,
+          "distance_total": 20.95199,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:44.682311+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 7.32393,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:44.107515+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 3.61498,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.324344+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:45.402591",
+      "iteration": 4,
+      "active_players": [
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 4.08346,
+          "distance_total": 11.40739,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:45.199521+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 3.28279,
+          "distance_total": 24.23478,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:45.244190+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 18.52967,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:45.156149+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.35215,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:45.048737+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:45.960366",
+      "iteration": 5,
+      "active_players": [
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 13.29137,
+          "distance_total": 20.6153,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:45.758938+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 2.6717,
+          "distance_total": 11.4441,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:45.803103+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 24.23478,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:45.244190+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 18.52967,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:45.156149+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:46.511412",
+      "iteration": 6,
+      "active_players": [
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 3.69011,
+          "distance_total": 12.46251,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:46.264348+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 2.91987,
+          "distance_total": 22.60416,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:46.346312+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 23.89929,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:46.307544+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 24.23478,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:45.244190+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 4.18684,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:43.377558+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:47.070869",
+      "iteration": 7,
+      "active_players": [
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 2.88316,
+          "distance_total": 27.11794,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:46.859548+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.92801,
+          "distance_total": 23.53217,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:46.816897+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.58927,
+          "distance_total": 28.06629,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:46.901519+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.40933,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:46.732384+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 12.46251,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:46.264348+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:47.644810",
+      "iteration": 8,
+      "active_players": [
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 6.21687,
+          "distance_total": 30.45165,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:47.290368+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 3.5022,
+          "distance_total": 15.96471,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:47.386657+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.98741,
+          "distance_total": 29.0537,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:47.478711+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 29.97172,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:47.437820+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.40933,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:46.732384+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:48.212422",
+      "iteration": 9,
+      "active_players": [
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 7.53206,
+          "distance_total": 19.99457,
+          "device_name": "Test Device 01",
+          "last_active": "2026-01-01T14:12:48.046753+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 3.33676,
+          "distance_total": 38.61468,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:48.006636+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 29.0537,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:47.478711+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 30.45165,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:47.290368+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.40933,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:46.732384+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:48.777114",
+      "iteration": 10,
+      "active_players": [
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 6.02348,
+          "distance_total": 41.19941,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:48.608914+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.78067,
+          "distance_total": 29.83437,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:48.514070+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.93805,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.469278+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 19.99457,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.046753+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 38.61468,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.006636+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    },
+    {
+      "timestamp": "2026-01-01T14:12:48.938897",
+      "iteration": "Final",
+      "active_players": [
+        {
+          "player_id": 5,
+          "user_id": "Test/5",
+          "id_tag": "test-player-005",
+          "mc_username": null,
+          "session_km": 6.02348,
+          "distance_total": 41.19941,
+          "device_name": "Test Device 03",
+          "last_active": "2026-01-01T14:12:48.608914+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 1,
+          "user_id": "Test/1",
+          "id_tag": "test-player-001",
+          "mc_username": null,
+          "session_km": 0.78067,
+          "distance_total": 29.83437,
+          "device_name": "Test Device 02",
+          "last_active": "2026-01-01T14:12:48.514070+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 3,
+          "user_id": "Test/3",
+          "id_tag": "test-player-003",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 6.93805,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.469278+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 4,
+          "user_id": "Test/4",
+          "id_tag": "test-player-004",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 19.99457,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.046753+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        },
+        {
+          "player_id": 2,
+          "user_id": "Test/2",
+          "id_tag": "test-player-002",
+          "mc_username": null,
+          "session_km": 0.0,
+          "distance_total": 38.61468,
+          "device_name": "Unbekannt",
+          "last_active": "2026-01-01T14:12:48.006636+00:00",
+          "group_name": "Testschule",
+          "group_short_name": "Test"
+        }
+      ],
+      "top_players_total": [],
+      "top_players_daily": [],
+      "top_groups_total": []
+    }
+  ],
+  "errors": [],
+  "end_time": "2026-01-01T14:12:49.143046",
+  "duration_seconds": 5.902577
+}

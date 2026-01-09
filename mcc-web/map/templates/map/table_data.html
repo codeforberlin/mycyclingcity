@@ -1,0 +1,263 @@
+{% load i18n map_filters %}
+<style>
+    .group-container { background: white; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; }
+    .group-header { 
+        background: #1877f2; color: white; padding: 15px 25px; cursor: pointer;
+        display: flex; justify-content: space-between; align-items: center; font-size: 1.4rem;
+    }
+    .group-content { padding: 15px; display: none; } /* Standardmäßig zu */
+    
+    /* Im Kiosk-Modus oder wenn aktiv: Immer offen */
+    .is-open .group-content, .kiosk-mode .group-content { display: block !important; }
+    
+    .toggle-icon::before { content: '▶'; display: inline-block; transition: transform 0.3s; margin-right: 10px; }
+    .is-open .toggle-icon::before { transform: rotate(90deg); }
+    
+    /* Kiosk-spezifische Anpassungen */
+    .kiosk-mode .toggle-icon { display: none; }
+    .kiosk-mode .group-header { cursor: default; }
+</style>
+
+<div class="kiosk-table-wrapper {% if is_kiosk %}kiosk-mode{% endif %}" style="max-width: 1200px; margin: auto;">
+    {% for group in hierarchy %}
+    <div class="group-container" id="group-{{ forloop.counter }}">
+        <div class="group-header" onclick="toggleGroup('group-{{ forloop.counter }}')">
+            <span><span class="toggle-icon"></span>🏢 {{ group.name }}</span>
+            <span style="font-weight: bold;">{{ group.km|default:0|format_km_de:2 }} km</span>
+        </div>
+        
+        <div class="group-content">
+            {% for sub in group.subgroups %}
+            <div style="border-left: 6px solid #1877f2; margin: 10px 0; padding: 12px; background: #f8f9fa; border-radius: 0 8px 8px 0;">
+                <div style="font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between;">
+                    {% if not target_group %}
+                    <span>👥 {{ sub.name }}</span>
+                    {% else %}
+                    <span>👥 {% trans "Cyclists" %}</span>
+                    {% endif %}
+                    <span>{{ sub.km|default:0|format_km_de:2 }} km</span>
+                </div>
+                
+                {% if show_cyclists and sub.members %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                    {% for m in sub.members %}
+                    <div style="background: white; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 1rem;">
+                        👤 {{ m.name }}: <strong>{{ m.km|default:0|format_km_de:2 }} km</strong>
+                        {% if m.session_km %}
+                        <span style="color: #28a745; font-size: 0.9rem;">({% trans "Session" %}: {{ m.session_km|default:0|format_km_de:2 }} km)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 50px; color: #6c757d;">{% trans "Keine aktiven Gruppen gefunden." %}</div>
+    {% endfor %}
+    
+    {% if events_data %}
+    <div style="margin-top: 40px; border-top: 3px solid #28a745; padding-top: 20px;">
+        <h2 style="color: #28a745; margin-bottom: 20px; font-size: 1.8rem;">🎉 {% trans "Events" %}</h2>
+        {% for event in events_data %}
+        {% if event.is_ended %}
+        <div class="group-container" id="event-{{ event.id }}" style="background: #f5f5f5; border: 2px solid #6c757d;">
+            <div class="group-header" onclick="toggleGroup('event-{{ event.id }}')" style="background: #6c757d;">
+                <span><span class="toggle-icon"></span>🏁 {{ event.name }} <small style="font-size: 0.9rem; opacity: 0.9;">({{ event.event_type }})</small> <span style="font-size: 0.85rem; opacity: 0.8;">- {% trans "Beendet" %}</span></span>
+                <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {{ event.total_km|default:0|format_km_de:2 }} km</span>
+            </div>
+        {% else %}
+        <div class="group-container" id="event-{{ event.id }}" style="background: #f0f9ff; border: 2px solid #28a745;">
+            <div class="group-header" onclick="toggleGroup('event-{{ event.id }}')" style="background: #28a745;">
+                <span><span class="toggle-icon"></span>🎉 {{ event.name }} <small style="font-size: 0.9rem; opacity: 0.9;">({{ event.event_type }})</small></span>
+                <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {{ event.total_km|default:0|format_km_de:2 }} km</span>
+            </div>
+        {% endif %}
+            
+            <div class="group-content">
+                {% if event.start_time or event.end_time %}
+                <div style="padding: 10px; margin-bottom: 15px; background: {% if event.is_ended %}#e9ecef{% else %}#e8f5e9{% endif %}; border-radius: 6px; border-left: 4px solid {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">
+                    <div style="font-weight: bold; color: {% if event.is_ended %}#495057{% else %}#2e7d32{% endif %}; margin-bottom: 5px;">📅 {% trans "Zeitraum" %}:</div>
+                    {% if event.start_time %}
+                    <div style="color: #495057;">{% trans "Start" %}: <strong data-utc-datetime="{{ event.start_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.start_time|date:"d.m.Y H:i" }}</strong></div>
+                    {% endif %}
+                    {% if event.end_time %}
+                    <div style="color: #495057;">{% trans "Ende" %}: <strong data-utc-datetime="{{ event.end_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.end_time|date:"d.m.Y H:i" }}</strong>{% if event.is_ended %} <span style="color: #dc3545; font-weight: bold;">({% trans "Beendet" %})</span>{% endif %}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                {% if event.description %}
+                <div style="padding: 10px; margin-bottom: 15px; background: white; border-radius: 6px; font-style: italic; color: #495057;">
+                    {{ event.description }}
+                </div>
+                {% endif %}
+                
+                {% for group in event.groups %}
+                <div style="border-left: 6px solid {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %}; margin: 10px 0; padding: 12px; background: white; border-radius: 0 8px 8px 0;">
+                    <div style="font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between;">
+                        <span>👥 {{ group.name }}</span>
+                        <span>{{ group.km|default:0|format_km_de:2 }} km</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Store open groups in localStorage to persist across HTMX reloads
+    function saveOpenGroups() {
+        const openGroups = [];
+        document.querySelectorAll('.group-container.is-open').forEach(function(el) {
+            if (el.id) {
+                openGroups.push(el.id);
+            }
+        });
+        localStorage.setItem('mcc_open_groups', JSON.stringify(openGroups));
+    }
+    
+    // Function to open all groups in kiosk mode
+    function openAllGroupsInKioskMode() {
+        var wrapper = document.querySelector('.kiosk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('kiosk-mode')) {
+            // In kiosk mode, open all groups
+            document.querySelectorAll('.group-container').forEach(function(el) {
+                if (el) {
+                    el.classList.add('is-open');
+                }
+            });
+            // Also open all event containers
+            document.querySelectorAll('[id^="event-"]').forEach(function(el) {
+                if (el) {
+                    el.classList.add('is-open');
+                }
+            });
+        }
+    }
+    
+    function restoreOpenGroups() {
+        // In kiosk mode, don't restore from localStorage, just open all
+        var wrapper = document.querySelector('.kiosk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('kiosk-mode')) {
+            openAllGroupsInKioskMode();
+            return;
+        }
+        
+        try {
+            const stored = localStorage.getItem('mcc_open_groups');
+            if (stored) {
+                const openGroups = JSON.parse(stored);
+                // Use requestAnimationFrame to ensure DOM is ready
+                requestAnimationFrame(function() {
+                    openGroups.forEach(function(groupId) {
+                        const el = document.getElementById(groupId);
+                        if (el) {
+                            el.classList.add('is-open');
+                        }
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Error restoring open groups:', e);
+        }
+    }
+    
+    function toggleGroup(id) {
+        // Nur im normalen Modus umschalten, im Kiosk-Modus nichts tun
+        var wrapper = document.querySelector('.kiosk-table-wrapper');
+        if (wrapper && wrapper.classList.contains('kiosk-mode')) return;
+        
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.toggle('is-open');
+            saveOpenGroups(); // Save state after toggle
+        }
+    }
+    
+    // Restore open groups when page/table loads
+    // Use multiple strategies to ensure it works
+    function initGroupState() {
+        // In kiosk mode, open all groups
+        openAllGroupsInKioskMode();
+        // Try immediately
+        restoreOpenGroups();
+        // Try after a short delay
+        setTimeout(function() {
+            openAllGroupsInKioskMode();
+            restoreOpenGroups();
+        }, 50);
+        // Try after a longer delay
+        setTimeout(function() {
+            openAllGroupsInKioskMode();
+            restoreOpenGroups();
+        }, 200);
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGroupState);
+    } else {
+        initGroupState();
+    }
+    
+    // Also restore after HTMX swaps (when table is reloaded)
+    // Use multiple event listeners to catch all cases
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        // Check if event and event.target exist
+        if (!event || !event.target) return;
+        
+        try {
+            var target = event.target;
+            var isTableContent = target.id === 'dynamic-table-content';
+            var isInTableContent = target.closest && target.closest('#dynamic-table-content');
+            
+            if (isTableContent || isInTableContent) {
+                // In kiosk mode, open all groups
+                setTimeout(function() {
+                    openAllGroupsInKioskMode();
+                    restoreOpenGroups();
+                }, 10);
+                setTimeout(function() {
+                    openAllGroupsInKioskMode();
+                    restoreOpenGroups();
+                }, 100);
+                setTimeout(function() {
+                    openAllGroupsInKioskMode();
+                    restoreOpenGroups();
+                }, 300);
+            }
+        } catch (e) {
+            console.error('Error in htmx:afterSwap handler:', e);
+        }
+    });
+    
+    // Also listen for htmx:load event
+    document.body.addEventListener('htmx:load', function(event) {
+        // Check if event and event.target exist
+        if (!event || !event.target) return;
+        
+        try {
+            var target = event.target;
+            var isTableContent = target.id === 'dynamic-table-content';
+            var isInTableContent = target.closest && target.closest('#dynamic-table-content');
+            
+            if (isTableContent || isInTableContent) {
+                setTimeout(function() {
+                    openAllGroupsInKioskMode();
+                    restoreOpenGroups();
+                }, 50);
+                setTimeout(function() {
+                    openAllGroupsInKioskMode();
+                    restoreOpenGroups();
+                }, 200);
+            }
+        } catch (e) {
+            console.error('Error in htmx:load handler:', e);
+        }
+    });
+</script>

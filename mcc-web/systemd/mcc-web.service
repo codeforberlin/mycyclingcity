@@ -1,0 +1,34 @@
+[Unit]
+Description=MCC-Web Gunicorn Application Server
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/data/games/mcc-web
+Environment="PATH=/data/games/mcc-web/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=config.settings"
+ExecStart=/data/games/mcc-web/venv/bin/gunicorn \
+    --config /data/games/mcc-web/gunicorn_config.py \
+    config.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/data/games/mcc-web
+ReadOnlyPaths=/usr /bin /sbin /lib /lib64
+
+# Resource limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,166 @@
+# ============================================
+# MyCyclingCity - Umfassende .gitignore
+# ============================================
+
+# ============================================
+# mcc-web - Django Application
+# ============================================
+
+# Django
+mcc-web/db.sqlite3
+mcc-web/db.sqlite3-journal
+mcc-web/*.sqlite3
+mcc-web/*.sqlite3-journal
+
+# Python
+mcc-web/__pycache__/
+mcc-web/**/__pycache__/
+mcc-web/*.py[cod]
+mcc-web/*$py.class
+mcc-web/*.so
+mcc-web/.Python
+
+# Django Media & Static
+mcc-web/media/
+mcc-web/static/collected/
+mcc-web/staticfiles/
+
+# Environment & Secrets
+mcc-web/.env
+mcc-web/.env.local
+mcc-web/.env.*.local
+mcc-web/*.env
+
+# Django Logs
+mcc-web/logs/
+mcc-web/*.log
+
+# Django Local Settings
+mcc-web/local_settings.py
+mcc-web/settings_local.py
+
+# Compiled Messages
+mcc-web/messages.mo
+mcc-web/locale/*/LC_MESSAGES/*.mo
+
+# Coverage Reports
+mcc-web/htmlcov/
+mcc-web/.coverage
+mcc-web/.coverage.*
+mcc-web/coverage.xml
+mcc-web/*.cover
+mcc-web/.pytest_cache/
+
+# Distribution / Packaging
+mcc-web/build/
+mcc-web/dist/
+mcc-web/*.egg-info/
+mcc-web/.eggs/
+
+# ============================================
+# mcc-esp32 - PlatformIO / ESP32 Firmware
+# ============================================
+
+# PlatformIO
+mcc-esp32/.pio/
+mcc-esp32/.vscode/
+
+# Build Artefakte
+mcc-esp32/.pioenvs/
+mcc-esp32/.piolibdeps/
+mcc-esp32/.clang_complete
+mcc-esp32/.gcc-flags.json
+mcc-esp32/compile_commands.json
+
+# Compiled Binaries
+mcc-esp32/*.bin
+mcc-esp32/*.elf
+mcc-esp32/*.hex
+mcc-esp32/*.map
+
+# PlatformIO Test
+mcc-esp32/.pytest_cache/
+
+# ============================================
+# Allgemein - System & Editor
+# ============================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Log-Dateien
+*.log
+*.log.*
+logs/
+*.log.*
+
+# Python Virtual Environments (lokal)
+venv/
+env/
+ENV/
+.venv/
+.env/
+virtualenv/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Backup Files
+*.bak
+*.backup
+*~
+*.tmp
+*.temp
+
+# Archive Files (optional - kann entfernt werden wenn gewünscht)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# ============================================
+# Dokumentation Build (falls vorhanden)
+# ============================================
+
+docs/_build/
+docs/.doctrees/
+docs/site/
+
+# ============================================
+# Temporäre Dateien
+# ============================================
+
+*.tmp
+*.temp
+.cache/
+*.cache
+
+
+
+SECURITY_AUDIT.md

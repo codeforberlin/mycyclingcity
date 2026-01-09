@@ -1,0 +1,73 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Maintenance" %} - {{ device_name }}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+        }
+        .container {
+            text-align: center;
+            padding: 3rem;
+            max-width: 600px;
+            animation: fadeIn 1s ease-in;
+        }
+        .icon {
+            font-size: 6rem;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        p {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+            opacity: 0.95;
+        }
+        .device-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔧</div>
+        <h1>{% trans "Wartung" %}</h1>
+        <p>{% trans "Dieses Gerät wird derzeit gewartet." %}</p>
+        <p>{% trans "Bitte versuchen Sie es später erneut." %}</p>
+        <div class="device-info">
+            {% trans "Geräte-ID" %}: {{ device_uid }}
+        </div>
+    </div>
+</body>
+</html>
+

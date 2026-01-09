@@ -1,0 +1,390 @@
+{% load i18n ranking_filters %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'de' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Ranking" %} - MyCyclingCity</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .rk-main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .rk-table-scroller {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .rk-dynamic-table-content {
+            padding: 40px 40px 150px 40px;
+            min-height: 100%;
+        }
+        
+        /* Information Hub Button - Global UI Layer */
+        .info-hub-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .info-hub-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        /* Information Hub Modal - Global UI Layer */
+        .info-hub-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+            padding: 20px;
+        }
+        .info-hub-modal-overlay.show {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .info-hub-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            max-width: 600px;
+            max-height: 85vh;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .info-hub-header {
+            padding: 28px 32px 24px 32px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .info-hub-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 12px 0;
+        }
+        .info-hub-version {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        .info-hub-version-label {
+            font-weight: 500;
+        }
+        .info-hub-version-value {
+            font-weight: 600;
+            color: #007bff;
+            font-family: 'Courier New', monospace;
+        }
+        .info-hub-body {
+            padding: 24px 32px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .info-hub-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .info-hub-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0;
+        }
+        .info-hub-faq {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .info-hub-accordion-item {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        .info-hub-accordion-item:hover {
+            border-color: rgba(0, 123, 255, 0.3);
+        }
+        .info-hub-accordion-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.5);
+            transition: background 0.2s;
+        }
+        .info-hub-accordion-header:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+        .info-hub-accordion-question {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            flex: 1;
+        }
+        .info-hub-accordion-icon {
+            font-size: 18px;
+            color: #666;
+            transition: transform 0.3s;
+        }
+        .info-hub-accordion-item.open .info-hub-accordion-icon {
+            transform: rotate(180deg);
+        }
+        .info-hub-accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding: 0 20px;
+        }
+        .info-hub-accordion-item.open .info-hub-accordion-content {
+            max-height: 500px;
+            padding: 0 20px 16px 20px;
+        }
+        .info-hub-accordion-answer {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #4a4a4a;
+        }
+        .info-hub-wiki-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        .info-hub-wiki-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+        .info-hub-language-form {
+            display: flex;
+            width: 100%;
+        }
+        .info-hub-language-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            font-size: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .info-hub-language-select:hover {
+            border-color: rgba(0, 123, 255, 0.3);
+            background: rgba(255, 255, 255, 1);
+        }
+        .info-hub-footer {
+            padding: 20px 32px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(0, 0, 0, 0.02);
+        }
+        .info-hub-footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        .info-hub-footer-link {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .info-hub-footer-link:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        .info-hub-footer-separator {
+            color: #ccc;
+        }
+        .info-hub-footer-copyright {
+            color: #999;
+        }
+        .info-hub-footer-copyright a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .info-hub-footer-copyright a:hover {
+            text-decoration: underline;
+        }
+        .info-hub-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #666;
+            transition: all 0.2s;
+            z-index: 1;
+        }
+        .info-hub-close:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+            transform: rotate(90deg);
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .info-hub-modal {
+                max-width: 95%;
+                max-height: 90vh;
+                border-radius: 20px;
+            }
+            .info-hub-header {
+                padding: 24px 20px 20px 20px;
+            }
+            .info-hub-title {
+                font-size: 24px;
+            }
+            .info-hub-body {
+                padding: 20px;
+            }
+            .info-hub-footer {
+                padding: 16px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="rk-main-container">
+        <div class="rk-table-scroller">
+            <div id="rk-dynamic-table-content" class="rk-dynamic-table-content"
+                 hx-get="{% url 'ranking:ranking_page' %}{% if group_id %}?group_id={{ group_id|urlencode }}&refresh_table=true{% elif group_name %}?group_name={{ group_name|urlencode }}&refresh_table=true{% else %}?refresh_table=true{% endif %}"
+                 hx-trigger="{% if is_kiosk %}updateTable{% else %}load, every 10s{% endif %}"
+                 hx-swap="innerHTML"
+                 data-base-url="{% url 'ranking:ranking_page' %}"
+                 data-group-id="{% if group_id %}{{ group_id|urlencode }}{% endif %}"
+                 data-group-name="{% if group_name %}{{ group_name|urlencode }}{% endif %}">
+                {% include "ranking/table_data.html" %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Global Information Hub (Button + Modal) -->
+    {% include "partials/info_hub.html" %}
+    
+    <script>
+        // Global Information Hub Modal functions
+        function openInfoHubModal() {
+            var overlay = document.getElementById('info-hub-modal-overlay');
+            if (overlay) {
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        function closeInfoHubModal(event) {
+            if (event && event.target !== event.currentTarget) {
+                return; // Don't close if clicking inside modal
+            }
+            var overlay = document.getElementById('info-hub-modal-overlay');
+            if (overlay) {
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        }
+        
+        function toggleInfoHubFAQItem(header) {
+            var item = header.closest('.info-hub-accordion-item');
+            if (item) {
+                item.classList.toggle('open');
+            }
+        }
+        
+        // Close Information Hub modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeInfoHubModal();
+            }
+        });
+    </script>
+</body>
+</html>
+
+

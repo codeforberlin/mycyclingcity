@@ -1,0 +1,750 @@
+{
+  "test_info": {
+    "start_time": "2026-01-03T07:08:00.208141",
+    "end_time": "2026-01-03T07:32:23.954621",
+    "duration_seconds": 1463.7464773654938,
+    "iterations": 141,
+    "send_interval": 10,
+    "device_switch_interval": 60
+  },
+  "test_config": {
+    "cyclists": [
+      {
+        "id_tag": "rfid001",
+        "target_km": 5.0
+      },
+      {
+        "id_tag": "rfid002",
+        "target_km": 3.5
+      },
+      {
+        "id_tag": "rfid003",
+        "target_km": 4.0
+      },
+      {
+        "id_tag": "rfid004",
+        "target_km": 6.0
+      }
+    ],
+    "devices": [
+      {
+        "device_id": "mcc-demo01",
+        "wheel_size": 26
+      },
+      {
+        "device_id": "mcc-test-001",
+        "wheel_size": 24
+      },
+      {
+        "device_id": "mcc-test-002",
+        "wheel_size": 28
+      },
+      {
+        "device_id": "mcc-test-003",
+        "wheel_size": 20
+      }
+    ]
+  },
+  "cyclist_results": {
+    "rfid001": {
+      "target_km": 5.0,
+      "sent_km": 5.019999999999999,
+      "goal_reached": true,
+      "goal_reached_time": 1767425203.6004589,
+      "devices_used": [
+        "mcc-demo01",
+        "mcc-test-002",
+        "mcc-test-003",
+        "mcc-test-001"
+      ],
+      "device_assignments": [
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424080.2081852,
+          "end_time": 1767424142.819496,
+          "km_sent": 0.28
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424142.819496,
+          "end_time": 1767424205.6264858,
+          "km_sent": 0.3900000000000001
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424205.6264858,
+          "end_time": 1767424268.7992127,
+          "km_sent": 0.3300000000000003
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424268.7992127,
+          "end_time": 1767424331.5565596,
+          "km_sent": 0.20000000000000018
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424331.5565596,
+          "end_time": 1767424394.5041106,
+          "km_sent": 0.3400000000000003
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424394.5041106,
+          "end_time": 1767424457.4131541,
+          "km_sent": 0.19000000000000017
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424457.4131541,
+          "end_time": 1767424520.106682,
+          "km_sent": 0.27000000000000024
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424520.106682,
+          "end_time": 1767424583.1173315,
+          "km_sent": 0.3299999999999996
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424583.1173315,
+          "end_time": 1767424646.2027526,
+          "km_sent": 0.21999999999999975
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424646.2027526,
+          "end_time": 1767424708.963778,
+          "km_sent": 0.2799999999999998
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424708.963778,
+          "end_time": 1767424774.8928533,
+          "km_sent": 0.3199999999999994
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424774.8928533,
+          "end_time": 1767424837.6267169,
+          "km_sent": 0.2999999999999994
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424837.6267169,
+          "end_time": 1767424900.2215362,
+          "km_sent": 0.1899999999999995
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424900.2215362,
+          "end_time": 1767424962.8995116,
+          "km_sent": 0.33999999999999986
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424962.8995116,
+          "end_time": 1767425025.849137,
+          "km_sent": 0.22000000000000064
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425025.849137,
+          "end_time": 1767425088.6380446,
+          "km_sent": 0.28999999999999915
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425088.6380446,
+          "end_time": 1767425151.4441316,
+          "km_sent": 0.20000000000000107
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425151.4441316,
+          "end_time": 1767425213.632443,
+          "km_sent": 0.3299999999999992
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425213.632443,
+          "end_time": 1767425276.055362,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425276.055362,
+          "end_time": 1767425337.7218058,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425337.7218058,
+          "end_time": 1767425399.438163,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425399.438163,
+          "end_time": 1767425460.9895658,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425460.9895658,
+          "end_time": 1767425523.208453,
+          "km_sent": 0.0
+        }
+      ]
+    },
+    "rfid002": {
+      "target_km": 3.5,
+      "sent_km": 3.549999999999997,
+      "goal_reached": true,
+      "goal_reached_time": 1767424931.7698169,
+      "devices_used": [
+        "mcc-test-002",
+        "mcc-demo01",
+        "mcc-test-003",
+        "mcc-test-001"
+      ],
+      "device_assignments": [
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424080.2081873,
+          "end_time": 1767424142.819496,
+          "km_sent": 0.32999999999999996
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424142.819496,
+          "end_time": 1767424205.6264858,
+          "km_sent": 0.31000000000000005
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424205.6264858,
+          "end_time": 1767424268.7992127,
+          "km_sent": 0.3300000000000002
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424268.7992127,
+          "end_time": 1767424331.5565596,
+          "km_sent": 0.20000000000000018
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424331.5565596,
+          "end_time": 1767424394.5041106,
+          "km_sent": 0.2400000000000002
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424394.5041106,
+          "end_time": 1767424457.4131541,
+          "km_sent": 0.3600000000000003
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424457.4131541,
+          "end_time": 1767424520.106682,
+          "km_sent": 0.29000000000000004
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424520.106682,
+          "end_time": 1767424583.1173315,
+          "km_sent": 0.1899999999999995
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424583.1173315,
+          "end_time": 1767424646.2027526,
+          "km_sent": 0.2799999999999998
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424646.2027526,
+          "end_time": 1767424708.963778,
+          "km_sent": 0.17999999999999927
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424708.963778,
+          "end_time": 1767424774.8928533,
+          "km_sent": 0.23999999999999977
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424774.8928533,
+          "end_time": 1767424837.6267169,
+          "km_sent": 0.17999999999999883
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424837.6267169,
+          "end_time": 1767424900.2215362,
+          "km_sent": 0.23999999999999932
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424900.2215362,
+          "end_time": 1767424962.8995116,
+          "km_sent": 0.17999999999999972
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424962.8995116,
+          "end_time": 1767425025.849137,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425025.849137,
+          "end_time": 1767425088.6380446,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425088.6380446,
+          "end_time": 1767425151.4441316,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425151.4441316,
+          "end_time": 1767425213.632443,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425213.632443,
+          "end_time": 1767425276.055362,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425276.055362,
+          "end_time": 1767425337.7218058,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425337.7218058,
+          "end_time": 1767425399.438163,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425399.438163,
+          "end_time": 1767425460.9895658,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425460.9895658,
+          "end_time": 1767425523.208453,
+          "km_sent": 0.0
+        }
+      ]
+    },
+    "rfid003": {
+      "target_km": 4.0,
+      "sent_km": 4.029999999999998,
+      "goal_reached": true,
+      "goal_reached_time": 1767425026.2897623,
+      "devices_used": [
+        "mcc-test-001",
+        "mcc-test-002",
+        "mcc-test-003",
+        "mcc-demo01"
+      ],
+      "device_assignments": [
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424080.208189,
+          "end_time": 1767424142.819496,
+          "km_sent": 0.23
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424142.819496,
+          "end_time": 1767424205.6264858,
+          "km_sent": 0.3400000000000001
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424205.6264858,
+          "end_time": 1767424268.7992127,
+          "km_sent": 0.2100000000000002
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424268.7992127,
+          "end_time": 1767424331.5565596,
+          "km_sent": 0.28000000000000025
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424331.5565596,
+          "end_time": 1767424394.5041106,
+          "km_sent": 0.20000000000000018
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424394.5041106,
+          "end_time": 1767424457.4131541,
+          "km_sent": 0.2100000000000002
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424457.4131541,
+          "end_time": 1767424520.106682,
+          "km_sent": 0.20000000000000018
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424520.106682,
+          "end_time": 1767424583.1173315,
+          "km_sent": 0.3200000000000003
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424583.1173315,
+          "end_time": 1767424646.2027526,
+          "km_sent": 0.369999999999999
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424646.2027526,
+          "end_time": 1767424708.963778,
+          "km_sent": 0.2799999999999998
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424708.963778,
+          "end_time": 1767424774.8928533,
+          "km_sent": 0.36999999999999966
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424774.8928533,
+          "end_time": 1767424837.6267169,
+          "km_sent": 0.22999999999999954
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424837.6267169,
+          "end_time": 1767424900.2215362,
+          "km_sent": 0.1999999999999993
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424900.2215362,
+          "end_time": 1767424962.8995116,
+          "km_sent": 0.2699999999999996
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424962.8995116,
+          "end_time": 1767425025.849137,
+          "km_sent": 0.25999999999999934
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425025.849137,
+          "end_time": 1767425088.6380446,
+          "km_sent": 0.06000000000000005
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425088.6380446,
+          "end_time": 1767425151.4441316,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425151.4441316,
+          "end_time": 1767425213.632443,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425213.632443,
+          "end_time": 1767425276.055362,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425276.055362,
+          "end_time": 1767425337.7218058,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425337.7218058,
+          "end_time": 1767425399.438163,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425399.438163,
+          "end_time": 1767425460.9895658,
+          "km_sent": 0.0
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425460.9895658,
+          "end_time": 1767425523.208453,
+          "km_sent": 0.0
+        }
+      ]
+    },
+    "rfid004": {
+      "target_km": 6.0,
+      "sent_km": 6.0099999999999945,
+      "goal_reached": true,
+      "goal_reached_time": 1767425533.9541924,
+      "devices_used": [
+        "mcc-test-003",
+        "mcc-test-001",
+        "mcc-demo01",
+        "mcc-test-002"
+      ],
+      "device_assignments": [
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424080.20819,
+          "end_time": 1767424142.819496,
+          "km_sent": 0.18000000000000002
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424142.819496,
+          "end_time": 1767424205.6264858,
+          "km_sent": 0.2599999999999999
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424205.6264858,
+          "end_time": 1767424268.7992127,
+          "km_sent": 0.17000000000000015
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424268.7992127,
+          "end_time": 1767424331.5565596,
+          "km_sent": 0.2200000000000002
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424331.5565596,
+          "end_time": 1767424394.5041106,
+          "km_sent": 0.30000000000000027
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424394.5041106,
+          "end_time": 1767424457.4131541,
+          "km_sent": 0.19000000000000017
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424457.4131541,
+          "end_time": 1767424520.106682,
+          "km_sent": 0.29000000000000026
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424520.106682,
+          "end_time": 1767424583.1173315,
+          "km_sent": 0.3500000000000003
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424583.1173315,
+          "end_time": 1767424646.2027526,
+          "km_sent": 0.2799999999999998
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424646.2027526,
+          "end_time": 1767424708.963778,
+          "km_sent": 0.2199999999999993
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424708.963778,
+          "end_time": 1767424774.8928533,
+          "km_sent": 0.14999999999999947
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767424774.8928533,
+          "end_time": 1767424837.6267169,
+          "km_sent": 0.3500000000000001
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767424837.6267169,
+          "end_time": 1767424900.2215362,
+          "km_sent": 0.18999999999999906
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767424900.2215362,
+          "end_time": 1767424962.8995116,
+          "km_sent": 0.20999999999999952
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767424962.8995116,
+          "end_time": 1767425025.849137,
+          "km_sent": 0.3099999999999996
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425025.849137,
+          "end_time": 1767425088.6380446,
+          "km_sent": 0.3299999999999992
+        },
+        {
+          "device_id": "mcc-test-003",
+          "start_time": 1767425088.6380446,
+          "end_time": 1767425151.4441316,
+          "km_sent": 0.20999999999999996
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425151.4441316,
+          "end_time": 1767425213.632443,
+          "km_sent": 0.3099999999999996
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425213.632443,
+          "end_time": 1767425276.055362,
+          "km_sent": 0.22000000000000064
+        },
+        {
+          "device_id": "mcc-test-002",
+          "start_time": 1767425276.055362,
+          "end_time": 1767425337.7218058,
+          "km_sent": 0.35999999999999854
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425337.7218058,
+          "end_time": 1767425399.438163,
+          "km_sent": 0.3199999999999985
+        },
+        {
+          "device_id": "mcc-test-001",
+          "start_time": 1767425399.438163,
+          "end_time": 1767425460.9895658,
+          "km_sent": 0.2400000000000002
+        },
+        {
+          "device_id": "mcc-demo01",
+          "start_time": 1767425460.9895658,
+          "end_time": 1767425523.208453,
+          "km_sent": 0.27999999999999936
+        }
+      ]
+    }
+  },
+  "device_results": {
+    "mcc-demo01": {
+      "wheel_size": 26,
+      "total_km_sent": 5.799999999999995,
+      "cyclists_used": [
+        "rfid001",
+        "rfid002",
+        "rfid003",
+        "rfid004"
+      ]
+    },
+    "mcc-test-001": {
+      "wheel_size": 24,
+      "total_km_sent": 3.239999999999999,
+      "cyclists_used": [
+        "rfid003",
+        "rfid004",
+        "rfid002",
+        "rfid001"
+      ]
+    },
+    "mcc-test-002": {
+      "wheel_size": 28,
+      "total_km_sent": 5.849999999999995,
+      "cyclists_used": [
+        "rfid002",
+        "rfid001",
+        "rfid003",
+        "rfid004"
+      ]
+    },
+    "mcc-test-003": {
+      "wheel_size": 20,
+      "total_km_sent": 3.7199999999999953,
+      "cyclists_used": [
+        "rfid004",
+        "rfid003",
+        "rfid001",
+        "rfid002"
+      ]
+    }
+  },
+  "validation_results": {
+    "rfid001": {
+      "sent_km": 5.019999999999999,
+      "api_distance_before": 5.02,
+      "api_distance_after": 5.02,
+      "api_test_period_distance": 0.0,
+      "difference": 5.019999999999999,
+      "difference_percent": 100.0,
+      "valid": false,
+      "goal_reached": true
+    },
+    "rfid002": {
+      "sent_km": 3.549999999999997,
+      "api_distance_before": 3.55,
+      "api_distance_after": 3.55,
+      "api_test_period_distance": 0.0,
+      "difference": 3.549999999999997,
+      "difference_percent": 100.0,
+      "valid": false,
+      "goal_reached": true
+    },
+    "rfid003": {
+      "sent_km": 4.029999999999998,
+      "api_distance_before": 4.03,
+      "api_distance_after": 4.03,
+      "api_test_period_distance": 0.0,
+      "difference": 4.029999999999998,
+      "difference_percent": 100.0,
+      "valid": false,
+      "goal_reached": true
+    },
+    "rfid004": {
+      "sent_km": 6.0099999999999945,
+      "api_distance_before": 6.01,
+      "api_distance_after": 6.01,
+      "api_test_period_distance": 0.0,
+      "difference": 6.0099999999999945,
+      "difference_percent": 100.0,
+      "valid": false,
+      "goal_reached": true
+    }
+  },
+  "validation_errors": [],
+  "summary": {
+    "total_cyclists": 4,
+    "goals_reached": 4,
+    "total_km_sent": 18.60999999999999,
+    "validations_passed": 0,
+    "validations_failed": 4
+  }
+}

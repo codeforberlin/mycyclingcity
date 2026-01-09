@@ -1,0 +1,15 @@
+{% load i18n map_filters %}
+{% if type == 'group' %}
+<details>
+    <summary hx-get="{% url 'get_children' item.id %}?level={{ level|add:1 }}" hx-target="#children-{{ item.id }}" hx-trigger="click once">
+        <strong>{{ item.name }}</strong>
+        <span class="km-badge">{% format_km_de_tag item.distance_total 3 %} km</span>
+    </summary>
+    <div id="children-{{ item.id }}"><p style="padding:10px; font-size:0.8em; color:#888;">{% trans "Lade Daten..." %}</p></div>
+</details>
+{% else %}
+<div class="cyclist-item">
+    <span>👤 {{ item.user_id }}</span>
+    <strong>{% format_km_de_tag item.distance_total 3 %} km</strong>
+</div>
+{% endif %}

@@ -1,0 +1,41 @@
+{
+  "cyclists": [
+    {
+      "id_tag": "rfid001",
+      "target_km": 5.0
+    },
+    {
+      "id_tag": "rfid002",
+      "target_km": 3.5
+    },
+    {
+      "id_tag": "rfid003",
+      "target_km": 4.0
+    },
+    {
+      "id_tag": "rfid004",
+      "target_km": 6.0
+    }
+  ],
+  "devices": [
+    {
+      "device_id": "mcc-demo01",
+      "wheel_size": 26
+    },
+    {
+      "device_id": "mcc-test-001",
+      "wheel_size": 24
+    },
+    {
+      "device_id": "mcc-test-002",
+      "wheel_size": 28
+    },
+    {
+      "device_id": "mcc-test-003",
+      "wheel_size": 20
+    }
+  ],
+  "device_switch_interval": 60,
+  "send_interval": 10
+}
+

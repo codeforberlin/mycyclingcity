@@ -1,0 +1,56 @@
+{
+  "_comment": "Template for large-scale load test data",
+  "_description": "This template shows the structure for generating large test datasets with multiple schools and classes",
+  "_usage": "Use generate_large_test_data.py to generate actual test data files from this template",
+  
+  "scenarios": {
+    "small": {
+      "description": "Small test scenario - 2 schools, 5 classes total",
+      "schools": 2,
+      "classes_per_school": [3, 2]
+    },
+    "medium": {
+      "description": "Medium test scenario - 3 schools, 18 classes total",
+      "schools": 3,
+      "classes_per_school": [6, 6, 6]
+    },
+    "large": {
+      "description": "Large test scenario - 5 schools, 35 classes total",
+      "schools": 5,
+      "classes_per_school": [7, 7, 7, 7, 7]
+    },
+    "xlarge": {
+      "description": "Extra large test scenario - 10 schools, 60 classes total",
+      "schools": 10,
+      "classes_per_school": [6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+    }
+  },
+  
+  "school_config": {
+    "group_type": "Schule",
+    "grade_levels": ["1", "2", "3", "4", "5", "6"],
+    "class_letters": ["a", "b", "c", "d", "e", "f", "g"],
+    "students_per_class": 25,
+    "devices_per_class": 3
+  },
+  
+  "player_config": {
+    "naming_pattern": "student-{school_id:02d}-{class_id:02d}-{student_id:02d}",
+    "id_tag_pattern": "tag-{school_id:02d}-{class_id:02d}-{student_id:02d}"
+  },
+  
+  "device_config": {
+    "naming_pattern": "device-{school_id:02d}-{class_id:02d}-{device_id:01d}",
+    "display_name_pattern": "Device {school_id}-{class_id}-{device_id}"
+  },
+  
+  "mileage_distribution": {
+    "description": "Distribution of mileage updates across time periods",
+    "daily_range": [0.5, 15.0],
+    "weekly_range": [5.0, 50.0],
+    "monthly_range": [20.0, 200.0],
+    "updates_per_day": 10,
+    "active_days": 30
+  }
+}
+

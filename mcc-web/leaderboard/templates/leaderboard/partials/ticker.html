@@ -1,0 +1,46 @@
+{% load i18n leaderboard_filters %}
+{% if active_cyclists %}
+    {% for cyclist in active_cyclists %}
+    <span class="inline-block mr-8">
+        <strong>{{ cyclist.user_id }}</strong>
+        {% if not current_filter %}
+        {# Only show group short name when no filter is active #}
+        {% if cyclist.group_short_name %}
+        <span class="text-yellow-800">({{ cyclist.group_short_name }})</span>
+        {% endif %}
+        {% endif %}
+        <span class="mx-2">🚴</span>
+        <span class="text-green-500 font-semibold">{% format_km_de_tag cyclist.session_km 2 %} km</span>
+    </span>
+    {% endfor %}
+{% else %}
+    <span class="inline-block mr-8">
+        {% trans "Ready to start? Get on the bikes!" %}
+    </span>
+{% endif %}
+
+{% if event %}
+<div id="lb-event-popup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div style="text-align: center; color: gold;">
+        <div style="font-size: 8rem; animation: lb-bounce 2s infinite;">{{ event.icon }}</div>
+        <h1 style="font-size: 4rem; margin:0;">
+            {% if event.type == 'milestone' %}{% trans "MEILENSTEIN ERREICHT" %}{% else %}{% trans "SITZUNGS-WELTMEISTER" %}{% endif %}
+        </h1>
+        <h2 style="font-size: 5rem; color: white; margin:10px 0;">{{ event.name }}</h2>
+        <p style="font-size: 2rem;">{% blocktrans with km=event.km %}hat {{ km }} KM in dieser Runde geschafft!{% endblocktrans %}</p>
+    </div>
+</div>
+<style>
+    @keyframes lb-bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-30px);} 60% {transform: translateY(-15px);} }
+</style>
+<script>
+    setTimeout(() => {
+        const el = document.getElementById('lb-event-popup');
+        if (el) {
+            el.style.transition = "opacity 1s ease";
+            el.style.opacity = "0";
+            setTimeout(() => el.remove(), 1000);
+        }
+    }, 6000);
+</script>
+{% endif %}

@@ -1,0 +1,86 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Configuration Required" %} - {{ device_name }}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+        }
+        .container {
+            text-align: center;
+            padding: 3rem;
+            max-width: 600px;
+            animation: fadeIn 1s ease-in;
+        }
+        .icon {
+            font-size: 6rem;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        p {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            opacity: 0.95;
+        }
+        .email-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        .email-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📋</div>
+        <h1>{% trans "Konfiguration erforderlich" %}</h1>
+        <p>{% trans "Dieses Gerät ist aktiv, aber noch nicht konfiguriert." %}</p>
+        <p>{% trans "Bitte kontaktieren Sie den Administrator, um die Anzeige zu aktivieren." %}</p>
+        <a href="mailto:mcc-kontakt@wirzaehlen.de?subject=Kiosk%20Konfiguration&body=Hallo,%0A%0AIch benötige Hilfe bei der Konfiguration des Kiosk-Geräts.%0A%0AGeräte-ID: {{ device_uid }}%0A%0AVielen Dank!" 
+           class="email-link">
+            📧 {% trans "E-Mail senden" %}
+        </a>
+    </div>
+</body>
+</html>
+

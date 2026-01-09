@@ -1,0 +1,2647 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-05 21:47+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "MCC Core API & Models"
+msgstr "MCC Core API & Models"
+
+#, python-format
+msgid "Das Logo ist mit %(w)spx x %(h)spx zu groß. Maximal 500x500px erlaubt."
+msgstr ""
+"The logo is too large at %(w)spx x %(h)spx. Maximum allowed is 500x500px."
+
+msgid "Kilometer-Weltmeister Popup Dauer (Sekunden)"
+msgstr "Kilometer World Champion Popup Duration (Seconds)"
+
+msgid "Anzeigedauer des Kilometer-Weltmeister Popups in Sekunden (1-300)"
+msgstr ""
+"Display duration of the Kilometer World Champion popup in seconds (1-300)"
+
+msgid "Meilenstein Popup Dauer (Sekunden)"
+msgstr "Milestone Popup Duration (Seconds)"
+
+msgid "Anzeigedauer des Meilenstein Popups in Sekunden (1-300)"
+msgstr "Display duration of the milestone popup in seconds (1-300)"
+
+msgid "Kilometer-Weltmeister Popup Hintergrundfarbe"
+msgstr "Kilometer World Champion Popup Background Color"
+
+msgid ""
+"Hintergrundfarbe des Kilometer-Weltmeister Popups (Hex-Farbe, z.B. #ffd700 "
+"für Gold)"
+msgstr ""
+"Background color of the Kilometer World Champion popup (Hex color, e.g. "
+"#ffd700 for gold)"
+
+msgid "Kilometer-Weltmeister Popup Hintergrundfarbe Ende (Gradient)"
+msgstr "Kilometer World Champion Popup Background Color End (Gradient)"
+
+msgid ""
+"Endfarbe für den Gradient-Hintergrund (Hex-Farbe, z.B. #ffed4e für helles "
+"Gold)"
+msgstr ""
+"End color for the gradient background (Hex color, e.g. #ffed4e for light "
+"gold)"
+
+msgid "Kilometer-Weltmeister Popup Transparenz"
+msgstr "Kilometer World Champion Popup Transparency"
+
+msgid ""
+"Transparenz des Kilometer-Weltmeister Popups (0.01 = fast transparent, 1.00 "
+"= vollständig opak)"
+msgstr ""
+"Transparency of the Kilometer World Champion popup (0.01 = almost "
+"transparent, 1.00 = fully opaque)"
+
+msgid "Meilenstein Popup Hintergrundfarbe"
+msgstr "Milestone Popup Background Color"
+
+msgid ""
+"Hintergrundfarbe des Meilenstein Popups (Hex-Farbe, z.B. #007bff für Blau)"
+msgstr ""
+"Background color of the milestone popup (Hex color, e.g. #007bff for blue)"
+
+msgid "Meilenstein Popup Transparenz"
+msgstr "Milestone Popup Transparency"
+
+msgid ""
+"Transparenz des Meilenstein Popups (0.01 = fast transparent, 1.00 = "
+"vollständig opak)"
+msgstr ""
+"Transparency of the milestone popup (0.01 = almost transparent, 1.00 = fully "
+"opaque)"
+
+msgid "Aktualisiert am"
+msgstr "Updated at"
+
+msgid "Map Popup Einstellungen"
+msgstr "Map Popup Settings"
+
+#, python-format
+msgid ""
+"Popup-Einstellungen (Weltmeister: %(weltmeister)s, Meilenstein: "
+"%(meilenstein)s)"
+msgstr ""
+"Popup Settings (World Champion: %(weltmeister)s, Milestone: %(meilenstein)s)"
+
+msgid "Typ-Name"
+msgstr "Type name"
+
+msgid "Beschreibung"
+msgstr "Description"
+
+msgid "Aktiv"
+msgstr "Active"
+
+msgid "Group Type"
+msgstr ""
+
+msgid "Group Types"
+msgstr ""
+
+msgid "Gruppentyp"
+msgstr "Group type"
+
+msgid "Gruppenname"
+msgstr "Group name"
+
+msgid "Gesamt-KM"
+msgstr "Total KM"
+
+msgid "Gesamt-Coins"
+msgstr "Total coins"
+
+msgid "Logo für Karte"
+msgstr "Logo for map"
+
+msgid "Übergeordnete Gruppe"
+msgstr "Parent group"
+
+msgid "Manager"
+msgstr "Manager"
+
+msgid "Interne Kommentare (Admin)"
+msgstr "Internal comments (Admin)"
+
+msgid "Group"
+msgstr "Group"
+
+msgid "Groups"
+msgstr "Groups"
+
+msgid "In Map/Game anzeigen"
+msgstr "Show in Map/Game"
+
+msgid "Kurzname (z.B. 1a)"
+msgstr "Short name (e.g. 1a)"
+
+msgid "Wird auf den Kiosk-Kacheln verwendet"
+msgstr ""
+
+msgid "Farbe (Hex-Code)"
+msgstr ""
+
+msgid ""
+"Hex-Farbcode (z.B. #3b82f6) für die Darstellung im Kiosk-Leaderboard. Wird "
+"für alle Untergruppen verwendet. Farbwähler: <a href='https://htmlcolorcodes."
+"com/color-picker/' target='_blank'>HTML Color Codes</a> | <a href='https://"
+"colorpicker.me/' target='_blank'>Color Picker</a> | <a href='https://coolors."
+"co/' target='_blank'>Coolors</a>"
+msgstr ""
+
+msgid "Symbolischer Name"
+msgstr "Symbolic name"
+
+msgid "Radler Avatar"
+msgstr "Cyclist avatar"
+
+msgid "RFID-UID"
+msgstr "RFID UID"
+
+msgid "Minecraft-Name"
+msgstr "Minecraft Username"
+
+msgid "Ausgebbare Coins"
+msgstr "Distributable coins"
+
+msgid "Coin-Faktor"
+msgstr "Coin factor"
+
+msgid "Gruppen"
+msgstr "Groups"
+
+msgid "Zuletzt aktiv"
+msgstr "Last active"
+
+msgid "Cyclist"
+msgstr ""
+
+msgid "Cyclists"
+msgstr ""
+
+msgid "Kilometer-Erfassung aktiv"
+msgstr "Kilometer collection enabled"
+
+msgid "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
+msgstr "If disabled, no kilometers will be collected for this cyclist"
+
+msgid "Gerät"
+msgstr "Device"
+
+msgid "Radler"
+msgstr "Cyclist"
+
+msgid "Zeitpunkt"
+msgstr "Timestamp"
+
+msgid "Intervall-Distanz (km)"
+msgstr "Interval distance (km)"
+
+msgid "Gruppe"
+msgstr "Group"
+
+msgid "Hourly Metric"
+msgstr "Hourly Metric"
+
+msgid "Hourly Metrics"
+msgstr "Hourly Metrics"
+
+msgid "Sitzungs-Distanz (km)"
+msgstr "Session distance (km)"
+
+msgid "Startzeit"
+msgstr "Start time"
+
+msgid "Cyclist - Active Session"
+msgstr "Cyclist - Active Session"
+
+msgid "Cyclists - Active Sessions"
+msgstr "Cyclists - Active Sessions"
+
+msgid "Name der Route"
+msgstr "Route name"
+
+msgid "GPX-Datei"
+msgstr "GPX file"
+
+msgid "GeoJSON Daten"
+msgstr "GeoJSON data"
+
+msgid "Gesamtlänge (km)"
+msgstr "Total length (km)"
+
+msgid "Auf Karte anzeigen"
+msgstr "Show on map"
+
+msgid "Automatischer Start"
+msgstr "Automatic Start"
+
+msgid ""
+"Wenn aktiviert, startet die Reise automatisch beim Eintreffen der ersten "
+"Kilometer. Wenn deaktiviert, muss eine Startzeit definiert werden."
+msgstr ""
+"If enabled, the trip starts automatically when the first kilometers arrive. "
+"If disabled, a start time must be defined."
+
+msgid "Startzeitpunkt"
+msgstr "Start time"
+
+msgid ""
+"Optional: Definiert den Startzeitpunkt der Reise. Wird ignoriert, wenn "
+"'Automatischer Start' aktiviert ist."
+msgstr ""
+"Optional: Defines the start time of the trip. Ignored if 'Automatic Start' "
+"is enabled."
+
+msgid "Endzeitpunkt"
+msgstr "End time"
+
+msgid ""
+"Optional: Definiert den Endzeitpunkt der Reise. Wenn nicht gesetzt, läuft "
+"die Reise unbegrenzt."
+msgstr "Optional: Defines the end time of the trip. If not set, the trip runs indefinitely."
+
+msgid "Travels - Route"
+msgstr "Travels - Route"
+
+msgid "Travels - Routes"
+msgstr "Travels - Routes"
+
+msgid "Route"
+msgstr "Route"
+
+msgid "Bezeichnung"
+msgstr "Designation"
+
+msgid "Info-Link"
+msgstr "Info link"
+
+msgid "Belohnung"
+msgstr "Reward"
+
+msgid "KM-Marke"
+msgstr "KM marker"
+
+msgid "Breitengrad"
+msgstr "Latitude"
+
+msgid "Längengrad"
+msgstr "Longitude"
+
+msgid "Gewinner"
+msgstr "Winner"
+
+msgid "Erreicht am"
+msgstr "Reached on"
+
+msgid "Travels - Milestone"
+msgstr "Travels - Milestone"
+
+msgid "Travels - Milestones"
+msgstr "Travels - Milestones"
+
+msgid "Meilenstein"
+msgstr "Milestone"
+
+msgid "Erreichte Distanz (km)"
+msgstr "Achieved distance (km)"
+
+msgid ""
+"Die Belohnung, die zum Zeitpunkt des Erreichens des Meilensteins definiert "
+"war. Diese bleibt unverändert, auch wenn die Meilenstein-Belohnung später "
+"geändert wird."
+msgstr "The reward that was defined at the time the milestone was reached. This remains unchanged, even if the milestone reward is changed later."
+
+msgid "Eingelöst"
+msgstr "Redeemed"
+
+msgid ""
+"Gibt an, ob die Belohnung bereits eingelöst wurde. Eine Belohnung kann nur "
+"einmal eingelöst werden."
+msgstr ""
+"Indicates whether the reward has already been redeemed. A reward can only be "
+"redeemed once."
+
+msgid "Eingelöst am"
+msgstr "Redeemed on"
+
+msgid "Zeitpunkt, zu dem die Belohnung eingelöst wurde."
+msgstr "Time at which the reward was redeemed."
+
+msgid "Reisen - erreichte Meilensteine"
+msgstr "Travels - Achieved Milestones"
+
+msgid "Reisen-Track"
+msgstr "Travels track"
+
+msgid "Aktuelle Reisen-Distanz (km)"
+msgstr "Current travels distance (km)"
+
+msgid "Start-Offset (km)"
+msgstr "Start offset (km)"
+
+msgid "Ziel erreicht am"
+msgstr "Goal reached on"
+
+msgid ""
+"Zeitpunkt, zu dem die Gruppe das Ziel erreicht hat. Wird für die Sortierung "
+"am Ziel verwendet."
+msgstr ""
+
+msgid "Travels - Status"
+msgstr "Travels - Status"
+
+msgid "Leaf-Gruppe"
+msgstr "Leaf group"
+
+msgid "Die Leaf-Gruppe (z.B. Klasse), die Kilometer beiträgt"
+msgstr ""
+
+msgid "Aktuelle Reise-Distanz (km)"
+msgstr "Current travel distance (km)"
+
+msgid ""
+"Die von dieser Leaf-Gruppe während der aktuellen Reise zurückgelegte Distanz"
+msgstr ""
+
+msgid "Leaf-Gruppe Reise-Beitrag"
+msgstr ""
+
+msgid "Leaf-Gruppe Reise-Beiträge"
+msgstr ""
+
+msgid "Zuordnung"
+msgstr "Assignment"
+
+msgid "Abgebrochen"
+msgstr ""
+
+msgid "Beendet"
+msgstr ""
+
+msgid "Neu gestartet"
+msgstr "Restarted"
+
+msgid "Entfernt"
+msgstr "Removed"
+
+msgid "Reisen - Route"
+msgstr "Travels - Route"
+
+msgid "Gesammelte Kilometer"
+msgstr "Collected kilometers"
+
+msgid "Aktionstyp"
+msgstr "Action type"
+
+msgid "Art der Aktion, die zu diesem Historieeintrag geführt hat"
+msgstr ""
+
+msgid "Erstellt am"
+msgstr "Created on"
+
+msgid "Travels - History"
+msgstr "Travels - History"
+
+msgid "Travels - Histories"
+msgstr "Travels - Histories"
+
+msgid "Schulfest"
+msgstr ""
+
+msgid "Feier"
+msgstr ""
+
+msgid "Spendensammeln"
+msgstr ""
+
+msgid "Wettbewerb"
+msgstr "Competition"
+
+msgid "Sonstiges"
+msgstr ""
+
+msgid "Event-Name"
+msgstr "Event name"
+
+msgid "Event-Typ"
+msgstr "Event type"
+
+msgid "Ab diesem Datum nicht mehr anzeigen"
+msgstr ""
+
+msgid ""
+"Events werden nach diesem Datum nicht mehr in der Karte angezeigt, auch wenn "
+"sie noch aktiv sind"
+msgstr ""
+
+msgid "Event"
+msgstr ""
+
+msgid "Events"
+msgstr ""
+
+msgid "Aktuelle Distanz (km)"
+msgstr "Current distance (km)"
+
+msgid "Beigetreten am"
+msgstr ""
+
+msgid "Gruppen-Event-Status"
+msgstr "Group event status"
+
+msgid "Events - History"
+msgstr "Events - History"
+
+msgid "Events - Histories"
+msgstr "Events - Histories"
+
+msgid "Django site admin"
+msgstr "Django site admin"
+
+msgid "Filters"
+msgstr ""
+
+msgid "Start Date"
+msgstr "Start Date"
+
+msgid "End Date"
+msgstr ""
+
+msgid "Group Filter"
+msgstr ""
+
+msgid "All Groups"
+msgstr ""
+
+msgid "Cyclist Filter"
+msgstr ""
+
+msgid "All Cyclists"
+msgstr ""
+
+msgid "Event Filter"
+msgstr "Event Filter"
+
+msgid "All Events"
+msgstr ""
+
+msgid "Travel Track Filter"
+msgstr ""
+
+msgid "All Tracks"
+msgstr ""
+
+msgid "Apply Filters"
+msgstr ""
+
+msgid "Reset"
+msgstr ""
+
+msgid "Hierarchy Breakdown"
+msgstr ""
+
+msgid "Show Top Groups (Master Groups)"
+msgstr ""
+
+msgid "Uncheck to show Subgroups with Cyclists"
+msgstr ""
+
+msgid "Total Distance"
+msgstr ""
+
+msgid "Daily Record"
+msgstr ""
+
+msgid "Weekly Record"
+msgstr ""
+
+msgid "Monthly Record"
+msgstr ""
+
+msgid "Yearly Record"
+msgstr ""
+
+msgid "Daily Utilization"
+msgstr ""
+
+msgid "Hourly Utilization"
+msgstr ""
+
+msgid "Top Groups by Mileage"
+msgstr ""
+
+msgid "Rank"
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Distance (km)"
+msgstr "Distance (km)"
+
+msgid "Loading..."
+msgstr ""
+
+msgid "Top Cyclists by Mileage"
+msgstr ""
+
+msgid "ID Tag"
+msgstr ""
+
+msgid "Top Devices by Mileage"
+msgstr ""
+
+msgid "Device"
+msgstr "Device"
+
+msgid "Export Data"
+msgstr ""
+
+msgid "Export the filtered report data in your preferred format:"
+msgstr ""
+
+msgid "Export as CSV"
+msgstr ""
+
+msgid "Export as Excel"
+msgstr ""
+
+msgid "Daily Distance (km)"
+msgstr "Daily Distance (km)"
+
+msgid "Hourly Distance (km)"
+msgstr "Hourly Distance (km)"
+
+msgid "Unknown"
+msgstr ""
+
+msgid "No data available for the selected filters."
+msgstr ""
+
+msgid "Home"
+msgstr ""
+
+msgid "Belohnung einlösen"
+msgstr "Redeem reward"
+
+msgid ""
+"Möchten Sie die Belohnung für diese Meilenstein-Erreichung wirklich einlösen?"
+msgstr ""
+
+msgid "Gruppe:"
+msgstr "Group:"
+
+msgid "Meilenstein:"
+msgstr "Milestone:"
+
+msgid "Belohnung:"
+msgstr "Reward:"
+
+msgid "Hinweis:"
+msgstr ""
+
+msgid ""
+"Eine Belohnung kann nur einmal eingelöst werden. Nach dem Einlösen wird der "
+"Status auf 'Eingelöst' gesetzt und der Zeitpunkt der Einlösung gespeichert."
+msgstr ""
+"A reward can only be redeemed once. After redemption, the status is set to "
+"'Redeemed' and the redemption time is saved."
+
+msgid "Ja, Belohnung einlösen"
+msgstr ""
+
+msgid "Abbrechen"
+msgstr ""
+
+msgid "Reise abbrechen"
+msgstr ""
+
+msgid "Möchten Sie die Reise für diese Gruppe wirklich abbrechen?"
+msgstr ""
+
+msgid "Aktuelle Reise:"
+msgstr "Current trip:"
+
+msgid "Aktuelle Reisekilometer:"
+msgstr "Current trip kilometers:"
+
+msgid "Warnung:"
+msgstr "Warning:"
+
+msgid ""
+"Wenn Sie die Reise abbrechen, werden die aktuellen Reisekilometer in der "
+"Historie gespeichert, aber die Gruppe wird von der Reise entfernt. Die "
+"Gruppe kann danach einer neuen Reise zugeordnet werden."
+msgstr ""
+
+msgid "Ja, Reise abbrechen"
+msgstr ""
+
+msgid "Analytics Dashboard"
+msgstr ""
+
+msgid "Select Event"
+msgstr ""
+
+msgid "Parent Group"
+msgstr ""
+
+msgid "Total Distance (km)"
+msgstr "Total Distance (km)"
+
+msgid "Action"
+msgstr "Action"
+
+msgid "View Child Groups"
+msgstr ""
+
+msgid "View Cyclists"
+msgstr "View Cyclists"
+
+msgid "No child groups found."
+msgstr ""
+
+msgid "No cyclists found in this group."
+msgstr ""
+
+msgid "Please select an event and date range to view the hierarchy breakdown."
+msgstr ""
+
+msgid "Meilensteine auf dem Track setzen"
+msgstr "Set milestones on the track"
+
+msgid " Konfiguration für Minecraft-Bridge ist unvollständig."
+msgstr "Configuration for Minecraft Bridge is incomplete."
+
+#, python-brace-format
+msgid " Coins für Spieler {username} erfolgreich an Minecraft-Bridge gesendet."
+msgstr ""
+"Coins for player {username} were successfully sent to the Minecraft Bridge."
+
+#, python-brace-format
+msgid " Fehler beim Senden der Coins an die Minecraft-Bridge: {e}"
+msgstr "Error sending coins to the Minecraft Bridge: {e}"
+
+msgid "Ungültig"
+msgstr "Invalid"
+
+msgid "Keine Daten empfangen"
+msgstr "No data received"
+
+msgid "Ungültiges JSON-Format"
+msgstr "Invalid JSON format"
+
+msgid "Datenfehler"
+msgstr "Data error"
+
+msgid "id_tag fehlt"
+msgstr "id_tag missing"
+
+msgid "device_id fehlt"
+msgstr ""
+
+msgid "Radler nicht gefunden"
+msgstr "Cyclist not found"
+
+msgid "Gerät nicht gefunden"
+msgstr "Device not found"
+
+msgid "Kilometer-Erfassung für diesen Radler ist deaktiviert"
+msgstr "Kilometer collection for this cyclist is disabled"
+
+msgid "Kilometer-Erfassung für dieses Gerät ist deaktiviert"
+msgstr "Kilometer collection for this device is disabled"
+
+msgid "Datenbank temporär nicht verfügbar"
+msgstr ""
+
+msgid "Bitte versuchen Sie es später erneut"
+msgstr ""
+
+msgid "Ungültiger API-Schlüssel"
+msgstr "Invalid API key"
+
+msgid "Ungültige oder fehlende Daten."
+msgstr "Invalid or missing data."
+
+msgid "Radler nicht gefunden."
+msgstr "Cyclist not found."
+
+msgid "Nicht genug Coins"
+msgstr "Not enough coins"
+
+msgid "Coins abgezogen."
+msgstr "Coins deducted."
+
+msgid "Methode nicht erlaubt."
+msgstr "Method not allowed."
+
+msgid "Ungültiges Format."
+msgstr "Invalid format."
+
+msgid "id_tag erforderlich."
+msgstr "id_tag required."
+
+msgid "start_date muss vor end_date liegen"
+msgstr ""
+
+msgid "Ungültiges Datumsformat. Verwenden Sie YYYY-MM-DD"
+msgstr ""
+
+msgid "start_date und end_date müssen beide angegeben werden"
+msgstr ""
+
+msgid "Gruppe nicht gefunden"
+msgstr "Group not found"
+
+msgid "Ungültige Gruppen-ID"
+msgstr "Invalid group ID"
+
+msgid "Übergeordnete Gruppe nicht gefunden"
+msgstr "Parent group not found"
+
+msgid "Ungültige Track-ID"
+msgstr "Invalid track ID"
+
+msgid "Methode nicht erlaubt"
+msgstr "Method not allowed"
+
+msgid "device_id ist erforderlich"
+msgstr "device_id is required"
+
+msgid "Ungültiger API-Key"
+msgstr "Invalid API key"
+
+msgid "Interner Serverfehler"
+msgstr ""
+
+msgid "device_id-Parameter ist erforderlich"
+msgstr ""
+
+msgid "Verwende Standard-Konfiguration"
+msgstr ""
+
+msgid "Keine Konfiguration für Gerät gefunden"
+msgstr "No configuration found for device"
+
+msgid "Keine Firmware für Gerät zugewiesen"
+msgstr "No firmware assigned for device"
+
+msgid "Keine aktive Firmware zugewiesen"
+msgstr "No active firmware assigned"
+
+msgid "Firmware-Datei nicht gefunden"
+msgstr "Firmware file not found"
+
+msgid "Firmware-Datei auf dem Server nicht gefunden"
+msgstr ""
+
+msgid "Keine Firmware zugewiesen"
+msgstr ""
+
+msgid "Firmware-Update verfügbar"
+msgstr ""
+
+msgid "Gerät ist auf dem neuesten Stand"
+msgstr ""
+
+msgid "Nur POST-Requests erlaubt"
+msgstr ""
+
+msgid "achievement_id ist erforderlich"
+msgstr "achievement_id is required"
+
+msgid "Meilenstein-Erreichung nicht gefunden"
+msgstr "Milestone achievement not found"
+
+msgid "Gruppe stimmt nicht überein"
+msgstr "Group does not match"
+
+msgid "Ungültige group_id"
+msgstr "Invalid group_id"
+
+msgid "Belohnung wurde bereits eingelöst"
+msgstr ""
+
+msgid "Keine Belohnung für diesen Meilenstein definiert"
+msgstr "No reward defined for this milestone"
+
+msgid "Belohnung erfolgreich eingelöst"
+msgstr ""
+
+msgid "group_id ist erforderlich"
+msgstr "group_id is required"
+
+msgid "Ungültige track_id"
+msgstr "Invalid track_id"
+
+msgid "English"
+msgstr "English"
+
+msgid "Deutsch"
+msgstr "German"
+
+msgid "MCC Game Interface"
+msgstr "MCC Game Interface"
+
+msgid "Kilometer-Challenge"
+msgstr "Kilometer Challenge"
+
+msgid ""
+"Willkommen zur Kilometer-Challenge! Wähle die Spieler und ihre zugewiesenen "
+"Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst."
+msgstr ""
+"Welcome to the Kilometer Challenge! Select the players and their assigned "
+"devices to see how many kilometers and MCC coins you can collect."
+
+msgid "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)."
+msgstr "Game could not be started (maybe no assignments are active)."
+
+msgid "Spiel starten"
+msgstr "Start game"
+
+msgid "Spiel konnte nicht gestoppt werden."
+msgstr "Game could not be stopped."
+
+msgid "Spiel stoppen"
+msgstr "Stop game"
+
+msgid "Spieler"
+msgstr "Player"
+
+msgid "Kilometer (km)"
+msgstr "Kilometers (km)"
+
+msgid "MCC-Coins"
+msgstr "MCC Coins"
+
+msgid "Entfernen"
+msgstr "Remove"
+
+msgid "Spieler & Geräte zuweisen"
+msgstr "Assign players & devices"
+
+msgid "Wähle einen Spieler"
+msgstr "Select a player"
+
+msgid "Wähle ein Gerät"
+msgstr "Select a device"
+
+msgid "Zuweisung hinzufügen"
+msgstr "Add assignment"
+
+msgid "Alle Zuweisungen löschen"
+msgstr "Remove all assignments"
+
+msgid "Ziel-Einstellungen"
+msgstr "Goal settings"
+
+msgid "Zielkilometer (optional)"
+msgstr "Target kilometers (optional)"
+
+msgid "Ziel-km eingeben"
+msgstr "Enter target km"
+
+msgid ""
+"Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen "
+"zurückgesetzt. Sind Sie sicher?"
+msgstr ""
+"Warning! This will reset the current game state and all assignments. Are you "
+"sure?"
+
+msgid "Session beenden / Zurücksetzen"
+msgstr "End / Reset session"
+
+msgid "Datenschutzerklärung"
+msgstr "Privacy Policy"
+
+msgid "Kilometerweltmeister!"
+msgstr "Kilometer World Champion!"
+
+msgid "Foto des Gewinners"
+msgstr "Winner's photo"
+
+msgid "Sind Sie sicher, dass Sie die Zuweisung entfernen möchten?"
+msgstr "Are you sure you want to remove this assignment?"
+
+msgid "Warte auf Spielstart oder keine Zuweisungen aktiv."
+msgstr "Waiting for game start or no assignments are active."
+
+msgid ""
+"🛑 Session für Gast-Spiel wurde beendet. Zuweisungen: {request.session."
+"get('device_assignments')}"
+msgstr ""
+"🛑 Session for guest game has ended. Assignments: {request.session."
+"get('device_assignments')}"
+
+msgid "🛑 Session wurde zurückgesetzt."
+msgstr "🛑 Session was reset."
+
+#, python-brace-format
+msgid "Zuweisung hinzugefügt: {cyclist} -> {device}"
+msgstr "Assignment added: {cyclist} -> {device}"
+
+#, python-brace-format
+msgid "Zuweisung entfernt: {cyclist_to_remove}"
+msgstr "Assignment removed: {cyclist_to_remove}"
+
+msgid "Alle Zuweisungen gelöscht."
+msgstr "All assignments deleted."
+
+msgid "Spiel via Stopp-Button gestoppt."
+msgstr "Game stopped via stop button."
+
+msgid "❌ Start fehlgeschlagen: Keine Zuweisungen in der Session gefunden."
+msgstr "❌ Start failed: No assignments found in session."
+
+msgid "Keine Zuweisungen aktiv."
+msgstr "No active assignments."
+
+#, python-brace-format
+msgid "✅ Spiel gestartet. Startdistanzen: {start_distances}"
+msgstr "✅ Game started. Start distances: {start_distances}"
+
+msgid "IOT Management"
+msgstr ""
+
+msgid "Gerätename"
+msgstr "Device name"
+
+msgid "Symbolischer Name (Anzeige)"
+msgstr "Symbolic name (Display)"
+
+msgid "Zugeordnete Gruppe"
+msgstr "Assigned group"
+
+msgid "Laufleistung (km)"
+msgstr "Distance tracked (km)"
+
+msgid "Letztes Intervall (km)"
+msgstr "Last interval (km)"
+
+msgid "Letzter Bericht"
+msgstr "Last report"
+
+msgid "Devices"
+msgstr "Devices"
+
+msgid "Wenn deaktiviert, werden keine Kilometer für dieses Gerät erfasst"
+msgstr "If disabled, no kilometers will be collected for this device"
+
+msgid "Geräte-API-Key"
+msgstr "Device API Key"
+
+msgid ""
+"Eindeutiger API-Key für dieses Gerät. Wenn nicht gesetzt, verwendet das "
+"Gerät den globalen API-Key."
+msgstr "Unique API key for this device. If not set, the device uses the global API key."
+
+msgid "API-Key-Rotation aktiviert"
+msgstr "API Key Rotation Enabled"
+
+msgid "API-Key automatisch im konfigurierten Intervall rotieren"
+msgstr "Automatically rotate API key at configured interval"
+
+msgid "API-Key zuletzt rotiert"
+msgstr "API Key Last Rotated"
+
+msgid "Zeitstempel der letzten API-Key-Rotation"
+msgstr "Timestamp of the last API key rotation"
+
+msgid "API-Key-Rotations-Intervall (Tage)"
+msgstr "API Key Rotation Interval (Days)"
+
+msgid "Anzahl der Tage zwischen automatischen API-Key-Rotationen"
+msgstr "Number of days between automatic API key rotations"
+
+msgid "Apache Base64 Auth Key (Veraltet)"
+msgstr "Apache Base64 Auth Key (Deprecated)"
+
+msgid ""
+"Base64-kodierter Authentifizierungsschlüssel für Apache Basic Auth "
+"(veraltet, verwenden Sie device_specific_api_key)"
+msgstr "Base64-encoded authentication key for Apache Basic Auth (deprecated, use device_specific_api_key)"
+
+msgid "Name des Geräts, wie auf dem ESP32 konfiguriert"
+msgstr "Name of the device as configured on the ESP32"
+
+msgid "Standard-ID-Tag"
+msgstr "Default ID Tag"
+
+msgid "Standard-ID-Tag-Name für dieses Gerät"
+msgstr "Default ID tag name for this device"
+
+msgid "Sendeintervall (Sekunden)"
+msgstr "Send Interval (Seconds)"
+
+msgid "Intervall in Sekunden zwischen Datenübertragungen"
+msgstr "Interval in seconds between data transmissions"
+
+msgid "Server-URL"
+msgstr "Server URL"
+
+msgid "URL des Server-Endpunkts für Datenübertragung"
+msgstr "URL of the server endpoint for data transmission"
+
+msgid "WLAN SSID"
+msgstr "WiFi SSID"
+
+msgid "WiFi-Netzwerkname (SSID)"
+msgstr "WiFi network name (SSID)"
+
+msgid "WLAN-Passwort"
+msgstr "WiFi Password"
+
+msgid "WiFi-Netzwerkpasswort"
+msgstr "WiFi network password"
+
+msgid "Debug-Modus"
+msgstr "Debug Mode"
+
+msgid "Debug-Protokollierung auf dem Gerät aktivieren"
+msgstr "Enable debug logging on the device"
+
+msgid "Test-Modus"
+msgstr "Test Mode"
+
+msgid "Testdatenübertragungsmodus aktivieren"
+msgstr "Enable test data transmission mode"
+
+msgid "Deep-Sleep-Zeit (Sekunden)"
+msgstr "Deep Sleep Time (Seconds)"
+
+msgid "Zeit in Sekunden für Deep-Sleep-Modus (0 = deaktiviert)"
+msgstr "Time in seconds for deep sleep mode (0 = disabled)"
+
+msgid "Radgröße (Zoll)"
+msgstr "Wheel Size (Inches)"
+
+msgid "Radgröße in Zoll für Distanzberechnung"
+msgstr "Wheel size in inches for distance calculation"
+
+msgid "Zugewiesene Firmware"
+msgstr "Assigned Firmware"
+
+msgid "Firmware-Image, das diesem Gerät für OTA-Updates zugewiesen wurde"
+msgstr "Firmware image assigned to this device for OTA updates"
+
+msgid "Zuletzt synchronisiert"
+msgstr "Last Synchronized"
+
+msgid "Zeitpunkt der letzten erfolgreichen Konfigurationssynchronisation"
+msgstr "Timestamp of the last successful configuration synchronization"
+
+msgid "Device Configuration"
+msgstr "Device Configuration"
+
+msgid "Device Configurations"
+msgstr "Device Configurations"
+
+msgid "Gemeldete Konfiguration"
+msgstr ""
+
+msgid "Vom Gerät gemeldete Konfigurationsdaten"
+msgstr ""
+
+msgid "Hat Unterschiede"
+msgstr ""
+
+msgid "Ob dieser Bericht Konfigurationsunterschiede enthält"
+msgstr ""
+
+msgid "Device Configuration Report"
+msgstr "Device Configuration Report"
+
+msgid "Device Configuration Reports"
+msgstr "Device Configuration Reports"
+
+msgid "Bericht"
+msgstr "Report"
+
+msgid "Feldname"
+msgstr ""
+
+msgid "Name des Konfigurationsfelds mit Unterschied"
+msgstr ""
+
+msgid "Server-Wert"
+msgstr ""
+
+msgid "Auf dem Server konfigurierter Wert"
+msgstr ""
+
+msgid "Geräte-Wert"
+msgstr "Device value"
+
+msgid "Vom Gerät gemeldeter Wert"
+msgstr ""
+
+msgid "Gelöst"
+msgstr ""
+
+msgid "Ob dieser Unterschied behoben wurde"
+msgstr ""
+
+msgid "Gelöst am"
+msgstr ""
+
+msgid "Configuration Difference"
+msgstr ""
+
+msgid "Configuration Differences"
+msgstr ""
+
+msgid "Firmware-Name"
+msgstr ""
+
+msgid "Lesbarer Name für diese Firmware-Version"
+msgstr ""
+
+msgid "Version"
+msgstr "Version"
+
+msgid "Versionskennung (z.B. '1.2.3' oder 'v2.0.1')"
+msgstr ""
+
+msgid "Beschreibung der Änderungen und Features in dieser Version"
+msgstr ""
+
+msgid "Firmware-Datei"
+msgstr ""
+
+msgid "Binäre Firmware-Datei (.bin) für ESP32"
+msgstr ""
+
+msgid "Dateigröße (Bytes)"
+msgstr ""
+
+msgid "Größe der Firmware-Datei in Bytes"
+msgstr ""
+
+msgid "MD5-Prüfsumme"
+msgstr ""
+
+msgid "MD5-Prüfsumme der Firmware-Datei zur Verifizierung"
+msgstr ""
+
+msgid "Ob diese Firmware-Version aktiv und für Updates verfügbar ist"
+msgstr ""
+
+msgid "Stabile Version"
+msgstr ""
+
+msgid "Ob dies eine stabile Release-Version ist"
+msgstr ""
+
+msgid "Firmware Image"
+msgstr ""
+
+msgid "Firmware Images"
+msgstr ""
+
+msgid "Email Notifications Enabled"
+msgstr ""
+
+msgid "Enable daily email notifications for configuration differences"
+msgstr ""
+
+msgid "Notification Email Address"
+msgstr ""
+
+msgid "Email address to receive daily device status reports"
+msgstr ""
+
+msgid "Last Notification Sent"
+msgstr ""
+
+msgid "Timestamp of the last notification email sent"
+msgstr ""
+
+msgid "Updated at"
+msgstr ""
+
+msgid "Device Management Settings"
+msgstr "Device Management Settings"
+
+msgid "Online"
+msgstr ""
+
+msgid "Offline"
+msgstr ""
+
+msgid "Warnung"
+msgstr "Warning"
+
+msgid "Fehler"
+msgstr ""
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Letzter Heartbeat"
+msgstr "Last heartbeat"
+
+msgid "Zeitpunkt des letzten Heartbeat-Signals vom Gerät"
+msgstr ""
+
+msgid "Erwartetes Heartbeat-Intervall (Sekunden)"
+msgstr ""
+
+msgid "Erwartetes Intervall zwischen Heartbeats in Sekunden"
+msgstr ""
+
+msgid "Offline-Schwellenwert (Sekunden)"
+msgstr ""
+
+msgid ""
+"Gerät gilt als offline, wenn kein Heartbeat für diese Dauer empfangen wurde"
+msgstr ""
+
+msgid "Aufeinanderfolgende Fehler"
+msgstr ""
+
+msgid "Anzahl aufeinanderfolgender fehlgeschlagener Anfragen"
+msgstr ""
+
+msgid "Letzte Fehlermeldung"
+msgstr ""
+
+msgid "Device Health"
+msgstr ""
+
+msgid "Device Health Status"
+msgstr ""
+
+msgid "Template-Name"
+msgstr "Template name"
+
+msgid "Lesbarer Name für dieses Template"
+msgstr ""
+
+msgid "Beschreibung, wann dieses Template verwendet werden soll"
+msgstr ""
+
+msgid "Template-Konfiguration"
+msgstr ""
+
+msgid "Konfigurationswerte für dieses Template"
+msgstr ""
+
+msgid "Ob dieses Template aktiv und verfügbar ist"
+msgstr ""
+
+msgid "Configuration Template"
+msgstr ""
+
+msgid "Configuration Templates"
+msgstr ""
+
+msgid "Konfiguration aktualisiert"
+msgstr ""
+
+msgid "API-Key generiert"
+msgstr ""
+
+msgid "API-Key rotiert"
+msgstr ""
+
+msgid "Firmware zugewiesen"
+msgstr ""
+
+msgid "Firmware aktualisiert"
+msgstr ""
+
+msgid "Konfiguration synchronisiert"
+msgstr ""
+
+msgid "Heartbeat empfangen"
+msgstr "Heartbeat received"
+
+msgid "Aktion"
+msgstr "Action"
+
+msgid "Benutzer"
+msgstr "User"
+
+msgid "Benutzer, der die Aktion durchgeführt hat (null für Systemaktionen)"
+msgstr ""
+
+msgid "Details"
+msgstr ""
+
+msgid "Zusätzliche Details zur Aktion"
+msgstr ""
+
+msgid "IP-Adresse"
+msgstr ""
+
+msgid "IP-Adresse, von der die Aktion durchgeführt wurde"
+msgstr ""
+
+msgid "Device Audit Log"
+msgstr ""
+
+msgid "Device Audit Logs"
+msgstr ""
+
+msgid "Webhook Name"
+msgstr ""
+
+msgid "Human-readable name for this webhook"
+msgstr ""
+
+msgid "Webhook URL"
+msgstr ""
+
+msgid "URL to send webhook requests to"
+msgstr ""
+
+msgid "Device Offline"
+msgstr ""
+
+msgid "Device Online"
+msgstr ""
+
+msgid "Firmware Update"
+msgstr ""
+
+msgid "API Key Rotated"
+msgstr ""
+
+msgid "Health Warning"
+msgstr ""
+
+msgid "List of events to trigger this webhook"
+msgstr ""
+
+msgid "Secret Key"
+msgstr ""
+
+msgid "Secret key for webhook authentication (optional)"
+msgstr ""
+
+msgid "Active"
+msgstr ""
+
+msgid "Whether this webhook is active"
+msgstr ""
+
+msgid "Webhook Configuration"
+msgstr ""
+
+msgid "Webhook Configurations"
+msgstr ""
+
+msgid "Kiosk Management"
+msgstr ""
+
+msgid "Human-readable name for this Kiosk device"
+msgstr ""
+
+msgid "Unique ID"
+msgstr ""
+
+msgid "Unique identifier for this device (e.g., MAC address or serial number)"
+msgstr ""
+
+msgid "Brightness"
+msgstr ""
+
+msgid "Display brightness level (0-100)"
+msgstr ""
+
+msgid "Whether this device is currently active and should display content"
+msgstr ""
+
+msgid "Command Queue"
+msgstr ""
+
+msgid ""
+"JSON array of pending hardware commands (e.g., ['RELOAD', "
+"'SET_BRIGHTNESS:50'])"
+msgstr ""
+
+msgid "Leaderboard"
+msgstr ""
+
+msgid "Eventboard"
+msgstr "Eventboard"
+
+msgid "Map"
+msgstr ""
+
+msgid "Kiosk Device"
+msgstr ""
+
+msgid "View Type"
+msgstr "View Type"
+
+msgid "Type of view to display"
+msgstr ""
+
+msgid "Optional: Filter content by specific event"
+msgstr ""
+
+msgid ""
+"Optional: Filter content to show only groups and cyclists belonging to this "
+"master group"
+msgstr ""
+
+msgid "Track Filter"
+msgstr ""
+
+msgid ""
+"Optional: Filter map view to show only selected tracks (leave empty to show "
+"all tracks)"
+msgstr ""
+
+msgid "Display Duration (seconds)"
+msgstr ""
+
+msgid "How long to display this view before rotating to the next"
+msgstr ""
+
+msgid "Order"
+msgstr ""
+
+msgid "Display order in the playlist (lower numbers first, starts at 1)"
+msgstr ""
+
+msgid "Whether this entry is active in the playlist"
+msgstr ""
+
+msgid "Playlist Entry"
+msgstr ""
+
+msgid "Playlist Entries"
+msgstr ""
+
+msgid "Maintenance"
+msgstr ""
+
+msgid "Wartung"
+msgstr ""
+
+msgid "Dieses Gerät wird derzeit gewartet."
+msgstr ""
+
+msgid "Bitte versuchen Sie es später erneut."
+msgstr ""
+
+msgid "Geräte-ID"
+msgstr "Device ID"
+
+msgid "Configuration Required"
+msgstr ""
+
+msgid "Konfiguration erforderlich"
+msgstr "Configuration required"
+
+msgid "Dieses Gerät ist aktiv, aber noch nicht konfiguriert."
+msgstr ""
+
+msgid "Bitte kontaktieren Sie den Administrator, um die Anzeige zu aktivieren."
+msgstr ""
+
+msgid "E-Mail senden"
+msgstr ""
+
+msgid "Kiosk Display"
+msgstr ""
+
+msgid "Loading playlist..."
+msgstr ""
+
+msgid "Leaderboard for"
+msgstr ""
+
+msgid "Ready to start? Get on the bikes!"
+msgstr ""
+
+msgid "Kiosk Leaderboard"
+msgstr ""
+
+msgid "Gesamt"
+msgstr "Total"
+
+msgid "Erreicht von"
+msgstr "Achieved by"
+
+msgid "Total"
+msgstr ""
+
+msgid "No groups found for"
+msgstr ""
+
+msgid "No groups found"
+msgstr ""
+
+msgid "No leaf-groups with members found."
+msgstr ""
+
+msgid "Total Kilometers"
+msgstr "Total Kilometers"
+
+msgid "[X] Groups currently pedaling"
+msgstr ""
+
+msgid "Manual Mode"
+msgstr ""
+
+msgid "MEILENSTEIN ERREICHT"
+msgstr "MILESTONE REACHED"
+
+msgid "SITZUNGS-WELTMEISTER"
+msgstr "SESSION WORLD CHAMPION"
+
+#, python-format
+msgid "hat %(km)s KM in dieser Runde geschafft!"
+msgstr "has achieved %(km)s KM in this round!"
+
+msgid "MCC Live Map"
+msgstr "MCC Live Map"
+
+msgid "Live-Map & Wettbewerb"
+msgstr "Live Map & Competition"
+
+msgid "Meilenstein erreicht!"
+msgstr "Milestone reached!"
+
+msgid "Aktuell radelnd"
+msgstr "Currently cycling"
+
+msgid "Karte"
+msgstr "Map"
+
+msgid "Ranking"
+msgstr "Ranking"
+
+msgid "Ebenen anzeigen/verstecken"
+msgstr ""
+
+msgid "Routen"
+msgstr "Routes"
+
+msgid "Alle Routen"
+msgstr "All Routes"
+
+msgid "Alle Gruppen"
+msgstr "All Groups"
+
+msgid "Steuerung anzeigen/verstecken"
+msgstr ""
+
+msgid "Alle Top-Gruppen"
+msgstr "All Top Groups"
+
+msgid "Filter:"
+msgstr "Filter:"
+
+msgid "Weitere Filter"
+msgstr "More Filters"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Ziel"
+msgstr ""
+
+msgid "Ziel erreicht!"
+msgstr "Goal reached!"
+
+msgid "Fehler beim Laden der Avatar-Daten"
+msgstr "Error loading avatar data"
+
+msgid "Herzlichen Glückwunsch!"
+msgstr "Congratulations!"
+
+msgid "Keine Routen"
+msgstr "No routes"
+
+msgid "Keine Gruppen"
+msgstr "No groups"
+
+msgid "Aktiver Radler"
+msgstr ""
+
+msgid "MCC Live Karte"
+msgstr "MCC Live Map"
+
+msgid "Anzeige"
+msgstr "Display"
+
+msgid "Geräte"
+msgstr "Devices"
+
+msgid "Gruppen-Typ"
+msgstr "Group type"
+
+msgid "Alle"
+msgstr "All"
+
+msgid "Suche"
+msgstr "Search"
+
+msgid "Suchen nach Name/ID..."
+msgstr "Search by name/ID..."
+
+msgid "Lade Daten..."
+msgstr "Loading data..."
+
+msgid "Impressum"
+msgstr "Legal Notice"
+
+msgid "Distanz"
+msgstr "Distance"
+
+msgid "Frequently Asked Questions"
+msgstr "Frequently Asked Questions"
+
+msgid "How does the live map work?"
+msgstr "How does the live map work?"
+
+msgid ""
+"The live map shows the current positions of all active cyclists in real-"
+"time. You can filter between different routes and groups to customize the "
+"view."
+msgstr ""
+"The live map shows the current positions of all active cyclists in real-"
+"time. You can filter between different routes and groups to customize the "
+"view."
+
+msgid "What does the ranking show?"
+msgstr "What does the ranking show?"
+
+msgid ""
+"The ranking shows the current mileage of all groups and cyclists, sorted by "
+"distance traveled. You can filter by specific groups."
+msgstr ""
+"The ranking shows the current mileage of all groups and cyclists, sorted by "
+"distance traveled. You can filter by specific groups."
+
+msgid "How does the map update?"
+msgstr "How does the map update?"
+
+msgid ""
+"The map updates automatically every 20 seconds. Positions and mileage are "
+"updated in real-time as soon as new data is available."
+msgstr ""
+"The map updates automatically every 20 seconds. Positions and mileage are "
+"updated in real-time as soon as new data is available."
+
+msgid "Open Full Documentation"
+msgstr "Open Full Documentation"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "Legal Notice"
+msgstr "Legal Notice"
+
+msgid "Privacy Policy"
+msgstr "Privacy Policy"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "AKTUELL AM START"
+msgstr "CURRENTLY STARTED"
+
+msgid "Warten auf Radler..."
+msgstr "Waiting for cyclists..."
+
+msgid "KILOMETER-WELTMEISTER"
+msgstr "KILOMETER WORLD CHAMPION"
+
+msgid "Rang"
+msgstr "Rank"
+
+msgid "Station"
+msgstr "Station"
+
+msgid "Session"
+msgstr ""
+
+msgid "Keine aktiven Gruppen gefunden."
+msgstr "No active groups found."
+
+msgid "Zeitraum"
+msgstr ""
+
+msgid "Ende"
+msgstr ""
+
+msgid "Zurück zu Alle Gruppen"
+msgstr "Back to all groups"
+
+msgid "Aktuelle Ansicht"
+msgstr "Current view"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Gesamt-km"
+msgstr "Total km"
+
+msgid "Coins"
+msgstr "Coins"
+
+msgid "Keine Daten gefunden."
+msgstr "No data found."
+
+msgid "Teilnehmende Gruppe"
+msgstr "Participating group"
+
+msgid "Teilnehmende Gruppen"
+msgstr "Participating groups"
+
+msgid "Aktionen"
+msgstr "Actions"
+
+msgid ""
+"Die Gruppe '{}' hat bereits {} Reisekilometer. Bitte verwenden Sie die "
+"'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen."
+msgstr ""
+
+msgid "Leaf-Gruppe Beitrag"
+msgstr ""
+
+msgid "Leaf-Gruppen Beiträge (Ranking)"
+msgstr "Leaf Group Contributions (Ranking)"
+
+msgid "Parent-Gruppe"
+msgstr "Parent group"
+
+msgid "Beitrag (km)"
+msgstr "Contribution (km)"
+
+msgid "Anteil"
+msgstr "Share"
+
+msgid "Erreichter Meilenstein"
+msgstr "Achieved milestone"
+
+msgid "Erreichte Meilensteine"
+msgstr "Achieved milestones"
+
+msgid ""
+"Die Datenbank ist derzeit ausgelastet. Bitte versuchen Sie es in ein paar "
+"Sekunden erneut."
+msgstr ""
+
+msgid "API-Key-Verwaltung"
+msgstr "API Key Management"
+
+msgid ""
+"Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie den "
+"Button 'API-Key generieren', um einen neuen Key zu erstellen."
+msgstr "Device-specific API key for secure authentication. Use the 'Generate API Key' button to create a new key."
+
+msgid "Authentifizierung (Veraltet)"
+msgstr "Authentication (Deprecated)"
+
+msgid "Veraltet: Verwenden Sie gerätespezifische API-Keys."
+msgstr "Deprecated: Use device-specific API keys."
+
+msgid "Geräte-Identifikation"
+msgstr "Device Identification"
+
+msgid "Kommunikation"
+msgstr "Communication"
+
+msgid "WLAN-Einstellungen"
+msgstr "WiFi settings"
+
+msgid "Geräte-Verhalten"
+msgstr "Device behavior"
+
+msgid "Hardware"
+msgstr "Hardware"
+
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid ""
+"Speichern Sie zuerst die Gerätekonfiguration, um einen API-Key zu generieren"
+msgstr "First save the device configuration to generate an API key"
+
+msgid "API-Key-Aktionen"
+msgstr "API Key Actions"
+
+msgid "Gruppeninformationen"
+msgstr "Group information"
+
+msgid "Darstellung"
+msgstr ""
+
+msgid ""
+"Verwenden Sie einen <a href=\"https://htmlcolorcodes.com/color-picker/\" "
+"target=\"_blank\">Farbwähler</a> oder <a href=\"https://colorpicker.me/\" "
+"target=\"_blank\">Color Picker</a> um den Hex-Code zu ermitteln."
+msgstr ""
+
+msgid "Statistiken"
+msgstr "Statistics"
+
+msgid "Verwaltung"
+msgstr ""
+
+msgid "Gesamtkilometer"
+msgstr "Total kilometers"
+
+msgid "Keine"
+msgstr ""
+
+msgid "Kein Logo"
+msgstr "No logo"
+
+msgid "Logo Vorschau"
+msgstr "Logo preview"
+
+msgid "Farbvorschau"
+msgstr "Color preview"
+
+msgid ""
+"Wählen Sie eine Gruppe aus. Ein Radler darf nur einer Gruppe zugeordnet "
+"werden."
+msgstr ""
+
+msgid "Kein Avatar"
+msgstr "No avatar"
+
+msgid "Avatar Vorschau"
+msgstr "Avatar preview"
+
+msgid "Kumulative Kilometer"
+msgstr "Cumulative Kilometers"
+
+msgid "TOP Gruppe"
+msgstr "Top Group"
+
+msgid ""
+"Speichern Sie zuerst die Reiseroute, um das Ranking der Top-Gruppen "
+"anzuzeigen."
+msgstr ""
+
+msgid "Noch keine Gruppen auf dieser Reiseroute."
+msgstr ""
+
+msgid "Top-Gruppen Ranking"
+msgstr "Top Groups Ranking"
+
+msgid "Zugeordnete Gruppen"
+msgstr "Assigned groups"
+
+msgid "Restart trip(s) and save to history"
+msgstr ""
+
+msgid "Save trip progress to history"
+msgstr ""
+
+msgid "In Reise verwendet"
+msgstr "Used in trip"
+
+msgid "Reisestatus"
+msgstr "Trip status"
+
+msgid "Leaf-Gruppen Beiträge"
+msgstr "Leaf Group Contributions"
+
+msgid ""
+"Ranking der Leaf-Gruppen basierend auf ihrem Beitrag zur Reise der Parent-"
+"Gruppe."
+msgstr "Ranking of leaf groups based on their contribution to the parent group's trip."
+
+msgid ""
+"Speichern Sie zuerst den Reisestatus, um die Leaf-Gruppen Beiträge "
+"anzuzeigen."
+msgstr ""
+
+msgid "Diese Gruppe hat keine Leaf-Gruppen."
+msgstr ""
+
+msgid "Noch keine Beiträge von Leaf-Gruppen vorhanden."
+msgstr ""
+
+msgid "Reisestatus nicht gefunden."
+msgstr "Trip status not found."
+
+msgid ""
+"Reise für Gruppe '{}' wurde abgebrochen. Die Gruppe kann nun einer neuen "
+"Reise zugeordnet werden."
+msgstr ""
+
+msgid ""
+"{} Reise(n) wurde(n) abgebrochen. Die Gruppen können nun neuen Reisen "
+"zugeordnet werden."
+msgstr ""
+
+msgid "Ausgewählte Reisen abbrechen"
+msgstr ""
+
+msgid "Reisezeit"
+msgstr "Travel time"
+
+msgid "Erreichung"
+msgstr "Achievement"
+
+msgid ""
+"Diese Informationen sind historische Daten und können nicht mehr geändert "
+"werden. Die 'Gruppe' ist die Leaf-Gruppe (z.B. Klasse), die den Meilenstein "
+"erreicht hat. Die 'Erreichte Distanz' ist die Reise-Distanz dieser Leaf-"
+"Gruppe zum Zeitpunkt des Erreichens."
+msgstr "This information is historical data and cannot be changed. The 'Group' is the leaf group (e.g., class) that reached the milestone. The 'Achieved Distance' is the travel distance of this leaf group at the time of achievement."
+
+msgid ""
+"Die Belohnung wurde zum Zeitpunkt des Erreichens des Meilensteins "
+"gespeichert und bleibt unverändert, auch wenn die Meilenstein-Belohnung "
+"später geändert wird."
+msgstr "The reward was saved at the time the milestone was reached and remains unchanged, even if the milestone reward is changed later."
+
+msgid "Top-Gruppe"
+msgstr "Top group"
+
+msgid "Gruppen-Pfad"
+msgstr "Group path"
+
+msgid "Meilenstein-Erreichung nicht gefunden."
+msgstr "Milestone achievement not found."
+
+msgid "Die Belohnung wurde bereits eingelöst."
+msgstr ""
+
+msgid "Keine Belohnung für diesen Meilenstein definiert."
+msgstr "No reward defined for this milestone."
+
+msgid "Belohnung erfolgreich eingelöst."
+msgstr ""
+
+msgid "{} Event(s) wurden in die Historie gespeichert und zurückgesetzt."
+msgstr ""
+
+msgid "Event(s) in Historie speichern und zurücksetzen"
+msgstr "Save event(s) to history and reset"
+
+msgid "Event wurde in die Historie gespeichert und zurückgesetzt."
+msgstr "Event has been saved to history and reset."
+
+msgid "Kilometer"
+msgstr "Kilometers"
+
+msgid ""
+"Die Order-Nummer {} ist bereits vergeben. Jede Order-Nummer darf nur einmal "
+"pro Gerät verwendet werden."
+msgstr ""
+
+msgid "Device Information"
+msgstr ""
+
+msgid "Hardware Control"
+msgstr ""
+
+msgid ""
+"Brightness: 0-100. Command Queue: JSON array of pending commands (e.g., "
+"['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
+msgstr ""
+
+msgid "Timestamps"
+msgstr ""
+
+msgid "Aktive Einträge"
+msgstr "Active Entries"
+
+msgid "Playlist URL"
+msgstr ""
+
+msgid "Ausstehende Befehle"
+msgstr "Pending Commands"
+
+msgid "Reload command queued for device '{}'."
+msgstr ""
+
+msgid "Reboot command queued for device '{}'."
+msgstr ""
+
+msgid "Set brightness command queued for device '{}' to {}%."
+msgstr ""
+
+msgid "Reload Device"
+msgstr ""
+
+msgid "Reboot Device"
+msgstr ""
+
+msgid "Set Brightness: 50%"
+msgstr ""
+
+msgid "Set Brightness: 100%"
+msgstr ""
+
+msgid "Konfigurationsstatus"
+msgstr "Configuration Status"
+
+msgid "Berichts-Informationen"
+msgstr ""
+
+msgid "Offene Unterschiede"
+msgstr ""
+
+msgid "Unterschieds-Informationen"
+msgstr ""
+
+msgid "Werte"
+msgstr ""
+
+msgid "Firmware-Informationen"
+msgstr ""
+
+msgid "Zeitstempel"
+msgstr "Timestamp"
+
+msgid "Dateigröße"
+msgstr ""
+
+msgid "Zugewiesene Geräte"
+msgstr ""
+
+msgid "Popup-Dauer"
+msgstr "Popup Duration"
+
+msgid "Anzeigedauer der Popups in Sekunden (1-300)"
+msgstr "Display duration of popups in seconds (1-300)"
+
+msgid "Kilometer-Weltmeister Popup Styling"
+msgstr "Kilometer World Champion Popup Styling"
+
+msgid ""
+"Hintergrundfarbe und Transparenz des Kilometer-Weltmeister Popups. Verwenden "
+"Sie einen <a href='https://htmlcolorcodes.com/color-picker/' "
+"target='_blank'>Farbwähler</a> oder <a href='https://colorpicker.me/' "
+"target='_blank'>Color Picker</a> um den Hex-Code zu ermitteln."
+msgstr ""
+"Background color and transparency of the Kilometer World Champion popup. Use "
+"a <a href='https://htmlcolorcodes.com/color-picker/' target='_blank'>color "
+"picker</a> or <a href='https://colorpicker.me/' target='_blank'>Color "
+"Picker</a> to determine the hex code."
+
+msgid "Meilenstein Popup Styling"
+msgstr "Milestone Popup Styling"
+
+msgid ""
+"Hintergrundfarbe und Transparenz des Meilenstein Popups. Verwenden Sie einen "
+"<a href='https://htmlcolorcodes.com/color-picker/' "
+"target='_blank'>Farbwähler</a> oder <a href='https://colorpicker.me/' "
+"target='_blank'>Color Picker</a> um den Hex-Code zu ermitteln."
+msgstr ""
+"Background color and transparency of the milestone popup. Use a <a "
+"href='https://htmlcolorcodes.com/color-picker/' target='_blank'>color "
+"picker</a> or <a href='https://colorpicker.me/' target='_blank'>Color "
+"Picker</a> to determine the hex code."
+
+msgid "Keine Farbe definiert"
+msgstr "No color defined"
+
+msgid "Farbvorschau (Start)"
+msgstr "Color Preview (Start)"
+
+msgid "Farbvorschau (Ende)"
+msgstr "Color Preview (End)"
+
+msgid "E-Mail-Benachrichtigungen"
+msgstr "Email Notifications"
+
+msgid ""
+"Konfigurieren Sie tägliche E-Mail-Benachrichtigungen für "
+"Gerätekonfigurationsunterschiede."
+msgstr ""
+"Configure daily email notifications for device configuration differences."
+
+msgid "Geräte-Informationen"
+msgstr "Device information"
+
+msgid "Gesundheitsstatus"
+msgstr "Health status"
+
+msgid "Konfiguration"
+msgstr "Configuration"
+
+msgid "Online-Status"
+msgstr ""
+
+msgid "Template-Informationen"
+msgstr ""
+
+msgid ""
+"JSON-Objekt mit Konfigurationswerten. Beispiel: {'send_interval_seconds': "
+"60, 'wheel_size': 26}"
+msgstr ""
+
+msgid "Protokoll-Informationen"
+msgstr ""
+
+msgid "Webhook-Informationen"
+msgstr ""
+
+msgid ""
+"Wählen Sie Ereignisse aus, die diesen Webhook auslösen sollen. Geheimer "
+"Schlüssel ist optional für die Authentifizierung."
+msgstr ""
+
+msgid "Ereignisse"
+msgstr ""
+
+msgid "Massenerstellung: Schule, Klassen und Radler"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Schulname ist erforderlich."
+msgstr "School name is required."
+
+msgid "Schule \"{}\" existiert bereits. Klassen werden hinzugefügt."
+msgstr ""
+
+msgid "Erfolgreich erstellt: 1 Schule, {} Klassen, {} Spieler"
+msgstr ""
+
+msgid "Fehler beim Erstellen: {}"
+msgstr ""
+
+msgid "Massenerstellung: Schule, Klassen und Spieler"
+msgstr ""
+
+msgid "Historical Reports & Analytics"
+msgstr ""
+
+msgid "No Group"
+msgstr ""
+
+msgid "Event not found"
+msgstr ""
+
+msgid "Parent group not found"
+msgstr ""
+
+msgid "Group not found"
+msgstr ""
+
+msgid "Keine Gruppen ausgewählt"
+msgstr "No groups selected"
+
+msgid "Schule"
+msgstr ""
+
+msgid "Gruppentyp *"
+msgstr "Group type *"
+
+msgid "Keine Gruppentypen verfügbar"
+msgstr "No group types available"
+
+msgid "Schulname *"
+msgstr ""
+
+msgid "Kurzname (optional)"
+msgstr "Short name (optional)"
+
+msgid "Wird für Klassen-Kurznamen verwendet (z.B. 'SchuleC')"
+msgstr "Used for class short names (e.g. 'SchoolC')"
+
+msgid "Klassen"
+msgstr ""
+
+msgid "Klassen auswählen"
+msgstr ""
+
+msgid "Höchste Klassenstufe (1-13)"
+msgstr ""
+
+msgid "Standard-Anzahl Radler pro Klasse"
+msgstr ""
+
+msgid ""
+"Dieser Wert wird als Standard für alle generierten Klassen verwendet. Kann "
+"pro Klasse individuell angepasst werden."
+msgstr ""
+
+msgid "Klassen generieren"
+msgstr ""
+
+msgid "Standardwerte für Radler"
+msgstr ""
+
+msgid "Vorschau"
+msgstr "Preview"
+
+msgid "Erstellen"
+msgstr "Create"
+
+msgid "Bitte wählen Sie mindestens einen Klassenbuchstaben aus."
+msgstr ""
+
+msgid "Klasse"
+msgstr ""
+
+msgid "und"
+msgstr ""
+
+msgid "weitere"
+msgstr ""
+
+msgid "Zusammenfassung"
+msgstr ""
+
+msgid "1 Schule"
+msgstr ""
+
+msgid "Event Management"
+msgstr ""
+
+msgid ""
+"Are you sure you want to save the current event progress to history and "
+"reset all group statuses?"
+msgstr ""
+
+msgid "Save event to history and reset"
+msgstr ""
+
+msgid "Massenerstellung: Schule, Klassen & Radler"
+msgstr ""
+
+msgid "Trip Management"
+msgstr ""
+
+msgid ""
+"Are you sure you want to restart this trip? Current progress will be saved "
+"to history."
+msgstr ""
+
+msgid "Restart Trip"
+msgstr ""
+
+msgid "Save current trip progress to history?"
+msgstr ""
+
+msgid "Save to History"
+msgstr ""
+
+msgid "Django administration"
+msgstr "Django administration"
+
+msgid "View site"
+msgstr "View site"
+
+msgid "Documentation"
+msgstr "Documentation"
+
+msgid "Change password"
+msgstr "Change password"
+
+msgid "Log out"
+msgstr "Log out"
+
+msgid "View Reports"
+msgstr ""
+
+msgid "View Breakdown"
+msgstr ""
+
+msgid "Information"
+msgstr "Information"
+
+msgid "1. Responsible Party"
+msgstr ""
+
+msgid "The responsible party for data processing on this website is:"
+msgstr ""
+
+msgid "MyCyclingCity (MCC)"
+msgstr ""
+
+msgid "Email: mcc-kontakt@wirzaehlen.de"
+msgstr "Email: mcc-kontakt@wirzaehlen.de"
+
+msgid "Website: https://mycyclingcity.net"
+msgstr ""
+
+msgid "2. Data Collection and Processing"
+msgstr ""
+
+msgid "2.1 Server Logs"
+msgstr ""
+
+msgid ""
+"When you visit our website, our server automatically collects and stores "
+"information in server log files that your browser transmits to us. This "
+"includes:"
+msgstr ""
+
+msgid "IP address"
+msgstr ""
+
+msgid "Date and time of the request"
+msgstr ""
+
+msgid "Requested URL"
+msgstr ""
+
+msgid "HTTP status code"
+msgstr ""
+
+msgid "Browser type and version"
+msgstr ""
+
+msgid "Operating system"
+msgstr ""
+
+msgid ""
+"This data is collected for technical reasons to ensure the functionality and "
+"security of the website. The data is automatically deleted after 7 days."
+msgstr ""
+
+msgid "2.2 Session Data"
+msgstr ""
+
+msgid "To provide our services, we store the following data in your session:"
+msgstr ""
+
+msgid "Language preference (DE/EN)"
+msgstr ""
+
+msgid "Device assignments (for game functionality)"
+msgstr ""
+
+msgid "Start distances (for game functionality)"
+msgstr ""
+
+msgid "Game status information"
+msgstr ""
+
+msgid "Cyclist kilometer data (for map display)"
+msgstr ""
+
+msgid ""
+"This data is stored temporarily in your session and is automatically deleted "
+"when you close your browser or after a period of inactivity."
+msgstr ""
+
+msgid "3. Cookies"
+msgstr ""
+
+msgid ""
+"Our website uses cookies. Cookies are small text files that are stored on "
+"your device when you visit a website."
+msgstr ""
+
+msgid "3.1 Technically Necessary Cookies"
+msgstr ""
+
+msgid ""
+"We use the following technically necessary cookies that are required for the "
+"website to function:"
+msgstr ""
+
+msgid "Cookie Name"
+msgstr ""
+
+msgid "Purpose"
+msgstr ""
+
+msgid "Storage Duration"
+msgstr "Storage Duration"
+
+msgid ""
+"Stores your session ID to maintain your session state (language preference, "
+"game data)"
+msgstr ""
+
+msgid "Until browser is closed or session expires (max. 2 weeks)"
+msgstr ""
+
+msgid "Protects against Cross-Site Request Forgery (CSRF) attacks"
+msgstr ""
+
+msgid "1 year"
+msgstr ""
+
+msgid ""
+"These cookies are technically necessary and cannot be deactivated. They are "
+"set automatically when you use our website."
+msgstr ""
+
+msgid "3.2 Cookie Settings"
+msgstr ""
+
+msgid ""
+"Since we only use technically necessary cookies, no cookie consent banner is "
+"required. However, you can control cookies through your browser settings:"
+msgstr ""
+
+msgid "You can delete cookies at any time in your browser settings"
+msgstr ""
+
+msgid "You can configure your browser to notify you when cookies are set"
+msgstr ""
+
+msgid "You can generally prevent cookies from being set"
+msgstr ""
+
+msgid "Note:"
+msgstr ""
+
+msgid ""
+"If you disable cookies, some functions of our website may not work properly."
+msgstr ""
+
+msgid "4. Purpose and Legal Basis of Data Processing"
+msgstr ""
+
+msgid "We process your personal data for the following purposes:"
+msgstr ""
+
+msgid "Provision and operation of the website"
+msgstr ""
+
+msgid "Ensuring the security and functionality of the website"
+msgstr ""
+
+msgid "Provision of game functionality (device assignments, distance tracking)"
+msgstr ""
+
+msgid "Display of live map data"
+msgstr ""
+
+msgid "Storage of language preferences"
+msgstr ""
+
+msgid ""
+"The legal basis for this processing is Art. 6 para. 1 lit. f GDPR "
+"(legitimate interest) and Art. 6 para. 1 lit. b GDPR (fulfillment of "
+"contract/pre-contractual measures)."
+msgstr ""
+
+msgid "5. Data Storage Duration"
+msgstr ""
+
+msgid ""
+"We store your personal data only for as long as necessary for the respective "
+"purpose:"
+msgstr ""
+
+msgid "Server log files: 7 days"
+msgstr ""
+
+msgid ""
+"Session data: Until the browser is closed or after a period of inactivity "
+"(max. 2 weeks)"
+msgstr ""
+
+msgid "CSRF token: 1 year"
+msgstr ""
+
+msgid "6. Data Sharing"
+msgstr ""
+
+msgid "We do not share your personal data with third parties, except:"
+msgstr ""
+
+msgid "If we are legally obligated to do so (e.g., by court order)"
+msgstr ""
+
+msgid ""
+"If this is necessary to protect our rights or the rights of third parties"
+msgstr ""
+
+msgid "We do not sell or rent your personal data to third parties."
+msgstr ""
+
+msgid "7. Your Rights"
+msgstr ""
+
+msgid ""
+"Under the General Data Protection Regulation (GDPR), you have the following "
+"rights regarding your personal data:"
+msgstr ""
+
+msgid "Right to information (Art. 15 GDPR)"
+msgstr ""
+
+msgid ""
+"You can request information about the personal data we process about you."
+msgstr ""
+
+msgid "Right to rectification (Art. 16 GDPR)"
+msgstr ""
+
+msgid "You can request the correction of inaccurate data."
+msgstr ""
+
+msgid "Right to erasure (Art. 17 GDPR)"
+msgstr ""
+
+msgid "You can request the deletion of your data."
+msgstr ""
+
+msgid "Right to restriction of processing (Art. 18 GDPR)"
+msgstr ""
+
+msgid "You can request the restriction of data processing."
+msgstr ""
+
+msgid "Right to data portability (Art. 20 GDPR)"
+msgstr ""
+
+msgid "You can request the transfer of your data."
+msgstr ""
+
+msgid "Right to object (Art. 21 GDPR)"
+msgstr ""
+
+msgid "You can object to the processing of your data."
+msgstr ""
+
+msgid "Right to lodge a complaint (Art. 77 GDPR)"
+msgstr ""
+
+msgid "You can file a complaint with a supervisory authority."
+msgstr ""
+
+msgid ""
+"To exercise these rights, please contact us using the contact information "
+"provided in section 1."
+msgstr ""
+
+msgid "8. Data Security"
+msgstr ""
+
+msgid ""
+"We use technical and organizational measures to protect your personal data "
+"against loss, destruction, manipulation, and unauthorized access. These "
+"measures are continuously reviewed and adapted to the state of the art."
+msgstr ""
+
+msgid ""
+"All data transmission is encrypted using HTTPS (SSL/TLS). Session cookies "
+"are only transmitted over secure connections in production."
+msgstr ""
+
+msgid "9. Changes to this Privacy Policy"
+msgstr ""
+
+msgid ""
+"We reserve the right to update this privacy policy to reflect changes in our "
+"practices or for legal, operational, or regulatory reasons. The current "
+"version is always available on this page."
+msgstr ""
+
+msgid "Last updated:"
+msgstr ""
+
+msgid "10. Contact"
+msgstr ""
+
+msgid ""
+"If you have questions about this privacy policy or wish to exercise your "
+"rights, please contact us:"
+msgstr ""
+
+#~ msgid "Stündliche Metrik"
+#~ msgstr "Hourly metric"
+
+#~ msgid "Stündliche Metriken"
+#~ msgstr "Hourly metrics"
+
+#~ msgid "Aktueller Sitzungs-Status"
+#~ msgstr "Current session status"
+
+#~ msgid "Aktuelle Sitzungs-Stände"
+#~ msgstr "Current session states"
+
+#~ msgid "Meilensteine"
+#~ msgstr "Milestones"
+
+#~ msgid "Reise-Historien"
+#~ msgstr "Travel histories"
+
+#~ msgid "Event-Historien"
+#~ msgstr "Event histories"
+
+#, fuzzy
+#~ msgid "Startpunkt"
+#~ msgstr "Start point"

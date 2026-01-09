@@ -1,0 +1,131 @@
+{# mcc/map/templates/map/table_fragment.html #}
+{% load i18n map_filters %}
+
+<div id="table-content-area" class="table-scroll">
+    {# CRITICAL CORRECTION: Must be in a form so hx-include works in mcc_map.html. Here we use hidden inputs #}
+    <input type="hidden" name="list_type" value="{{ list_type }}">
+    
+    {# BREADCRUMB / BACK LOGIC #}
+    {% if parent_name %}
+        <div style="margin-bottom: 10px;">
+            <button hx-get="{% url 'get_map_table_data' %}"
+                    hx-target="#list-content-container" 
+                    hx-swap="innerHTML"
+                    {# Include all filters from main controller #}
+                    hx-include="#table-controls input, #table-controls select" 
+                    {# Go to top-level group view #}
+                    hx-vals='{"list_type": "groups", "parent_name": "", "parent_type": ""}' 
+                    style="padding: 5px 10px; cursor: pointer;">
+                &larr; {% trans "Zurück zu Alle Gruppen" %}
+            </button>
+            <span style="margin-left: 10px;">{% trans "Aktuelle Ansicht" %}: <strong>{{ parent_name }}</strong></span>
+        </div>
+    {% endif %}
+
+    <table>
+        <thead>
+            <tr>
+                {% with current_sort_dir=request.GET.sort_dir|default:'desc' next_sort_dir=sort_dir %}
+                
+                {# Name / Benutzer-ID #}
+                <th hx-get="{% url 'get_map_table_data' %}" 
+                    hx-target="#table-content-area" 
+                    hx-swap="outerHTML"
+                    hx-vals='{
+                        "list_type": "{{ list_type }}", 
+                        "sort_by": "name", 
+                        "sort_dir": "{{ next_sort_dir }}", 
+                        "search": "{{ request.GET.search|default:'' }}", 
+                        "group_type": "{{ request.GET.group_type|default:'all' }}",
+                        "parent_name": "{{ parent_name|default:'' }}", 
+                        "parent_type": "{{ parent_type|default:'' }}"
+                    }'
+                    style="cursor: pointer;">
+                    {% trans "Name" %}
+                    {% if request.GET.sort_by == 'name' %}{{ current_sort_dir|lower|slice:"0:1"|default:'' }}{% endif %}
+                </th>
+                
+                {# Gesamt-km #}
+                <th hx-get="{% url 'get_map_table_data' %}" 
+                    hx-target="#table-content-area" 
+                    hx-swap="outerHTML"
+                    hx-vals='{
+                        "list_type": "{{ list_type }}", 
+                        "sort_by": "distance", 
+                        "sort_dir": "{{ next_sort_dir }}", 
+                        "search": "{{ request.GET.search|default:'' }}", 
+                        "group_type": "{{ request.GET.group_type|default:'all' }}",
+                        "parent_name": "{{ parent_name|default:'' }}",
+                        "parent_type": "{{ parent_type|default:'' }}"
+                    }'
+                    style="cursor: pointer;">
+                    {% trans "Gesamt-km" %}
+                    {% if request.GET.sort_by == 'distance' %}{{ current_sort_dir|lower|slice:"0:1"|default:'' }}{% endif %}
+                </th>
+                
+                {% if list_type != 'devices' %}
+                {# Coins (not for devices) #}
+                <th hx-get="{% url 'get_map_table_data' %}" 
+                    hx-target="#table-content-area" 
+                    hx-swap="outerHTML"
+                    hx-vals='{
+                        "list_type": "{{ list_type }}", 
+                        "sort_by": "coins", 
+                        "sort_dir": "{{ next_sort_dir }}", 
+                        "search": "{{ request.GET.search|default:'' }}", 
+                        "group_type": "{{ request.GET.group_type|default:'all' }}",
+                        "parent_name": "{{ parent_name|default:'' }}",
+                        "parent_type": "{{ parent_type|default:'' }}"
+                    }'
+                    style="cursor: pointer;">
+                    {% trans "Coins" %}
+                    {% if request.GET.sort_by == 'coins' %}{{ current_sort_dir|lower|slice:"0:1"|default:'' }}{% endif %}
+                </th>
+                {% endif %}
+                {% endwith %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in data %}
+            
+            {# Hierarchischer Klick: Zeile nur klickbar machen, wenn es sich um Gruppen handelt #}
+            {% with is_drillable=False %}
+                {% if list_type == 'groups' %}
+                    {% with is_drillable=True %}{% endwith %}
+                {% endif %}
+            {% endwith %}
+            
+            <tr {% if is_drillable %}
+                    hx-get="{% url 'get_map_table_data' %}"
+                    hx-target="#list-content-container" 
+                    hx-swap="innerHTML"
+                    {# KRITISCHE KORREKTUR: Filter mitsenden #}
+                    hx-include="#table-controls input, #table-controls select" 
+                    {# Gehe zur Radler-Liste (list_type: cyclists), filtere nach dem Namen der angeklickten Gruppe #}
+                    hx-vals='{
+                        "list_type": "cyclists", 
+                        "parent_name": "{{ item.name }}", 
+                        "parent_type": "{{ list_type }}" 
+                    }'
+                    style="cursor: pointer; background-color: #f9f9f9;"
+                {% endif %}>
+                
+                <td>
+                    {% if is_drillable %}
+                        &#x25B6; {% endif %}
+                    {{ item.name }} 
+                    {% if item.type %}
+                        <span style="font-size: 0.8em; color: #777;">({{ item.type }})</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.distance|default:0|format_km_de:2 }} km</td>
+                {% if list_type != 'devices' %}
+                <td>{{ item.coins }}</td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">{% trans "Keine Daten gefunden." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

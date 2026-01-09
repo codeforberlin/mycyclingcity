@@ -1,0 +1,137 @@
+name: mcc-esp32 CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mcc-esp32/**'
+      - '.github/workflows/mcc-esp32-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'mcc-esp32/**'
+      - '.github/workflows/mcc-esp32-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and Test ESP32 Firmware
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./mcc-esp32
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Cache PlatformIO libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/lib
+          key: ${{ runner.os }}-pio-${{ hashFiles('mcc-esp32/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Cache PlatformIO toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/platforms
+            ~/.platformio/toolchains
+          key: ${{ runner.os }}-pio-toolchains-${{ hashFiles('mcc-esp32/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-toolchains-
+
+      - name: List PlatformIO environments
+        run: pio env list
+
+      - name: Build all environments
+        run: |
+          echo "Building all PlatformIO environments..."
+          pio run
+        continue-on-error: false
+
+      - name: Run native unit tests
+        run: |
+          echo "Running native unit tests..."
+          pio test -e native -v
+        continue-on-error: false
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firmware-binaries
+          path: |
+            mcc-esp32/.pio/build/**/*.bin
+            mcc-esp32/.pio/build/**/*.elf
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            mcc-esp32/.pio/test/**/test_output.xml
+            mcc-esp32/.pio/test/**/test_output.json
+          retention-days: 7
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: always()
+    
+    defaults:
+      run:
+        working-directory: ./mcc-esp32
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: mcc-esp32/.pio/test
+
+      - name: Display test summary
+        run: |
+          echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f .pio/test/native/test_output.xml ]; then
+            echo "### Native Tests" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat .pio/test/native/test_output.xml | grep -E "(testsuite|testcase)" | head -20 >> $GITHUB_STEP_SUMMARY || true
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
+          fi
+

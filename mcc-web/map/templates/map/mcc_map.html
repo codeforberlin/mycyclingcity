@@ -1,0 +1,217 @@
+{% load i18n l10n %}
+{% load static %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% trans "MCC Live Karte" %}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script> <style>
+        /* ... CSS aus mcc_map.html ... */
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .info-panel { position: absolute; top: 10px; right: 10px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1000; max-height: 90vh; overflow-y: auto; max-width: 350px; }
+        .controls { padding-bottom: 10px; border-bottom: 1px solid #ccc; margin-bottom: 10px; }
+        .controls select { width: 100%; padding: 5px; font-size: 14px; margin-bottom: 5px; }
+        .search-container { margin-bottom: 10px; }
+        .search-container input { width: 100%; padding: 5px; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 14px; }
+        th { background-color: #f2f2f2; }
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: block; }
+        .htmx-request.loading-overlay .info-panel { opacity: 0.5; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="info-panel">
+        <h1>{% trans "MCC Live Karte" %}</h1>
+
+        <div class="controls" id="table-controls">
+
+            <label for="listTypeSelect">{% trans "Anzeige" %}:</label>
+            <select id="listTypeSelect"
+                    name="list_type"
+                    hx-get="{% url 'get_map_table_data' %}"
+                    hx-target="#list-content-container"
+                    hx-swap="innerHTML"
+                    hx-indicator="#loading-indicator"
+                    hx-trigger="change"
+                    hx-include="#groupTypeFilterSelect, #searchInput">
+                <option value="groups">{% trans "Gruppen" %}</option>
+                <option value="devices">{% trans "Geräte" %}</option>
+                <option value="cyclists">{% trans "Benutzer" %}</option>
+            </select>
+
+            <div id="groupTypeFilterDiv">
+                <label for="groupTypeFilterSelect">{% trans "Gruppen-Typ" %}:</label>
+                <select id="groupTypeFilterSelect"
+                        name="group_type"
+                        hx-get="{% url 'get_map_table_data' %}"
+                        hx-target="#list-content-container"
+                        hx-swap="innerHTML"
+                        hx-indicator="#loading-indicator"
+                    hx-trigger="change"
+                    hx-include="#searchInput, #listTypeSelect">
+                    <option value="all">{% trans "Alle" %}</option>
+                    {% for type in group_types %}
+                        <option value="{{ type }}">{{ type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="search-container">
+                <label for="searchInput">{% trans "Suche" %}:</label>
+                <input type="text" id="searchInput" name="search"
+                       hx-get="{% url 'get_map_table_data' %}"
+                       hx-target="#list-content-container"
+                       hx-swap="innerHTML"
+                       hx-indicator="#loading-indicator"
+                       hx-trigger="keyup changed delay:300ms, load"
+                       hx-include="#listTypeSelect, #groupTypeFilterSelect"
+                       placeholder="{% trans 'Suchen nach Name/ID...' %}">
+            </div>
+
+        </div>
+
+        <div id="loading-indicator" class="htmx-indicator">{% trans "Lade Daten..." %}</div>
+
+        {# Main container for rendered table contents #}
+        <div id="list-content-container"
+             hx-get="{% url 'get_map_table_data' %}"
+             hx-trigger="load, every 10s"
+             hx-target="this"
+             hx-swap="innerHTML"
+             hx-include="#listTypeSelect, #groupTypeFilterSelect, #searchInput">
+            {# Initial load is triggered by hx-trigger="load" here #}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); padding: 10px; text-align: center; font-size: 12px; z-index: 999; border-top: 1px solid #ddd;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <span>&copy; 2025 <a href="https://sai-lab.de" target="_blank">SAI-LAB Berlin</a> |</span>
+            <a href="https://sai-lab.de/index.php/de/impressum" target="_blank">{% trans "Impressum" %}</a> |
+            <a href="{% url 'privacy_policy' %}">{% trans "Datenschutzerklärung" %}</a>
+            {% if not is_kiosk|default:False %}
+            <span style="margin-left: 10px;">|</span>
+            <form method="post" action="{% url 'set_language' %}" id="map-language-form" style="display: inline-block; margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% get_current_language as current_lang %}
+                <select name="language" onchange="document.getElementById('map-language-form').submit();"
+                        style="padding: 2px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px; background: white; color: #333; cursor: pointer;">
+                    {% for lang_code, lang_name in LANGUAGES %}
+                        <option value="{{ lang_code }}" {% if lang_code == current_lang or lang_code|slice:":2" == current_lang|slice:":2" %}selected{% endif %}>
+                            {{ lang_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+    </footer>
+
+<script>
+    // **********************************************
+    // Map logic (unchanged)
+    // **********************************************
+
+    // Configuration
+    const map = L.map('map').setView([51.1657, 10.4515], 6);  // Germany centering
+    const API_PREFIX = '{% url "map:map_page" %}api';  // Path to your JSON APIs (for the map)
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap-Mitwirkende'
+    }).addTo(map);
+
+    let markers = L.layerGroup().addTo(map);
+
+    // Format number based on current language
+    function formatNumberDE(value, decimals) {
+        if (value === null || value === undefined || isNaN(value)) {
+            const lang = document.documentElement.lang || 'de';
+            const isGerman = lang.startsWith('de');
+            const decimalSep = isGerman ? ',' : '.';
+            return '0' + (decimals > 0 ? decimalSep + '0'.repeat(decimals) : '');
+        }
+        const num = parseFloat(value);
+        const fixed = num.toFixed(decimals || 2);
+        const parts = fixed.split('.');
+        const integerStr = parts[0];
+        const decimalPart = parts[1] || '';
+        
+        // Get language from HTML lang attribute
+        const lang = document.documentElement.lang || 'de';
+        const isGerman = lang.startsWith('de');
+        
+        // Add thousands separators
+        let integerWithSeparators = '';
+        for (let i = 0; i < integerStr.length; i++) {
+            if (i > 0 && (integerStr.length - i) % 3 === 0) {
+                integerWithSeparators += isGerman ? '.' : ',';
+            }
+            integerWithSeparators += integerStr[i];
+        }
+        
+        // Add decimal separator
+        if (decimalPart) {
+            return integerWithSeparators + (isGerman ? ',' : '.') + decimalPart;
+        }
+        return integerWithSeparators;
+    }
+
+    // Only the map update function remains
+    async function updateMapMarkers() {
+        // Fetch data for all entities
+        const [deviceData, groupData] = await Promise.all([
+            fetch(`${API_PREFIX}/devices`).then(res => res.json()),
+            fetch(`${API_PREFIX}/groups`).then(res => res.json())
+        ]);
+
+        markers.clearLayers();
+
+        // Add markers for devices
+        deviceData.forEach(item => {
+            if (item.location && item.location.lat && item.location.lon) {
+                var deviceIcon = L.divIcon({
+                    className: 'device-marker',
+                    html: '<div style="background: #28a745; border: 3px solid #155724; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">🚲</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                L.marker([item.location.lat, item.location.lon], {icon: deviceIcon})
+                 .bindPopup(`{% trans "Gerät" %}: <b>${item.name}</b><br>{% trans "Distanz" %}: ${formatNumberDE(item.distance, 2)} km`)
+                 .addTo(markers);
+            }
+        });
+
+        // Add markers for groups (if they have location data)
+        groupData.forEach(item => {
+             if (item.location && item.location.lat && item.location.lon) {
+                L.circleMarker([item.location.lat, item.location.lon], {
+                    radius: 8,
+                    color: 'blue',
+                    fillColor: '#007bff',
+                    fillOpacity: 0.7
+                })
+                .bindPopup(`{% trans "Gruppe" %}: <b>${item.name}</b> (${item.type})<br>{% trans "Distanz" %}: ${formatNumberDE(item.distance, 2)} km`)
+                .addTo(markers);
+            }
+        });
+    }
+
+    // Keep interval for map updates
+    setInterval(updateMapMarkers, 10000);
+    updateMapMarkers();
+
+</script>
+
+</body>
+</html>

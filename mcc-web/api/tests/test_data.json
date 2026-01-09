@@ -1,0 +1,171 @@
+{
+  "groups": [
+    {
+      "id": 1,
+      "group_type": "Schule",
+      "name": "SchuleA",
+      "short_name": "SchuleA",
+      "is_visible": true,
+      "parent": null,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 2,
+      "group_type": "Klasse",
+      "name": "1a-SchuleA",
+      "short_name": "1a",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 3,
+      "group_type": "Klasse",
+      "name": "1b-SchuleA",
+      "short_name": "1b",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 4,
+      "group_type": "Schule",
+      "name": "SchuleB",
+      "short_name": "SchuleB",
+      "is_visible": true,
+      "parent": null,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 5,
+      "group_type": "Klasse",
+      "name": "2a-SchuleB",
+      "short_name": "2a",
+      "is_visible": true,
+      "parent": 4,
+      "distance_total": 0.0,
+      "coins_total": 0
+    }
+  ],
+  "players": [
+    {
+      "id": 1,
+      "user_id": "player-01",
+      "id_tag": "tag-01",
+      "is_visible": true,
+      "group_ids": [2],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 2,
+      "user_id": "player-02",
+      "id_tag": "tag-02",
+      "is_visible": true,
+      "group_ids": [2],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 3,
+      "user_id": "player-03",
+      "id_tag": "tag-03",
+      "is_visible": true,
+      "group_ids": [3],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 4,
+      "user_id": "player-04",
+      "id_tag": "tag-04",
+      "is_visible": true,
+      "group_ids": [5],
+      "distance_total": 0.0,
+      "coins_total": 0
+    }
+  ],
+  "devices": [
+    {
+      "id": 1,
+      "name": "device-01",
+      "display_name": "Device 01",
+      "is_visible": true,
+      "group_id": 2,
+      "distance_total": 0.0
+    },
+    {
+      "id": 2,
+      "name": "device-02",
+      "display_name": "Device 02",
+      "is_visible": true,
+      "group_id": 3,
+      "distance_total": 0.0
+    },
+    {
+      "id": 3,
+      "name": "device-03",
+      "display_name": "Device 03",
+      "is_visible": true,
+      "group_id": 5,
+      "distance_total": 0.0
+    }
+  ],
+  "mileage_updates": [
+    {
+      "player_id": 1,
+      "device_id": 1,
+      "distance_delta": 10.5,
+      "timestamp_offset_hours": -2
+    },
+    {
+      "player_id": 1,
+      "device_id": 1,
+      "distance_delta": 5.3,
+      "timestamp_offset_hours": -1
+    },
+    {
+      "player_id": 2,
+      "device_id": 1,
+      "distance_delta": 8.7,
+      "timestamp_offset_hours": -1
+    },
+    {
+      "player_id": 3,
+      "device_id": 2,
+      "distance_delta": 12.4,
+      "timestamp_offset_hours": -1
+    },
+    {
+      "player_id": 4,
+      "device_id": 3,
+      "distance_delta": 15.8,
+      "timestamp_offset_hours": 0
+    }
+  ],
+  "expected_results": {
+    "group_totals": {
+      "1a-SchuleA": 24.5,
+      "1b-SchuleA": 12.4,
+      "2a-SchuleB": 15.8,
+      "SchuleA": 36.9,
+      "SchuleB": 15.8
+    },
+    "player_totals": {
+      "player-01": 15.8,
+      "player-02": 8.7,
+      "player-03": 12.4,
+      "player-04": 15.8
+    },
+    "daily_totals": {
+      "1a-SchuleA": 24.5,
+      "1b-SchuleA": 12.4,
+      "2a-SchuleB": 15.8
+    }
+  }
+}
+

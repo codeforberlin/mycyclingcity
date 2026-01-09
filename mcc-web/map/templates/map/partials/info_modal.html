@@ -1,0 +1,105 @@
+{% load i18n %}
+<!--
+    Information Hub Modal - Global UI Component
+    
+    This modal provides a unified information center with:
+    - Project name and version
+    - FAQ section (top 3 questions)
+    - Language switcher
+    - Legal links (Impressum, Privacy Policy)
+    
+    To add a new language:
+    1. Add the language code to LANGUAGES in config/settings.py
+    2. Run: python manage.py makemessages -l <lang_code>
+    3. Translate the strings in locale/<lang_code>/LC_MESSAGES/django.po
+    4. Run: python manage.py compilemessages
+-->
+<div class="info-hub-modal-overlay" id="info-hub-modal-overlay" onclick="closeInfoHubModal(event)">
+    <div class="info-hub-modal" onclick="event.stopPropagation()">
+        <!-- Header: Project Name and Version -->
+        <div class="info-hub-header">
+            <h2 class="info-hub-title">MyCyclingCity</h2>
+            <div class="info-hub-version">
+                <span class="info-hub-version-label">{% trans "Version" %}:</span>
+                <span class="info-hub-version-value">{{ PROJECT_VERSION|default:"dev" }}</span>
+            </div>
+        </div>
+
+        <!-- Middle Part: FAQ Section -->
+        <div class="info-hub-body">
+            <div class="info-hub-section">
+                <h3 class="info-hub-section-title">{% trans "Frequently Asked Questions" %}</h3>
+                <div class="info-hub-faq">
+                    <div class="info-hub-accordion-item">
+                        <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
+                            <div class="info-hub-accordion-question">{% trans "How does the live map work?" %}</div>
+                            <div class="info-hub-accordion-icon">▼</div>
+                        </div>
+                        <div class="info-hub-accordion-content">
+                            <div class="info-hub-accordion-answer">
+                                {% trans "The live map shows the current positions of all active cyclists in real-time. You can filter between different routes and groups to customize the view." %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-hub-accordion-item">
+                        <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
+                            <div class="info-hub-accordion-question">{% trans "What does the ranking show?" %}</div>
+                            <div class="info-hub-accordion-icon">▼</div>
+                        </div>
+                        <div class="info-hub-accordion-content">
+                            <div class="info-hub-accordion-answer">
+                                {% trans "The ranking shows the current mileage of all groups and cyclists, sorted by distance traveled. You can filter by specific groups." %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-hub-accordion-item">
+                        <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
+                            <div class="info-hub-accordion-question">{% trans "How does the map update?" %}</div>
+                            <div class="info-hub-accordion-icon">▼</div>
+                        </div>
+                        <div class="info-hub-accordion-content">
+                            <div class="info-hub-accordion-answer">
+                                {% trans "The map updates automatically every 20 seconds. Positions and mileage are updated in real-time as soon as new data is available." %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <a href="https://sai-lab.github.io/mcc-web/" target="_blank" class="info-hub-wiki-link">
+                    📚 {% trans "Open Full Documentation" %}
+                </a>
+            </div>
+
+            <!-- Language Switcher -->
+            <div class="info-hub-section">
+                <h3 class="info-hub-section-title">{% trans "Language" %}</h3>
+                <form method="post" action="{% url 'set_language' %}" class="info-hub-language-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% get_current_language as current_lang %}
+                    <select name="language" id="info-hub-language-select" onchange="this.form.submit();" class="info-hub-language-select">
+                        {% for lang_code, lang_name in LANGUAGES %}
+                            <option value="{{ lang_code }}" {% if lang_code == current_lang or lang_code|slice:":2" == current_lang|slice:":2" %}selected{% endif %}>
+                                {% if lang_code == 'de' %}Deutsch{% elif lang_code == 'en' %}English{% else %}{{ lang_name }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+
+        <!-- Footer: Legal Links -->
+        <div class="info-hub-footer">
+            <div class="info-hub-footer-content">
+                <a href="https://sai-lab.de/index.php/de/impressum" target="_blank" class="info-hub-footer-link">{% trans "Legal Notice" %}</a>
+                <span class="info-hub-footer-separator">|</span>
+                <a href="{% url 'privacy_policy' %}" class="info-hub-footer-link">{% trans "Privacy Policy" %}</a>
+                <span class="info-hub-footer-separator">|</span>
+                <span class="info-hub-footer-copyright">&copy; 2026 <a href="https://sai-lab.de" target="_blank">SAI-LAB Berlin</a></span>
+            </div>
+        </div>
+
+        <!-- Close Button -->
+        <button class="info-hub-close" onclick="closeInfoHubModal()" title="{% trans 'Close' %}">&times;</button>
+    </div>
+</div>
+

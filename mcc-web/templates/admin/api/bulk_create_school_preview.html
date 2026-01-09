@@ -1,0 +1,30 @@
+{% load i18n %}
+<div class="preview-class">
+    <strong>{% trans "Schule" %}:</strong> {{ preview.school.name }}
+    {% if preview.school.short_name %}({{ preview.school.short_name }}){% endif %}
+</div>
+
+{% for class in preview.classes %}
+<div class="preview-class">
+    <strong>{% trans "Klasse" %}:</strong> {{ class.name }}
+    {% if class.short_name and class.short_name != class.base_name %}({{ class.short_name }}){% endif %}
+    - {% trans "Radler" %}: {{ class.cyclist_count }}
+    
+    {% if class.cyclists %}
+    <div class="preview-cyclists">
+        {% for cyclist in class.cyclists|slice:":5" %}
+        {{ cyclist.user_id }}{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+        {% if class.cyclists|length > 5 %}
+        ... {% trans "und" %} {{ class.cyclists|length|add:"-5" }} {% trans "weitere" %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 4px;">
+    <strong>{% trans "Zusammenfassung" %}:</strong><br>
+    {% trans "1 Schule" %}, {{ preview.classes|length }} {% trans "Klassen" %}, {{ preview.total_cyclists }} {% trans "Radler" %}
+</div>
+

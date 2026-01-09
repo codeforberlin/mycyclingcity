@@ -1,0 +1,18 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+{{ block.super }}
+{% if original.pk %}
+<div class="submit-row" style="background: #f8f9fa; border-top: 1px solid #ddd; padding: 10px; margin-top: 10px;">
+    <p style="margin: 0 0 10px 0; font-weight: bold;">{% trans "Event Management" %}:</p>
+    <a href="{% url 'admin:api_event_save_history' original.pk %}"
+       class="button"
+       style="background: #417690; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;"
+       onclick="return confirm('{% trans "Are you sure you want to save the current event progress to history and reset all group statuses?" %}');">
+        {% trans "Save event to history and reset" %}
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
