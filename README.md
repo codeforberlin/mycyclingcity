@@ -71,4 +71,3 @@ All code, comments, and documentation must be in English.
 ## License
 
 [Add license information here]
-
