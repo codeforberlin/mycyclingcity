@@ -1319,6 +1319,142 @@
             padding-right: 20px;
         }
         /* stylelint-enable */
+
+        /* ============================================
+           Mobile-Only Overrides (max-width: 1023px)
+           Protects Kiosk Mode - Desktop remains untouched
+           ============================================ */
+        @media screen and (max-width: 1023px) {
+            /* Root Scaling: Scale up all rem-based elements for mobile */
+            html {
+                font-size: 110%; /* Scales all rem-based elements up */
+            }
+
+            /* Full-screen map layout: Fill entire screen on mobile - Remove white gap */
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden; /* Prevent unwanted scrolling on the map page */
+            }
+
+            /* Typography: Ensure minimum readable size for mobile */
+            body {
+                font-size: 16px; /* Minimum readable size for mobile */
+                line-height: 1.5;
+            }
+
+            /* Map optimization: Full height with absolute positioning to remove white gap */
+            #map {
+                height: 100vh !important; /* Full height */
+                width: 100vw !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                margin: 0;
+                padding: 0;
+            }
+
+            /* Activity Toast Container: Adjust position and size for mobile */
+            .activity-toast-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: calc(100% - 20px);
+            }
+
+            /* Champions Overlay: Adjust position for mobile */
+            .champions-overlay {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .mini-podium {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            /* Touch targets: Increase padding for buttons and interactive elements */
+            button, .sidebar-toggle, .info-hub-button {
+                min-height: 44px; /* Touch-friendly minimum height */
+                min-width: 44px;
+                padding: 15px 25px; /* Larger padding for better touch targets */
+                font-size: 16px; /* Ensure readable button text */
+            }
+
+            /* View Switch Button: Mobile-Only Overlay - Position at top right */
+            .floating-view-switcher {
+                position: fixed !important;
+                top: 15px; /* Stay at the top */
+                right: 15px;
+                bottom: auto; /* Ensure it doesn't move to the bottom */
+                z-index: 2000; /* Above everything else */
+                background: white; /* Solid background for mobile */
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+                border-radius: 30px; /* More rounded for mobile */
+                padding: 4px;
+            }
+
+            .floating-view-switcher button {
+                padding: 15px 25px; /* Larger padding for touch targets */
+                font-size: 16px;
+                min-height: 44px;
+                font-weight: bold; /* Make text more prominent */
+                border-radius: 30px; /* Match container rounding */
+            }
+
+            /* Small text blocks and labels: Ensure minimum readable size */
+            label, .layer-control-title, .activity-toast-title, .activity-toast-body,
+            .milestone-card-label, .milestone-card-value, .ranking-filter-bar-title {
+                font-size: 14px; /* Minimum readable size for labels */
+            }
+
+            /* Ensure text in toasts and overlays is readable */
+            .activity-toast-title {
+                font-size: 15px;
+            }
+
+            .activity-toast-body {
+                font-size: 14px;
+            }
+
+            /* Glassmorphism Sidebar: Full width on mobile */
+            .glassmorphism-sidebar {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            /* Ranking Filter Bar: Ensure it doesn't overflow on mobile */
+            .ranking-filter-bar {
+                padding: 15px; /* Increased padding for better touch targets */
+                flex-wrap: wrap;
+            }
+
+            .ranking-filter-bar-title {
+                font-size: 16px; /* Larger title for readability */
+            }
+
+            .filter-chips-container {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            /* Info Hub Modal: Full width on mobile with proper padding */
+            .info-hub-modal {
+                max-width: 95%;
+                margin: 20px;
+            }
+
+            /* Milestone Overlay: Adjust for mobile screens */
+            .milestone-overlay {
+                padding: 10px;
+            }
+
+            .milestone-card {
+                max-width: 95%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1527,6 +1663,17 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         // Make map available globally for kiosk mode
         window.map = map;
+
+        // Map size adjustment function - fixes quarter-map issue on mobile
+        function adjustMap() {
+            if (typeof map !== 'undefined') {
+                map.invalidateSize();
+            }
+        }
+        window.addEventListener('resize', adjustMap);
+        // Call after CSS changes to fill any gaps
+        setTimeout(adjustMap, 500);
+        setTimeout(adjustMap, 1000); // Additional call to ensure map fills after CSS is fully applied
         var tracks = {{ tracks_json|safe }};
         // Make tracks available globally for avatar refresh logic
         window.tracks = tracks;

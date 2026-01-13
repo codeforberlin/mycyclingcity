@@ -49,6 +49,126 @@
         input[type="range"] { width: 90%; margin: 0 auto; }
         .htmx-indicator { display: none; }
         .htmx-request .htmx-indicator { display: inline-block; }
+
+        /* ============================================
+           Mobile-Only Overrides (max-width: 1023px)
+           Protects Kiosk Mode - Desktop remains untouched
+           ============================================ */
+        @media screen and (max-width: 1023px) {
+            /* Root Scaling: Scale up all rem-based elements for mobile */
+            html {
+                font-size: 110%; /* Scales all rem-based elements up */
+            }
+
+            /* Typography: Ensure minimum readable size for mobile */
+            body {
+                font-size: 16px; /* Minimum readable size for mobile */
+                line-height: 1.5;
+                margin: 10px;
+            }
+
+            /* Fluid layout: Convert fixed max-width to percentage */
+            .container {
+                max-width: 90%; /* Use percentage instead of fixed pixels */
+                margin: 10px auto;
+                padding: 20px; /* Increased padding */
+            }
+
+            /* Vertical stacking: Convert two-column layout to single column */
+            .two-column-layout {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .two-column-layout > div {
+                width: 100%;
+            }
+
+            /* Assignments grid: Stack vertically on mobile */
+            .assignments {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            /* Touch targets: Increase size for buttons and interactive elements */
+            button, select, input[type="number"], input[type="range"] {
+                min-height: 44px; /* Touch-friendly minimum height */
+                padding: 15px 25px; /* Larger padding for better touch targets */
+                font-size: 16px; /* Ensure readable text */
+            }
+
+            /* Top controls: Better mobile layout */
+            .top-controls {
+                flex-direction: column;
+                gap: 15px; /* Increased gap */
+            }
+
+            .top-controls button {
+                width: 100%;
+                padding: 15px 25px; /* Larger buttons */
+            }
+
+            /* Header container: Better mobile layout */
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            h1 {
+                font-size: 24px; /* Larger heading */
+            }
+
+            .logo-left, .logo-right {
+                max-height: 60px;
+            }
+
+            /* Controls section: Better mobile spacing */
+            .controls {
+                padding: 20px; /* Increased padding */
+            }
+
+            .controls h3 {
+                font-size: 20px; /* Larger section headings */
+            }
+
+            .controls label {
+                font-size: 16px; /* Larger labels */
+                margin-bottom: 10px;
+            }
+
+            /* Results table: Better mobile readability */
+            .results-table {
+                font-size: 15px; /* Increased from 14px */
+            }
+
+            .results-table th, .results-table td {
+                padding: 15px 10px; /* Increased padding */
+                font-size: 15px; /* Ensure readable table text */
+            }
+
+            .results-table th {
+                font-size: 16px; /* Larger table headers */
+            }
+
+            /* Small text blocks and labels: Ensure minimum readable size */
+            label, p {
+                font-size: 16px; /* Minimum readable size */
+            }
+
+            /* Modal: Better mobile sizing */
+            .modal-content {
+                max-width: 95%;
+                padding: 30px 20px;
+            }
+
+            .modal-content h2 {
+                font-size: 2em;
+            }
+
+            .modal-content p {
+                font-size: 1.2em;
+            }
+        }
     </style>
 </head>
 <body>

@@ -54,8 +54,15 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     if not group_ids:
         return {}
     
+    # Sanitize group IDs for cache key: Convert list to URL-safe string format
+    # This prevents CacheKeyWarning from cache backends (Memcached/Redis) that don't accept
+    # illegal characters like brackets, spaces, and commas in list string representations
+    if not isinstance(group_ids, (list, tuple)):
+        group_ids = list(group_ids) if hasattr(group_ids, '__iter__') else [group_ids]
+    group_ids_str = "-".join(map(str, sorted(group_ids)))
+    
     # Try to get from cache first (cache key includes group IDs to ensure consistency)
-    cache_key = f'leaderboard_group_totals_{sorted(group_ids)}_{now.strftime("%Y%m%d%H")}'
+    cache_key = f'leaderboard_group_totals_{group_ids_str}_{now.strftime("%Y%m%d%H")}'
     if use_cache:
         cached_result = cache.get(cache_key)
         if cached_result is not None:

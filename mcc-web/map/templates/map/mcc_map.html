@@ -31,6 +31,129 @@
         .htmx-indicator { display: none; }
         .htmx-request .htmx-indicator { display: block; }
         .htmx-request.loading-overlay .info-panel { opacity: 0.5; }
+
+        /* ============================================
+           Mobile-Only Overrides (max-width: 1023px)
+           Protects Kiosk Mode - Desktop remains untouched
+           ============================================ */
+        @media screen and (max-width: 1023px) {
+            /* Root Scaling: Scale up all rem-based elements for mobile */
+            html {
+                font-size: 110%; /* Scales all rem-based elements up */
+            }
+
+            /* Full-screen map layout: Fill entire screen on mobile - Remove white gap */
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden; /* Prevent unwanted scrolling on the map page */
+            }
+
+            /* Typography: Ensure minimum readable size for mobile */
+            body {
+                font-size: 16px; /* Minimum readable size for mobile */
+                line-height: 1.5;
+            }
+
+            /* Map optimization: Full height with absolute positioning to remove white gap */
+            #map {
+                height: 100vh !important; /* Full height */
+                width: 100vw !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                margin: 0;
+                padding: 0;
+            }
+
+            /* Info Panel: Overlay on top of map for mobile (collapsible) */
+            .info-panel {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: calc(100% - 20px);
+                width: auto;
+                max-height: 80vh;
+                margin: 0;
+                padding: 20px; /* Increased padding */
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                overflow-y: auto;
+            }
+
+            .info-panel h1 {
+                font-size: 24px; /* Larger heading */
+                margin-bottom: 15px;
+            }
+
+            /* Touch targets: Increase padding for buttons and interactive elements */
+            button, select, input, a {
+                min-height: 44px; /* Touch-friendly minimum height */
+                padding: 15px 25px; /* Larger padding for better touch targets */
+                font-size: 16px; /* Ensure readable text */
+            }
+
+            /* Controls: Better spacing on mobile */
+            .controls {
+                padding: 20px; /* Increased padding */
+            }
+
+            .controls label {
+                font-size: 16px; /* Larger labels for readability */
+                margin-bottom: 8px;
+            }
+
+            .controls select {
+                padding: 15px; /* Larger padding */
+                font-size: 16px;
+                min-height: 44px;
+            }
+
+            /* Search container: Better mobile layout */
+            .search-container {
+                margin-bottom: 15px;
+            }
+
+            .search-container label {
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+
+            .search-container input {
+                padding: 15px; /* Larger padding */
+                font-size: 16px;
+                min-height: 44px;
+            }
+
+            /* Table: Better mobile readability */
+            table {
+                font-size: 15px; /* Increased from 14px */
+            }
+
+            th, td {
+                padding: 15px 10px; /* Increased padding */
+                font-size: 15px; /* Ensure readable table text */
+            }
+
+            th {
+                font-size: 16px; /* Larger headers */
+            }
+
+            /* Footer: Better mobile layout */
+            footer {
+                position: relative;
+                padding: 15px 10px;
+                font-size: 14px;
+            }
+
+            footer > div {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -140,6 +263,17 @@
     }).addTo(map);
 
     let markers = L.layerGroup().addTo(map);
+
+    // Map size adjustment function - fixes quarter-map issue on mobile
+    function adjustMap() {
+        if (typeof map !== 'undefined') {
+            map.invalidateSize();
+        }
+    }
+    window.addEventListener('resize', adjustMap);
+    // Call after CSS changes to fill any gaps
+    setTimeout(adjustMap, 500);
+    setTimeout(adjustMap, 1000); // Additional call to ensure map fills after CSS is fully applied
 
     // Format number based on current language
     function formatNumberDE(value, decimals) {

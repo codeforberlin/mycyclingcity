@@ -337,6 +337,73 @@
                 padding: 16px 20px;
             }
         }
+
+        /* ============================================
+           Mobile-Only Overrides (max-width: 1023px)
+           Protects Kiosk Mode - Desktop remains untouched
+           ============================================ */
+        @media screen and (max-width: 1023px) {
+            /* Root Scaling: Scale up all rem-based elements for mobile */
+            html {
+                font-size: 110%; /* Scales all rem-based elements up */
+            }
+
+            /* Typography: Ensure minimum readable size for mobile */
+            body {
+                font-size: 16px; /* Minimum readable size for mobile */
+                line-height: 1.5;
+            }
+
+            /* Fluid layout: Convert fixed max-width to percentage */
+            .rk-main-container {
+                max-width: 90%; /* Use percentage instead of fixed pixels */
+                padding: 20px; /* Increased padding */
+            }
+
+            /* Table content: Better mobile padding */
+            .rk-dynamic-table-content {
+                padding: 25px 20px 100px 20px; /* Increased padding */
+            }
+
+            /* Touch targets: Increase size for buttons and interactive elements */
+            .info-hub-button {
+                width: 64px;
+                height: 64px;
+                bottom: 15px;
+                right: 15px;
+                font-size: 28px;
+            }
+
+            button, a, select, input {
+                min-height: 44px; /* Touch-friendly minimum height */
+                min-width: 44px;
+                padding: 15px 25px; /* Larger padding for better touch targets */
+                font-size: 16px; /* Ensure readable text */
+            }
+
+            /* Small text blocks and labels: Ensure minimum readable size */
+            label, th, td {
+                font-size: 14px; /* Minimum readable size for labels and table cells */
+            }
+
+            th {
+                font-size: 16px; /* Larger table headers */
+            }
+
+            /* Info Hub Modal: Better mobile sizing */
+            .info-hub-modal {
+                max-width: 95%;
+                max-height: 90vh;
+            }
+
+            .info-hub-header {
+                padding: 20px;
+            }
+
+            .info-hub-body {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
