@@ -233,7 +233,7 @@ These scripts are utility tools for monitoring test processes and do not require
 
 ## Load Testing
 
-In the `test` directory, there is a Python script with configuration data to simulate devices and players.
+In the `test` directory, there is a Python script with configuration data to simulate devices and cyclists.
 
 The `mcc_api_test.py` script supports various modes and parameters for realistic load testing.
 
@@ -288,9 +288,9 @@ The `mcc_api_test.py` script supports various modes and parameters for realistic
    python3 test/mcc_api_test.py --loop --test-data-file test/test_data_example.json --retry-attempts 5 --retry-delay 2.0
    ```
 
-10. With player duration (60 seconds, then switch):
+10. With cyclist duration (60 seconds, then switch):
     ```bash
-    python3 test/mcc_api_test.py --loop --test-data-file test/test_data_example.json --player-duration 60
+    python3 test/mcc_api_test.py --loop --test-data-file test/test_data_example.json --cyclist-duration 60
     ```
 
 11. Fully configured load test:
@@ -302,7 +302,7 @@ The `mcc_api_test.py` script supports various modes and parameters for realistic
         --send-jitter 0.8 \
         --retry-attempts 4 \
         --retry-delay 1.5 \
-        --player-duration 60 \
+        --cyclist-duration 60 \
         --interval 10
     ```
 
@@ -349,7 +349,7 @@ The `mcc_api_test.py` script supports various modes and parameters for realistic
 
 ### Parameter Overview
 
-- `--id_tag`: Player ID tag
+- `--id_tag`: Cyclist ID tag
 - `--device`: Device ID
 - `--distance`: Distance in kilometers
 - `--interval`: Send interval in seconds
@@ -360,7 +360,7 @@ The `mcc_api_test.py` script supports various modes and parameters for realistic
 - `--send-jitter`: Time jitter for send pulses (default: 0.5s)
 - `--retry-attempts`: Number of retry attempts (default: 3)
 - `--retry-delay`: Base delay for retries (default: 1.0s)
-- `--player-duration`: Player duration on device (default: 60s)
+- `--cyclist-duration`: Cyclist duration on device (default: 60s)
 - `--wheel-size`: Wheel size (20, 24, 26, 28 inches)
 - `--speed`: Fixed speed in km/h
 - `--dns`: Uses DNS URL and Authorization header

@@ -126,7 +126,7 @@ class Command(BaseCommand):
                     coins_total=0,
                     coins_spendable=0
                 )
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {player_count} players"))
+                self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {player_count} cyclists"))
 
                 # 3. Reset Device totals
                 self.stdout.write("Resetting Device totals...")

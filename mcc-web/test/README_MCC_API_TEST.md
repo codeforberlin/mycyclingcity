@@ -301,7 +301,7 @@ python mcc_api_test.py \
 - When running from a remote system, test data files are used directly
 - The script automatically detects Django availability
 - All German text has been translated to English
-- The script uses "cyclist" terminology instead of "player"
+- The script uses "cyclist" terminology consistently
 
 ## Troubleshooting
 

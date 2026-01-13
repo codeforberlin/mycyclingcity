@@ -1892,7 +1892,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                         break
                 return False
             
-            # Get leaf-groups (with players but no children) that belong to this parent
+            # Get leaf-groups (with cyclists but no children) that belong to this parent
             # CRITICAL: Only get groups that are in descendant_ids
             if descendant_ids:
                 child_groups = Group.objects.filter(

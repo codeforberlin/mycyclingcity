@@ -59,7 +59,9 @@ class TestUpdateDataView:
             HTTP_X_API_KEY=api_key
         )
         
-        assert response.status_code == 200
+        
+        assert response.status_code == 200, \
+            f"Expected 200 OK, got {response.status_code}. Response: {response.content.decode() if hasattr(response, 'content') else 'N/A'}"
         data = response.json()
         assert data['success'] is True
         
@@ -114,7 +116,7 @@ class TestUpdateDataView:
         assert 'id_tag' in data.get('error', '').lower()
     
     def test_update_data_player_not_found(self, api_key, complete_test_scenario):
-        """Test update_data with non-existent player."""
+        """Test update_data with non-existent cyclist."""
         scenario = complete_test_scenario
         device = scenario['device']
         

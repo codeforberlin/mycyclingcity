@@ -58,7 +58,7 @@ Generating test data for 10 iterations with 5s interval...
 
 --- Iteration 1/10 ---
 Device: device-01 (Device 01)
-Cyclist: player-02 (ID Tag: tag-02)
+Cyclist: cyclist-02 (ID Tag: tag-02)
 Distance Delta: 1.23456 km
 ✅ Success: Update successful
 Waiting 5 seconds...

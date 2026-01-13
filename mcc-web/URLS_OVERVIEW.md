@@ -33,7 +33,7 @@ Die meisten URLs haben ein Sprach-Präfix (`/de/` oder `/en/`), außer den API-E
 - `/{sprache}/game/` - Hauptansicht des Spiels
 
 **Game API-Endpunkte (mit Sprach-Präfix):**
-- `/{sprache}/game/api/game/players` - Spieler-Liste
+- `/{sprache}/game/api/game/cyclists` - Radler-Liste
 - `/{sprache}/game/api/game/devices` - Geräte-Liste
 - `/{sprache}/game/api/game/start` - Spiel starten
 - `/{sprache}/game/api/game/data` - Spiel-Daten

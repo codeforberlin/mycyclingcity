@@ -7,7 +7,7 @@
 
 #
 """
-Admin helper views for bulk creation of schools, classes, and players.
+Admin helper views for bulk creation of schools, classes, and cyclists.
 """
 
 from django.shortcuts import render, redirect
@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 @require_http_methods(["GET", "POST"])
 def bulk_create_school(request):
     """
-    Admin tool for bulk creation of schools, classes, and players.
+    Admin tool for bulk creation of schools, classes, and cyclists.
     
     GET: Display the form
-    POST: Process the form and create groups/players
+    POST: Process the form and create groups/cyclists
     """
     if request.method == 'GET':
         group_types = GroupType.objects.filter(is_active=True).order_by('name')
@@ -93,7 +93,7 @@ def bulk_create_school(request):
             
             # Process classes
             created_classes = []
-            created_players = []
+            created_cyclists = []
             
             # Get class data from form
             class_numbers = request.POST.getlist('class_number[]')
@@ -163,29 +163,29 @@ def bulk_create_school(request):
                 if class_created:
                     created_classes.append(class_group)
                 
-                # Generate unique school identifier for player ID tags
+                # Generate unique school identifier for cyclist ID tags
                 # Use short_name if available, otherwise use normalized school name
                 school_identifier = (school_short_name or school_name).lower()
                 # Remove spaces and special characters, keep only alphanumeric and hyphens
                 school_identifier = re.sub(r'[^a-z0-9-]', '', school_identifier.replace(' ', '-'))
                 
-                # Create players for this class (even if class already existed)
-                for player_num in range(1, player_count + 1):
+                # Create cyclists for this class (even if class already existed)
+                for cyclist_num in range(1, player_count + 1):
                     # User ID is just a symbolic name for display (e.g. "1a/1")
                     # It doesn't need to be unique - the id_tag (RFID-UID) is the unique identifier
-                    player_user_id = f"{class_base_name}/{player_num}"
+                    cyclist_user_id = f"{class_base_name}/{cyclist_num}"
                     # Unique ID tag: school-class-number (e.g. "schulec-1a-01")
                     # This will be replaced with the actual RFID-UID when the tag is assigned
-                    player_id_tag = f"{school_identifier}-{class_base_name.lower()}-{player_num:02d}"
+                    cyclist_id_tag = f"{school_identifier}-{class_base_name.lower()}-{cyclist_num:02d}"
                     
-                    # Check if player already exists
+                    # Check if cyclist already exists
                     try:
-                        cyclist = Cyclist.objects.get(id_tag=player_id_tag)
+                        cyclist = Cyclist.objects.get(id_tag=cyclist_id_tag)
                         cyclist_created = False
                     except Cyclist.DoesNotExist:
                         cyclist = Cyclist.objects.create(
-                            id_tag=player_id_tag,
-                            user_id=player_user_id,
+                            id_tag=cyclist_id_tag,
+                            user_id=cyclist_user_id,
                             is_visible=request.POST.get('cyclist_is_visible', 'on') == 'on',
                             is_km_collection_enabled=request.POST.get('cyclist_is_km_enabled', 'on') == 'on',
                         )
@@ -194,7 +194,7 @@ def bulk_create_school(request):
                     if cyclist_created:
                         # Add cyclist to class group
                         cyclist.groups.add(class_group)
-                        created_players.append(cyclist)
+                        created_cyclists.append(cyclist)
                     elif class_group not in cyclist.groups.all():
                         # Cyclist exists but not in this class - add them
                         cyclist.groups.add(class_group)
@@ -202,15 +202,15 @@ def bulk_create_school(request):
             # Success message
             messages.success(
                 request,
-                _('Erfolgreich erstellt: 1 Schule, {} Klassen, {} Spieler').format(
+                _('Erfolgreich erstellt: 1 Schule, {} Klassen, {} Radler').format(
                     len(created_classes),
-                    len(created_players)
+                    len(created_cyclists)
                 )
             )
             
             logger.info(
                 f"[bulk_create_school] Created school '{school_name}' with {len(created_classes)} classes "
-                f"and {len(created_players)} players by user {request.user.username}"
+                f"and {len(created_cyclists)} cyclists by user {request.user.username}"
             )
             
             return redirect('admin:api_group_changelist')
@@ -267,25 +267,25 @@ def bulk_create_school_preview(request):
                 else:
                     class_short_name = class_base_name
             
-            # Generate unique school identifier for player ID tags
+            # Generate unique school identifier for cyclist ID tags
             school_identifier = (school_short_name or school_name).lower()
             school_identifier = re.sub(r'[^a-z0-9-]', '', school_identifier.replace(' ', '-'))
             
-            players = []
-            for player_num in range(1, player_count + 1):
+            cyclists = []
+            for cyclist_num in range(1, player_count + 1):
                 # User ID is just a symbolic name for display (e.g. "1a/1")
                 # The id_tag is the unique identifier (will be replaced with actual RFID-UID later)
-                players.append({
-                    'user_id': f"{class_base_name}/{player_num}",
-                    'id_tag': f"{school_identifier}-{class_base_name.lower()}-{player_num:02d}",
+                cyclists.append({
+                    'user_id': f"{class_base_name}/{cyclist_num}",
+                    'id_tag': f"{school_identifier}-{class_base_name.lower()}-{cyclist_num:02d}",
                 })
             
             preview_data['classes'].append({
                 'name': class_name,
                 'base_name': class_base_name,
                 'short_name': class_short_name,
-                'player_count': player_count,
-                'players': players,
+                'player_count': player_count,  # Keep for backward compatibility
+                'cyclists': cyclists,
             })
         
         # Calculate total cyclists

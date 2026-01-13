@@ -310,7 +310,7 @@ MCC_KIOSK_BANNER_UPDATE_INTERVAL = config('MCC_KIOSK_BANNER_UPDATE_INTERVAL', de
 MCC_KIOSK_CONTENT_UPDATE_INTERVAL = config('MCC_KIOSK_CONTENT_UPDATE_INTERVAL', default=60, cast=int)  # Content (tiles) updates every 60 seconds (synchronized with cronjob)
 MCC_KIOSK_FOOTER_UPDATE_INTERVAL = config('MCC_KIOSK_FOOTER_UPDATE_INTERVAL', default=60, cast=int)  # Footer updates every 60 seconds (synchronized with cronjob)
 
-MCC_MINECRAFT_URL = config('MCC_MINECRAFT_URL', default='http://127.0.0.1:5003/update-player-coins')
+MCC_MINECRAFT_URL = config('MCC_MINECRAFT_URL', default='http://127.0.0.1:5003/update-cyclist-coins')
 MCC_MINECRAFT_API_KEY = config('MCC_MINECRAFT_API_KEY', default='SECRET')
 DEFAULT_COIN_CONVERSION_FACTOR = config('DEFAULT_COIN_CONVERSION_FACTOR', default=100, cast=int)
 MCC_APP_API_KEY = config('MCC_APP_API_KEY', default='MCC-APP-API-KEY-SECRET')

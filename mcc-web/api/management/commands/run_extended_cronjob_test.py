@@ -9,7 +9,7 @@
 """
 Management command to run an extended 30-minute test of the cronjob functionality.
 
-This command simulates 30 minutes of activity with multiple players and devices,
+This command simulates 30 minutes of activity with multiple cyclists and devices,
 running the cronjob every 5 minutes. Data is kept in the database for manual inspection.
 
 Usage:
@@ -27,7 +27,7 @@ from django.conf import settings
 from datetime import timedelta
 from decimal import Decimal
 from api.models import (
-    Group, Player, Device, HourlyMetric, PlayerDeviceCurrentMileage
+    Group, Cyclist, Device, HourlyMetric, CyclistDeviceCurrentMileage
 )
 from api.management.commands.mcc_worker import Command as MccWorkerCommand
 import logging
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Run extended 30-minute test of cronjob functionality with multiple players and devices'
+    help = 'Run extended 30-minute test of cronjob functionality with multiple cyclists and devices'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -72,7 +72,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         duration_minutes = options['duration']
         update_interval_seconds = options['update_interval']
-        num_players = options['players']
+        num_cyclists = options['cyclists']
         num_devices = options['devices']
         cleanup = options['cleanup']
         
@@ -82,21 +82,21 @@ class Command(BaseCommand):
         
         # Clean up existing test data first (sessions and metrics)
         self.stdout.write("Cleaning up existing test sessions and metrics...")
-        existing_players = Player.objects.filter(user_id__startswith='extended-test')
+        existing_cyclists = Cyclist.objects.filter(user_id__startswith='extended-test')
         existing_devices = Device.objects.filter(name__startswith='extended-test')
         if existing_players.exists() or existing_devices.exists():
-            HourlyMetric.objects.filter(player__in=existing_players).delete()
+            HourlyMetric.objects.filter(cyclist__in=existing_cyclists).delete()
             HourlyMetric.objects.filter(device__in=existing_devices).delete()
-            PlayerDeviceCurrentMileage.objects.filter(player__in=existing_players).delete()
+            CyclistDeviceCurrentMileage.objects.filter(cyclist__in=existing_cyclists).delete()
             self.stdout.write("  Cleaned up existing sessions and metrics")
         
         # Create test data
         self.stdout.write("Creating test data...")
         groups = self._create_groups()
-        players = self._create_players(num_players, groups)
+        cyclists = self._create_cyclists(num_cyclists, groups)
         devices = self._create_devices(num_devices)
         
-        self.stdout.write(self.style.SUCCESS(f"Created {len(players)} players, {len(devices)} devices, {len(groups)} groups"))
+        self.stdout.write(self.style.SUCCESS(f"Created {len(cyclists)} cyclists, {len(devices)} devices, {len(groups)} groups"))
         
         # Initialize statistics
         stats = {
@@ -126,15 +126,15 @@ class Command(BaseCommand):
         
         # Run test iterations
         for iteration in range(total_iterations):
-            # Select random player and device
-            player = random.choice(players)
+            # Select random cyclist and device
+            cyclist = random.choice(cyclists)
             device = random.choice(devices)
             
             # Generate random distance (0.05 to 0.25 km per update)
             distance = Decimal(str(round(random.uniform(0.05, 0.25), 2)))
             
             # Send update data
-            success = self._send_update_data(client, api_key, player, device, distance)
+            success = self._send_update_data(client, api_key, cyclist, device, distance)
             
             if success:
                 stats['total_updates'] += 1
@@ -147,16 +147,16 @@ class Command(BaseCommand):
                 worker_cmd.save_active_sessions_to_history()
                 
                 # Cleanup expired sessions
-                expired_before = PlayerDeviceCurrentMileage.objects.count()
+                expired_before = CyclistDeviceCurrentMileage.objects.count()
                 worker_cmd.cleanup_expired_sessions()
-                expired_after = PlayerDeviceCurrentMileage.objects.count()
+                expired_after = CyclistDeviceCurrentMileage.objects.count()
                 stats['sessions_cleaned'] += (expired_before - expired_after)
                 
                 stats['cronjob_runs'] += 1
                 
                 self.stdout.write(
                     f"[{elapsed_minutes:2d} min] Cronjob run #{stats['cronjob_runs']}: "
-                    f"Active sessions: {PlayerDeviceCurrentMileage.objects.count()}, "
+                    f"Active sessions: {CyclistDeviceCurrentMileage.objects.count()}, "
                     f"Hourly metrics: {HourlyMetric.objects.count()}, "
                     f"Updates: {stats['total_updates']}"
                 )
@@ -173,26 +173,26 @@ class Command(BaseCommand):
         
         # Force cleanup of ALL remaining sessions (not just expired ones)
         # This ensures no sessions remain after test completion
-        all_sessions_before = PlayerDeviceCurrentMileage.objects.count()
+        all_sessions_before = CyclistDeviceCurrentMileage.objects.count()
         
         # First try normal cleanup
         worker_cmd.cleanup_expired_sessions()
         
         # If there are still active sessions, force save and delete them
         # This handles the case where sessions are still active (not expired) at test end
-        remaining_sessions = PlayerDeviceCurrentMileage.objects.filter(
-            player__in=players  # Only cleanup test sessions
+        remaining_sessions = CyclistDeviceCurrentMileage.objects.filter(
+            cyclist__in=cyclists  # Only cleanup test sessions
         )
         if remaining_sessions.exists():
             self.stdout.write(f"  Saving and cleaning up {remaining_sessions.count()} remaining active session(s)...")
             for sess in remaining_sessions:
                 # Save session to HourlyMetric before deleting
                 if sess.cumulative_mileage and sess.cumulative_mileage > 0:
-                    primary_group = sess.player.groups.first()
+                    primary_group = sess.cyclist.groups.first()
                     hour_timestamp = sess.last_activity.replace(minute=0, second=0, microsecond=0)
                     
                     metric, created = HourlyMetric.objects.get_or_create(
-                        player=sess.player,
+                        cyclist=sess.cyclist,
                         device=sess.device,
                         timestamp=hour_timestamp,
                         defaults={
@@ -206,24 +206,24 @@ class Command(BaseCommand):
                         if metric.group_at_time != primary_group:
                             metric.group_at_time = primary_group
                         metric.save()
-                        self.stdout.write(f"  → Updated HourlyMetric for {sess.player.user_id} on {sess.device.name}: {sess.cumulative_mileage} km")
+                        self.stdout.write(f"  → Updated HourlyMetric for {sess.cyclist.user_id} on {sess.device.name}: {sess.cumulative_mileage} km")
                     else:
-                        self.stdout.write(f"  → Created HourlyMetric for {sess.player.user_id} on {sess.device.name}: {sess.cumulative_mileage} km")
+                        self.stdout.write(f"  → Created HourlyMetric for {sess.cyclist.user_id} on {sess.device.name}: {sess.cumulative_mileage} km")
             
             # Delete all remaining sessions
             remaining_sessions.delete()
             self.stdout.write(f"  → Deleted {all_sessions_before} remaining session(s)")
         
-        expired_after = PlayerDeviceCurrentMileage.objects.count()
+        expired_after = CyclistDeviceCurrentMileage.objects.count()
         stats['sessions_cleaned'] += (all_sessions_before - expired_after)
         
         # Calculate final statistics
         end_time = timezone.now()
         duration = end_time - start_time
         
-        active_sessions = PlayerDeviceCurrentMileage.objects.count()
+        active_sessions = CyclistDeviceCurrentMileage.objects.count()
         hourly_metrics = HourlyMetric.objects.count()
-        total_player_distance = sum(float(p.distance_total) for p in players)
+        total_cyclist_distance = sum(float(c.distance_total) for c in cyclists)
         total_device_distance = sum(float(d.distance_total) for d in devices)
         total_group_distance = sum(float(g.distance_total) for g in groups)
         
@@ -238,22 +238,22 @@ class Command(BaseCommand):
         self.stdout.write(f"\nFinal state:")
         self.stdout.write(f"  Active sessions: {active_sessions}")
         self.stdout.write(f"  Hourly metrics: {hourly_metrics}")
-        self.stdout.write(f"  Total player distance: {total_player_distance:.2f} km")
+        self.stdout.write(f"  Total cyclist distance: {total_cyclist_distance:.2f} km")
         self.stdout.write(f"  Total device distance: {total_device_distance:.2f} km")
         self.stdout.write(f"  Total group distance: {total_group_distance:.2f} km")
         
-        self.stdout.write(f"\nPlayer details:")
-        for player in players:
-            sessions = PlayerDeviceCurrentMileage.objects.filter(player=player)
-            metrics = HourlyMetric.objects.filter(player=player)
+        self.stdout.write(f"\nCyclist details:")
+        for cyclist in cyclists:
+            sessions = CyclistDeviceCurrentMileage.objects.filter(cyclist=cyclist)
+            metrics = HourlyMetric.objects.filter(cyclist=cyclist)
             self.stdout.write(
-                f"  {player.user_id}: {float(player.distance_total):.2f} km, "
+                f"  {cyclist.user_id}: {float(cyclist.distance_total):.2f} km, "
                 f"{sessions.count()} active sessions, {metrics.count()} hourly metrics"
             )
         
         self.stdout.write(f"\nDevice details:")
         for device in devices:
-            sessions = PlayerDeviceCurrentMileage.objects.filter(device=device)
+            sessions = CyclistDeviceCurrentMileage.objects.filter(device=device)
             metrics = HourlyMetric.objects.filter(device=device)
             self.stdout.write(
                 f"  {device.name}: {float(device.distance_total):.2f} km, "
@@ -265,9 +265,9 @@ class Command(BaseCommand):
             self.stdout.write(f"  {group.name}: {float(group.distance_total):.2f} km")
         
         self.stdout.write(f"\nHourly metrics by hour:")
-        for metric in HourlyMetric.objects.order_by('timestamp', 'player', 'device'):
+        for metric in HourlyMetric.objects.order_by('timestamp', 'cyclist', 'device'):
             self.stdout.write(
-                f"  {metric.timestamp} | {metric.player.user_id if metric.player else 'N/A'} | "
+                f"  {metric.timestamp} | {metric.cyclist.user_id if metric.cyclist else 'N/A'} | "
                 f"{metric.device.name} | {float(metric.distance_km):.2f} km"
             )
         
@@ -282,7 +282,7 @@ class Command(BaseCommand):
             ))
         else:
             self.stdout.write("Cleaning up test data...")
-            self._cleanup_test_data(players, devices, groups)
+            self._cleanup_test_data(cyclists, devices, groups)
             self.stdout.write(self.style.SUCCESS("Test data cleaned up."))
     
     def _create_groups(self):
@@ -300,30 +300,30 @@ class Command(BaseCommand):
             groups.append(group)
         return groups
     
-    def _create_players(self, num_players, groups):
-        """Create test players. Reuse existing players if they exist."""
-        players = []
-        for i in range(1, num_players + 1):
-            player, created = Player.objects.get_or_create(
+    def _create_cyclists(self, num_cyclists, groups):
+        """Create test cyclists. Reuse existing cyclists if they exist."""
+        cyclists = []
+        for i in range(1, num_cyclists + 1):
+            cyclist, created = Cyclist.objects.get_or_create(
                 id_tag=f'extended-test-tag-{i:02d}',
                 defaults={
-                    'user_id': f'extended-test-player{i}',
+                    'user_id': f'extended-test-cyclist{i}',
                     'distance_total': Decimal('0.00000'),
                     'is_km_collection_enabled': True
                 }
             )
             if not created:
-                # Reset distance for existing player
-                player.distance_total = Decimal('0.00000')
-                player.user_id = f'extended-test-player{i}'
-                player.is_km_collection_enabled = True
-                player.save()
+                # Reset distance for existing cyclist
+                cyclist.distance_total = Decimal('0.00000')
+                cyclist.user_id = f'extended-test-cyclist{i}'
+                cyclist.is_km_collection_enabled = True
+                cyclist.save()
             # Clear existing group assignments and assign to groups alternately
-            player.groups.clear()
+            cyclist.groups.clear()
             group = groups[i % len(groups)]
-            player.groups.add(group)
-            players.append(player)
-        return players
+            cyclist.groups.add(group)
+            cyclists.append(cyclist)
+        return cyclists
     
     def _create_devices(self, num_devices):
         """Create test devices. Reuse existing devices if they exist."""
@@ -344,14 +344,14 @@ class Command(BaseCommand):
             devices.append(device)
         return devices
     
-    def _send_update_data(self, client, api_key, player, device, distance):
+    def _send_update_data(self, client, api_key, cyclist, device, distance):
         """Send update-data API request."""
         try:
             url = reverse('update_data')
             response = client.post(
                 url,
                 data=json.dumps({
-                    'id_tag': player.id_tag,
+                    'id_tag': cyclist.id_tag,
                     'device_id': device.name,
                     'distance': str(distance)
                 }),
@@ -363,18 +363,18 @@ class Command(BaseCommand):
             logger.error(f"Error sending update data: {e}")
             return False
     
-    def _cleanup_test_data(self, players, devices, groups):
+    def _cleanup_test_data(self, cyclists, devices, groups):
         """Clean up test data."""
         # Delete hourly metrics
-        HourlyMetric.objects.filter(player__in=players).delete()
+        HourlyMetric.objects.filter(cyclist__in=cyclists).delete()
         HourlyMetric.objects.filter(device__in=devices).delete()
         
         # Delete sessions
-        PlayerDeviceCurrentMileage.objects.filter(player__in=players).delete()
+        CyclistDeviceCurrentMileage.objects.filter(cyclist__in=cyclists).delete()
         
-        # Delete players
-        for player in players:
-            player.delete()
+        # Delete cyclists
+        for cyclist in cyclists:
+            cyclist.delete()
         
         # Delete devices
         for device in devices:

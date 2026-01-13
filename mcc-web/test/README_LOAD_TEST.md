@@ -3,17 +3,17 @@
 ## Overview
 
 The `load_test_leaderboards.py` script performs load tests for leaderboard endpoints by:
-1. Loading all devices and players from the database
+1. Loading all devices and cyclists from the database
 2. Sending HTTP requests to `update-data` endpoints to simulate activity
-3. **Live leaderboard display during execution** - shows active players and top rankings after each iteration
-4. Testing leaderboard endpoints (Players, Groups)
+3. **Live leaderboard display during execution** - shows active cyclists and top rankings after each iteration
+4. Testing leaderboard endpoints (Cyclists, Groups)
 5. Verifying data in leaderboards
 6. Generating a test report
 
 ## Prerequisites
 
 - Django server must be running (either `python manage.py runserver` or Gunicorn)
-- Database must contain devices and players
+- Database must contain devices and cyclists
 - API keys must be configured for devices (automatically generated for test devices)
 
 ## Usage
@@ -46,24 +46,24 @@ python test/load_test_leaderboards.py --output my_test_results.json
 
 1. **Loads data from database:**
    - All visible devices with kilometer collection enabled
-   - All visible players with kilometer collection enabled
+   - All visible cyclists with kilometer collection enabled
 
 2. **Sends update requests:**
-   - Simulates random combinations of devices and players
+   - Simulates random combinations of devices and cyclists
    - Sends `distance_delta` values between 0.1 and 5.0 km
    - Uses device API keys (or global API key)
 
 3. **Shows live leaderboard during execution:**
-   - Active players (with session kilometers and device)
-   - Top 5 players (Total)
-   - Top 5 players (Today)
+   - Active cyclists (with session kilometers and device)
+   - Top 5 cyclists (Total)
+   - Top 5 cyclists (Today)
    - Top 5 groups (Total)
    - Updated after each iteration
 
 4. **Tests leaderboard endpoints:**
-   - `get-leaderboard/players` (total and daily)
+   - `get-leaderboard/cyclists` (total and daily)
    - `get-leaderboard/groups` (total and daily)
-   - `get-player-distance/{identifier}`
+   - `get-cyclist-distance/{identifier}`
    - `get-group-distance/{identifier}`
 
 5. **Generates report:**
@@ -111,7 +111,7 @@ Base URL: http://127.0.0.1:8000
 Iterations: 5
 Delay between iterations: 1.0s
 
-Loading devices and players from database...
+Loading devices and cyclists from database...
 Found 26 devices and 14 players
 
 Using API key: MCC-APP-API-KEY-SE...
@@ -120,27 +120,27 @@ Starting load test iterations...
 --------------------------------------------------------------------------------
 
 Iteration 1/5
-  ✓ Update: device-01 -> player-01 (+2.34 km)
-  ✓ Update: device-02 -> player-02 (+1.56 km)
+  ✓ Update: device-01 -> cyclist-01 (+2.34 km)
+  ✓ Update: device-02 -> cyclist-02 (+1.56 km)
   ...
 
 ================================================================================
 📊 Live Leaderboard - Iteration 1
 ================================================================================
 
-🟢 Active Players (5):
-   1. player-01        | Session:   2.34 km | Total:    15.80 km | Device: device-01
-   2. player-02        | Session:   1.56 km | Total:     8.70 km | Device: device-02
+🟢 Active Cyclists (5):
+   1. cyclist-01        | Session:   2.34 km | Total:    15.80 km | Device: device-01
+   2. cyclist-02        | Session:   1.56 km | Total:     8.70 km | Device: device-02
    ...
 
 🏆 Top 5 Players (Total):
-  1. player-01         -    15.80 km
-  2. player-02         -     8.70 km
+  1. cyclist-01         -    15.80 km
+  2. cyclist-02         -     8.70 km
    ...
 
-📅 Top 5 Players (Today):
-  1. player-01         -     2.34 km
-  2. player-02         -     1.56 km
+📅 Top 5 Cyclists (Today):
+  1. cyclist-01         -     2.34 km
+  2. cyclist-02         -     1.56 km
    ...
 
 🏫 Top 5 Groups (Total):
@@ -209,8 +209,8 @@ fi
 
 ## Troubleshooting
 
-**Problem: No devices/players found**
-- Check if devices and players exist in the database
+**Problem: No devices/cyclists found**
+- Check if devices and cyclists exist in the database
 - Check if `is_visible=True` and `is_km_collection_enabled=True` are set
 
 **Problem: API key error**

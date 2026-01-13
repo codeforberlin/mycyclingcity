@@ -371,7 +371,7 @@ class TestLiveAPIEndpoints:
                 data = response.json()
                 is_valid, error = check_json_structure(
                     data,
-                    ['player_id', 'user_id', 'distance_total']  # Note: JSON uses 'player_id' for cyclist ID
+                    ['cyclist_id', 'user_id', 'distance_total']
                 )
                 assert is_valid, f"Invalid JSON structure: {error}"
                 
@@ -531,24 +531,26 @@ class TestLiveAPIEndpoints:
         try:
             # Test default (total)
             response = session.get(url, headers=headers, timeout=10)
+            
             assert response.status_code == 200, \
-                f"Expected 200 OK, got {response.status_code}"
+                f"Expected 200 OK, got {response.status_code}. Response: {response.text if hasattr(response, 'text') else response.content}"
             
             data = response.json()
             is_valid, error = check_json_structure(
                 data,
-                ['sort', 'limit', 'players']
+                ['sort', 'limit', 'cyclists']
             )
             assert is_valid, f"Invalid JSON structure: {error}"
-            assert isinstance(data['players'], list), "players should be a list"
+            assert isinstance(data['cyclists'], list), "cyclists should be a list"
             
             # Test with sort=daily
             params = {'sort': 'daily', 'limit': 5}
             response = session.get(url, headers=headers, params=params, timeout=10)
+            
             assert response.status_code == 200
             data = response.json()
             assert data['sort'] == 'daily'
-            assert len(data['players']) <= 5
+            assert len(data['cyclists']) <= 5
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running. Start Gunicorn first.")
     
@@ -600,10 +602,10 @@ class TestLiveAPIEndpoints:
             data = response.json()
             is_valid, error = check_json_structure(
                 data,
-                ['active_seconds', 'limit', 'players']
+                ['active_seconds', 'limit', 'cyclists']
             )
             assert is_valid, f"Invalid JSON structure: {error}"
-            assert isinstance(data['players'], list), "players should be a list"
+            assert isinstance(data['cyclists'], list), "cyclists should be a list"
             
             # Test with custom parameters
             params = {'limit': 5, 'active_seconds': 120}
@@ -611,7 +613,7 @@ class TestLiveAPIEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert data['active_seconds'] == 120
-            assert len(data['players']) <= 5
+            assert len(data['cyclists']) <= 5
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running. Start Gunicorn first.")
     
@@ -631,10 +633,10 @@ class TestLiveAPIEndpoints:
             data = response.json()
             is_valid, error = check_json_structure(
                 data,
-                ['page', 'page_size', 'total_count', 'total_pages', 'players']
+                ['page', 'page_size', 'total_count', 'total_pages', 'cyclists']
             )
             assert is_valid, f"Invalid JSON structure: {error}"
-            assert isinstance(data['players'], list), "players should be a list"
+            assert isinstance(data['cyclists'], list), "cyclists should be a list"
             assert data['page'] >= 1
             assert data['page_size'] > 0
             
@@ -643,7 +645,7 @@ class TestLiveAPIEndpoints:
             response = session.get(url, headers=headers, params=params, timeout=10)
             assert response.status_code == 200
             data = response.json()
-            assert len(data['players']) <= 10
+            assert len(data['cyclists']) <= 10
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running. Start Gunicorn first.")
     
@@ -726,11 +728,11 @@ class TestLiveAPIEndpoints:
             data = response.json()
             is_valid, error = check_json_structure(
                 data,
-                ['period_start', 'period_end', 'total_distance', 'top_groups', 'top_players']
+                ['period_start', 'period_end', 'total_distance', 'top_groups', 'top_cyclists']
             )
             assert is_valid, f"Invalid JSON structure: {error}"
             assert isinstance(data['top_groups'], list), "top_groups should be a list"
-            assert isinstance(data['top_players'], list), "top_players should be a list"
+            assert isinstance(data['top_cyclists'], list), "top_cyclists should be a list"
             
             # Test with date range
             from datetime import datetime, timedelta

@@ -213,7 +213,7 @@ class Command(BaseCommand):
                 now = timezone.now()
                 
                 for update in test_data.get('mileage_updates', []):
-                    cyclist = cyclists_map.get(update['player_id'])
+                    cyclist = cyclists_map.get(update.get('cyclist_id') or update.get('player_id'))
                     device = devices_map.get(update['device_id'])
                     if not cyclist or not device:
                         continue

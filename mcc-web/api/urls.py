@@ -31,7 +31,7 @@ urlpatterns = [
     path('get-leaderboard/cyclists', views.get_leaderboard_cyclists, name='get_leaderboard_cyclists'),
     path('get-leaderboard/groups', views.get_leaderboard_groups, name='get_leaderboard_groups'),
     
-    # Active players endpoint
+    # Active cyclists endpoint
     path('get-active-cyclists', views.get_active_cyclists, name='get_active_cyclists'),
     
     # List endpoints

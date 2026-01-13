@@ -19,7 +19,7 @@ urlpatterns = [
     path('htmx/results', views.render_results_table, name='render_results_table'),
 
     # API Views
-    path('api/game/players', views.get_game_players, name='get_game_players'),
+    path('api/game/cyclists', views.get_game_players, name='get_game_players'),
     path('api/game/devices', views.get_game_devices, name='get_game_devices'),
     path('api/game/start', views.start_game, name='start_game'),
     path('api/game/data', views.get_game_data, name='get_game_data'),

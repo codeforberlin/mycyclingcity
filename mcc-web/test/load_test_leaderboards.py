@@ -10,9 +10,9 @@
 Load test script for testing leaderboard endpoints with real database data.
 
 This script:
-1. Loads all devices and players from the database
+1. Loads all devices and cyclists from the database
 2. Sends HTTP requests to update-data endpoints to simulate activity
-3. Tests leaderboard endpoints (players, groups)
+3. Tests leaderboard endpoints (cyclists, groups)
 4. Verifies the data is correctly displayed
 5. Generates a test report
 
@@ -98,7 +98,7 @@ class LeaderboardLoadTest:
             'base_url': base_url,
             'iterations': iterations,
             'devices_tested': 0,
-            'players_tested': 0,
+            'cyclists_tested': 0,
             'updates_sent': 0,
             'updates_successful': 0,
             'updates_failed': 0,
@@ -126,8 +126,8 @@ class LeaderboardLoadTest:
             print("⚠️  Warning: No API key found. Please set MCC_APP_API_KEY in .env file.")
         return api_key
     
-    def load_devices_and_players(self):
-        """Load all active devices and players from database."""
+    def load_devices_and_cyclists(self):
+        """Load all active devices and cyclists from database."""
         devices = Device.objects.filter(
             is_visible=True,
             is_km_collection_enabled=True
@@ -138,9 +138,9 @@ class LeaderboardLoadTest:
             is_km_collection_enabled=True
         )
         
-        return list(devices), list(players)
+        return list(devices), list(cyclists)
     
-    def send_update_data(self, device, player, distance_delta, api_key):
+    def send_update_data(self, device, cyclist, distance_delta, api_key):
         """Send update-data request to simulate device activity."""
         url = f"{self.base_url}/api/update-data"
         
@@ -167,9 +167,9 @@ class LeaderboardLoadTest:
         except Exception as e:
             return False, str(e)
     
-    def test_leaderboard_players(self, api_key, sort='total', limit=10):
-        """Test get-leaderboard/players endpoint."""
-        url = f"{self.base_url}/api/get-leaderboard/players"
+    def test_leaderboard_cyclists(self, api_key, sort='total', limit=10):
+        """Test get-leaderboard/cyclists endpoint."""
+        url = f"{self.base_url}/api/get-leaderboard/cyclists"
         
         params = {
             'sort': sort,
@@ -213,9 +213,9 @@ class LeaderboardLoadTest:
         except Exception as e:
             return False, str(e)
     
-    def test_get_player_distance(self, player, api_key):
-        """Test get-player-distance endpoint."""
-        url = f"{self.base_url}/api/get-player-distance/{cyclist.id_tag}"
+    def test_get_cyclist_distance(self, cyclist, api_key):
+        """Test get-cyclist-distance endpoint."""
+        url = f"{self.base_url}/api/get-cyclist-distance/{cyclist.id_tag}"
         
         headers = {
             'X-Api-Key': api_key
@@ -249,9 +249,9 @@ class LeaderboardLoadTest:
         except Exception as e:
             return False, str(e)
     
-    def get_active_players(self, api_key, limit=10):
-        """Get list of currently active players."""
-        url = f"{self.base_url}/api/get-active-players"
+    def get_active_cyclists(self, api_key, limit=10):
+        """Get list of currently active cyclists."""
+        url = f"{self.base_url}/api/get-active-cyclists"
         
         params = {
             'limit': limit
@@ -283,11 +283,11 @@ class LeaderboardLoadTest:
             print("📊 Live Leaderboard")
         print("=" * 80)
         
-        # Get active players
-        success_active, data_active = self.get_active_players(api_key, limit=10)
+        # Get active cyclists
+        success_active, data_active = self.get_active_cyclists(api_key, limit=10)
         if success_active and data_active.get('cyclists'):
-            print(f"\n🟢 Aktive Spieler ({len(data_active['cyclists'])}):")
-            for i, player in enumerate(data_active['cyclists'][:10], 1):
+            print(f"\n🟢 Aktive Radler ({len(data_active['cyclists'])}):")
+            for i, cyclist in enumerate(data_active['cyclists'][:10], 1):
                 session_km = cyclist.get('session_km', 0)
                 total_km = cyclist.get('total_km', 0)
                 device = cyclist.get('device_name', 'Unknown')
@@ -296,23 +296,23 @@ class LeaderboardLoadTest:
                       f"Total: {total_km:8.2f} km | "
                       f"Device: {device}")
         else:
-            print("\n⚠️  Keine aktiven Spieler gefunden")
+            print("\n⚠️  Keine aktiven Radler gefunden")
         
-        # Get leaderboard players (total)
-        success_total, data_total = self.test_leaderboard_players(api_key, sort='total', limit=5)
-        if success_total and data_total.get('leaderboard'):
-            print(f"\n🏆 Top 5 Spieler (Gesamt):")
-            for i, player in enumerate(data_total['leaderboard'][:5], 1):
-                distance = cyclist.get('distance', 0)
+        # Get leaderboard cyclists (total)
+        success_total, data_total = self.test_leaderboard_cyclists(api_key, sort='total', limit=5)
+        if success_total and data_total.get('cyclists'):
+            print(f"\n🏆 Top 5 Radler (Gesamt):")
+            for i, cyclist in enumerate(data_total['cyclists'][:5], 1):
+                distance = cyclist.get('distance_total', 0)
                 user_id = cyclist.get('user_id', 'N/A')
                 print(f"  {i}. {user_id:15s} - {distance:8.2f} km")
         
-        # Get leaderboard players (daily)
-        success_daily, data_daily = self.test_leaderboard_players(api_key, sort='daily', limit=5)
-        if success_daily and data_daily.get('leaderboard'):
-            print(f"\n📅 Top 5 Spieler (Heute):")
-            for i, player in enumerate(data_daily['leaderboard'][:5], 1):
-                distance = cyclist.get('distance', 0)
+        # Get leaderboard cyclists (daily)
+        success_daily, data_daily = self.test_leaderboard_cyclists(api_key, sort='daily', limit=5)
+        if success_daily and data_daily.get('cyclists'):
+            print(f"\n📅 Top 5 Radler (Heute):")
+            for i, cyclist in enumerate(data_daily['cyclists'][:5], 1):
+                distance = cyclist.get('distance_daily', 0)
                 user_id = cyclist.get('user_id', 'N/A')
                 print(f"  {i}. {user_id:15s} - {distance:8.2f} km")
         
@@ -331,9 +331,9 @@ class LeaderboardLoadTest:
         snapshot = {
             'timestamp': datetime.now().isoformat(),
             'iteration': iteration,
-            'active_players': data_active.get('cyclists', []) if success_active else [],
-            'top_players_total': data_total.get('leaderboard', []) if success_total else [],
-            'top_players_daily': data_daily.get('leaderboard', []) if success_daily else [],
+            'active_cyclists': data_active.get('cyclists', []) if success_active else [],
+            'top_cyclists_total': data_total.get('cyclists', []) if success_total else [],
+            'top_cyclists_daily': data_daily.get('cyclists', []) if success_daily else [],
             'top_groups_total': data_groups.get('leaderboard', []) if success_groups else [],
         }
         self.results['live_leaderboard_snapshots'].append(snapshot)
@@ -348,23 +348,23 @@ class LeaderboardLoadTest:
         print(f"Delay between iterations: {self.delay}s")
         print()
         
-        # Load devices and players
-        print("Loading devices and players from database...")
-        devices, cyclists = self.load_devices_and_players()
+        # Load devices and cyclists
+        print("Loading devices and cyclists from database...")
+        devices, cyclists = self.load_devices_and_cyclists()
         
         if not devices:
             print("ERROR: No devices found in database!")
             self.results['errors'].append("No devices found in database")
             return self.results
         
-        if not players:
-            print("ERROR: No players found in database!")
-            self.results['errors'].append("No players found in database")
+        if not cyclists:
+            print("ERROR: No cyclists found in database!")
+            self.results['errors'].append("No cyclists found in database")
             return self.results
         
-        print(f"Found {len(devices)} devices and {len(players)} players")
+        print(f"Found {len(devices)} devices and {len(cyclists)} cyclists")
         self.results['devices_tested'] = len(devices)
-        self.results['players_tested'] = len(players)
+        self.results['cyclists_tested'] = len(cyclists)
         print()
         
         # Get API key (always use global key for update-data endpoint)
@@ -384,18 +384,18 @@ class LeaderboardLoadTest:
         for iteration in range(1, self.iterations + 1):
             print(f"\nIteration {iteration}/{self.iterations}")
             
-            # Send update-data requests for random device-player combinations
+            # Send update-data requests for random device-cyclist combinations
             import random
-            updates_this_iteration = min(5, len(devices) * len(players))
+            updates_this_iteration = min(5, len(devices) * len(cyclists))
             
             for _ in range(updates_this_iteration):
                 device = random.choice(devices)
-                cyclist = random.choice(players)
+                cyclist = random.choice(cyclists)
                 distance_delta = Decimal(str(random.uniform(0.1, 5.0)))
                 
                 # Always use global API key for update-data endpoint
                 success, response = self.send_update_data(
-                    device, player, distance_delta, api_key
+                    device, cyclist, distance_delta, api_key
                 )
                 
                 self.results['updates_sent'] += 1
@@ -428,8 +428,8 @@ class LeaderboardLoadTest:
         
         # Test leaderboard endpoints
         leaderboard_tests = [
-            ('players_total', 'total'),
-            ('players_daily', 'daily'),
+            ('cyclists_total', 'total'),
+            ('cyclists_daily', 'daily'),
             ('groups_total', 'total'),
             ('groups_daily', 'daily'),
         ]
@@ -438,7 +438,7 @@ class LeaderboardLoadTest:
             print(f"\nTesting {test_name} (sort={sort_type})...")
             
             if 'cyclists' in test_name:
-                success, data = self.test_leaderboard_players(api_key, sort=sort_type)
+                success, data = self.test_leaderboard_cyclists(api_key, sort=sort_type)
             else:
                 success, data = self.test_leaderboard_groups(api_key, sort=sort_type)
             
@@ -462,23 +462,23 @@ class LeaderboardLoadTest:
                 })
                 self.results['errors'].append(f"{test_name} failed: {data}")
         
-        # Test individual player/group distances
+        # Test individual cyclist/group distances
         print("\n" + "-" * 80)
-        print("Testing individual player/group distance endpoints...")
+        print("Testing individual cyclist/group distance endpoints...")
         print("-" * 80)
         
-        # Test a few random players
+        # Test a few random cyclists
         import random
-        test_players = random.sample(players, min(3, len(players)))
-        for player in test_players:
-            print(f"\nTesting player distance: {cyclist.user_id} ({cyclist.id_tag})...")
-            success, data = self.test_get_player_distance(player, api_key)
+        test_cyclists = random.sample(cyclists, min(3, len(cyclists)))
+        for cyclist in test_cyclists:
+            print(f"\nTesting cyclist distance: {cyclist.user_id} ({cyclist.id_tag})...")
+            success, data = self.test_get_cyclist_distance(cyclist, api_key)
             if success:
                 distance = data.get('distance_total', 0)
                 print(f"  ✓ Success: Total distance = {distance} km")
             else:
                 print(f"  ✗ Failed: {data}")
-                self.results['errors'].append(f"Player distance test failed for {cyclist.user_id}: {data}")
+                self.results['errors'].append(f"Cyclist distance test failed for {cyclist.user_id}: {data}")
         
         # Test a few random groups
         groups = Group.objects.filter(is_visible=True)[:5]
@@ -514,7 +514,7 @@ class LeaderboardLoadTest:
         print("=" * 80)
         print(f"Duration: {self.results.get('duration_seconds', 0):.2f} seconds")
         print(f"Devices tested: {self.results['devices_tested']}")
-        print(f"Players tested: {self.results['players_tested']}")
+        print(f"Cyclists tested: {self.results['cyclists_tested']}")
         print(f"Updates sent: {self.results['updates_sent']}")
         print(f"Updates successful: {self.results['updates_successful']}")
         print(f"Updates failed: {self.results['updates_failed']}")

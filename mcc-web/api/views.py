@@ -603,7 +603,6 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
                 
                 # Check if there's already a metric entry for this hour
                 from django.db.models import Sum
-                from decimal import Decimal
                 existing_metric = HourlyMetric.objects.filter(
                     cyclist=existing_device_session.cyclist,
                     device=existing_device_session.device,
@@ -836,17 +835,17 @@ def get_mapped_minecraft_cyclists(request):
     if not is_valid:
         return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
 
-    filtered_players = Cyclist.objects.filter(mc_username__isnull=False).values(
+    filtered_cyclists = Cyclist.objects.filter(mc_username__isnull=False).values(
         'id_tag', 'user_id', 'mc_username', 'coins_total', 'coins_spendable', 'distance_total', 'last_active'
     )
     
     response_data = {
-        p['id_tag']: {
-            'user_id': p['user_id'], 'mc_username': p['mc_username'],
-            'coins_total': p['coins_total'], 'coins_spendable': p['coins_spendable'],
-            'distance_total': p['distance_total'],
-            'last_active': p['last_active'].isoformat() if p['last_active'] else None
-        } for p in filtered_players
+        c['id_tag']: {
+            'user_id': c['user_id'], 'mc_username': c['mc_username'],
+            'coins_total': c['coins_total'], 'coins_spendable': c['coins_spendable'],
+            'distance_total': c['distance_total'],
+            'last_active': c['last_active'].isoformat() if c['last_active'] else None
+        } for c in filtered_cyclists
     }
     return JsonResponse(response_data)
 
@@ -1032,7 +1031,7 @@ def get_cyclist_distance(request, identifier):
     
     # Build response with total distance
     response_data = {
-        "player_id": cyclist_obj.id,
+        "cyclist_id": cyclist_obj.id,
         "user_id": cyclist_obj.user_id,
         "id_tag": cyclist_obj.id_tag,
         "mc_username": cyclist_obj.mc_username,
@@ -1236,7 +1235,7 @@ def get_leaderboard_cyclists(request):
     
     Query parameters:
     - sort: 'daily' or 'total' (default: 'total')
-    - limit: Number of players to return (default: 10, max: 100)
+    - limit: Number of cyclists to return (default: 10, max: 100)
     - group_id: Filter by group ID (optional)
     """
     api_key_header = request.headers.get('X-Api-Key')
@@ -1257,7 +1256,7 @@ def get_leaderboard_cyclists(request):
     group_id = request.GET.get('group_id', '').strip()
     
     # Base queryset
-    players_qs = Cyclist.objects.filter(is_visible=True)
+    cyclists_qs = Cyclist.objects.filter(is_visible=True)
     
     # Filter by group if specified
     if group_id:
@@ -1266,7 +1265,7 @@ def get_leaderboard_cyclists(request):
             from .analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
-            players_qs = players_qs.filter(groups__id__in=group_ids).distinct()
+            cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
         except (ValueError, Group.DoesNotExist):
             return JsonResponse({
                 "error": _("Gruppe nicht gefunden"),
@@ -1280,38 +1279,38 @@ def get_leaderboard_cyclists(request):
         
         # Get daily distance from HourlyMetrics
         daily_metrics = HourlyMetric.objects.filter(
-            cyclist__in=players_qs,
+            cyclist__in=cyclists_qs,
             timestamp__gte=today_start,
             group_at_time__isnull=False
-        ).values('player_id').annotate(
+        ).values('cyclist_id').annotate(
             daily_total=Sum('distance_km')
         )
         
-        daily_by_player = {m['player_id']: float(m['daily_total'] or 0) for m in daily_metrics}
+        daily_by_cyclist = {m['cyclist_id']: float(m['daily_total'] or 0) for m in daily_metrics}
         
         # Add active sessions
         active_sessions = CyclistDeviceCurrentMileage.objects.filter(
-            cyclist__in=players_qs,
+            cyclist__in=cyclists_qs,
             last_activity__gte=today_start,
             cumulative_mileage__gt=0
         ).select_related('cyclist')
         
         for session in active_sessions:
-            player_id = session.cyclist.id
-            if player_id not in daily_by_player:
-                daily_by_player[player_id] = 0.0
-            daily_by_player[player_id] += float(session.cumulative_mileage or 0)
+            cyclist_id = session.cyclist.id
+            if cyclist_id not in daily_by_cyclist:
+                daily_by_cyclist[cyclist_id] = 0.0
+            daily_by_cyclist[cyclist_id] += float(session.cumulative_mileage or 0)
         
         # Get cyclists with their daily totals
-        players_list = []
-        for cyclist in players_qs.select_related().prefetch_related('groups'):
-            daily_km = daily_by_player.get(cyclist.id, 0.0)
+        cyclists_list = []
+        for cyclist in cyclists_qs.select_related().prefetch_related('groups'):
+            daily_km = daily_by_cyclist.get(cyclist.id, 0.0)
             primary_group = cyclist.groups.filter(is_visible=True).first()
             if not primary_group:
                 primary_group = cyclist.groups.first()
             
-            players_list.append({
-                'player_id': cyclist.id,
+            cyclists_list.append({
+                'cyclist_id': cyclist.id,
                 'user_id': cyclist.user_id,
                 'id_tag': cyclist.id_tag,
                 'mc_username': cyclist.mc_username,
@@ -1322,17 +1321,17 @@ def get_leaderboard_cyclists(request):
             })
         
         # Sort by daily distance
-        players_list.sort(key=lambda x: (x['distance_daily'], x['distance_total']), reverse=True)
+        cyclists_list.sort(key=lambda x: (x['distance_daily'], x['distance_total']), reverse=True)
     else:
         # Sort by total distance
-        players_list = []
-        for cyclist in players_qs.order_by('-distance_total').select_related().prefetch_related('groups')[:limit * 2]:
+        cyclists_list = []
+        for cyclist in cyclists_qs.order_by('-distance_total').select_related().prefetch_related('groups')[:limit * 2]:
             primary_group = cyclist.groups.filter(is_visible=True).first()
             if not primary_group:
                 primary_group = cyclist.groups.first()
             
-            players_list.append({
-                'player_id': cyclist.id,
+            cyclists_list.append({
+                'cyclist_id': cyclist.id,
                 'user_id': cyclist.user_id,
                 'id_tag': cyclist.id_tag,
                 'mc_username': cyclist.mc_username,
@@ -1342,16 +1341,16 @@ def get_leaderboard_cyclists(request):
             })
     
     # Limit results
-    players_list = players_list[:limit]
+    cyclists_list = cyclists_list[:limit]
     
     # Add rank
-    for i, cyclist_data in enumerate(players_list, 1):
+    for i, cyclist_data in enumerate(cyclists_list, 1):
         cyclist_data['rank'] = i
     
     return JsonResponse({
         'sort': sort,
         'limit': limit,
-        'players': players_list
+        'cyclists': cyclists_list
     })
 
 
@@ -1497,11 +1496,11 @@ def get_leaderboard_groups(request):
 @csrf_exempt
 def get_active_cyclists(request):
     """
-    Get list of currently active players (similar to live ticker).
+    Get list of currently active cyclists (similar to live ticker).
     
     Query parameters:
     - group_id: Filter by group ID (optional)
-    - limit: Number of players to return (default: 10, max: 50)
+    - limit: Number of cyclists to return (default: 10, max: 50)
     - active_seconds: Seconds of inactivity threshold (default: 60)
     """
     api_key_header = request.headers.get('X-Api-Key')
@@ -1527,7 +1526,7 @@ def get_active_cyclists(request):
     active_cutoff = now - timedelta(seconds=active_seconds)
     
     # Base queryset
-    players_qs = Cyclist.objects.filter(
+    cyclists_qs = Cyclist.objects.filter(
         is_visible=True,
         last_active__isnull=False,
         last_active__gte=active_cutoff
@@ -1540,7 +1539,7 @@ def get_active_cyclists(request):
             from .analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
-            players_qs = players_qs.filter(groups__id__in=group_ids).distinct()
+            cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
         except (ValueError, Group.DoesNotExist):
             return JsonResponse({
                 "error": _("Gruppe nicht gefunden"),
@@ -1548,8 +1547,8 @@ def get_active_cyclists(request):
             }, status=404)
     
     # Get active cyclists with session data
-    active_players = []
-    for cyclist in players_qs.order_by('-last_active')[:limit * 2]:
+    active_cyclists = []
+    for cyclist in cyclists_qs.order_by('-last_active')[:limit * 2]:
         session_km = 0.0
         device_name = "Unbekannt"
         
@@ -1567,8 +1566,8 @@ def get_active_cyclists(request):
         if not primary_group:
             primary_group = cyclist.groups.first()
         
-        active_players.append({
-            'player_id': cyclist.id,
+        active_cyclists.append({
+            'cyclist_id': cyclist.id,
             'user_id': cyclist.user_id,
             'id_tag': cyclist.id_tag,
             'mc_username': cyclist.mc_username,
@@ -1581,20 +1580,20 @@ def get_active_cyclists(request):
         })
     
     # Sort by session_km
-    active_players.sort(key=lambda x: x['session_km'], reverse=True)
-    active_players = active_players[:limit]
+    active_cyclists.sort(key=lambda x: x['session_km'], reverse=True)
+    active_cyclists = active_cyclists[:limit]
     
     return JsonResponse({
         'active_seconds': active_seconds,
         'limit': limit,
-        'players': active_players
+        'cyclists': active_cyclists
     })
 
 
 @csrf_exempt
 def list_cyclists(request):
     """
-    Get paginated list of all players.
+    Get paginated list of all cyclists.
     
     Query parameters:
     - page: Page number (default: 1)
@@ -1623,10 +1622,10 @@ def list_cyclists(request):
     group_id = request.GET.get('group_id', '').strip()
     
     # Base queryset
-    players_qs = Cyclist.objects.all()
+    cyclists_qs = Cyclist.objects.all()
     
     if is_visible:
-        players_qs = players_qs.filter(is_visible=True)
+        cyclists_qs = cyclists_qs.filter(is_visible=True)
     
     # Filter by group if specified
     if group_id:
@@ -1635,7 +1634,7 @@ def list_cyclists(request):
             from .analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
-            players_qs = players_qs.filter(groups__id__in=group_ids).distinct()
+            cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
         except (ValueError, Group.DoesNotExist):
             return JsonResponse({
                 "error": _("Gruppe nicht gefunden"),
@@ -1643,19 +1642,19 @@ def list_cyclists(request):
             }, status=404)
     
     # Pagination
-    total_count = players_qs.count()
+    total_count = cyclists_qs.count()
     total_pages = (total_count + page_size - 1) // page_size
     
     offset = (page - 1) * page_size
-    players_list = []
+    cyclists_list = []
     
-    for cyclist in players_qs.order_by('user_id')[offset:offset + page_size]:
+    for cyclist in cyclists_qs.order_by('user_id')[offset:offset + page_size]:
         primary_group = cyclist.groups.filter(is_visible=True).first()
         if not primary_group:
             primary_group = cyclist.groups.first()
         
-        players_list.append({
-            'player_id': cyclist.id,
+        cyclists_list.append({
+            'cyclist_id': cyclist.id,
             'user_id': cyclist.user_id,
             'id_tag': cyclist.id_tag,
             'mc_username': cyclist.mc_username,
@@ -1672,7 +1671,7 @@ def list_cyclists(request):
         'page_size': page_size,
         'total_count': total_count,
         'total_pages': total_pages,
-        'players': players_list
+        'cyclists': cyclists_list
     })
 
 
@@ -1932,17 +1931,17 @@ def get_statistics(request):
         if g.distance_total and g.distance_total > 0
     ]
     
-    # Get top players
-    top_players_metrics = metrics_qs.filter(cyclist__isnull=False).values(
+    # Get top cyclists
+    top_cyclists_metrics = metrics_qs.filter(cyclist__isnull=False).values(
         'cyclist_id', 'cyclist__user_id', 'cyclist__id_tag'
     ).annotate(
         total_distance=Sum('distance_km')
     ).order_by('-total_distance')[:10]
     
-    top_players_list = []
-    for item in top_players_metrics:
-        top_players_list.append({
-            'player_id': item.get('cyclist_id'),
+    top_cyclists_list = []
+    for item in top_cyclists_metrics:
+        top_cyclists_list.append({
+            'cyclist_id': item.get('cyclist_id'),
             'user_id': item.get('cyclist__user_id'),
             'id_tag': item.get('cyclist__id_tag'),
             'distance_period': float(item.get('total_distance') or 0),
@@ -1953,7 +1952,7 @@ def get_statistics(request):
         'period_end': end_dt.strftime('%Y-%m-%d'),
         'total_distance': float(total_distance),
         'top_groups': top_groups_list,
-        'top_players': top_players_list,
+        'top_cyclists': top_cyclists_list,
     })
 
 

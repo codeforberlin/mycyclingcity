@@ -49,7 +49,7 @@ Once tests can run, the following areas will be tested:
    - Parent group aggregation
 
 2. **PlayerTotalsTest** (1 test)
-   - Player totals match expected values
+   - Cyclist totals match expected values
 
 3. **LeaderboardTest** (2 tests)
    - Leaderboard total_km calculation

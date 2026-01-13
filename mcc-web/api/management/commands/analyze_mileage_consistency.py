@@ -15,14 +15,14 @@ HourlyMetrics should reflect the historical breakdown of how Cyclist.distance_to
 was accumulated through sessions.
 
 This command:
-1. Identifies players where HourlyMetrics sum != Cyclist.distance_total
+1. Identifies cyclists where HourlyMetrics sum != Cyclist.distance_total
 2. Provides options to fix the inconsistency by either:
    - Recalculating HourlyMetrics from Cyclist.distance_total (if possible)
    - Or adjusting Cyclist.distance_total to match HourlyMetrics (not recommended)
 
 Usage:
     python manage.py analyze_mileage_consistency
-    python manage.py analyze_mileage_consistency --player-id=123
+    python manage.py analyze_mileage_consistency --cyclist-id=123
     python manage.py analyze_mileage_consistency --fix --strategy=recalculate_metrics
 """
 
@@ -60,7 +60,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        cyclist_id = options.get('cyclist_id')
+        cyclist_id = options.get('cyclist_id') or options.get('player_id')  # Support both for backward compatibility
         fix = options.get('fix', False)
         strategy = options.get('strategy')
         threshold = Decimal(str(options.get('threshold', 0.001)))
@@ -69,23 +69,23 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR('--fix requires --strategy'))
             return
         
-        # Get players to analyze
+        # Get cyclists to analyze
         if cyclist_id:
             cyclists = Cyclist.objects.filter(id=cyclist_id)
-            if not players.exists():
-                self.stdout.write(self.style.ERROR(f'Player with ID {cyclist_id} not found'))
+            if not cyclists.exists():
+                self.stdout.write(self.style.ERROR(f'Cyclist with ID {cyclist_id} not found'))
                 return
         else:
             cyclists = Cyclist.objects.filter(is_visible=True)
         
-        self.stdout.write(f'Analyzing {players.count()} player(s)...')
+        self.stdout.write(f'Analyzing {cyclists.count()} cyclist(s)...')
         self.stdout.write('')
         
         inconsistencies = []
         
-        for player in players:
+        for cyclist in cyclists:
             # Get master data
-            player_total = cyclist.distance_total or Decimal('0.00000')
+            cyclist_total = cyclist.distance_total or Decimal('0.00000')
             
             # Get HourlyMetrics sum
             metrics_sum = HourlyMetric.objects.filter(
@@ -104,12 +104,12 @@ class Command(BaseCommand):
             expected_total = metrics_sum + active_sessions_sum
             
             # Calculate difference
-            difference = float(expected_total) - float(player_total)
+            difference = float(expected_total) - float(cyclist_total)
             
             if abs(difference) > float(threshold):
                 inconsistencies.append({
-                    'cyclist': player,
-                    'player_total': player_total,
+                    'cyclist': cyclist,
+                    'cyclist_total': cyclist_total,
                     'metrics_sum': metrics_sum,
                     'active_sessions_sum': active_sessions_sum,
                     'expected_total': expected_total,
@@ -126,8 +126,8 @@ class Command(BaseCommand):
         
         for inc in inconsistencies:
             cyclist = inc['cyclist']
-            self.stdout.write(f'Player: {cyclist.user_id} (ID: {cyclist.id})')
-            self.stdout.write(f'  Cyclist.distance_total (MASTER): {inc["player_total"]} km')
+            self.stdout.write(f'Cyclist: {cyclist.user_id} (ID: {cyclist.id})')
+            self.stdout.write(f'  Cyclist.distance_total (MASTER): {inc["cyclist_total"]} km')
             self.stdout.write(f'  HourlyMetrics sum: {inc["metrics_sum"]} km')
             self.stdout.write(f'  Active sessions sum: {inc["active_sessions_sum"]} km')
             self.stdout.write(f'  Expected total (Metrics + Sessions): {inc["expected_total"]} km')
@@ -147,7 +147,7 @@ class Command(BaseCommand):
                 )
             
             # Show detailed breakdown
-            metrics = HourlyMetric.objects.filter(cyclist = player).order_by('timestamp')
+            metrics = HourlyMetric.objects.filter(cyclist = cyclist).order_by('timestamp')
             if metrics.exists():
                 self.stdout.write(f'  HourlyMetrics entries ({metrics.count()}):')
                 for metric in metrics[:10]:  # Show first 10
@@ -201,22 +201,22 @@ class Command(BaseCommand):
         
         for inc in inconsistencies:
             cyclist = inc['cyclist']
-            player_total = inc['player_total']
+            cyclist_total = inc['cyclist_total']
             metrics_sum = inc['metrics_sum']
             
             # Only fix if HourlyMetrics have MORE data
             if inc['difference'] > float(threshold):
                 excess = Decimal(str(inc['difference']))
                 self.stdout.write(
-                    f'Player {cyclist.user_id}: Removing {excess} km excess from HourlyMetrics'
+                    f'Cyclist {cyclist.user_id}: Removing {excess} km excess from HourlyMetrics'
                 )
                 
                 # Get all metrics ordered by timestamp (oldest first)
                 metrics = HourlyMetric.objects.filter(
-                    cyclist = player
+                    cyclist = cyclist
                 ).order_by('timestamp', 'id')
                 
-                # Delete metrics until we match player_total
+                # Delete metrics until we match cyclist_total
                 remaining_to_remove = excess
                 
                 for metric in metrics:

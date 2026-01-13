@@ -112,14 +112,14 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Test data generated: {output_path}"))
         self.stdout.write(f"  - {len(test_data['groups'])} groups")
-        self.stdout.write(f"  - {len(test_data['players'])} players")
+        self.stdout.write(f"  - {len(test_data['cyclists'])} cyclists")
         self.stdout.write(f"  - {len(test_data['devices'])} devices")
         self.stdout.write(f"  - {len(test_data['mileage_updates'])} mileage updates")
 
     def generate_test_data(self, schools_count, classes_count, students_per_class, devices_per_class):
         """Generate test data structure."""
         groups = []
-        players = []
+        cyclists = []
         devices = []
         mileage_updates = []
 
@@ -129,7 +129,7 @@ class Command(BaseCommand):
         class_letters = ["a", "b", "c", "d", "e", "f", "g"]
 
         group_id = 1
-        player_id = 1
+        cyclist_id = 1
         device_id = 1
 
         # Generate schools and classes
@@ -181,8 +181,8 @@ class Command(BaseCommand):
                         user_id = f"student-{school_id:02d}-{class_group_id:02d}-{student_idx+1:02d}"
                         id_tag = f"tag-{school_id:02d}-{class_group_id:02d}-{student_idx+1:02d}"
                         
-                        players.append({
-                            "id": player_id,
+                        cyclists.append({
+                            "id": cyclist_id,
                             "user_id": user_id,
                             "id_tag": id_tag,
                             "is_visible": True,
@@ -190,7 +190,7 @@ class Command(BaseCommand):
                             "distance_total": 0.0,
                             "coins_total": 0
                         })
-                        player_id += 1
+                        cyclist_id += 1
 
                     # Generate devices for this class
                     for device_idx in range(devices_per_class):
@@ -211,16 +211,16 @@ class Command(BaseCommand):
         now = timezone.now()
         for day_offset in range(-30, 1):  # Last 30 days
             for update_idx in range(10):  # 10 updates per day
-                # Random player and device
-                player = random.choice(players)
+                # Random cyclist and device
+                cyclist = random.choice(cyclists)
                 device = random.choice(devices)
                 
-                # Ensure device belongs to same group as player
-                player_group_id = player['group_ids'][0]
+                # Ensure device belongs to same group as cyclist
+                cyclist_group_id = cyclist['group_ids'][0]
                 device_group_id = device['group_id']
-                if device_group_id != player_group_id:
+                if device_group_id != cyclist_group_id:
                     # Find device from same group
-                    matching_devices = [d for d in devices if d['group_id'] == player_group_id]
+                    matching_devices = [d for d in devices if d['group_id'] == cyclist_group_id]
                     if matching_devices:
                         device = random.choice(matching_devices)
                     else:
@@ -233,7 +233,7 @@ class Command(BaseCommand):
                 hour_offset = random.randint(0, 23)
                 
                 mileage_updates.append({
-                    "player_id": player['id'],
+                    "cyclist_id": cyclist['id'],
                     "device_id": device['id'],
                     "distance_delta": distance,
                     "timestamp_offset_hours": day_offset * 24 + hour_offset - now.hour
@@ -241,7 +241,7 @@ class Command(BaseCommand):
 
         return {
             "groups": groups,
-            "players": players,
+            "cyclists": cyclists,
             "devices": devices,
             "mileage_updates": mileage_updates,
             "expected_results": {

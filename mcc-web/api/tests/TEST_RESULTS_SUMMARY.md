@@ -14,7 +14,7 @@ Generated automatically after test run.
 - **Status**: ✅ All passing
 - **Coverage**: 
   - Group model (7 tests)
-  - Player model (3 tests)
+  - Cyclist model (3 tests)
   - Device model (3 tests)
   - TravelTrack model (3 tests)
   - Event model (3 tests)

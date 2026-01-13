@@ -70,7 +70,7 @@ class CyclistFactory(factory.django.DjangoModelFactory):
         model = Cyclist
         django_get_or_create = ('id_tag',)
     
-    user_id = factory.Sequence(lambda n: f'player{n}')
+    user_id = factory.Sequence(lambda n: f'cyclist{n}')
     id_tag = factory.Sequence(lambda n: f'tag-{n:04d}')
     mc_username = factory.LazyAttribute(lambda obj: f'mc_{obj.user_id}')
     distance_total = Decimal('0.00000')

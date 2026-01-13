@@ -1410,13 +1410,13 @@ msgstr "🛑 Session wurde zurückgesetzt."
 
 #: game/views.py:64
 #, fuzzy, python-brace-format
-#| msgid "Zuweisung hinzugefügt: {player} -> {device}"
+#| msgid "Zuweisung hinzugefügt: {cyclist} -> {device}"
 msgid "Zuweisung hinzugefügt: {cyclist} -> {device}"
-msgstr "Zuweisung hinzugefügt: {player} -> {device}"
+msgstr "Zuweisung hinzugefügt: {cyclist} -> {device}"
 
 #: game/views.py:74
 #, fuzzy, python-brace-format
-#| msgid "Zuweisung entfernt: {player_to_remove}"
+#| msgid "Zuweisung entfernt: {cyclist_to_remove}"
 msgid "Zuweisung entfernt: {cyclist_to_remove}"
 msgstr "Zuweisung entfernt: {player_to_remove}"
 
@@ -3276,7 +3276,7 @@ msgstr ""
 
 #: templates/admin/api/bulk_create_school.html:198
 #, fuzzy
-#| msgid "Player (Optional)"
+#| msgid "Cyclist (Optional)"
 msgid "Kurzname (optional)"
 msgstr "Spieler (Optional)"
 
@@ -3524,7 +3524,7 @@ msgstr "Spiel-Status-Informationen"
 
 #: templates/privacy_policy.html:50
 #, fuzzy
-#| msgid "Player kilometer data (for map display)"
+#| msgid "Cyclist kilometer data (for map display)"
 msgid "Cyclist kilometer data (for map display)"
 msgstr "Spieler-Kilometer-Daten (für Kartenanzeige)"
 

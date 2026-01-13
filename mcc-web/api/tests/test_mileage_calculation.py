@@ -63,7 +63,7 @@ class TestMidnightResets:
             distance_km=Decimal('3.00000')
         )
         
-        # Query all metrics for this player/device (they have different timestamps)
+        # Query all metrics for this cyclist/device (they have different timestamps)
         metrics = HourlyMetric.objects.filter(
             cyclist = cyclist,
             device=device

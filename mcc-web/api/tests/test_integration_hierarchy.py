@@ -40,17 +40,17 @@ from api.tests.conftest import (
 class TestIDTagToGroupHierarchy:
     """Tests for ID Tag -> Group hierarchy lookups."""
     
-    def test_player_to_group_lookup(self, complete_test_scenario):
-        """Test looking up group from player ID tag."""
+    def test_cyclist_to_group_lookup(self, complete_test_scenario):
+        """Test looking up group from cyclist ID tag."""
         scenario = complete_test_scenario
         cyclist = scenario['cyclist']
         child_group = scenario['child_group']
         parent_group = scenario['parent_group']
         
-        # Lookup player by ID tag
+        # Lookup cyclist by ID tag
         found_player = Cyclist.objects.get(id_tag=cyclist.id_tag)
         
-        # Get player's groups
+        # Get cyclist's groups
         groups = found_player.groups.all()
         assert child_group in groups
         
@@ -77,7 +77,7 @@ class TestIDTagToGroupHierarchy:
             
             # Count queries (should be minimal)
             queries = connection.queries[initial_queries:]
-            # With prefetch_related, should be 2 queries: one for players, one for groups
+            # With prefetch_related, should be 2 queries: one for cyclists, one for groups
             assert len(queries) <= 2
     
     def test_group_hierarchy_traversal(self, group_hierarchy):
@@ -259,7 +259,7 @@ class TestN1QueryPrevention:
                     _ = group.name
             
             queries = connection.queries[initial_queries:]
-            # Should be 2 queries: one for players, one for groups
+            # Should be 2 queries: one for cyclists, one for groups
             assert len(queries) <= 2
     
     def test_hourly_metric_group_lookup_efficiency(self, complete_test_scenario, settings):

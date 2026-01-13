@@ -1,0 +1,7465 @@
+{
+  "groups": [
+    {
+      "id": 1,
+      "group_type": "Schule",
+      "name": "Schule01",
+      "short_name": "Schule01",
+      "is_visible": true,
+      "parent": null,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 2,
+      "group_type": "Klasse",
+      "name": "1a-Schule01",
+      "short_name": "1a",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 3,
+      "group_type": "Klasse",
+      "name": "1b-Schule01",
+      "short_name": "1b",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 4,
+      "group_type": "Klasse",
+      "name": "1c-Schule01",
+      "short_name": "1c",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 5,
+      "group_type": "Klasse",
+      "name": "1d-Schule01",
+      "short_name": "1d",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 6,
+      "group_type": "Klasse",
+      "name": "1e-Schule01",
+      "short_name": "1e",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 7,
+      "group_type": "Klasse",
+      "name": "1f-Schule01",
+      "short_name": "1f",
+      "is_visible": true,
+      "parent": 1,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 8,
+      "group_type": "Schule",
+      "name": "Schule02",
+      "short_name": "Schule02",
+      "is_visible": true,
+      "parent": null,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 9,
+      "group_type": "Klasse",
+      "name": "1a-Schule02",
+      "short_name": "1a",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 10,
+      "group_type": "Klasse",
+      "name": "1b-Schule02",
+      "short_name": "1b",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 11,
+      "group_type": "Klasse",
+      "name": "1c-Schule02",
+      "short_name": "1c",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 12,
+      "group_type": "Klasse",
+      "name": "1d-Schule02",
+      "short_name": "1d",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 13,
+      "group_type": "Klasse",
+      "name": "1e-Schule02",
+      "short_name": "1e",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 14,
+      "group_type": "Klasse",
+      "name": "1f-Schule02",
+      "short_name": "1f",
+      "is_visible": true,
+      "parent": 8,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 15,
+      "group_type": "Schule",
+      "name": "Schule03",
+      "short_name": "Schule03",
+      "is_visible": true,
+      "parent": null,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 16,
+      "group_type": "Klasse",
+      "name": "1a-Schule03",
+      "short_name": "1a",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 17,
+      "group_type": "Klasse",
+      "name": "1b-Schule03",
+      "short_name": "1b",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 18,
+      "group_type": "Klasse",
+      "name": "1c-Schule03",
+      "short_name": "1c",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 19,
+      "group_type": "Klasse",
+      "name": "1d-Schule03",
+      "short_name": "1d",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 20,
+      "group_type": "Klasse",
+      "name": "1e-Schule03",
+      "short_name": "1e",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 21,
+      "group_type": "Klasse",
+      "name": "1f-Schule03",
+      "short_name": "1f",
+      "is_visible": true,
+      "parent": 15,
+      "distance_total": 0.0,
+      "coins_total": 0
+    }
+  ],
+  "cyclists": [
+    {
+      "id": 1,
+      "user_id": "student-01-02-01",
+      "id_tag": "tag-01-02-01",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 2,
+      "user_id": "student-01-02-02",
+      "id_tag": "tag-01-02-02",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 3,
+      "user_id": "student-01-02-03",
+      "id_tag": "tag-01-02-03",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 4,
+      "user_id": "student-01-02-04",
+      "id_tag": "tag-01-02-04",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 5,
+      "user_id": "student-01-02-05",
+      "id_tag": "tag-01-02-05",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 6,
+      "user_id": "student-01-02-06",
+      "id_tag": "tag-01-02-06",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 7,
+      "user_id": "student-01-02-07",
+      "id_tag": "tag-01-02-07",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 8,
+      "user_id": "student-01-02-08",
+      "id_tag": "tag-01-02-08",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 9,
+      "user_id": "student-01-02-09",
+      "id_tag": "tag-01-02-09",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 10,
+      "user_id": "student-01-02-10",
+      "id_tag": "tag-01-02-10",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 11,
+      "user_id": "student-01-02-11",
+      "id_tag": "tag-01-02-11",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 12,
+      "user_id": "student-01-02-12",
+      "id_tag": "tag-01-02-12",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 13,
+      "user_id": "student-01-02-13",
+      "id_tag": "tag-01-02-13",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 14,
+      "user_id": "student-01-02-14",
+      "id_tag": "tag-01-02-14",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 15,
+      "user_id": "student-01-02-15",
+      "id_tag": "tag-01-02-15",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 16,
+      "user_id": "student-01-02-16",
+      "id_tag": "tag-01-02-16",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 17,
+      "user_id": "student-01-02-17",
+      "id_tag": "tag-01-02-17",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 18,
+      "user_id": "student-01-02-18",
+      "id_tag": "tag-01-02-18",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 19,
+      "user_id": "student-01-02-19",
+      "id_tag": "tag-01-02-19",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 20,
+      "user_id": "student-01-02-20",
+      "id_tag": "tag-01-02-20",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 21,
+      "user_id": "student-01-02-21",
+      "id_tag": "tag-01-02-21",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 22,
+      "user_id": "student-01-02-22",
+      "id_tag": "tag-01-02-22",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 23,
+      "user_id": "student-01-02-23",
+      "id_tag": "tag-01-02-23",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 24,
+      "user_id": "student-01-02-24",
+      "id_tag": "tag-01-02-24",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 25,
+      "user_id": "student-01-02-25",
+      "id_tag": "tag-01-02-25",
+      "is_visible": true,
+      "group_ids": [
+        2
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 26,
+      "user_id": "student-01-03-01",
+      "id_tag": "tag-01-03-01",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 27,
+      "user_id": "student-01-03-02",
+      "id_tag": "tag-01-03-02",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 28,
+      "user_id": "student-01-03-03",
+      "id_tag": "tag-01-03-03",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 29,
+      "user_id": "student-01-03-04",
+      "id_tag": "tag-01-03-04",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 30,
+      "user_id": "student-01-03-05",
+      "id_tag": "tag-01-03-05",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 31,
+      "user_id": "student-01-03-06",
+      "id_tag": "tag-01-03-06",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 32,
+      "user_id": "student-01-03-07",
+      "id_tag": "tag-01-03-07",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 33,
+      "user_id": "student-01-03-08",
+      "id_tag": "tag-01-03-08",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 34,
+      "user_id": "student-01-03-09",
+      "id_tag": "tag-01-03-09",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 35,
+      "user_id": "student-01-03-10",
+      "id_tag": "tag-01-03-10",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 36,
+      "user_id": "student-01-03-11",
+      "id_tag": "tag-01-03-11",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 37,
+      "user_id": "student-01-03-12",
+      "id_tag": "tag-01-03-12",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 38,
+      "user_id": "student-01-03-13",
+      "id_tag": "tag-01-03-13",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 39,
+      "user_id": "student-01-03-14",
+      "id_tag": "tag-01-03-14",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 40,
+      "user_id": "student-01-03-15",
+      "id_tag": "tag-01-03-15",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 41,
+      "user_id": "student-01-03-16",
+      "id_tag": "tag-01-03-16",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 42,
+      "user_id": "student-01-03-17",
+      "id_tag": "tag-01-03-17",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 43,
+      "user_id": "student-01-03-18",
+      "id_tag": "tag-01-03-18",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 44,
+      "user_id": "student-01-03-19",
+      "id_tag": "tag-01-03-19",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 45,
+      "user_id": "student-01-03-20",
+      "id_tag": "tag-01-03-20",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 46,
+      "user_id": "student-01-03-21",
+      "id_tag": "tag-01-03-21",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 47,
+      "user_id": "student-01-03-22",
+      "id_tag": "tag-01-03-22",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 48,
+      "user_id": "student-01-03-23",
+      "id_tag": "tag-01-03-23",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 49,
+      "user_id": "student-01-03-24",
+      "id_tag": "tag-01-03-24",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 50,
+      "user_id": "student-01-03-25",
+      "id_tag": "tag-01-03-25",
+      "is_visible": true,
+      "group_ids": [
+        3
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 51,
+      "user_id": "student-01-04-01",
+      "id_tag": "tag-01-04-01",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 52,
+      "user_id": "student-01-04-02",
+      "id_tag": "tag-01-04-02",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 53,
+      "user_id": "student-01-04-03",
+      "id_tag": "tag-01-04-03",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 54,
+      "user_id": "student-01-04-04",
+      "id_tag": "tag-01-04-04",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 55,
+      "user_id": "student-01-04-05",
+      "id_tag": "tag-01-04-05",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 56,
+      "user_id": "student-01-04-06",
+      "id_tag": "tag-01-04-06",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 57,
+      "user_id": "student-01-04-07",
+      "id_tag": "tag-01-04-07",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 58,
+      "user_id": "student-01-04-08",
+      "id_tag": "tag-01-04-08",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 59,
+      "user_id": "student-01-04-09",
+      "id_tag": "tag-01-04-09",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 60,
+      "user_id": "student-01-04-10",
+      "id_tag": "tag-01-04-10",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 61,
+      "user_id": "student-01-04-11",
+      "id_tag": "tag-01-04-11",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 62,
+      "user_id": "student-01-04-12",
+      "id_tag": "tag-01-04-12",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 63,
+      "user_id": "student-01-04-13",
+      "id_tag": "tag-01-04-13",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 64,
+      "user_id": "student-01-04-14",
+      "id_tag": "tag-01-04-14",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 65,
+      "user_id": "student-01-04-15",
+      "id_tag": "tag-01-04-15",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 66,
+      "user_id": "student-01-04-16",
+      "id_tag": "tag-01-04-16",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 67,
+      "user_id": "student-01-04-17",
+      "id_tag": "tag-01-04-17",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 68,
+      "user_id": "student-01-04-18",
+      "id_tag": "tag-01-04-18",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 69,
+      "user_id": "student-01-04-19",
+      "id_tag": "tag-01-04-19",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 70,
+      "user_id": "student-01-04-20",
+      "id_tag": "tag-01-04-20",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 71,
+      "user_id": "student-01-04-21",
+      "id_tag": "tag-01-04-21",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 72,
+      "user_id": "student-01-04-22",
+      "id_tag": "tag-01-04-22",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 73,
+      "user_id": "student-01-04-23",
+      "id_tag": "tag-01-04-23",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 74,
+      "user_id": "student-01-04-24",
+      "id_tag": "tag-01-04-24",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 75,
+      "user_id": "student-01-04-25",
+      "id_tag": "tag-01-04-25",
+      "is_visible": true,
+      "group_ids": [
+        4
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 76,
+      "user_id": "student-01-05-01",
+      "id_tag": "tag-01-05-01",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 77,
+      "user_id": "student-01-05-02",
+      "id_tag": "tag-01-05-02",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 78,
+      "user_id": "student-01-05-03",
+      "id_tag": "tag-01-05-03",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 79,
+      "user_id": "student-01-05-04",
+      "id_tag": "tag-01-05-04",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 80,
+      "user_id": "student-01-05-05",
+      "id_tag": "tag-01-05-05",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 81,
+      "user_id": "student-01-05-06",
+      "id_tag": "tag-01-05-06",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 82,
+      "user_id": "student-01-05-07",
+      "id_tag": "tag-01-05-07",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 83,
+      "user_id": "student-01-05-08",
+      "id_tag": "tag-01-05-08",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 84,
+      "user_id": "student-01-05-09",
+      "id_tag": "tag-01-05-09",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 85,
+      "user_id": "student-01-05-10",
+      "id_tag": "tag-01-05-10",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 86,
+      "user_id": "student-01-05-11",
+      "id_tag": "tag-01-05-11",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 87,
+      "user_id": "student-01-05-12",
+      "id_tag": "tag-01-05-12",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 88,
+      "user_id": "student-01-05-13",
+      "id_tag": "tag-01-05-13",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 89,
+      "user_id": "student-01-05-14",
+      "id_tag": "tag-01-05-14",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 90,
+      "user_id": "student-01-05-15",
+      "id_tag": "tag-01-05-15",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 91,
+      "user_id": "student-01-05-16",
+      "id_tag": "tag-01-05-16",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 92,
+      "user_id": "student-01-05-17",
+      "id_tag": "tag-01-05-17",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 93,
+      "user_id": "student-01-05-18",
+      "id_tag": "tag-01-05-18",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 94,
+      "user_id": "student-01-05-19",
+      "id_tag": "tag-01-05-19",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 95,
+      "user_id": "student-01-05-20",
+      "id_tag": "tag-01-05-20",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 96,
+      "user_id": "student-01-05-21",
+      "id_tag": "tag-01-05-21",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 97,
+      "user_id": "student-01-05-22",
+      "id_tag": "tag-01-05-22",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 98,
+      "user_id": "student-01-05-23",
+      "id_tag": "tag-01-05-23",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 99,
+      "user_id": "student-01-05-24",
+      "id_tag": "tag-01-05-24",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 100,
+      "user_id": "student-01-05-25",
+      "id_tag": "tag-01-05-25",
+      "is_visible": true,
+      "group_ids": [
+        5
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 101,
+      "user_id": "student-01-06-01",
+      "id_tag": "tag-01-06-01",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 102,
+      "user_id": "student-01-06-02",
+      "id_tag": "tag-01-06-02",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 103,
+      "user_id": "student-01-06-03",
+      "id_tag": "tag-01-06-03",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 104,
+      "user_id": "student-01-06-04",
+      "id_tag": "tag-01-06-04",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 105,
+      "user_id": "student-01-06-05",
+      "id_tag": "tag-01-06-05",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 106,
+      "user_id": "student-01-06-06",
+      "id_tag": "tag-01-06-06",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 107,
+      "user_id": "student-01-06-07",
+      "id_tag": "tag-01-06-07",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 108,
+      "user_id": "student-01-06-08",
+      "id_tag": "tag-01-06-08",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 109,
+      "user_id": "student-01-06-09",
+      "id_tag": "tag-01-06-09",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 110,
+      "user_id": "student-01-06-10",
+      "id_tag": "tag-01-06-10",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 111,
+      "user_id": "student-01-06-11",
+      "id_tag": "tag-01-06-11",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 112,
+      "user_id": "student-01-06-12",
+      "id_tag": "tag-01-06-12",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 113,
+      "user_id": "student-01-06-13",
+      "id_tag": "tag-01-06-13",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 114,
+      "user_id": "student-01-06-14",
+      "id_tag": "tag-01-06-14",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 115,
+      "user_id": "student-01-06-15",
+      "id_tag": "tag-01-06-15",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 116,
+      "user_id": "student-01-06-16",
+      "id_tag": "tag-01-06-16",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 117,
+      "user_id": "student-01-06-17",
+      "id_tag": "tag-01-06-17",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 118,
+      "user_id": "student-01-06-18",
+      "id_tag": "tag-01-06-18",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 119,
+      "user_id": "student-01-06-19",
+      "id_tag": "tag-01-06-19",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 120,
+      "user_id": "student-01-06-20",
+      "id_tag": "tag-01-06-20",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 121,
+      "user_id": "student-01-06-21",
+      "id_tag": "tag-01-06-21",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 122,
+      "user_id": "student-01-06-22",
+      "id_tag": "tag-01-06-22",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 123,
+      "user_id": "student-01-06-23",
+      "id_tag": "tag-01-06-23",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 124,
+      "user_id": "student-01-06-24",
+      "id_tag": "tag-01-06-24",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 125,
+      "user_id": "student-01-06-25",
+      "id_tag": "tag-01-06-25",
+      "is_visible": true,
+      "group_ids": [
+        6
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 126,
+      "user_id": "student-01-07-01",
+      "id_tag": "tag-01-07-01",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 127,
+      "user_id": "student-01-07-02",
+      "id_tag": "tag-01-07-02",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 128,
+      "user_id": "student-01-07-03",
+      "id_tag": "tag-01-07-03",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 129,
+      "user_id": "student-01-07-04",
+      "id_tag": "tag-01-07-04",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 130,
+      "user_id": "student-01-07-05",
+      "id_tag": "tag-01-07-05",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 131,
+      "user_id": "student-01-07-06",
+      "id_tag": "tag-01-07-06",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 132,
+      "user_id": "student-01-07-07",
+      "id_tag": "tag-01-07-07",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 133,
+      "user_id": "student-01-07-08",
+      "id_tag": "tag-01-07-08",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 134,
+      "user_id": "student-01-07-09",
+      "id_tag": "tag-01-07-09",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 135,
+      "user_id": "student-01-07-10",
+      "id_tag": "tag-01-07-10",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 136,
+      "user_id": "student-01-07-11",
+      "id_tag": "tag-01-07-11",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 137,
+      "user_id": "student-01-07-12",
+      "id_tag": "tag-01-07-12",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 138,
+      "user_id": "student-01-07-13",
+      "id_tag": "tag-01-07-13",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 139,
+      "user_id": "student-01-07-14",
+      "id_tag": "tag-01-07-14",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 140,
+      "user_id": "student-01-07-15",
+      "id_tag": "tag-01-07-15",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 141,
+      "user_id": "student-01-07-16",
+      "id_tag": "tag-01-07-16",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 142,
+      "user_id": "student-01-07-17",
+      "id_tag": "tag-01-07-17",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 143,
+      "user_id": "student-01-07-18",
+      "id_tag": "tag-01-07-18",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 144,
+      "user_id": "student-01-07-19",
+      "id_tag": "tag-01-07-19",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 145,
+      "user_id": "student-01-07-20",
+      "id_tag": "tag-01-07-20",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 146,
+      "user_id": "student-01-07-21",
+      "id_tag": "tag-01-07-21",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 147,
+      "user_id": "student-01-07-22",
+      "id_tag": "tag-01-07-22",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 148,
+      "user_id": "student-01-07-23",
+      "id_tag": "tag-01-07-23",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 149,
+      "user_id": "student-01-07-24",
+      "id_tag": "tag-01-07-24",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 150,
+      "user_id": "student-01-07-25",
+      "id_tag": "tag-01-07-25",
+      "is_visible": true,
+      "group_ids": [
+        7
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 151,
+      "user_id": "student-02-09-01",
+      "id_tag": "tag-02-09-01",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 152,
+      "user_id": "student-02-09-02",
+      "id_tag": "tag-02-09-02",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 153,
+      "user_id": "student-02-09-03",
+      "id_tag": "tag-02-09-03",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 154,
+      "user_id": "student-02-09-04",
+      "id_tag": "tag-02-09-04",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 155,
+      "user_id": "student-02-09-05",
+      "id_tag": "tag-02-09-05",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 156,
+      "user_id": "student-02-09-06",
+      "id_tag": "tag-02-09-06",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 157,
+      "user_id": "student-02-09-07",
+      "id_tag": "tag-02-09-07",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 158,
+      "user_id": "student-02-09-08",
+      "id_tag": "tag-02-09-08",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 159,
+      "user_id": "student-02-09-09",
+      "id_tag": "tag-02-09-09",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 160,
+      "user_id": "student-02-09-10",
+      "id_tag": "tag-02-09-10",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 161,
+      "user_id": "student-02-09-11",
+      "id_tag": "tag-02-09-11",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 162,
+      "user_id": "student-02-09-12",
+      "id_tag": "tag-02-09-12",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 163,
+      "user_id": "student-02-09-13",
+      "id_tag": "tag-02-09-13",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 164,
+      "user_id": "student-02-09-14",
+      "id_tag": "tag-02-09-14",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 165,
+      "user_id": "student-02-09-15",
+      "id_tag": "tag-02-09-15",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 166,
+      "user_id": "student-02-09-16",
+      "id_tag": "tag-02-09-16",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 167,
+      "user_id": "student-02-09-17",
+      "id_tag": "tag-02-09-17",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 168,
+      "user_id": "student-02-09-18",
+      "id_tag": "tag-02-09-18",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 169,
+      "user_id": "student-02-09-19",
+      "id_tag": "tag-02-09-19",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 170,
+      "user_id": "student-02-09-20",
+      "id_tag": "tag-02-09-20",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 171,
+      "user_id": "student-02-09-21",
+      "id_tag": "tag-02-09-21",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 172,
+      "user_id": "student-02-09-22",
+      "id_tag": "tag-02-09-22",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 173,
+      "user_id": "student-02-09-23",
+      "id_tag": "tag-02-09-23",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 174,
+      "user_id": "student-02-09-24",
+      "id_tag": "tag-02-09-24",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 175,
+      "user_id": "student-02-09-25",
+      "id_tag": "tag-02-09-25",
+      "is_visible": true,
+      "group_ids": [
+        9
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 176,
+      "user_id": "student-02-10-01",
+      "id_tag": "tag-02-10-01",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 177,
+      "user_id": "student-02-10-02",
+      "id_tag": "tag-02-10-02",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 178,
+      "user_id": "student-02-10-03",
+      "id_tag": "tag-02-10-03",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 179,
+      "user_id": "student-02-10-04",
+      "id_tag": "tag-02-10-04",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 180,
+      "user_id": "student-02-10-05",
+      "id_tag": "tag-02-10-05",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 181,
+      "user_id": "student-02-10-06",
+      "id_tag": "tag-02-10-06",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 182,
+      "user_id": "student-02-10-07",
+      "id_tag": "tag-02-10-07",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 183,
+      "user_id": "student-02-10-08",
+      "id_tag": "tag-02-10-08",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 184,
+      "user_id": "student-02-10-09",
+      "id_tag": "tag-02-10-09",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 185,
+      "user_id": "student-02-10-10",
+      "id_tag": "tag-02-10-10",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 186,
+      "user_id": "student-02-10-11",
+      "id_tag": "tag-02-10-11",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 187,
+      "user_id": "student-02-10-12",
+      "id_tag": "tag-02-10-12",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 188,
+      "user_id": "student-02-10-13",
+      "id_tag": "tag-02-10-13",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 189,
+      "user_id": "student-02-10-14",
+      "id_tag": "tag-02-10-14",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 190,
+      "user_id": "student-02-10-15",
+      "id_tag": "tag-02-10-15",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 191,
+      "user_id": "student-02-10-16",
+      "id_tag": "tag-02-10-16",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 192,
+      "user_id": "student-02-10-17",
+      "id_tag": "tag-02-10-17",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 193,
+      "user_id": "student-02-10-18",
+      "id_tag": "tag-02-10-18",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 194,
+      "user_id": "student-02-10-19",
+      "id_tag": "tag-02-10-19",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 195,
+      "user_id": "student-02-10-20",
+      "id_tag": "tag-02-10-20",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 196,
+      "user_id": "student-02-10-21",
+      "id_tag": "tag-02-10-21",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 197,
+      "user_id": "student-02-10-22",
+      "id_tag": "tag-02-10-22",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 198,
+      "user_id": "student-02-10-23",
+      "id_tag": "tag-02-10-23",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 199,
+      "user_id": "student-02-10-24",
+      "id_tag": "tag-02-10-24",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 200,
+      "user_id": "student-02-10-25",
+      "id_tag": "tag-02-10-25",
+      "is_visible": true,
+      "group_ids": [
+        10
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 201,
+      "user_id": "student-02-11-01",
+      "id_tag": "tag-02-11-01",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 202,
+      "user_id": "student-02-11-02",
+      "id_tag": "tag-02-11-02",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 203,
+      "user_id": "student-02-11-03",
+      "id_tag": "tag-02-11-03",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 204,
+      "user_id": "student-02-11-04",
+      "id_tag": "tag-02-11-04",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 205,
+      "user_id": "student-02-11-05",
+      "id_tag": "tag-02-11-05",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 206,
+      "user_id": "student-02-11-06",
+      "id_tag": "tag-02-11-06",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 207,
+      "user_id": "student-02-11-07",
+      "id_tag": "tag-02-11-07",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 208,
+      "user_id": "student-02-11-08",
+      "id_tag": "tag-02-11-08",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 209,
+      "user_id": "student-02-11-09",
+      "id_tag": "tag-02-11-09",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 210,
+      "user_id": "student-02-11-10",
+      "id_tag": "tag-02-11-10",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 211,
+      "user_id": "student-02-11-11",
+      "id_tag": "tag-02-11-11",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 212,
+      "user_id": "student-02-11-12",
+      "id_tag": "tag-02-11-12",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 213,
+      "user_id": "student-02-11-13",
+      "id_tag": "tag-02-11-13",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 214,
+      "user_id": "student-02-11-14",
+      "id_tag": "tag-02-11-14",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 215,
+      "user_id": "student-02-11-15",
+      "id_tag": "tag-02-11-15",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 216,
+      "user_id": "student-02-11-16",
+      "id_tag": "tag-02-11-16",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 217,
+      "user_id": "student-02-11-17",
+      "id_tag": "tag-02-11-17",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 218,
+      "user_id": "student-02-11-18",
+      "id_tag": "tag-02-11-18",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 219,
+      "user_id": "student-02-11-19",
+      "id_tag": "tag-02-11-19",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 220,
+      "user_id": "student-02-11-20",
+      "id_tag": "tag-02-11-20",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 221,
+      "user_id": "student-02-11-21",
+      "id_tag": "tag-02-11-21",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 222,
+      "user_id": "student-02-11-22",
+      "id_tag": "tag-02-11-22",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 223,
+      "user_id": "student-02-11-23",
+      "id_tag": "tag-02-11-23",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 224,
+      "user_id": "student-02-11-24",
+      "id_tag": "tag-02-11-24",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 225,
+      "user_id": "student-02-11-25",
+      "id_tag": "tag-02-11-25",
+      "is_visible": true,
+      "group_ids": [
+        11
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 226,
+      "user_id": "student-02-12-01",
+      "id_tag": "tag-02-12-01",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 227,
+      "user_id": "student-02-12-02",
+      "id_tag": "tag-02-12-02",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 228,
+      "user_id": "student-02-12-03",
+      "id_tag": "tag-02-12-03",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 229,
+      "user_id": "student-02-12-04",
+      "id_tag": "tag-02-12-04",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 230,
+      "user_id": "student-02-12-05",
+      "id_tag": "tag-02-12-05",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 231,
+      "user_id": "student-02-12-06",
+      "id_tag": "tag-02-12-06",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 232,
+      "user_id": "student-02-12-07",
+      "id_tag": "tag-02-12-07",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 233,
+      "user_id": "student-02-12-08",
+      "id_tag": "tag-02-12-08",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 234,
+      "user_id": "student-02-12-09",
+      "id_tag": "tag-02-12-09",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 235,
+      "user_id": "student-02-12-10",
+      "id_tag": "tag-02-12-10",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 236,
+      "user_id": "student-02-12-11",
+      "id_tag": "tag-02-12-11",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 237,
+      "user_id": "student-02-12-12",
+      "id_tag": "tag-02-12-12",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 238,
+      "user_id": "student-02-12-13",
+      "id_tag": "tag-02-12-13",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 239,
+      "user_id": "student-02-12-14",
+      "id_tag": "tag-02-12-14",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 240,
+      "user_id": "student-02-12-15",
+      "id_tag": "tag-02-12-15",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 241,
+      "user_id": "student-02-12-16",
+      "id_tag": "tag-02-12-16",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 242,
+      "user_id": "student-02-12-17",
+      "id_tag": "tag-02-12-17",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 243,
+      "user_id": "student-02-12-18",
+      "id_tag": "tag-02-12-18",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 244,
+      "user_id": "student-02-12-19",
+      "id_tag": "tag-02-12-19",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 245,
+      "user_id": "student-02-12-20",
+      "id_tag": "tag-02-12-20",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 246,
+      "user_id": "student-02-12-21",
+      "id_tag": "tag-02-12-21",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 247,
+      "user_id": "student-02-12-22",
+      "id_tag": "tag-02-12-22",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 248,
+      "user_id": "student-02-12-23",
+      "id_tag": "tag-02-12-23",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 249,
+      "user_id": "student-02-12-24",
+      "id_tag": "tag-02-12-24",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 250,
+      "user_id": "student-02-12-25",
+      "id_tag": "tag-02-12-25",
+      "is_visible": true,
+      "group_ids": [
+        12
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 251,
+      "user_id": "student-02-13-01",
+      "id_tag": "tag-02-13-01",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 252,
+      "user_id": "student-02-13-02",
+      "id_tag": "tag-02-13-02",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 253,
+      "user_id": "student-02-13-03",
+      "id_tag": "tag-02-13-03",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 254,
+      "user_id": "student-02-13-04",
+      "id_tag": "tag-02-13-04",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 255,
+      "user_id": "student-02-13-05",
+      "id_tag": "tag-02-13-05",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 256,
+      "user_id": "student-02-13-06",
+      "id_tag": "tag-02-13-06",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 257,
+      "user_id": "student-02-13-07",
+      "id_tag": "tag-02-13-07",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 258,
+      "user_id": "student-02-13-08",
+      "id_tag": "tag-02-13-08",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 259,
+      "user_id": "student-02-13-09",
+      "id_tag": "tag-02-13-09",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 260,
+      "user_id": "student-02-13-10",
+      "id_tag": "tag-02-13-10",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 261,
+      "user_id": "student-02-13-11",
+      "id_tag": "tag-02-13-11",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 262,
+      "user_id": "student-02-13-12",
+      "id_tag": "tag-02-13-12",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 263,
+      "user_id": "student-02-13-13",
+      "id_tag": "tag-02-13-13",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 264,
+      "user_id": "student-02-13-14",
+      "id_tag": "tag-02-13-14",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 265,
+      "user_id": "student-02-13-15",
+      "id_tag": "tag-02-13-15",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 266,
+      "user_id": "student-02-13-16",
+      "id_tag": "tag-02-13-16",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 267,
+      "user_id": "student-02-13-17",
+      "id_tag": "tag-02-13-17",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 268,
+      "user_id": "student-02-13-18",
+      "id_tag": "tag-02-13-18",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 269,
+      "user_id": "student-02-13-19",
+      "id_tag": "tag-02-13-19",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 270,
+      "user_id": "student-02-13-20",
+      "id_tag": "tag-02-13-20",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 271,
+      "user_id": "student-02-13-21",
+      "id_tag": "tag-02-13-21",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 272,
+      "user_id": "student-02-13-22",
+      "id_tag": "tag-02-13-22",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 273,
+      "user_id": "student-02-13-23",
+      "id_tag": "tag-02-13-23",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 274,
+      "user_id": "student-02-13-24",
+      "id_tag": "tag-02-13-24",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 275,
+      "user_id": "student-02-13-25",
+      "id_tag": "tag-02-13-25",
+      "is_visible": true,
+      "group_ids": [
+        13
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 276,
+      "user_id": "student-02-14-01",
+      "id_tag": "tag-02-14-01",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 277,
+      "user_id": "student-02-14-02",
+      "id_tag": "tag-02-14-02",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 278,
+      "user_id": "student-02-14-03",
+      "id_tag": "tag-02-14-03",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 279,
+      "user_id": "student-02-14-04",
+      "id_tag": "tag-02-14-04",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 280,
+      "user_id": "student-02-14-05",
+      "id_tag": "tag-02-14-05",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 281,
+      "user_id": "student-02-14-06",
+      "id_tag": "tag-02-14-06",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 282,
+      "user_id": "student-02-14-07",
+      "id_tag": "tag-02-14-07",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 283,
+      "user_id": "student-02-14-08",
+      "id_tag": "tag-02-14-08",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 284,
+      "user_id": "student-02-14-09",
+      "id_tag": "tag-02-14-09",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 285,
+      "user_id": "student-02-14-10",
+      "id_tag": "tag-02-14-10",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 286,
+      "user_id": "student-02-14-11",
+      "id_tag": "tag-02-14-11",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 287,
+      "user_id": "student-02-14-12",
+      "id_tag": "tag-02-14-12",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 288,
+      "user_id": "student-02-14-13",
+      "id_tag": "tag-02-14-13",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 289,
+      "user_id": "student-02-14-14",
+      "id_tag": "tag-02-14-14",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 290,
+      "user_id": "student-02-14-15",
+      "id_tag": "tag-02-14-15",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 291,
+      "user_id": "student-02-14-16",
+      "id_tag": "tag-02-14-16",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 292,
+      "user_id": "student-02-14-17",
+      "id_tag": "tag-02-14-17",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 293,
+      "user_id": "student-02-14-18",
+      "id_tag": "tag-02-14-18",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 294,
+      "user_id": "student-02-14-19",
+      "id_tag": "tag-02-14-19",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 295,
+      "user_id": "student-02-14-20",
+      "id_tag": "tag-02-14-20",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 296,
+      "user_id": "student-02-14-21",
+      "id_tag": "tag-02-14-21",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 297,
+      "user_id": "student-02-14-22",
+      "id_tag": "tag-02-14-22",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 298,
+      "user_id": "student-02-14-23",
+      "id_tag": "tag-02-14-23",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 299,
+      "user_id": "student-02-14-24",
+      "id_tag": "tag-02-14-24",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 300,
+      "user_id": "student-02-14-25",
+      "id_tag": "tag-02-14-25",
+      "is_visible": true,
+      "group_ids": [
+        14
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 301,
+      "user_id": "student-03-16-01",
+      "id_tag": "tag-03-16-01",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 302,
+      "user_id": "student-03-16-02",
+      "id_tag": "tag-03-16-02",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 303,
+      "user_id": "student-03-16-03",
+      "id_tag": "tag-03-16-03",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 304,
+      "user_id": "student-03-16-04",
+      "id_tag": "tag-03-16-04",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 305,
+      "user_id": "student-03-16-05",
+      "id_tag": "tag-03-16-05",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 306,
+      "user_id": "student-03-16-06",
+      "id_tag": "tag-03-16-06",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 307,
+      "user_id": "student-03-16-07",
+      "id_tag": "tag-03-16-07",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 308,
+      "user_id": "student-03-16-08",
+      "id_tag": "tag-03-16-08",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 309,
+      "user_id": "student-03-16-09",
+      "id_tag": "tag-03-16-09",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 310,
+      "user_id": "student-03-16-10",
+      "id_tag": "tag-03-16-10",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 311,
+      "user_id": "student-03-16-11",
+      "id_tag": "tag-03-16-11",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 312,
+      "user_id": "student-03-16-12",
+      "id_tag": "tag-03-16-12",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 313,
+      "user_id": "student-03-16-13",
+      "id_tag": "tag-03-16-13",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 314,
+      "user_id": "student-03-16-14",
+      "id_tag": "tag-03-16-14",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 315,
+      "user_id": "student-03-16-15",
+      "id_tag": "tag-03-16-15",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 316,
+      "user_id": "student-03-16-16",
+      "id_tag": "tag-03-16-16",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 317,
+      "user_id": "student-03-16-17",
+      "id_tag": "tag-03-16-17",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 318,
+      "user_id": "student-03-16-18",
+      "id_tag": "tag-03-16-18",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 319,
+      "user_id": "student-03-16-19",
+      "id_tag": "tag-03-16-19",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 320,
+      "user_id": "student-03-16-20",
+      "id_tag": "tag-03-16-20",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 321,
+      "user_id": "student-03-16-21",
+      "id_tag": "tag-03-16-21",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 322,
+      "user_id": "student-03-16-22",
+      "id_tag": "tag-03-16-22",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 323,
+      "user_id": "student-03-16-23",
+      "id_tag": "tag-03-16-23",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 324,
+      "user_id": "student-03-16-24",
+      "id_tag": "tag-03-16-24",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 325,
+      "user_id": "student-03-16-25",
+      "id_tag": "tag-03-16-25",
+      "is_visible": true,
+      "group_ids": [
+        16
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 326,
+      "user_id": "student-03-17-01",
+      "id_tag": "tag-03-17-01",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 327,
+      "user_id": "student-03-17-02",
+      "id_tag": "tag-03-17-02",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 328,
+      "user_id": "student-03-17-03",
+      "id_tag": "tag-03-17-03",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 329,
+      "user_id": "student-03-17-04",
+      "id_tag": "tag-03-17-04",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 330,
+      "user_id": "student-03-17-05",
+      "id_tag": "tag-03-17-05",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 331,
+      "user_id": "student-03-17-06",
+      "id_tag": "tag-03-17-06",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 332,
+      "user_id": "student-03-17-07",
+      "id_tag": "tag-03-17-07",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 333,
+      "user_id": "student-03-17-08",
+      "id_tag": "tag-03-17-08",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 334,
+      "user_id": "student-03-17-09",
+      "id_tag": "tag-03-17-09",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 335,
+      "user_id": "student-03-17-10",
+      "id_tag": "tag-03-17-10",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 336,
+      "user_id": "student-03-17-11",
+      "id_tag": "tag-03-17-11",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 337,
+      "user_id": "student-03-17-12",
+      "id_tag": "tag-03-17-12",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 338,
+      "user_id": "student-03-17-13",
+      "id_tag": "tag-03-17-13",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 339,
+      "user_id": "student-03-17-14",
+      "id_tag": "tag-03-17-14",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 340,
+      "user_id": "student-03-17-15",
+      "id_tag": "tag-03-17-15",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 341,
+      "user_id": "student-03-17-16",
+      "id_tag": "tag-03-17-16",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 342,
+      "user_id": "student-03-17-17",
+      "id_tag": "tag-03-17-17",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 343,
+      "user_id": "student-03-17-18",
+      "id_tag": "tag-03-17-18",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 344,
+      "user_id": "student-03-17-19",
+      "id_tag": "tag-03-17-19",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 345,
+      "user_id": "student-03-17-20",
+      "id_tag": "tag-03-17-20",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 346,
+      "user_id": "student-03-17-21",
+      "id_tag": "tag-03-17-21",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 347,
+      "user_id": "student-03-17-22",
+      "id_tag": "tag-03-17-22",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 348,
+      "user_id": "student-03-17-23",
+      "id_tag": "tag-03-17-23",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 349,
+      "user_id": "student-03-17-24",
+      "id_tag": "tag-03-17-24",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 350,
+      "user_id": "student-03-17-25",
+      "id_tag": "tag-03-17-25",
+      "is_visible": true,
+      "group_ids": [
+        17
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 351,
+      "user_id": "student-03-18-01",
+      "id_tag": "tag-03-18-01",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 352,
+      "user_id": "student-03-18-02",
+      "id_tag": "tag-03-18-02",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 353,
+      "user_id": "student-03-18-03",
+      "id_tag": "tag-03-18-03",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 354,
+      "user_id": "student-03-18-04",
+      "id_tag": "tag-03-18-04",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 355,
+      "user_id": "student-03-18-05",
+      "id_tag": "tag-03-18-05",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 356,
+      "user_id": "student-03-18-06",
+      "id_tag": "tag-03-18-06",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 357,
+      "user_id": "student-03-18-07",
+      "id_tag": "tag-03-18-07",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 358,
+      "user_id": "student-03-18-08",
+      "id_tag": "tag-03-18-08",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 359,
+      "user_id": "student-03-18-09",
+      "id_tag": "tag-03-18-09",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 360,
+      "user_id": "student-03-18-10",
+      "id_tag": "tag-03-18-10",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 361,
+      "user_id": "student-03-18-11",
+      "id_tag": "tag-03-18-11",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 362,
+      "user_id": "student-03-18-12",
+      "id_tag": "tag-03-18-12",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 363,
+      "user_id": "student-03-18-13",
+      "id_tag": "tag-03-18-13",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 364,
+      "user_id": "student-03-18-14",
+      "id_tag": "tag-03-18-14",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 365,
+      "user_id": "student-03-18-15",
+      "id_tag": "tag-03-18-15",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 366,
+      "user_id": "student-03-18-16",
+      "id_tag": "tag-03-18-16",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 367,
+      "user_id": "student-03-18-17",
+      "id_tag": "tag-03-18-17",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 368,
+      "user_id": "student-03-18-18",
+      "id_tag": "tag-03-18-18",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 369,
+      "user_id": "student-03-18-19",
+      "id_tag": "tag-03-18-19",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 370,
+      "user_id": "student-03-18-20",
+      "id_tag": "tag-03-18-20",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 371,
+      "user_id": "student-03-18-21",
+      "id_tag": "tag-03-18-21",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 372,
+      "user_id": "student-03-18-22",
+      "id_tag": "tag-03-18-22",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 373,
+      "user_id": "student-03-18-23",
+      "id_tag": "tag-03-18-23",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 374,
+      "user_id": "student-03-18-24",
+      "id_tag": "tag-03-18-24",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 375,
+      "user_id": "student-03-18-25",
+      "id_tag": "tag-03-18-25",
+      "is_visible": true,
+      "group_ids": [
+        18
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 376,
+      "user_id": "student-03-19-01",
+      "id_tag": "tag-03-19-01",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 377,
+      "user_id": "student-03-19-02",
+      "id_tag": "tag-03-19-02",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 378,
+      "user_id": "student-03-19-03",
+      "id_tag": "tag-03-19-03",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 379,
+      "user_id": "student-03-19-04",
+      "id_tag": "tag-03-19-04",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 380,
+      "user_id": "student-03-19-05",
+      "id_tag": "tag-03-19-05",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 381,
+      "user_id": "student-03-19-06",
+      "id_tag": "tag-03-19-06",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 382,
+      "user_id": "student-03-19-07",
+      "id_tag": "tag-03-19-07",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 383,
+      "user_id": "student-03-19-08",
+      "id_tag": "tag-03-19-08",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 384,
+      "user_id": "student-03-19-09",
+      "id_tag": "tag-03-19-09",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 385,
+      "user_id": "student-03-19-10",
+      "id_tag": "tag-03-19-10",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 386,
+      "user_id": "student-03-19-11",
+      "id_tag": "tag-03-19-11",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 387,
+      "user_id": "student-03-19-12",
+      "id_tag": "tag-03-19-12",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 388,
+      "user_id": "student-03-19-13",
+      "id_tag": "tag-03-19-13",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 389,
+      "user_id": "student-03-19-14",
+      "id_tag": "tag-03-19-14",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 390,
+      "user_id": "student-03-19-15",
+      "id_tag": "tag-03-19-15",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 391,
+      "user_id": "student-03-19-16",
+      "id_tag": "tag-03-19-16",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 392,
+      "user_id": "student-03-19-17",
+      "id_tag": "tag-03-19-17",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 393,
+      "user_id": "student-03-19-18",
+      "id_tag": "tag-03-19-18",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 394,
+      "user_id": "student-03-19-19",
+      "id_tag": "tag-03-19-19",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 395,
+      "user_id": "student-03-19-20",
+      "id_tag": "tag-03-19-20",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 396,
+      "user_id": "student-03-19-21",
+      "id_tag": "tag-03-19-21",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 397,
+      "user_id": "student-03-19-22",
+      "id_tag": "tag-03-19-22",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 398,
+      "user_id": "student-03-19-23",
+      "id_tag": "tag-03-19-23",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 399,
+      "user_id": "student-03-19-24",
+      "id_tag": "tag-03-19-24",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 400,
+      "user_id": "student-03-19-25",
+      "id_tag": "tag-03-19-25",
+      "is_visible": true,
+      "group_ids": [
+        19
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 401,
+      "user_id": "student-03-20-01",
+      "id_tag": "tag-03-20-01",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 402,
+      "user_id": "student-03-20-02",
+      "id_tag": "tag-03-20-02",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 403,
+      "user_id": "student-03-20-03",
+      "id_tag": "tag-03-20-03",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 404,
+      "user_id": "student-03-20-04",
+      "id_tag": "tag-03-20-04",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 405,
+      "user_id": "student-03-20-05",
+      "id_tag": "tag-03-20-05",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 406,
+      "user_id": "student-03-20-06",
+      "id_tag": "tag-03-20-06",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 407,
+      "user_id": "student-03-20-07",
+      "id_tag": "tag-03-20-07",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 408,
+      "user_id": "student-03-20-08",
+      "id_tag": "tag-03-20-08",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 409,
+      "user_id": "student-03-20-09",
+      "id_tag": "tag-03-20-09",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 410,
+      "user_id": "student-03-20-10",
+      "id_tag": "tag-03-20-10",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 411,
+      "user_id": "student-03-20-11",
+      "id_tag": "tag-03-20-11",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 412,
+      "user_id": "student-03-20-12",
+      "id_tag": "tag-03-20-12",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 413,
+      "user_id": "student-03-20-13",
+      "id_tag": "tag-03-20-13",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 414,
+      "user_id": "student-03-20-14",
+      "id_tag": "tag-03-20-14",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 415,
+      "user_id": "student-03-20-15",
+      "id_tag": "tag-03-20-15",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 416,
+      "user_id": "student-03-20-16",
+      "id_tag": "tag-03-20-16",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 417,
+      "user_id": "student-03-20-17",
+      "id_tag": "tag-03-20-17",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 418,
+      "user_id": "student-03-20-18",
+      "id_tag": "tag-03-20-18",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 419,
+      "user_id": "student-03-20-19",
+      "id_tag": "tag-03-20-19",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 420,
+      "user_id": "student-03-20-20",
+      "id_tag": "tag-03-20-20",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 421,
+      "user_id": "student-03-20-21",
+      "id_tag": "tag-03-20-21",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 422,
+      "user_id": "student-03-20-22",
+      "id_tag": "tag-03-20-22",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 423,
+      "user_id": "student-03-20-23",
+      "id_tag": "tag-03-20-23",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 424,
+      "user_id": "student-03-20-24",
+      "id_tag": "tag-03-20-24",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 425,
+      "user_id": "student-03-20-25",
+      "id_tag": "tag-03-20-25",
+      "is_visible": true,
+      "group_ids": [
+        20
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 426,
+      "user_id": "student-03-21-01",
+      "id_tag": "tag-03-21-01",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 427,
+      "user_id": "student-03-21-02",
+      "id_tag": "tag-03-21-02",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 428,
+      "user_id": "student-03-21-03",
+      "id_tag": "tag-03-21-03",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 429,
+      "user_id": "student-03-21-04",
+      "id_tag": "tag-03-21-04",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 430,
+      "user_id": "student-03-21-05",
+      "id_tag": "tag-03-21-05",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 431,
+      "user_id": "student-03-21-06",
+      "id_tag": "tag-03-21-06",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 432,
+      "user_id": "student-03-21-07",
+      "id_tag": "tag-03-21-07",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 433,
+      "user_id": "student-03-21-08",
+      "id_tag": "tag-03-21-08",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 434,
+      "user_id": "student-03-21-09",
+      "id_tag": "tag-03-21-09",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 435,
+      "user_id": "student-03-21-10",
+      "id_tag": "tag-03-21-10",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 436,
+      "user_id": "student-03-21-11",
+      "id_tag": "tag-03-21-11",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 437,
+      "user_id": "student-03-21-12",
+      "id_tag": "tag-03-21-12",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 438,
+      "user_id": "student-03-21-13",
+      "id_tag": "tag-03-21-13",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 439,
+      "user_id": "student-03-21-14",
+      "id_tag": "tag-03-21-14",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 440,
+      "user_id": "student-03-21-15",
+      "id_tag": "tag-03-21-15",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 441,
+      "user_id": "student-03-21-16",
+      "id_tag": "tag-03-21-16",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 442,
+      "user_id": "student-03-21-17",
+      "id_tag": "tag-03-21-17",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 443,
+      "user_id": "student-03-21-18",
+      "id_tag": "tag-03-21-18",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 444,
+      "user_id": "student-03-21-19",
+      "id_tag": "tag-03-21-19",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 445,
+      "user_id": "student-03-21-20",
+      "id_tag": "tag-03-21-20",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 446,
+      "user_id": "student-03-21-21",
+      "id_tag": "tag-03-21-21",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 447,
+      "user_id": "student-03-21-22",
+      "id_tag": "tag-03-21-22",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 448,
+      "user_id": "student-03-21-23",
+      "id_tag": "tag-03-21-23",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 449,
+      "user_id": "student-03-21-24",
+      "id_tag": "tag-03-21-24",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    },
+    {
+      "id": 450,
+      "user_id": "student-03-21-25",
+      "id_tag": "tag-03-21-25",
+      "is_visible": true,
+      "group_ids": [
+        21
+      ],
+      "distance_total": 0.0,
+      "coins_total": 0
+    }
+  ],
+  "devices": [
+    {
+      "id": 1,
+      "name": "device-01-02-1",
+      "display_name": "Device 1-2-1",
+      "is_visible": true,
+      "group_id": 2,
+      "distance_total": 0.0
+    },
+    {
+      "id": 2,
+      "name": "device-01-02-2",
+      "display_name": "Device 1-2-2",
+      "is_visible": true,
+      "group_id": 2,
+      "distance_total": 0.0
+    },
+    {
+      "id": 3,
+      "name": "device-01-02-3",
+      "display_name": "Device 1-2-3",
+      "is_visible": true,
+      "group_id": 2,
+      "distance_total": 0.0
+    },
+    {
+      "id": 4,
+      "name": "device-01-03-1",
+      "display_name": "Device 1-3-1",
+      "is_visible": true,
+      "group_id": 3,
+      "distance_total": 0.0
+    },
+    {
+      "id": 5,
+      "name": "device-01-03-2",
+      "display_name": "Device 1-3-2",
+      "is_visible": true,
+      "group_id": 3,
+      "distance_total": 0.0
+    },
+    {
+      "id": 6,
+      "name": "device-01-03-3",
+      "display_name": "Device 1-3-3",
+      "is_visible": true,
+      "group_id": 3,
+      "distance_total": 0.0
+    },
+    {
+      "id": 7,
+      "name": "device-01-04-1",
+      "display_name": "Device 1-4-1",
+      "is_visible": true,
+      "group_id": 4,
+      "distance_total": 0.0
+    },
+    {
+      "id": 8,
+      "name": "device-01-04-2",
+      "display_name": "Device 1-4-2",
+      "is_visible": true,
+      "group_id": 4,
+      "distance_total": 0.0
+    },
+    {
+      "id": 9,
+      "name": "device-01-04-3",
+      "display_name": "Device 1-4-3",
+      "is_visible": true,
+      "group_id": 4,
+      "distance_total": 0.0
+    },
+    {
+      "id": 10,
+      "name": "device-01-05-1",
+      "display_name": "Device 1-5-1",
+      "is_visible": true,
+      "group_id": 5,
+      "distance_total": 0.0
+    },
+    {
+      "id": 11,
+      "name": "device-01-05-2",
+      "display_name": "Device 1-5-2",
+      "is_visible": true,
+      "group_id": 5,
+      "distance_total": 0.0
+    },
+    {
+      "id": 12,
+      "name": "device-01-05-3",
+      "display_name": "Device 1-5-3",
+      "is_visible": true,
+      "group_id": 5,
+      "distance_total": 0.0
+    },
+    {
+      "id": 13,
+      "name": "device-01-06-1",
+      "display_name": "Device 1-6-1",
+      "is_visible": true,
+      "group_id": 6,
+      "distance_total": 0.0
+    },
+    {
+      "id": 14,
+      "name": "device-01-06-2",
+      "display_name": "Device 1-6-2",
+      "is_visible": true,
+      "group_id": 6,
+      "distance_total": 0.0
+    },
+    {
+      "id": 15,
+      "name": "device-01-06-3",
+      "display_name": "Device 1-6-3",
+      "is_visible": true,
+      "group_id": 6,
+      "distance_total": 0.0
+    },
+    {
+      "id": 16,
+      "name": "device-01-07-1",
+      "display_name": "Device 1-7-1",
+      "is_visible": true,
+      "group_id": 7,
+      "distance_total": 0.0
+    },
+    {
+      "id": 17,
+      "name": "device-01-07-2",
+      "display_name": "Device 1-7-2",
+      "is_visible": true,
+      "group_id": 7,
+      "distance_total": 0.0
+    },
+    {
+      "id": 18,
+      "name": "device-01-07-3",
+      "display_name": "Device 1-7-3",
+      "is_visible": true,
+      "group_id": 7,
+      "distance_total": 0.0
+    },
+    {
+      "id": 19,
+      "name": "device-02-09-1",
+      "display_name": "Device 2-9-1",
+      "is_visible": true,
+      "group_id": 9,
+      "distance_total": 0.0
+    },
+    {
+      "id": 20,
+      "name": "device-02-09-2",
+      "display_name": "Device 2-9-2",
+      "is_visible": true,
+      "group_id": 9,
+      "distance_total": 0.0
+    },
+    {
+      "id": 21,
+      "name": "device-02-09-3",
+      "display_name": "Device 2-9-3",
+      "is_visible": true,
+      "group_id": 9,
+      "distance_total": 0.0
+    },
+    {
+      "id": 22,
+      "name": "device-02-10-1",
+      "display_name": "Device 2-10-1",
+      "is_visible": true,
+      "group_id": 10,
+      "distance_total": 0.0
+    },
+    {
+      "id": 23,
+      "name": "device-02-10-2",
+      "display_name": "Device 2-10-2",
+      "is_visible": true,
+      "group_id": 10,
+      "distance_total": 0.0
+    },
+    {
+      "id": 24,
+      "name": "device-02-10-3",
+      "display_name": "Device 2-10-3",
+      "is_visible": true,
+      "group_id": 10,
+      "distance_total": 0.0
+    },
+    {
+      "id": 25,
+      "name": "device-02-11-1",
+      "display_name": "Device 2-11-1",
+      "is_visible": true,
+      "group_id": 11,
+      "distance_total": 0.0
+    },
+    {
+      "id": 26,
+      "name": "device-02-11-2",
+      "display_name": "Device 2-11-2",
+      "is_visible": true,
+      "group_id": 11,
+      "distance_total": 0.0
+    },
+    {
+      "id": 27,
+      "name": "device-02-11-3",
+      "display_name": "Device 2-11-3",
+      "is_visible": true,
+      "group_id": 11,
+      "distance_total": 0.0
+    },
+    {
+      "id": 28,
+      "name": "device-02-12-1",
+      "display_name": "Device 2-12-1",
+      "is_visible": true,
+      "group_id": 12,
+      "distance_total": 0.0
+    },
+    {
+      "id": 29,
+      "name": "device-02-12-2",
+      "display_name": "Device 2-12-2",
+      "is_visible": true,
+      "group_id": 12,
+      "distance_total": 0.0
+    },
+    {
+      "id": 30,
+      "name": "device-02-12-3",
+      "display_name": "Device 2-12-3",
+      "is_visible": true,
+      "group_id": 12,
+      "distance_total": 0.0
+    },
+    {
+      "id": 31,
+      "name": "device-02-13-1",
+      "display_name": "Device 2-13-1",
+      "is_visible": true,
+      "group_id": 13,
+      "distance_total": 0.0
+    },
+    {
+      "id": 32,
+      "name": "device-02-13-2",
+      "display_name": "Device 2-13-2",
+      "is_visible": true,
+      "group_id": 13,
+      "distance_total": 0.0
+    },
+    {
+      "id": 33,
+      "name": "device-02-13-3",
+      "display_name": "Device 2-13-3",
+      "is_visible": true,
+      "group_id": 13,
+      "distance_total": 0.0
+    },
+    {
+      "id": 34,
+      "name": "device-02-14-1",
+      "display_name": "Device 2-14-1",
+      "is_visible": true,
+      "group_id": 14,
+      "distance_total": 0.0
+    },
+    {
+      "id": 35,
+      "name": "device-02-14-2",
+      "display_name": "Device 2-14-2",
+      "is_visible": true,
+      "group_id": 14,
+      "distance_total": 0.0
+    },
+    {
+      "id": 36,
+      "name": "device-02-14-3",
+      "display_name": "Device 2-14-3",
+      "is_visible": true,
+      "group_id": 14,
+      "distance_total": 0.0
+    },
+    {
+      "id": 37,
+      "name": "device-03-16-1",
+      "display_name": "Device 3-16-1",
+      "is_visible": true,
+      "group_id": 16,
+      "distance_total": 0.0
+    },
+    {
+      "id": 38,
+      "name": "device-03-16-2",
+      "display_name": "Device 3-16-2",
+      "is_visible": true,
+      "group_id": 16,
+      "distance_total": 0.0
+    },
+    {
+      "id": 39,
+      "name": "device-03-16-3",
+      "display_name": "Device 3-16-3",
+      "is_visible": true,
+      "group_id": 16,
+      "distance_total": 0.0
+    },
+    {
+      "id": 40,
+      "name": "device-03-17-1",
+      "display_name": "Device 3-17-1",
+      "is_visible": true,
+      "group_id": 17,
+      "distance_total": 0.0
+    },
+    {
+      "id": 41,
+      "name": "device-03-17-2",
+      "display_name": "Device 3-17-2",
+      "is_visible": true,
+      "group_id": 17,
+      "distance_total": 0.0
+    },
+    {
+      "id": 42,
+      "name": "device-03-17-3",
+      "display_name": "Device 3-17-3",
+      "is_visible": true,
+      "group_id": 17,
+      "distance_total": 0.0
+    },
+    {
+      "id": 43,
+      "name": "device-03-18-1",
+      "display_name": "Device 3-18-1",
+      "is_visible": true,
+      "group_id": 18,
+      "distance_total": 0.0
+    },
+    {
+      "id": 44,
+      "name": "device-03-18-2",
+      "display_name": "Device 3-18-2",
+      "is_visible": true,
+      "group_id": 18,
+      "distance_total": 0.0
+    },
+    {
+      "id": 45,
+      "name": "device-03-18-3",
+      "display_name": "Device 3-18-3",
+      "is_visible": true,
+      "group_id": 18,
+      "distance_total": 0.0
+    },
+    {
+      "id": 46,
+      "name": "device-03-19-1",
+      "display_name": "Device 3-19-1",
+      "is_visible": true,
+      "group_id": 19,
+      "distance_total": 0.0
+    },
+    {
+      "id": 47,
+      "name": "device-03-19-2",
+      "display_name": "Device 3-19-2",
+      "is_visible": true,
+      "group_id": 19,
+      "distance_total": 0.0
+    },
+    {
+      "id": 48,
+      "name": "device-03-19-3",
+      "display_name": "Device 3-19-3",
+      "is_visible": true,
+      "group_id": 19,
+      "distance_total": 0.0
+    },
+    {
+      "id": 49,
+      "name": "device-03-20-1",
+      "display_name": "Device 3-20-1",
+      "is_visible": true,
+      "group_id": 20,
+      "distance_total": 0.0
+    },
+    {
+      "id": 50,
+      "name": "device-03-20-2",
+      "display_name": "Device 3-20-2",
+      "is_visible": true,
+      "group_id": 20,
+      "distance_total": 0.0
+    },
+    {
+      "id": 51,
+      "name": "device-03-20-3",
+      "display_name": "Device 3-20-3",
+      "is_visible": true,
+      "group_id": 20,
+      "distance_total": 0.0
+    },
+    {
+      "id": 52,
+      "name": "device-03-21-1",
+      "display_name": "Device 3-21-1",
+      "is_visible": true,
+      "group_id": 21,
+      "distance_total": 0.0
+    },
+    {
+      "id": 53,
+      "name": "device-03-21-2",
+      "display_name": "Device 3-21-2",
+      "is_visible": true,
+      "group_id": 21,
+      "distance_total": 0.0
+    },
+    {
+      "id": 54,
+      "name": "device-03-21-3",
+      "display_name": "Device 3-21-3",
+      "is_visible": true,
+      "group_id": 21,
+      "distance_total": 0.0
+    }
+  ],
+  "mileage_updates": [
+    {
+      "cyclist_id": 239,
+      "device_id": 28,
+      "distance_delta": 8.5,
+      "timestamp_offset_hours": -710
+    },
+    {
+      "cyclist_id": 274,
+      "device_id": 31,
+      "distance_delta": 11.6,
+      "timestamp_offset_hours": -719
+    },
+    {
+      "cyclist_id": 116,
+      "device_id": 13,
+      "distance_delta": 4.7,
+      "timestamp_offset_hours": -722
+    },
+    {
+      "cyclist_id": 324,
+      "device_id": 37,
+      "distance_delta": 1.9,
+      "timestamp_offset_hours": -719
+    },
+    {
+      "cyclist_id": 88,
+      "device_id": 11,
+      "distance_delta": 10.7,
+      "timestamp_offset_hours": -714
+    },
+    {
+      "cyclist_id": 218,
+      "device_id": 25,
+      "distance_delta": 8.6,
+      "timestamp_offset_hours": -728
+    },
+    {
+      "cyclist_id": 114,
+      "device_id": 15,
+      "distance_delta": 4.0,
+      "timestamp_offset_hours": -710
+    },
+    {
+      "cyclist_id": 70,
+      "device_id": 8,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": -721
+    },
+    {
+      "cyclist_id": 363,
+      "device_id": 45,
+      "distance_delta": 4.7,
+      "timestamp_offset_hours": -710
+    },
+    {
+      "cyclist_id": 314,
+      "device_id": 37,
+      "distance_delta": 14.8,
+      "timestamp_offset_hours": -717
+    },
+    {
+      "cyclist_id": 379,
+      "device_id": 46,
+      "distance_delta": 7.7,
+      "timestamp_offset_hours": -693
+    },
+    {
+      "cyclist_id": 377,
+      "device_id": 46,
+      "distance_delta": 2.9,
+      "timestamp_offset_hours": -693
+    },
+    {
+      "cyclist_id": 248,
+      "device_id": 30,
+      "distance_delta": 5.3,
+      "timestamp_offset_hours": -697
+    },
+    {
+      "cyclist_id": 114,
+      "device_id": 13,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -700
+    },
+    {
+      "cyclist_id": 293,
+      "device_id": 34,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": -699
+    },
+    {
+      "cyclist_id": 443,
+      "device_id": 53,
+      "distance_delta": 7.4,
+      "timestamp_offset_hours": -702
+    },
+    {
+      "cyclist_id": 117,
+      "device_id": 15,
+      "distance_delta": 8.1,
+      "timestamp_offset_hours": -683
+    },
+    {
+      "cyclist_id": 394,
+      "device_id": 47,
+      "distance_delta": 5.6,
+      "timestamp_offset_hours": -683
+    },
+    {
+      "cyclist_id": 161,
+      "device_id": 21,
+      "distance_delta": 11.3,
+      "timestamp_offset_hours": -690
+    },
+    {
+      "cyclist_id": 121,
+      "device_id": 15,
+      "distance_delta": 4.8,
+      "timestamp_offset_hours": -692
+    },
+    {
+      "cyclist_id": 215,
+      "device_id": 26,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -663
+    },
+    {
+      "cyclist_id": 155,
+      "device_id": 21,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -668
+    },
+    {
+      "cyclist_id": 421,
+      "device_id": 51,
+      "distance_delta": 10.1,
+      "timestamp_offset_hours": -675
+    },
+    {
+      "cyclist_id": 340,
+      "device_id": 40,
+      "distance_delta": 8.8,
+      "timestamp_offset_hours": -663
+    },
+    {
+      "cyclist_id": 352,
+      "device_id": 44,
+      "distance_delta": 2.3,
+      "timestamp_offset_hours": -661
+    },
+    {
+      "cyclist_id": 412,
+      "device_id": 49,
+      "distance_delta": 0.9,
+      "timestamp_offset_hours": -674
+    },
+    {
+      "cyclist_id": 210,
+      "device_id": 25,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -662
+    },
+    {
+      "cyclist_id": 374,
+      "device_id": 44,
+      "distance_delta": 14.9,
+      "timestamp_offset_hours": -682
+    },
+    {
+      "cyclist_id": 254,
+      "device_id": 32,
+      "distance_delta": 3.8,
+      "timestamp_offset_hours": -662
+    },
+    {
+      "cyclist_id": 70,
+      "device_id": 9,
+      "distance_delta": 10.7,
+      "timestamp_offset_hours": -663
+    },
+    {
+      "cyclist_id": 281,
+      "device_id": 36,
+      "distance_delta": 14.7,
+      "timestamp_offset_hours": -637
+    },
+    {
+      "cyclist_id": 41,
+      "device_id": 4,
+      "distance_delta": 0.6,
+      "timestamp_offset_hours": -635
+    },
+    {
+      "cyclist_id": 237,
+      "device_id": 30,
+      "distance_delta": 13.9,
+      "timestamp_offset_hours": -637
+    },
+    {
+      "cyclist_id": 411,
+      "device_id": 50,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -635
+    },
+    {
+      "cyclist_id": 325,
+      "device_id": 38,
+      "distance_delta": 1.6,
+      "timestamp_offset_hours": -639
+    },
+    {
+      "cyclist_id": 189,
+      "device_id": 22,
+      "distance_delta": 13.7,
+      "timestamp_offset_hours": -650
+    },
+    {
+      "cyclist_id": 173,
+      "device_id": 19,
+      "distance_delta": 3.4,
+      "timestamp_offset_hours": -658
+    },
+    {
+      "cyclist_id": 421,
+      "device_id": 49,
+      "distance_delta": 3.9,
+      "timestamp_offset_hours": -647
+    },
+    {
+      "cyclist_id": 160,
+      "device_id": 21,
+      "distance_delta": 1.9,
+      "timestamp_offset_hours": -642
+    },
+    {
+      "cyclist_id": 155,
+      "device_id": 19,
+      "distance_delta": 4.9,
+      "timestamp_offset_hours": -641
+    },
+    {
+      "cyclist_id": 230,
+      "device_id": 28,
+      "distance_delta": 2.0,
+      "timestamp_offset_hours": -614
+    },
+    {
+      "cyclist_id": 419,
+      "device_id": 49,
+      "distance_delta": 6.7,
+      "timestamp_offset_hours": -629
+    },
+    {
+      "cyclist_id": 40,
+      "device_id": 5,
+      "distance_delta": 12.9,
+      "timestamp_offset_hours": -611
+    },
+    {
+      "cyclist_id": 416,
+      "device_id": 50,
+      "distance_delta": 12.6,
+      "timestamp_offset_hours": -615
+    },
+    {
+      "cyclist_id": 291,
+      "device_id": 36,
+      "distance_delta": 10.0,
+      "timestamp_offset_hours": -620
+    },
+    {
+      "cyclist_id": 27,
+      "device_id": 6,
+      "distance_delta": 11.2,
+      "timestamp_offset_hours": -630
+    },
+    {
+      "cyclist_id": 108,
+      "device_id": 15,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -617
+    },
+    {
+      "cyclist_id": 436,
+      "device_id": 54,
+      "distance_delta": 9.6,
+      "timestamp_offset_hours": -622
+    },
+    {
+      "cyclist_id": 277,
+      "device_id": 35,
+      "distance_delta": 14.9,
+      "timestamp_offset_hours": -618
+    },
+    {
+      "cyclist_id": 134,
+      "device_id": 18,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": -628
+    },
+    {
+      "cyclist_id": 55,
+      "device_id": 8,
+      "distance_delta": 3.8,
+      "timestamp_offset_hours": -605
+    },
+    {
+      "cyclist_id": 43,
+      "device_id": 6,
+      "distance_delta": 5.4,
+      "timestamp_offset_hours": -609
+    },
+    {
+      "cyclist_id": 116,
+      "device_id": 14,
+      "distance_delta": 13.6,
+      "timestamp_offset_hours": -591
+    },
+    {
+      "cyclist_id": 367,
+      "device_id": 43,
+      "distance_delta": 9.1,
+      "timestamp_offset_hours": -588
+    },
+    {
+      "cyclist_id": 343,
+      "device_id": 42,
+      "distance_delta": 5.0,
+      "timestamp_offset_hours": -602
+    },
+    {
+      "cyclist_id": 35,
+      "device_id": 4,
+      "distance_delta": 7.0,
+      "timestamp_offset_hours": -603
+    },
+    {
+      "cyclist_id": 339,
+      "device_id": 40,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -609
+    },
+    {
+      "cyclist_id": 74,
+      "device_id": 7,
+      "distance_delta": 9.3,
+      "timestamp_offset_hours": -608
+    },
+    {
+      "cyclist_id": 340,
+      "device_id": 41,
+      "distance_delta": 12.7,
+      "timestamp_offset_hours": -609
+    },
+    {
+      "cyclist_id": 65,
+      "device_id": 8,
+      "distance_delta": 9.8,
+      "timestamp_offset_hours": -589
+    },
+    {
+      "cyclist_id": 263,
+      "device_id": 31,
+      "distance_delta": 12.2,
+      "timestamp_offset_hours": -565
+    },
+    {
+      "cyclist_id": 11,
+      "device_id": 1,
+      "distance_delta": 8.4,
+      "timestamp_offset_hours": -568
+    },
+    {
+      "cyclist_id": 115,
+      "device_id": 14,
+      "distance_delta": 9.2,
+      "timestamp_offset_hours": -576
+    },
+    {
+      "cyclist_id": 188,
+      "device_id": 24,
+      "distance_delta": 12.8,
+      "timestamp_offset_hours": -566
+    },
+    {
+      "cyclist_id": 137,
+      "device_id": 17,
+      "distance_delta": 2.9,
+      "timestamp_offset_hours": -563
+    },
+    {
+      "cyclist_id": 81,
+      "device_id": 11,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -567
+    },
+    {
+      "cyclist_id": 425,
+      "device_id": 51,
+      "distance_delta": 12.7,
+      "timestamp_offset_hours": -574
+    },
+    {
+      "cyclist_id": 170,
+      "device_id": 21,
+      "distance_delta": 3.3,
+      "timestamp_offset_hours": -574
+    },
+    {
+      "cyclist_id": 278,
+      "device_id": 35,
+      "distance_delta": 8.6,
+      "timestamp_offset_hours": -576
+    },
+    {
+      "cyclist_id": 1,
+      "device_id": 3,
+      "distance_delta": 8.3,
+      "timestamp_offset_hours": -586
+    },
+    {
+      "cyclist_id": 349,
+      "device_id": 40,
+      "distance_delta": 13.1,
+      "timestamp_offset_hours": -539
+    },
+    {
+      "cyclist_id": 114,
+      "device_id": 13,
+      "distance_delta": 7.5,
+      "timestamp_offset_hours": -559
+    },
+    {
+      "cyclist_id": 3,
+      "device_id": 3,
+      "distance_delta": 2.3,
+      "timestamp_offset_hours": -557
+    },
+    {
+      "cyclist_id": 192,
+      "device_id": 22,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -553
+    },
+    {
+      "cyclist_id": 387,
+      "device_id": 48,
+      "distance_delta": 10.5,
+      "timestamp_offset_hours": -557
+    },
+    {
+      "cyclist_id": 366,
+      "device_id": 44,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -550
+    },
+    {
+      "cyclist_id": 263,
+      "device_id": 31,
+      "distance_delta": 12.4,
+      "timestamp_offset_hours": -547
+    },
+    {
+      "cyclist_id": 136,
+      "device_id": 18,
+      "distance_delta": 7.5,
+      "timestamp_offset_hours": -540
+    },
+    {
+      "cyclist_id": 117,
+      "device_id": 14,
+      "distance_delta": 5.3,
+      "timestamp_offset_hours": -550
+    },
+    {
+      "cyclist_id": 195,
+      "device_id": 23,
+      "distance_delta": 13.2,
+      "timestamp_offset_hours": -557
+    },
+    {
+      "cyclist_id": 244,
+      "device_id": 28,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -537
+    },
+    {
+      "cyclist_id": 153,
+      "device_id": 19,
+      "distance_delta": 13.2,
+      "timestamp_offset_hours": -516
+    },
+    {
+      "cyclist_id": 180,
+      "device_id": 23,
+      "distance_delta": 1.4,
+      "timestamp_offset_hours": -517
+    },
+    {
+      "cyclist_id": 318,
+      "device_id": 37,
+      "distance_delta": 3.5,
+      "timestamp_offset_hours": -525
+    },
+    {
+      "cyclist_id": 49,
+      "device_id": 6,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -517
+    },
+    {
+      "cyclist_id": 129,
+      "device_id": 16,
+      "distance_delta": 12.1,
+      "timestamp_offset_hours": -531
+    },
+    {
+      "cyclist_id": 113,
+      "device_id": 13,
+      "distance_delta": 14.0,
+      "timestamp_offset_hours": -538
+    },
+    {
+      "cyclist_id": 351,
+      "device_id": 44,
+      "distance_delta": 14.1,
+      "timestamp_offset_hours": -519
+    },
+    {
+      "cyclist_id": 319,
+      "device_id": 37,
+      "distance_delta": 14.3,
+      "timestamp_offset_hours": -531
+    },
+    {
+      "cyclist_id": 91,
+      "device_id": 12,
+      "distance_delta": 12.7,
+      "timestamp_offset_hours": -532
+    },
+    {
+      "cyclist_id": 326,
+      "device_id": 41,
+      "distance_delta": 13.3,
+      "timestamp_offset_hours": -495
+    },
+    {
+      "cyclist_id": 354,
+      "device_id": 43,
+      "distance_delta": 10.2,
+      "timestamp_offset_hours": -497
+    },
+    {
+      "cyclist_id": 71,
+      "device_id": 8,
+      "distance_delta": 4.7,
+      "timestamp_offset_hours": -497
+    },
+    {
+      "cyclist_id": 25,
+      "device_id": 2,
+      "distance_delta": 6.7,
+      "timestamp_offset_hours": -502
+    },
+    {
+      "cyclist_id": 384,
+      "device_id": 46,
+      "distance_delta": 9.3,
+      "timestamp_offset_hours": -511
+    },
+    {
+      "cyclist_id": 448,
+      "device_id": 52,
+      "distance_delta": 6.7,
+      "timestamp_offset_hours": -500
+    },
+    {
+      "cyclist_id": 79,
+      "device_id": 11,
+      "distance_delta": 10.9,
+      "timestamp_offset_hours": -497
+    },
+    {
+      "cyclist_id": 424,
+      "device_id": 50,
+      "distance_delta": 6.5,
+      "timestamp_offset_hours": -497
+    },
+    {
+      "cyclist_id": 168,
+      "device_id": 21,
+      "distance_delta": 13.4,
+      "timestamp_offset_hours": -504
+    },
+    {
+      "cyclist_id": 392,
+      "device_id": 46,
+      "distance_delta": 3.1,
+      "timestamp_offset_hours": -495
+    },
+    {
+      "cyclist_id": 435,
+      "device_id": 52,
+      "distance_delta": 2.9,
+      "timestamp_offset_hours": -476
+    },
+    {
+      "cyclist_id": 230,
+      "device_id": 30,
+      "distance_delta": 5.0,
+      "timestamp_offset_hours": -468
+    },
+    {
+      "cyclist_id": 6,
+      "device_id": 1,
+      "distance_delta": 12.7,
+      "timestamp_offset_hours": -478
+    },
+    {
+      "cyclist_id": 177,
+      "device_id": 22,
+      "distance_delta": 3.2,
+      "timestamp_offset_hours": -470
+    },
+    {
+      "cyclist_id": 290,
+      "device_id": 36,
+      "distance_delta": 9.0,
+      "timestamp_offset_hours": -468
+    },
+    {
+      "cyclist_id": 432,
+      "device_id": 53,
+      "distance_delta": 0.6,
+      "timestamp_offset_hours": -467
+    },
+    {
+      "cyclist_id": 1,
+      "device_id": 2,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -486
+    },
+    {
+      "cyclist_id": 129,
+      "device_id": 16,
+      "distance_delta": 4.8,
+      "timestamp_offset_hours": -476
+    },
+    {
+      "cyclist_id": 363,
+      "device_id": 43,
+      "distance_delta": 8.0,
+      "timestamp_offset_hours": -476
+    },
+    {
+      "cyclist_id": 326,
+      "device_id": 41,
+      "distance_delta": 13.7,
+      "timestamp_offset_hours": -479
+    },
+    {
+      "cyclist_id": 102,
+      "device_id": 14,
+      "distance_delta": 10.8,
+      "timestamp_offset_hours": -466
+    },
+    {
+      "cyclist_id": 93,
+      "device_id": 12,
+      "distance_delta": 14.3,
+      "timestamp_offset_hours": -466
+    },
+    {
+      "cyclist_id": 436,
+      "device_id": 54,
+      "distance_delta": 3.7,
+      "timestamp_offset_hours": -451
+    },
+    {
+      "cyclist_id": 295,
+      "device_id": 36,
+      "distance_delta": 6.9,
+      "timestamp_offset_hours": -455
+    },
+    {
+      "cyclist_id": 45,
+      "device_id": 4,
+      "distance_delta": 4.4,
+      "timestamp_offset_hours": -464
+    },
+    {
+      "cyclist_id": 334,
+      "device_id": 41,
+      "distance_delta": 3.4,
+      "timestamp_offset_hours": -461
+    },
+    {
+      "cyclist_id": 209,
+      "device_id": 25,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": -456
+    },
+    {
+      "cyclist_id": 403,
+      "device_id": 50,
+      "distance_delta": 3.4,
+      "timestamp_offset_hours": -466
+    },
+    {
+      "cyclist_id": 119,
+      "device_id": 15,
+      "distance_delta": 8.4,
+      "timestamp_offset_hours": -466
+    },
+    {
+      "cyclist_id": 334,
+      "device_id": 42,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -464
+    },
+    {
+      "cyclist_id": 222,
+      "device_id": 25,
+      "distance_delta": 0.6,
+      "timestamp_offset_hours": -430
+    },
+    {
+      "cyclist_id": 21,
+      "device_id": 1,
+      "distance_delta": 10.8,
+      "timestamp_offset_hours": -422
+    },
+    {
+      "cyclist_id": 102,
+      "device_id": 13,
+      "distance_delta": 0.6,
+      "timestamp_offset_hours": -422
+    },
+    {
+      "cyclist_id": 67,
+      "device_id": 8,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -439
+    },
+    {
+      "cyclist_id": 426,
+      "device_id": 52,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -426
+    },
+    {
+      "cyclist_id": 252,
+      "device_id": 33,
+      "distance_delta": 9.0,
+      "timestamp_offset_hours": -420
+    },
+    {
+      "cyclist_id": 238,
+      "device_id": 28,
+      "distance_delta": 2.2,
+      "timestamp_offset_hours": -421
+    },
+    {
+      "cyclist_id": 414,
+      "device_id": 49,
+      "distance_delta": 5.4,
+      "timestamp_offset_hours": -438
+    },
+    {
+      "cyclist_id": 216,
+      "device_id": 27,
+      "distance_delta": 4.7,
+      "timestamp_offset_hours": -442
+    },
+    {
+      "cyclist_id": 382,
+      "device_id": 48,
+      "distance_delta": 10.0,
+      "timestamp_offset_hours": -436
+    },
+    {
+      "cyclist_id": 15,
+      "device_id": 1,
+      "distance_delta": 3.9,
+      "timestamp_offset_hours": -399
+    },
+    {
+      "cyclist_id": 150,
+      "device_id": 16,
+      "distance_delta": 12.5,
+      "timestamp_offset_hours": -415
+    },
+    {
+      "cyclist_id": 339,
+      "device_id": 42,
+      "distance_delta": 13.6,
+      "timestamp_offset_hours": -395
+    },
+    {
+      "cyclist_id": 363,
+      "device_id": 44,
+      "distance_delta": 8.5,
+      "timestamp_offset_hours": -402
+    },
+    {
+      "cyclist_id": 58,
+      "device_id": 9,
+      "distance_delta": 9.5,
+      "timestamp_offset_hours": -402
+    },
+    {
+      "cyclist_id": 199,
+      "device_id": 22,
+      "distance_delta": 9.5,
+      "timestamp_offset_hours": -416
+    },
+    {
+      "cyclist_id": 228,
+      "device_id": 30,
+      "distance_delta": 1.6,
+      "timestamp_offset_hours": -417
+    },
+    {
+      "cyclist_id": 410,
+      "device_id": 49,
+      "distance_delta": 7.7,
+      "timestamp_offset_hours": -408
+    },
+    {
+      "cyclist_id": 76,
+      "device_id": 12,
+      "distance_delta": 6.2,
+      "timestamp_offset_hours": -401
+    },
+    {
+      "cyclist_id": 192,
+      "device_id": 22,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -396
+    },
+    {
+      "cyclist_id": 94,
+      "device_id": 10,
+      "distance_delta": 13.5,
+      "timestamp_offset_hours": -386
+    },
+    {
+      "cyclist_id": 264,
+      "device_id": 31,
+      "distance_delta": 1.5,
+      "timestamp_offset_hours": -372
+    },
+    {
+      "cyclist_id": 117,
+      "device_id": 15,
+      "distance_delta": 12.3,
+      "timestamp_offset_hours": -371
+    },
+    {
+      "cyclist_id": 90,
+      "device_id": 10,
+      "distance_delta": 14.0,
+      "timestamp_offset_hours": -384
+    },
+    {
+      "cyclist_id": 66,
+      "device_id": 7,
+      "distance_delta": 9.0,
+      "timestamp_offset_hours": -372
+    },
+    {
+      "cyclist_id": 184,
+      "device_id": 22,
+      "distance_delta": 8.5,
+      "timestamp_offset_hours": -375
+    },
+    {
+      "cyclist_id": 317,
+      "device_id": 39,
+      "distance_delta": 4.6,
+      "timestamp_offset_hours": -374
+    },
+    {
+      "cyclist_id": 325,
+      "device_id": 39,
+      "distance_delta": 5.1,
+      "timestamp_offset_hours": -380
+    },
+    {
+      "cyclist_id": 174,
+      "device_id": 20,
+      "distance_delta": 13.3,
+      "timestamp_offset_hours": -389
+    },
+    {
+      "cyclist_id": 425,
+      "device_id": 51,
+      "distance_delta": 5.3,
+      "timestamp_offset_hours": -378
+    },
+    {
+      "cyclist_id": 50,
+      "device_id": 6,
+      "distance_delta": 8.3,
+      "timestamp_offset_hours": -351
+    },
+    {
+      "cyclist_id": 212,
+      "device_id": 26,
+      "distance_delta": 11.3,
+      "timestamp_offset_hours": -361
+    },
+    {
+      "cyclist_id": 78,
+      "device_id": 12,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -370
+    },
+    {
+      "cyclist_id": 236,
+      "device_id": 28,
+      "distance_delta": 2.3,
+      "timestamp_offset_hours": -370
+    },
+    {
+      "cyclist_id": 164,
+      "device_id": 20,
+      "distance_delta": 10.8,
+      "timestamp_offset_hours": -349
+    },
+    {
+      "cyclist_id": 111,
+      "device_id": 13,
+      "distance_delta": 13.2,
+      "timestamp_offset_hours": -364
+    },
+    {
+      "cyclist_id": 224,
+      "device_id": 27,
+      "distance_delta": 4.2,
+      "timestamp_offset_hours": -364
+    },
+    {
+      "cyclist_id": 100,
+      "device_id": 10,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -365
+    },
+    {
+      "cyclist_id": 38,
+      "device_id": 5,
+      "distance_delta": 4.6,
+      "timestamp_offset_hours": -356
+    },
+    {
+      "cyclist_id": 45,
+      "device_id": 5,
+      "distance_delta": 3.1,
+      "timestamp_offset_hours": -352
+    },
+    {
+      "cyclist_id": 408,
+      "device_id": 50,
+      "distance_delta": 11.1,
+      "timestamp_offset_hours": -343
+    },
+    {
+      "cyclist_id": 411,
+      "device_id": 51,
+      "distance_delta": 6.3,
+      "timestamp_offset_hours": -343
+    },
+    {
+      "cyclist_id": 233,
+      "device_id": 28,
+      "distance_delta": 3.8,
+      "timestamp_offset_hours": -337
+    },
+    {
+      "cyclist_id": 353,
+      "device_id": 44,
+      "distance_delta": 6.0,
+      "timestamp_offset_hours": -331
+    },
+    {
+      "cyclist_id": 362,
+      "device_id": 43,
+      "distance_delta": 11.6,
+      "timestamp_offset_hours": -337
+    },
+    {
+      "cyclist_id": 410,
+      "device_id": 51,
+      "distance_delta": 0.9,
+      "timestamp_offset_hours": -340
+    },
+    {
+      "cyclist_id": 284,
+      "device_id": 34,
+      "distance_delta": 7.1,
+      "timestamp_offset_hours": -334
+    },
+    {
+      "cyclist_id": 135,
+      "device_id": 17,
+      "distance_delta": 7.2,
+      "timestamp_offset_hours": -338
+    },
+    {
+      "cyclist_id": 265,
+      "device_id": 32,
+      "distance_delta": 8.0,
+      "timestamp_offset_hours": -338
+    },
+    {
+      "cyclist_id": 107,
+      "device_id": 13,
+      "distance_delta": 5.2,
+      "timestamp_offset_hours": -345
+    },
+    {
+      "cyclist_id": 405,
+      "device_id": 49,
+      "distance_delta": 3.7,
+      "timestamp_offset_hours": -311
+    },
+    {
+      "cyclist_id": 207,
+      "device_id": 26,
+      "distance_delta": 5.8,
+      "timestamp_offset_hours": -300
+    },
+    {
+      "cyclist_id": 441,
+      "device_id": 52,
+      "distance_delta": 10.0,
+      "timestamp_offset_hours": -320
+    },
+    {
+      "cyclist_id": 366,
+      "device_id": 43,
+      "distance_delta": 10.6,
+      "timestamp_offset_hours": -307
+    },
+    {
+      "cyclist_id": 185,
+      "device_id": 23,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -317
+    },
+    {
+      "cyclist_id": 99,
+      "device_id": 11,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -309
+    },
+    {
+      "cyclist_id": 383,
+      "device_id": 47,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -319
+    },
+    {
+      "cyclist_id": 111,
+      "device_id": 13,
+      "distance_delta": 3.7,
+      "timestamp_offset_hours": -305
+    },
+    {
+      "cyclist_id": 174,
+      "device_id": 20,
+      "distance_delta": 9.8,
+      "timestamp_offset_hours": -316
+    },
+    {
+      "cyclist_id": 108,
+      "device_id": 15,
+      "distance_delta": 2.6,
+      "timestamp_offset_hours": -302
+    },
+    {
+      "cyclist_id": 251,
+      "device_id": 32,
+      "distance_delta": 8.4,
+      "timestamp_offset_hours": -289
+    },
+    {
+      "cyclist_id": 121,
+      "device_id": 13,
+      "distance_delta": 10.3,
+      "timestamp_offset_hours": -287
+    },
+    {
+      "cyclist_id": 419,
+      "device_id": 49,
+      "distance_delta": 9.2,
+      "timestamp_offset_hours": -285
+    },
+    {
+      "cyclist_id": 349,
+      "device_id": 42,
+      "distance_delta": 10.6,
+      "timestamp_offset_hours": -288
+    },
+    {
+      "cyclist_id": 300,
+      "device_id": 35,
+      "distance_delta": 1.9,
+      "timestamp_offset_hours": -275
+    },
+    {
+      "cyclist_id": 111,
+      "device_id": 14,
+      "distance_delta": 11.8,
+      "timestamp_offset_hours": -284
+    },
+    {
+      "cyclist_id": 47,
+      "device_id": 6,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -280
+    },
+    {
+      "cyclist_id": 397,
+      "device_id": 46,
+      "distance_delta": 14.8,
+      "timestamp_offset_hours": -289
+    },
+    {
+      "cyclist_id": 123,
+      "device_id": 15,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -295
+    },
+    {
+      "cyclist_id": 438,
+      "device_id": 52,
+      "distance_delta": 1.8,
+      "timestamp_offset_hours": -285
+    },
+    {
+      "cyclist_id": 416,
+      "device_id": 50,
+      "distance_delta": 11.4,
+      "timestamp_offset_hours": -269
+    },
+    {
+      "cyclist_id": 22,
+      "device_id": 2,
+      "distance_delta": 11.3,
+      "timestamp_offset_hours": -260
+    },
+    {
+      "cyclist_id": 389,
+      "device_id": 47,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -268
+    },
+    {
+      "cyclist_id": 199,
+      "device_id": 24,
+      "distance_delta": 10.0,
+      "timestamp_offset_hours": -260
+    },
+    {
+      "cyclist_id": 194,
+      "device_id": 22,
+      "distance_delta": 9.6,
+      "timestamp_offset_hours": -260
+    },
+    {
+      "cyclist_id": 268,
+      "device_id": 33,
+      "distance_delta": 10.2,
+      "timestamp_offset_hours": -254
+    },
+    {
+      "cyclist_id": 86,
+      "device_id": 10,
+      "distance_delta": 8.8,
+      "timestamp_offset_hours": -261
+    },
+    {
+      "cyclist_id": 179,
+      "device_id": 24,
+      "distance_delta": 11.8,
+      "timestamp_offset_hours": -260
+    },
+    {
+      "cyclist_id": 182,
+      "device_id": 23,
+      "distance_delta": 0.6,
+      "timestamp_offset_hours": -257
+    },
+    {
+      "cyclist_id": 413,
+      "device_id": 51,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -273
+    },
+    {
+      "cyclist_id": 72,
+      "device_id": 8,
+      "distance_delta": 1.6,
+      "timestamp_offset_hours": -249
+    },
+    {
+      "cyclist_id": 421,
+      "device_id": 49,
+      "distance_delta": 4.9,
+      "timestamp_offset_hours": -245
+    },
+    {
+      "cyclist_id": 425,
+      "device_id": 50,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -235
+    },
+    {
+      "cyclist_id": 300,
+      "device_id": 34,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -249
+    },
+    {
+      "cyclist_id": 335,
+      "device_id": 41,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -229
+    },
+    {
+      "cyclist_id": 248,
+      "device_id": 30,
+      "distance_delta": 5.8,
+      "timestamp_offset_hours": -241
+    },
+    {
+      "cyclist_id": 349,
+      "device_id": 42,
+      "distance_delta": 11.2,
+      "timestamp_offset_hours": -235
+    },
+    {
+      "cyclist_id": 12,
+      "device_id": 2,
+      "distance_delta": 14.8,
+      "timestamp_offset_hours": -234
+    },
+    {
+      "cyclist_id": 148,
+      "device_id": 18,
+      "distance_delta": 12.9,
+      "timestamp_offset_hours": -240
+    },
+    {
+      "cyclist_id": 195,
+      "device_id": 22,
+      "distance_delta": 0.7,
+      "timestamp_offset_hours": -236
+    },
+    {
+      "cyclist_id": 12,
+      "device_id": 2,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -220
+    },
+    {
+      "cyclist_id": 33,
+      "device_id": 5,
+      "distance_delta": 9.4,
+      "timestamp_offset_hours": -226
+    },
+    {
+      "cyclist_id": 211,
+      "device_id": 26,
+      "distance_delta": 12.6,
+      "timestamp_offset_hours": -220
+    },
+    {
+      "cyclist_id": 34,
+      "device_id": 6,
+      "distance_delta": 1.6,
+      "timestamp_offset_hours": -207
+    },
+    {
+      "cyclist_id": 281,
+      "device_id": 34,
+      "distance_delta": 5.9,
+      "timestamp_offset_hours": -207
+    },
+    {
+      "cyclist_id": 157,
+      "device_id": 20,
+      "distance_delta": 9.6,
+      "timestamp_offset_hours": -211
+    },
+    {
+      "cyclist_id": 41,
+      "device_id": 5,
+      "distance_delta": 3.7,
+      "timestamp_offset_hours": -213
+    },
+    {
+      "cyclist_id": 65,
+      "device_id": 9,
+      "distance_delta": 7.8,
+      "timestamp_offset_hours": -209
+    },
+    {
+      "cyclist_id": 426,
+      "device_id": 54,
+      "distance_delta": 4.0,
+      "timestamp_offset_hours": -203
+    },
+    {
+      "cyclist_id": 347,
+      "device_id": 42,
+      "distance_delta": 12.2,
+      "timestamp_offset_hours": -226
+    },
+    {
+      "cyclist_id": 255,
+      "device_id": 33,
+      "distance_delta": 9.8,
+      "timestamp_offset_hours": -185
+    },
+    {
+      "cyclist_id": 339,
+      "device_id": 42,
+      "distance_delta": 9.7,
+      "timestamp_offset_hours": -199
+    },
+    {
+      "cyclist_id": 262,
+      "device_id": 31,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -193
+    },
+    {
+      "cyclist_id": 3,
+      "device_id": 3,
+      "distance_delta": 9.6,
+      "timestamp_offset_hours": -191
+    },
+    {
+      "cyclist_id": 135,
+      "device_id": 17,
+      "distance_delta": 0.8,
+      "timestamp_offset_hours": -189
+    },
+    {
+      "cyclist_id": 74,
+      "device_id": 9,
+      "distance_delta": 2.9,
+      "timestamp_offset_hours": -185
+    },
+    {
+      "cyclist_id": 283,
+      "device_id": 36,
+      "distance_delta": 0.8,
+      "timestamp_offset_hours": -194
+    },
+    {
+      "cyclist_id": 306,
+      "device_id": 38,
+      "distance_delta": 8.3,
+      "timestamp_offset_hours": -183
+    },
+    {
+      "cyclist_id": 217,
+      "device_id": 26,
+      "distance_delta": 10.9,
+      "timestamp_offset_hours": -196
+    },
+    {
+      "cyclist_id": 263,
+      "device_id": 31,
+      "distance_delta": 3.8,
+      "timestamp_offset_hours": -191
+    },
+    {
+      "cyclist_id": 60,
+      "device_id": 9,
+      "distance_delta": 1.7,
+      "timestamp_offset_hours": -175
+    },
+    {
+      "cyclist_id": 395,
+      "device_id": 46,
+      "distance_delta": 1.6,
+      "timestamp_offset_hours": -169
+    },
+    {
+      "cyclist_id": 99,
+      "device_id": 11,
+      "distance_delta": 10.5,
+      "timestamp_offset_hours": -165
+    },
+    {
+      "cyclist_id": 198,
+      "device_id": 22,
+      "distance_delta": 3.0,
+      "timestamp_offset_hours": -178
+    },
+    {
+      "cyclist_id": 337,
+      "device_id": 40,
+      "distance_delta": 3.9,
+      "timestamp_offset_hours": -160
+    },
+    {
+      "cyclist_id": 44,
+      "device_id": 4,
+      "distance_delta": 0.9,
+      "timestamp_offset_hours": -164
+    },
+    {
+      "cyclist_id": 373,
+      "device_id": 45,
+      "distance_delta": 0.5,
+      "timestamp_offset_hours": -160
+    },
+    {
+      "cyclist_id": 449,
+      "device_id": 53,
+      "distance_delta": 1.8,
+      "timestamp_offset_hours": -162
+    },
+    {
+      "cyclist_id": 359,
+      "device_id": 44,
+      "distance_delta": 11.5,
+      "timestamp_offset_hours": -169
+    },
+    {
+      "cyclist_id": 95,
+      "device_id": 11,
+      "distance_delta": 12.2,
+      "timestamp_offset_hours": -157
+    },
+    {
+      "cyclist_id": 45,
+      "device_id": 5,
+      "distance_delta": 8.4,
+      "timestamp_offset_hours": -133
+    },
+    {
+      "cyclist_id": 414,
+      "device_id": 51,
+      "distance_delta": 11.3,
+      "timestamp_offset_hours": -144
+    },
+    {
+      "cyclist_id": 215,
+      "device_id": 26,
+      "distance_delta": 11.6,
+      "timestamp_offset_hours": -148
+    },
+    {
+      "cyclist_id": 207,
+      "device_id": 26,
+      "distance_delta": 7.3,
+      "timestamp_offset_hours": -140
+    },
+    {
+      "cyclist_id": 161,
+      "device_id": 21,
+      "distance_delta": 4.3,
+      "timestamp_offset_hours": -149
+    },
+    {
+      "cyclist_id": 44,
+      "device_id": 6,
+      "distance_delta": 14.4,
+      "timestamp_offset_hours": -147
+    },
+    {
+      "cyclist_id": 100,
+      "device_id": 11,
+      "distance_delta": 12.6,
+      "timestamp_offset_hours": -149
+    },
+    {
+      "cyclist_id": 374,
+      "device_id": 44,
+      "distance_delta": 3.8,
+      "timestamp_offset_hours": -152
+    },
+    {
+      "cyclist_id": 70,
+      "device_id": 7,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -146
+    },
+    {
+      "cyclist_id": 77,
+      "device_id": 11,
+      "distance_delta": 12.3,
+      "timestamp_offset_hours": -147
+    },
+    {
+      "cyclist_id": 306,
+      "device_id": 38,
+      "distance_delta": 6.3,
+      "timestamp_offset_hours": -107
+    },
+    {
+      "cyclist_id": 235,
+      "device_id": 29,
+      "distance_delta": 10.5,
+      "timestamp_offset_hours": -111
+    },
+    {
+      "cyclist_id": 114,
+      "device_id": 13,
+      "distance_delta": 7.0,
+      "timestamp_offset_hours": -121
+    },
+    {
+      "cyclist_id": 424,
+      "device_id": 49,
+      "distance_delta": 4.2,
+      "timestamp_offset_hours": -127
+    },
+    {
+      "cyclist_id": 204,
+      "device_id": 26,
+      "distance_delta": 13.5,
+      "timestamp_offset_hours": -121
+    },
+    {
+      "cyclist_id": 123,
+      "device_id": 15,
+      "distance_delta": 11.8,
+      "timestamp_offset_hours": -117
+    },
+    {
+      "cyclist_id": 252,
+      "device_id": 32,
+      "distance_delta": 10.9,
+      "timestamp_offset_hours": -118
+    },
+    {
+      "cyclist_id": 14,
+      "device_id": 2,
+      "distance_delta": 12.4,
+      "timestamp_offset_hours": -109
+    },
+    {
+      "cyclist_id": 411,
+      "device_id": 49,
+      "distance_delta": 2.7,
+      "timestamp_offset_hours": -118
+    },
+    {
+      "cyclist_id": 69,
+      "device_id": 7,
+      "distance_delta": 11.5,
+      "timestamp_offset_hours": -127
+    },
+    {
+      "cyclist_id": 242,
+      "device_id": 29,
+      "distance_delta": 4.3,
+      "timestamp_offset_hours": -93
+    },
+    {
+      "cyclist_id": 364,
+      "device_id": 44,
+      "distance_delta": 7.2,
+      "timestamp_offset_hours": -94
+    },
+    {
+      "cyclist_id": 416,
+      "device_id": 51,
+      "distance_delta": 6.4,
+      "timestamp_offset_hours": -103
+    },
+    {
+      "cyclist_id": 62,
+      "device_id": 7,
+      "distance_delta": 10.3,
+      "timestamp_offset_hours": -105
+    },
+    {
+      "cyclist_id": 39,
+      "device_id": 4,
+      "distance_delta": 3.0,
+      "timestamp_offset_hours": -106
+    },
+    {
+      "cyclist_id": 367,
+      "device_id": 45,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -101
+    },
+    {
+      "cyclist_id": 404,
+      "device_id": 49,
+      "distance_delta": 10.8,
+      "timestamp_offset_hours": -94
+    },
+    {
+      "cyclist_id": 123,
+      "device_id": 15,
+      "distance_delta": 12.9,
+      "timestamp_offset_hours": -89
+    },
+    {
+      "cyclist_id": 383,
+      "device_id": 47,
+      "distance_delta": 1.0,
+      "timestamp_offset_hours": -91
+    },
+    {
+      "cyclist_id": 263,
+      "device_id": 32,
+      "distance_delta": 1.7,
+      "timestamp_offset_hours": -96
+    },
+    {
+      "cyclist_id": 24,
+      "device_id": 2,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -64
+    },
+    {
+      "cyclist_id": 92,
+      "device_id": 10,
+      "distance_delta": 10.0,
+      "timestamp_offset_hours": -79
+    },
+    {
+      "cyclist_id": 27,
+      "device_id": 4,
+      "distance_delta": 4.1,
+      "timestamp_offset_hours": -78
+    },
+    {
+      "cyclist_id": 143,
+      "device_id": 18,
+      "distance_delta": 10.5,
+      "timestamp_offset_hours": -80
+    },
+    {
+      "cyclist_id": 336,
+      "device_id": 41,
+      "distance_delta": 14.0,
+      "timestamp_offset_hours": -77
+    },
+    {
+      "cyclist_id": 284,
+      "device_id": 35,
+      "distance_delta": 10.2,
+      "timestamp_offset_hours": -76
+    },
+    {
+      "cyclist_id": 187,
+      "device_id": 22,
+      "distance_delta": 10.3,
+      "timestamp_offset_hours": -79
+    },
+    {
+      "cyclist_id": 364,
+      "device_id": 45,
+      "distance_delta": 4.0,
+      "timestamp_offset_hours": -81
+    },
+    {
+      "cyclist_id": 376,
+      "device_id": 47,
+      "distance_delta": 13.3,
+      "timestamp_offset_hours": -77
+    },
+    {
+      "cyclist_id": 438,
+      "device_id": 53,
+      "distance_delta": 7.6,
+      "timestamp_offset_hours": -70
+    },
+    {
+      "cyclist_id": 255,
+      "device_id": 31,
+      "distance_delta": 12.8,
+      "timestamp_offset_hours": -44
+    },
+    {
+      "cyclist_id": 142,
+      "device_id": 18,
+      "distance_delta": 2.1,
+      "timestamp_offset_hours": -55
+    },
+    {
+      "cyclist_id": 391,
+      "device_id": 48,
+      "distance_delta": 13.0,
+      "timestamp_offset_hours": -42
+    },
+    {
+      "cyclist_id": 254,
+      "device_id": 31,
+      "distance_delta": 7.8,
+      "timestamp_offset_hours": -41
+    },
+    {
+      "cyclist_id": 154,
+      "device_id": 19,
+      "distance_delta": 10.3,
+      "timestamp_offset_hours": -42
+    },
+    {
+      "cyclist_id": 16,
+      "device_id": 3,
+      "distance_delta": 11.7,
+      "timestamp_offset_hours": -41
+    },
+    {
+      "cyclist_id": 401,
+      "device_id": 50,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -42
+    },
+    {
+      "cyclist_id": 98,
+      "device_id": 11,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -53
+    },
+    {
+      "cyclist_id": 160,
+      "device_id": 19,
+      "distance_delta": 5.7,
+      "timestamp_offset_hours": -41
+    },
+    {
+      "cyclist_id": 113,
+      "device_id": 15,
+      "distance_delta": 12.3,
+      "timestamp_offset_hours": -51
+    },
+    {
+      "cyclist_id": 362,
+      "device_id": 45,
+      "distance_delta": 0.8,
+      "timestamp_offset_hours": -19
+    },
+    {
+      "cyclist_id": 20,
+      "device_id": 2,
+      "distance_delta": 7.0,
+      "timestamp_offset_hours": -17
+    },
+    {
+      "cyclist_id": 384,
+      "device_id": 47,
+      "distance_delta": 2.3,
+      "timestamp_offset_hours": -30
+    },
+    {
+      "cyclist_id": 159,
+      "device_id": 21,
+      "distance_delta": 9.8,
+      "timestamp_offset_hours": -28
+    },
+    {
+      "cyclist_id": 283,
+      "device_id": 35,
+      "distance_delta": 8.3,
+      "timestamp_offset_hours": -27
+    },
+    {
+      "cyclist_id": 273,
+      "device_id": 32,
+      "distance_delta": 10.9,
+      "timestamp_offset_hours": -16
+    },
+    {
+      "cyclist_id": 234,
+      "device_id": 30,
+      "distance_delta": 1.2,
+      "timestamp_offset_hours": -19
+    },
+    {
+      "cyclist_id": 363,
+      "device_id": 43,
+      "distance_delta": 3.6,
+      "timestamp_offset_hours": -26
+    },
+    {
+      "cyclist_id": 117,
+      "device_id": 15,
+      "distance_delta": 2.6,
+      "timestamp_offset_hours": -12
+    },
+    {
+      "cyclist_id": 155,
+      "device_id": 20,
+      "distance_delta": 5.5,
+      "timestamp_offset_hours": -34
+    },
+    {
+      "cyclist_id": 393,
+      "device_id": 46,
+      "distance_delta": 10.7,
+      "timestamp_offset_hours": -1
+    },
+    {
+      "cyclist_id": 249,
+      "device_id": 30,
+      "distance_delta": 7.2,
+      "timestamp_offset_hours": 6
+    },
+    {
+      "cyclist_id": 69,
+      "device_id": 8,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": 4
+    },
+    {
+      "cyclist_id": 418,
+      "device_id": 51,
+      "distance_delta": 6.8,
+      "timestamp_offset_hours": -3
+    },
+    {
+      "cyclist_id": 423,
+      "device_id": 50,
+      "distance_delta": 12.2,
+      "timestamp_offset_hours": 10
+    },
+    {
+      "cyclist_id": 71,
+      "device_id": 8,
+      "distance_delta": 2.1,
+      "timestamp_offset_hours": 5
+    },
+    {
+      "cyclist_id": 180,
+      "device_id": 22,
+      "distance_delta": 12.6,
+      "timestamp_offset_hours": 10
+    },
+    {
+      "cyclist_id": 302,
+      "device_id": 38,
+      "distance_delta": 5.3,
+      "timestamp_offset_hours": -3
+    },
+    {
+      "cyclist_id": 399,
+      "device_id": 48,
+      "distance_delta": 7.9,
+      "timestamp_offset_hours": -5
+    },
+    {
+      "cyclist_id": 224,
+      "device_id": 25,
+      "distance_delta": 10.8,
+      "timestamp_offset_hours": 3
+    }
+  ],
+  "expected_results": {
+    "_note": "Expected results should be calculated after loading test data"
+  }
+}

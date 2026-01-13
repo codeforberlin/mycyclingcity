@@ -226,13 +226,13 @@
                 </div>
                 <div class="filter-group">
                     <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" name="use_player_filter" value="true" {% if use_player_filter %}checked{% endif %} style="width: 18px; height: 18px;">
+                        <input type="checkbox" name="use_cyclist_filter" value="true" {% if use_cyclist_filter %}checked{% endif %} style="width: 18px; height: 18px;">
                         <span>{% trans "Cyclist Filter" %}</span>
                     </label>
-                    <select id="player_id" name="player_id" {% if not use_player_filter %}disabled{% endif %}>
+                    <select id="cyclist_id" name="cyclist_id" {% if not use_cyclist_filter %}disabled{% endif %}>
                         <option value="">{% trans "All Cyclists" %}</option>
-                        {% for cyclist in players %}
-                            <option value="{{ cyclist.id }}" {% if player_id == cyclist.id|stringformat:"s" %}selected{% endif %}>
+                        {% for cyclist in cyclists %}
+                            <option value="{{ cyclist.id }}" {% if cyclist_id == cyclist.id|stringformat:"s" %}selected{% endif %}>
                                 {{ cyclist.user_id }} ({{ cyclist.id_tag }})
                             </option>
                         {% endfor %}
@@ -462,9 +462,9 @@ function formatNumberDE(value, decimals) {
     const endDate = urlParams.get('end_date') || '{{ end_date }}';
     const eventId = urlParams.get('event_id') || '';
     const groupId = urlParams.get('group_id') || '';
-    const playerId = urlParams.get('player_id') || '';
+    const cyclistId = urlParams.get('cyclist_id') || '';
     const trackId = urlParams.get('track_id') || '';
-    console.log('Filter values:', {startDate, endDate, eventId, groupId, playerId, trackId});
+    console.log('Filter values:', {startDate, endDate, eventId, groupId, cyclistId, trackId});
     
     // Handle filter form submission - ensure checkboxes are included even if unchecked
     function handleFilterSubmit(event) {
@@ -601,17 +601,17 @@ function formatNumberDE(value, decimals) {
     
     // Load data
     function loadData() {
-        console.log('Loading data with params:', {startDate, endDate, eventId, groupId, playerId});
+        console.log('Loading data with params:', {startDate, endDate, eventId, groupId, cyclistId});
         
         // Get filter checkboxes
         const useEventFilter = document.querySelector('input[name="use_event_filter"]')?.checked || false;
         const useGroupFilter = document.querySelector('input[name="use_group_filter"]')?.checked || false;
-        const usePlayerFilter = document.querySelector('input[name="use_player_filter"]')?.checked || false;
+        const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
         const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
         const trackId = document.getElementById('track_id')?.value || '';
         
         // Load daily data
-        const dailyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&player_id=${playerId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_player_filter=${usePlayerFilter}&use_track_filter=${useTrackFilter}&report_type=daily`;
+        const dailyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=daily`;
         console.log('Fetching daily data from:', dailyUrl);
         fetch(dailyUrl)
             .then(response => {
@@ -641,7 +641,7 @@ function formatNumberDE(value, decimals) {
             });
         
         // Load hourly data
-        const hourlyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&player_id=${playerId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_player_filter=${usePlayerFilter}&use_track_filter=${useTrackFilter}&report_type=hourly`;
+        const hourlyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=hourly`;
         console.log('Fetching hourly data from:', hourlyUrl);
         fetch(hourlyUrl)
             .then(response => {
@@ -683,11 +683,11 @@ function formatNumberDE(value, decimals) {
             // Get filter checkboxes
             const useEventFilter = document.querySelector('input[name="use_event_filter"]')?.checked || false;
             const useGroupFilter = document.querySelector('input[name="use_group_filter"]')?.checked || false;
-            const usePlayerFilter = document.querySelector('input[name="use_player_filter"]')?.checked || false;
+            const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
             const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
             const trackId = document.getElementById('track_id')?.value || '';
             
-            const aggregatedUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&player_id=${playerId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_player_filter=${usePlayerFilter}&use_track_filter=${useTrackFilter}&report_type=aggregated&group_type=${groupType}`;
+            const aggregatedUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=aggregated&group_type=${groupType}`;
             console.log('Fetching aggregated data from:', aggregatedUrl);
             fetch(aggregatedUrl)
             .then(response => {
@@ -832,11 +832,11 @@ function formatNumberDE(value, decimals) {
                         row.insertCell(0).style.padding = '20px';
                     }
                     
-                    // Update top players
+                    // Update top cyclists
                     const topPlayersTbody = document.querySelector('#topPlayersTable tbody');
                     topPlayersTbody.innerHTML = '';
-                    if (data.aggregated.top_players && data.aggregated.top_players.length > 0) {
-                        data.aggregated.top_players.forEach((cyclist, index) => {
+                    if (data.aggregated.top_cyclists && data.aggregated.top_cyclists.length > 0) {
+                        data.aggregated.top_cyclists.forEach((cyclist, index) => {
                             const row = topPlayersTbody.insertRow();
                             row.insertCell(0).textContent = index + 1;
                             row.insertCell(1).textContent = cyclist.user_id || '';
@@ -903,7 +903,7 @@ function formatNumberDE(value, decimals) {
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&player_id=${playerId}&format=csv`;
+            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=csv`;
             window.location.href = url;
         });
     }
@@ -911,7 +911,7 @@ function formatNumberDE(value, decimals) {
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&player_id=${playerId}&format=excel`;
+            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=excel`;
             window.location.href = url;
         });
     }
@@ -986,7 +986,7 @@ function formatNumberDE(value, decimals) {
             function updateFilterSelects() {
                 const eventCheckbox = document.querySelector('input[name="use_event_filter"]');
                 const groupCheckbox = document.querySelector('input[name="use_group_filter"]');
-                const playerCheckbox = document.querySelector('input[name="use_player_filter"]');
+                const cyclistCheckbox = document.querySelector('input[name="use_cyclist_filter"]');
                 const trackCheckbox = document.querySelector('input[name="use_track_filter"]');
                 
                 if (eventCheckbox) {
@@ -1001,10 +1001,10 @@ function formatNumberDE(value, decimals) {
                         groupSelect.disabled = !groupCheckbox.checked;
                     }
                 }
-                if (playerCheckbox) {
-                    const playerSelect = document.getElementById('player_id');
-                    if (playerSelect) {
-                        playerSelect.disabled = !playerCheckbox.checked;
+                if (cyclistCheckbox) {
+                    const cyclistSelect = document.getElementById('cyclist_id');
+                    if (cyclistSelect) {
+                        cyclistSelect.disabled = !cyclistCheckbox.checked;
                     }
                 }
                 if (trackCheckbox) {

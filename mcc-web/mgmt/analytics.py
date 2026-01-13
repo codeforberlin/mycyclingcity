@@ -47,7 +47,7 @@ def analytics_dashboard(request):
     end_date = request.GET.get('end_date')
     event_id = request.GET.get('event_id')
     group_id = request.GET.get('group_id')
-    player_id = request.GET.get('player_id')
+    cyclist_id = request.GET.get('cyclist_id')
     
     # Default to last 30 days if not specified
     if not start_date:
@@ -71,11 +71,11 @@ def analytics_dashboard(request):
         'end_date': end_date,
         'event_id': event_id,
         'group_id': group_id,
-        'player_id': player_id,
+        'cyclist_id': cyclist_id,
         'track_id': request.GET.get('track_id'),
         'use_event_filter': request.GET.get('use_event_filter', 'false') == 'true',
         'use_group_filter': request.GET.get('use_group_filter', 'true') == 'true',  # Default: true
-        'use_player_filter': request.GET.get('use_player_filter', 'true') == 'true',  # Default: true
+        'use_cyclist_filter': request.GET.get('use_cyclist_filter', 'true') == 'true',  # Default: true
         'use_track_filter': request.GET.get('use_track_filter', 'false') == 'true',
         'events': Event.objects.all().order_by('-start_time'),
         'groups': Group.objects.filter(is_visible=True).order_by('name'),
@@ -93,11 +93,11 @@ def analytics_data_api(request):
     end_date = request.GET.get('end_date', '').strip()
     event_id = request.GET.get('event_id', '').strip()
     group_id = request.GET.get('group_id', '').strip()
-    player_id = request.GET.get('player_id', '').strip()
+    cyclist_id = request.GET.get('cyclist_id', '').strip()
     track_id = request.GET.get('track_id', '').strip()
     use_event_filter = request.GET.get('use_event_filter', 'false').strip().lower() == 'true'
     use_group_filter = request.GET.get('use_group_filter', 'true').strip().lower() == 'true'  # Default: true
-    use_player_filter = request.GET.get('use_player_filter', 'true').strip().lower() == 'true'  # Default: true
+    use_cyclist_filter = request.GET.get('use_cyclist_filter', 'true').strip().lower() == 'true'  # Default: true
     use_track_filter = request.GET.get('use_track_filter', 'false').strip().lower() == 'true'
     report_type = request.GET.get('report_type', 'hourly')  # hourly, daily, aggregated
     group_type = request.GET.get('group_type', 'top_groups')  # top_groups or subgroups
@@ -142,8 +142,8 @@ def analytics_data_api(request):
         except Group.DoesNotExist:
             pass
     
-    if use_player_filter and player_id:
-        metrics_qs = metrics_qs.filter(cyclist_id=player_id)
+    if use_cyclist_filter and cyclist_id:
+        metrics_qs = metrics_qs.filter(cyclist_id=cyclist_id)
     
     if use_track_filter and track_id:
         # Filter by groups participating in track
@@ -243,8 +243,8 @@ def analytics_data_api(request):
             except Group.DoesNotExist:
                 pass
         
-        if use_player_filter and player_id:
-            total_metrics_qs = total_metrics_qs.filter(cyclist_id=player_id)
+        if use_cyclist_filter and cyclist_id:
+            total_metrics_qs = total_metrics_qs.filter(cyclist_id=cyclist_id)
         
         if use_track_filter and track_id:
             try:
@@ -457,8 +457,8 @@ def analytics_data_api(request):
         # If no cyclist data from HourlyMetric, try current cyclist totals as fallback
         if not top_cyclists or (len(top_cyclists) > 0 and all(c.get('distance', 0) == 0 for c in top_cyclists)):
             cyclists_qs = Cyclist.objects.filter(is_visible=True)
-            if player_id:
-                cyclists_qs = cyclists_qs.filter(pk=player_id)
+            if cyclist_id:
+                cyclists_qs = cyclists_qs.filter(pk=cyclist_id)
             if group_id:
                 try:
                     group = Group.objects.get(pk=group_id)
@@ -553,8 +553,8 @@ def analytics_data_api(request):
                 daily_metrics = daily_metrics.filter(group_at_time_id__in=descendant_ids)
             except Group.DoesNotExist:
                 pass
-        if use_player_filter and player_id:
-            daily_metrics = daily_metrics.filter(cyclist_id=player_id)
+        if use_cyclist_filter and cyclist_id:
+            daily_metrics = daily_metrics.filter(cyclist_id=cyclist_id)
         if use_track_filter and track_id:
             try:
                 track = TravelTrack.objects.get(pk=track_id)
@@ -710,8 +710,8 @@ def analytics_data_api(request):
                 weekly_metrics = weekly_metrics.filter(group_at_time_id__in=descendant_ids)
             except Group.DoesNotExist:
                 pass
-        if use_player_filter and player_id:
-            weekly_metrics = weekly_metrics.filter(cyclist_id=player_id)
+        if use_cyclist_filter and cyclist_id:
+            weekly_metrics = weekly_metrics.filter(cyclist_id=cyclist_id)
         if use_track_filter and track_id:
             try:
                 track = TravelTrack.objects.get(pk=track_id)
@@ -856,8 +856,8 @@ def analytics_data_api(request):
                 monthly_metrics = monthly_metrics.filter(group_at_time_id__in=descendant_ids)
             except Group.DoesNotExist:
                 pass
-        if use_player_filter and player_id:
-            monthly_metrics = monthly_metrics.filter(cyclist_id=player_id)
+        if use_cyclist_filter and cyclist_id:
+            monthly_metrics = monthly_metrics.filter(cyclist_id=cyclist_id)
         if use_track_filter and track_id:
             try:
                 track = TravelTrack.objects.get(pk=track_id)
@@ -998,8 +998,8 @@ def analytics_data_api(request):
                 yearly_metrics = yearly_metrics.filter(group_at_time_id__in=descendant_ids)
             except Group.DoesNotExist:
                 pass
-        if use_player_filter and player_id:
-            yearly_metrics = yearly_metrics.filter(cyclist_id=player_id)
+        if use_cyclist_filter and cyclist_id:
+            yearly_metrics = yearly_metrics.filter(cyclist_id=cyclist_id)
         if use_track_filter and track_id:
             try:
                 track = TravelTrack.objects.get(pk=track_id)
@@ -1145,7 +1145,7 @@ def export_data(request):
     end_date = request.GET.get('end_date')
     event_id = request.GET.get('event_id')
     group_id = request.GET.get('group_id')
-    player_id = request.GET.get('player_id')
+    cyclist_id = request.GET.get('cyclist_id')
     export_format = request.GET.get('format', 'csv')  # csv or excel
     
     # Parse dates
@@ -1181,8 +1181,8 @@ def export_data(request):
         except Group.DoesNotExist:
             pass
     
-    if player_id:
-        metrics_qs = metrics_qs.filter(cyclist_id=player_id)
+    if cyclist_id:
+        metrics_qs = metrics_qs.filter(cyclist_id=cyclist_id)
     
     # Order by timestamp
     metrics_qs = metrics_qs.order_by('timestamp')
@@ -1199,7 +1199,7 @@ def export_data(request):
             
             # Headers
             headers = [
-                'Timestamp', 'Player', 'ID Tag', 'Device', 'Group',
+                'Timestamp', 'Cyclist', 'ID Tag', 'Device', 'Group',
                 'Group Type', 'Distance (km)'
             ]
             ws.append(headers)
@@ -1243,7 +1243,7 @@ def export_data(request):
         # Use semicolon delimiter for German Excel compatibility
         writer = csv.writer(response, delimiter=';')
         writer.writerow([
-            'Timestamp', 'Player', 'ID Tag', 'Device', 'Group',
+            'Timestamp', 'Cyclist', 'ID Tag', 'Device', 'Group',
             'Group Type', 'Distance (km)'
         ])
         
@@ -1350,13 +1350,13 @@ def hierarchy_breakdown(request):
             context['child_groups'] = child_groups
         
         elif group_id:
-            # Show players in group - use HourlyMetric for accurate data
+            # Show cyclists in group - use HourlyMetric for accurate data
             try:
                 group = Group.objects.get(pk=group_id)
             except Group.DoesNotExist:
                 context['error'] = _('Group not found')
                 return render(request, 'admin/api/hierarchy_breakdown.html', context)
-            # Get all descendant groups to include all players
+            # Get all descendant groups to include all cyclists
             descendant_ids = _get_descendant_group_ids(group)
             
             cyclists = Cyclist.objects.filter(
@@ -1374,7 +1374,7 @@ def hierarchy_breakdown(request):
                 )
             ).filter(total_distance__gt=0).distinct().order_by('-total_distance')
             
-            context['breakdown_type'] = 'cyclists'
+            context['breakdown_type'] = 'players'  # Keep for template compatibility
             context['group'] = group
             context['cyclists'] = cyclists
     

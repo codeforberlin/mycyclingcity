@@ -6,7 +6,7 @@ This document describes the planned load test scenarios for the MCC system.
 
 **File**: `test_data.json`
 - **Purpose**: Basic regression testing
-- **Scale**: 2 schools, 5 classes, 4 players, 3 devices
+- **Scale**: 2 schools, 5 classes, 4 cyclists, 3 devices
 - **Use Case**: Quick validation of core functionality
 
 ## Planned Load Test Scenarios
@@ -74,7 +74,7 @@ python manage.py generate_large_test_data \
 
 All test data files follow the same structure:
 - **groups**: Hierarchical group structure (schools → classes)
-- **players**: Students assigned to classes
+- **cyclists**: Students assigned to classes
 - **devices**: Devices assigned to classes
 - **mileage_updates**: Historical mileage data with timestamps
 - **expected_results**: Expected totals (calculated after loading)
@@ -114,6 +114,6 @@ Target performance metrics:
 
 - Test data generation creates realistic hierarchical structures
 - Mileage updates are distributed across the last 30 days
-- All groups, players, and devices are marked as visible
+- All groups, cyclists, and devices are marked as visible
 - Parent-child aggregation is automatically calculated
 

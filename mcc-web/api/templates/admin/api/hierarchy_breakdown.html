@@ -237,7 +237,7 @@
             </table>
         </div>
     
-    {% elif breakdown_type == 'players' %}
+    {% elif breakdown_type == 'players' or breakdown_type == 'cyclists' %}
         <div class="breakdown-table">
             <table>
                 <thead>
@@ -248,7 +248,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for cyclist in players %}
+                    {% for cyclist in cyclists %}
                         <tr>
                             <td>{{ cyclist.user_id }}</td>
                             <td>{{ cyclist.id_tag }}</td>

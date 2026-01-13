@@ -1018,7 +1018,7 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     distance_total_display.admin_order_field = 'distance_total'
 
     def avatar_preview(self, obj):
-        """Generates an HTML preview for the player avatar"""
+        """Generates an HTML preview for the cyclist avatar"""
         if obj.avatar:
             return mark_safe(f'<img src="{obj.avatar.url}" style="height:50px; border-radius:50%;"/>')
         return _("Kein Avatar")

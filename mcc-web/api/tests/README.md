@@ -56,7 +56,7 @@ pytest api/tests/test_regression.py::GroupTotalsTest::test_group_totals_match_ex
 ### Test Classes
 
 1. **GroupTotalsTest**: Verifies group distance_total calculations and parent-child aggregation
-2. **PlayerTotalsTest**: Verifies player distance_total calculations
+2. **CyclistTotalsTest**: Verifies cyclist distance_total calculations
 3. **LeaderboardTest**: Tests leaderboard view calculations
 4. **BadgeCalculationTest**: Tests badge calculations (daily, weekly, monthly, yearly)
 5. **AdminReportTest**: Tests Admin Report analytics calculations
@@ -67,7 +67,7 @@ pytest api/tests/test_regression.py::GroupTotalsTest::test_group_totals_match_ex
 
 ### Basic Test Data (`test_data.json`)
 - **Purpose**: Quick regression testing
-- **Scale**: 2 schools, 5 classes, 4 players, 3 devices
+- **Scale**: 2 schools, 5 classes, 4 cyclists, 3 devices
 - **Use Case**: Core functionality validation
 
 ### Load Test Data (Future)

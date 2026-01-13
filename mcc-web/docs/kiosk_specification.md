@@ -3,7 +3,7 @@
 ## 1. Layout & Architecture
 - **Structure:** Use a single-page `h-screen overflow-hidden` layout using Tailwind CSS.
 - **Layers:**
-    - **Top (5vh):** Integration of the existing Player Ticker (Live-Active Players).
+    - **Top (5vh):** Integration of the existing Cyclist Ticker (Live-Active Cyclists).
     - **Header (15vh):** School Banner showing the Top 3 Schools (aggregated mileage).
     - **Main (75vh):** Flexible Auto-Grid for Group Tiles.
     - **Footer (5vh):** Global statistics (Total KM) and Live Activity Counter.

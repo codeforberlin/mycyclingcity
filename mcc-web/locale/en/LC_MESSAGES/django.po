@@ -693,7 +693,7 @@ msgstr "Configuration for Minecraft Bridge is incomplete."
 #, python-brace-format
 msgid " Coins für Spieler {username} erfolgreich an Minecraft-Bridge gesendet."
 msgstr ""
-"Coins for player {username} were successfully sent to the Minecraft Bridge."
+"Coins for cyclist {username} were successfully sent to the Minecraft Bridge."
 
 #, python-brace-format
 msgid " Fehler beim Senden der Coins an die Minecraft-Bridge: {e}"
@@ -868,7 +868,7 @@ msgid ""
 "Willkommen zur Kilometer-Challenge! Wähle die Spieler und ihre zugewiesenen "
 "Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst."
 msgstr ""
-"Welcome to the Kilometer Challenge! Select the players and their assigned "
+"Welcome to the Kilometer Challenge! Select the cyclists and their assigned "
 "devices to see how many kilometers and MCC coins you can collect."
 
 msgid "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)."
@@ -896,10 +896,10 @@ msgid "Entfernen"
 msgstr "Remove"
 
 msgid "Spieler & Geräte zuweisen"
-msgstr "Assign players & devices"
+msgstr "Assign cyclists & devices"
 
 msgid "Wähle einen Spieler"
-msgstr "Select a player"
+msgstr "Select a cyclist"
 
 msgid "Wähle ein Gerät"
 msgstr "Select a device"

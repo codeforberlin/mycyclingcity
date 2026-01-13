@@ -117,7 +117,7 @@ pytest api/tests/test_live_api.py -m live --base-url=http://localhost:8000
 pytest api/tests/test_live_api.py -m live --api-key=YOUR-API-KEY
 ```
 
-**Note:** After the refactoring, the leaderboard view moved from `/map/kiosk/leaderboard` to `/leaderboard/kiosk/`. The tests have been updated accordingly. Also note that API endpoints use "cyclist" naming (e.g., `/api/get-cyclist-coins/`, `/api/get-cyclist-distance/`), but JSON responses may still use "players" as field names for backward compatibility.
+**Note:** After the refactoring, the leaderboard view moved from `/map/kiosk/leaderboard` to `/leaderboard/kiosk/`. The tests have been updated accordingly. API endpoints and JSON responses use "cyclist" naming consistently (e.g., `/api/get-cyclist-coins/`, `/api/get-cyclist-distance/`, JSON keys: `cyclist_id`, `cyclists`, `top_cyclists`).
 
 ### Environment Variables
 
@@ -148,7 +148,7 @@ Tests are organized using pytest markers:
 - `api_key` - API key for authentication
 - `admin_user` - Admin user for testing
 - `group_hierarchy` - Simple group hierarchy (parent + 2 children)
-- `player_with_group` - Player with associated group
+- `cyclist_with_group` - Cyclist with associated group
 - `device_with_group` - Device with associated group
 - `active_travel_track` - Active travel track with milestones
 - `active_event` - Active event
@@ -217,7 +217,7 @@ All models have corresponding factory classes:
 - German number formatting in HTML responses
 - JSON response format validation
 - Error handling
-- Note: Endpoints use "cyclist" naming (e.g., `/api/get-cyclist-coins/`, `/api/get-cyclist-distance/`), but JSON responses may still use "players" as field names for backward compatibility
+- Note: Endpoints and JSON responses use "cyclist" naming consistently (e.g., `/api/get-cyclist-coins/`, `/api/get-cyclist-distance/`, JSON keys: `cyclist_id`, `cyclists`, `top_cyclists`)
 
 ## Writing New Tests
 
