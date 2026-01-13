@@ -1,0 +1,159 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-01-27T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "MyCyclingCity",
+        "name": "SBOM Generator",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "mcc-esp32",
+      "version": "1.0.0",
+      "description": "MyCyclingCity ESP32 Firmware (PlatformIO)"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "ArduinoJson",
+      "version": "6.19.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:platformio/bblanchon/arduinojson@6.19.4",
+      "properties": [
+        {
+          "name": "owner",
+          "value": "bblanchon"
+        },
+        {
+          "name": "purpose",
+          "value": "JSON processing library"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "U8g2",
+      "version": "latest",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause",
+            "name": "BSD 2-Clause License"
+          }
+        }
+      ],
+      "purl": "pkg:platformio/olikraus/u8g2@latest",
+      "properties": [
+        {
+          "name": "owner",
+          "value": "olikraus"
+        },
+        {
+          "name": "purpose",
+          "value": "OLED display library (SSD1306)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "MFRC522",
+      "version": "1.4.12",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0",
+            "name": "GNU General Public License v2.0"
+          }
+        }
+      ],
+      "purl": "pkg:platformio/miguelbalboa/mfrc522@1.4.12",
+      "properties": [
+        {
+          "name": "owner",
+          "value": "miguelbalboa"
+        },
+        {
+          "name": "purpose",
+          "value": "RFID reader library for MFRC522 module"
+        },
+        {
+          "name": "license:restrictive",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "platform",
+      "name": "espressif32",
+      "version": "latest",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "name": "Apache License 2.0"
+          }
+        }
+      ],
+      "purl": "pkg:platformio/platform/espressif32@latest",
+      "properties": [
+        {
+          "name": "purpose",
+          "value": "ESP32 microcontroller platform"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "Arduino",
+      "version": "latest",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-2.1",
+            "name": "GNU Lesser General Public License v2.1"
+          }
+        }
+      ],
+      "purl": "pkg:framework/arduino@latest",
+      "properties": [
+        {
+          "name": "purpose",
+          "value": "Arduino framework for embedded development"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "Unity",
+      "version": "latest",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:framework/unity@latest",
+      "properties": [
+        {
+          "name": "purpose",
+          "value": "Unit testing framework (test environment only)"
+        }
+      ]
+    }
+  ]
+}

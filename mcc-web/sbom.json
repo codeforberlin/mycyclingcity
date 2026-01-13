@@ -1,0 +1,163 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-01-27T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "MyCyclingCity",
+        "name": "SBOM Generator",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "mcc-web",
+      "version": "1.0.0",
+      "description": "MyCyclingCity Django Web Application"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "Django",
+      "version": "5.2.9",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "name": "BSD 3-Clause License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/django@5.2.9"
+    },
+    {
+      "type": "library",
+      "name": "requests",
+      "version": "2.32.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "name": "Apache License 2.0"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/requests@2.32.5"
+    },
+    {
+      "type": "library",
+      "name": "gunicorn",
+      "version": "23.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/gunicorn@23.0.0"
+    },
+    {
+      "type": "library",
+      "name": "gpxpy",
+      "version": "1.6.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "name": "Apache License 2.0"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/gpxpy@1.6.2"
+    },
+    {
+      "type": "library",
+      "name": "pillow",
+      "version": "12.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "PIL",
+            "name": "PIL License (HPND-like)"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/pillow@12.0.0"
+    },
+    {
+      "type": "library",
+      "name": "python-decouple",
+      "version": "3.8",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/python-decouple@3.8"
+    },
+    {
+      "type": "library",
+      "name": "python-dotenv",
+      "version": "1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "name": "BSD 3-Clause License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/python-dotenv@1.0.0"
+    },
+    {
+      "type": "library",
+      "name": "pytest",
+      "version": "8.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/pytest@8.0.0"
+    },
+    {
+      "type": "library",
+      "name": "pytest-django",
+      "version": "4.8.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "name": "BSD 3-Clause License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/pytest-django@4.8.0"
+    },
+    {
+      "type": "library",
+      "name": "factory-boy",
+      "version": "3.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "name": "MIT License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/factory-boy@3.3.0"
+    }
+  ]
+}
