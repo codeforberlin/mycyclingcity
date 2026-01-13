@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_httpclient.h
+ * @author  Roland Rutz
+ */
+
 #ifndef MOCK_HTTPCLIENT_H
 #define MOCK_HTTPCLIENT_H
 

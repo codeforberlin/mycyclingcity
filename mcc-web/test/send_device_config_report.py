@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    send_device_config_report.py
+# @author  Roland Rutz
+
+#
 """
 Test script to send device configuration report with slight differences.
 

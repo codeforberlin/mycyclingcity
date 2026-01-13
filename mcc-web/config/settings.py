@@ -1,11 +1,15 @@
-# mcc/config/settings.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    settings.py
+# @author  Roland Rutz
 
+#
 import os
 from pathlib import Path
 from django.utils.translation import gettext_lazy as _
 from decouple import config, Csv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!

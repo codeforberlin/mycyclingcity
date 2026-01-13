@@ -1,3 +1,10 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    sync_group_totals_from_metrics.py
+# @author  Roland Rutz
+
+#
 """
 Management command to synchronize group.distance_total with HourlyMetrics.
 

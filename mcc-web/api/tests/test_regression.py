@@ -1,5 +1,10 @@
-# mcc/api/tests/test_regression.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    test_regression.py
+# @author  Roland Rutz
 
+#
 """
 Regression tests for MCC mileage tracking system.
 

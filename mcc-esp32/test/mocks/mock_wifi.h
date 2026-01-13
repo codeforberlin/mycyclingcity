@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_wifi.h
+ * @author  Roland Rutz
+ */
+
 #ifndef MOCK_WIFI_H
 #define MOCK_WIFI_H
 

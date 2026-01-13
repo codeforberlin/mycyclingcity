@@ -1,5 +1,10 @@
-# mcc/api/management/commands/run_extended_cronjob_test.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    run_extended_cronjob_test.py
+# @author  Roland Rutz
 
+#
 """
 Management command to run an extended 30-minute test of the cronjob functionality.
 

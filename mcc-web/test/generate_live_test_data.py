@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    generate_live_test_data.py
+# @author  Roland Rutz
+
+#
 """
 Script to generate live test kilometer data for devices and cyclists.
 Sends HTTP requests to the API endpoint to simulate real device activity.

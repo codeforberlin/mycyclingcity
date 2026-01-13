@@ -1,5 +1,10 @@
-# mcc/api/management/commands/generate_large_test_data.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    generate_large_test_data.py
+# @author  Roland Rutz
 
+#
 """
 Management command to generate large-scale test data for load testing.
 

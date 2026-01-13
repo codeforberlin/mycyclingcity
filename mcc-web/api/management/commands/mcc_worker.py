@@ -1,9 +1,10 @@
-# mcc/api/management/commands/mcc_worker.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    mcc_worker.py
+# @author  Roland Rutz
 
-# MCC General service processor (runs every 60 seconds)
-# Updates HourlyMetric with active session data for leaderboard calculations
-### * * * * * /home/roland/venv_mcc/bin/python /nas/public/dev/mcc-web/manage.py mcc_worker >> /nas/public/dev/mcc-web/logs/mcc_worker.log 2>&1
-
+#
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.conf import settings

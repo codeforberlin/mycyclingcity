@@ -1,11 +1,14 @@
-# /data/dev/mcc/manage.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    manage.py
+# @author  Roland Rutz
 
 import os
 import sys
 
 def main():
     """Run administrative tasks."""
-    # The settings module path is 'mcc.config.settings', since 'mcc' is the namespace
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     
     # CORRECTION: Adds the project directory to the path

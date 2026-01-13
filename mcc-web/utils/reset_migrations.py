@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    reset_migrations.py
+# @author  Roland Rutz
+
+#
 """
 Reset or squash database migrations for a clean production setup.
 

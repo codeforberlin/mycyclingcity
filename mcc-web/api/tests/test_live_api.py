@@ -1,3 +1,10 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    test_live_api.py
+# @author  Roland Rutz
+
+#
 """
 Live API integration tests against a running Gunicorn instance.
 

@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    test_config.h
+ * @author  Roland Rutz
+ */
+
 #ifndef TEST_CONFIG_H
 #define TEST_CONFIG_H
 

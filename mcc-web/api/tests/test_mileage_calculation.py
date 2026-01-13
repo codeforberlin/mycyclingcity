@@ -1,3 +1,10 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    test_mileage_calculation.py
+# @author  Roland Rutz
+
+#
 """
 Unit tests for mileage calculation logic.
 

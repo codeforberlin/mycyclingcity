@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    configserver.h
+ * @author  Roland Rutz
+ */
+
 #ifndef CONFIGSERVER_H
 #define CONFIGSERVER_H
 

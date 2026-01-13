@@ -1,10 +1,14 @@
-# mcc/api/urls.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    urls.py
+# @author  Roland Rutz
 
+#
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Existing endpoints (from this morning)
     path('update-data', views.update_data, name='update_data'),
     path('get-user-id', views.get_user_id, name='get_user_id'),
     path('get-cyclist-coins/<str:username>', views.get_cyclist_coins, name='get_cyclist_coins'),

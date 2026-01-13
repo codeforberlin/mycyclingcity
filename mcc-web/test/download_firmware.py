@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    download_firmware.py
+# @author  Roland Rutz
+
+#
 """
 Test script to download firmware image for a device via HTTP.
 

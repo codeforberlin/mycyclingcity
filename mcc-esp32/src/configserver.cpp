@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    configserver.cpp
+ * @author  Roland Rutz
+ */
+
 #include "configserver.h"
 #include <WiFi.h>
 #include <Update.h>

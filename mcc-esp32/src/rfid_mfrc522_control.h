@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    rfid_mfrc522_control.h
+ * @author  Roland Rutz
+ */
+
 #ifndef RFID_MFRC522_CONTROL_H
 #define RFID_MFRC522_CONTROL_H
 

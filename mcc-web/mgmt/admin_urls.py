@@ -1,5 +1,10 @@
-# mcc/mgmt/admin_urls.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    admin_urls.py
+# @author  Roland Rutz
 
+#
 from django.urls import path
 from . import admin_views
 

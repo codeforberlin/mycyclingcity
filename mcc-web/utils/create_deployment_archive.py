@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    create_deployment_archive.py
+# @author  Roland Rutz
+
+#
 """
 Create a deployment archive (tar.gz) for the MCC-Web application.
 

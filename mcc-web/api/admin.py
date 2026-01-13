@@ -1,5 +1,7 @@
-# mcc/api/admin.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    admin.py
+# @author  Roland Rutz
 
-# All admin classes have been moved to mgmt/admin.py
-# This file is kept for backwards compatibility but is now empty.
-# All administrative UI is handled by the mgmt app.
+#

@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_arduino.h
+ * @author  Roland Rutz
+ */
+
 #ifndef MOCK_ARDUINO_H
 #define MOCK_ARDUINO_H
 

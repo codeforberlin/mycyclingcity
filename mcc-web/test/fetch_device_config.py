@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    fetch_device_config.py
+# @author  Roland Rutz
+
+#
 """
 Test script to fetch device configuration via HTTP.
 

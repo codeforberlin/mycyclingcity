@@ -1,5 +1,10 @@
-# mcc/test/mcc_api_test.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    mcc_api_test.py
+# @author  Roland Rutz
 
+#
 import requests
 import json
 import random

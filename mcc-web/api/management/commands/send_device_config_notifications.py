@@ -1,3 +1,10 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    send_device_config_notifications.py
+# @author  Roland Rutz
+
+#
 """
 Management-Command zum Senden täglicher E-Mail-Benachrichtigungen über Gerätekonfigurationsunterschiede.
 

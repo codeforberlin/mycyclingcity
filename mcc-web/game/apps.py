@@ -1,11 +1,15 @@
-# mcc/game/apps.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    apps.py
+# @author  Roland Rutz
 
+#
 from django.apps import AppConfig
 from django.utils.translation import gettext_lazy as _
 
 
 class GameConfig(AppConfig):  # <-- This is the expected name
-    # Fixes the models.W042 warning
     default_auto_field = 'django.db.models.BigAutoField'
     
     # Standard label

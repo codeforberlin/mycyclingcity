@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    load_test_leaderboards.py
+# @author  Roland Rutz
+
+#
 """
 Load test script for testing leaderboard endpoints with real database data.
 

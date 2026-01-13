@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    grouptravelstatus_inline.js
+ * @author  Roland Rutz
+ */
+
+/**
  * JavaScript for GroupTravelStatusInline to show abort button when adding groups
  * that already have a travel status assigned.
  */

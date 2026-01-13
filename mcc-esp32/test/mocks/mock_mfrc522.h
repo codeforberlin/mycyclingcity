@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_mfrc522.h
+ * @author  Roland Rutz
+ */
+
 #ifndef MOCK_MFRC522_H
 #define MOCK_MFRC522_H
 

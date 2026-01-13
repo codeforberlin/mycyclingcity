@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    group_admin.css
+ * @author  Roland Rutz
+ */
+
 /* Limit width of short_name field in list view (list_editable) */
 .field-short_name input,
 #result_list .field-short_name input {

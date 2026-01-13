@@ -1,3 +1,10 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    list_elements.html
+     @author  Roland Rutz
+-->
+
 <div id="children-{{ parent_id }}">
     {% for x in items %}
         {% include "map/partials/item_row.html" with item=x level=level type=type %}

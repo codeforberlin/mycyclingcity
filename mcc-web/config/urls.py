@@ -1,5 +1,10 @@
-# mcc/config/urls.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    urls.py
+# @author  Roland Rutz
 
+#
 import os
 from django.contrib import admin
 from django.urls import path, include

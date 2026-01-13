@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    led_control.h
+ * @author  Roland Rutz
+ */
+
 #ifndef LED_CONTROL_H
 #define LED_CONTROL_H
 

@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    Arduino.h
+ * @author  Roland Rutz
+ */
+
 #ifndef Arduino_h
 #define Arduino_h
 

@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_arduino.cpp
+ * @author  Roland Rutz
+ */
+
 #ifdef UNITY_TEST_MODE
 
 #include "mock_arduino.h"

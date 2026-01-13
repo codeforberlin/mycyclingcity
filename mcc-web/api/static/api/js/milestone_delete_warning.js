@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    milestone_delete_warning.js
+ * @author  Roland Rutz
+ */
+
 // Hide delete buttons for milestones that are used in trips
 (function($) {
     $(document).ready(function() {

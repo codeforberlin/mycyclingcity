@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    map_init.js
+ * @author  Roland Rutz
+ */
+
 // Create this file at: mcc/api/static/api/js/map_init.js
 
 (function($) {

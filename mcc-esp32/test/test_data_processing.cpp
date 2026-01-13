@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    test_data_processing.cpp
+ * @author  Roland Rutz
+ */
+
 #include <unity.h>
 #include <cmath>
 #include <cfloat>

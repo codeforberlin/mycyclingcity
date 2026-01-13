@@ -1,3 +1,10 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    test_integration_hierarchy.py
+# @author  Roland Rutz
+
+#
 """
 Integration tests for hierarchy lookups and database interactions.
 

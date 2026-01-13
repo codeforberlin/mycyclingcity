@@ -1,5 +1,10 @@
-# mcc/api/management/commands/reset_mileage_data.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    reset_mileage_data.py
+# @author  Roland Rutz
 
+#
 """
 Management command to reset all mileage data in the database.
 

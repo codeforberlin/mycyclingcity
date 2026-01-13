@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    main.cpp
+ * @author  Roland Rutz
+ */
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -18,13 +25,13 @@
 
 #include <SPI.h>
 #include <MFRC522.h>
-#include "rfid_mfrc522_control.h" // NEW MODULE
+#include "rfid_mfrc522_control.h" 
 
 
 // --- GLOBAL HARDWARE DEFINITIONS ---
 
 #ifdef ENABLE_OLED
-// NEW PINS FOR OLED I2C: SDA=21, SCL=22
+// PINS FOR OLED I2C: SDA=21, SCL=22
 // IMPORTANT: Pin values now come from build flag, we use flag names here
 #ifndef OLED_RST_PIN
   #define OLED_RST_PIN   -1 // Fallback if flag is missing
@@ -84,7 +91,7 @@ unsigned long deepSleepTimeout_sec = 300; // Time in seconds until deep sleep, d
 const char* API_UPDATE_DATA_PATH = "/api/update-data"; // Example path for sending tachometer data
 const char* API_GET_USER_ID_PATH = "/api/get-user-id"; // Example path for retrieving user data
 
-// NEW global variables for configuration mode
+// global variables for configuration mode
 const unsigned long CONFIG_TIMEOUT_SEC = 300; // Timeout in seconds (5 minutes)
 unsigned long configModeTimeout_sec = CONFIG_TIMEOUT_SEC;
 unsigned long configModeStartTime = 0; // Start time for timeout
@@ -130,7 +137,7 @@ unsigned long lastDataSendTime = 0;
 unsigned long reconnectLastAttemptTime = 0;
 const unsigned long RECONNECT_INTERVAL_MS = 30000;
 
-// NEW: Global variable for suffix
+// Global variable for suffix
 String deviceIdSuffix;
 
 
@@ -361,7 +368,7 @@ void setup() {
         Serial.println("WARNING: Critical configurations missing! Forcing configuration mode.");
     }
     
-    // Initialize buzzer pin (NEW)
+    // Initialize buzzer pin
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW); // Turn off buzzer initially
     
@@ -393,7 +400,7 @@ void setup() {
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
 
     // ----------------------------------------------------------------------
-    // NEW: Logic for configuration mode - ALWAYS start on restart
+    // Logic for configuration mode - ALWAYS start on restart
     // ----------------------------------------------------------------------
     if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT0 && !wasConfigExit) {
         
@@ -506,12 +513,12 @@ void loop() {
         server.handleClient();
         delay(1);
 
-        // --- NEW: End configuration mode on timeout ---
+        // --- End configuration mode on timeout ---
         if (millis() - configModeStartTime >= configModeTimeout_sec * 1000) {
             configMode = false;
             Serial.println("\nWARNING: Configuration mode timeout reached. Restart in 5 seconds.");
             
-            // NEW: Set flag to signal that restart is an intended end of config mode
+            // Set flag to signal that restart is an intended end of config mode
             preferences.putBool("configExit", true);
 
             #ifdef ENABLE_OLED
@@ -533,7 +540,7 @@ void loop() {
             configMode = false;
             Serial.println("\nINFO: Pulse detected. Ending configuration mode and restarting.");
             
-            // NEW: Set flag to signal that restart is an intended end of config mode
+            // Set flag to signal that restart is an intended end of config mode
             preferences.putBool("configExit", true);
 
             #ifdef ENABLE_OLED
@@ -551,7 +558,7 @@ void loop() {
     } else {
 
         // ----------------------------------------------------------------------
-        // NEW: MONITOR ID TAG CHANGE
+        // MONITOR ID TAG CHANGE
         // ----------------------------------------------------------------------
         // Checks if the currently loaded idTag (from Preferences/RFID) differs from the last sent/used tag.
         //if (idTag != lastSentIdTag && lastSentIdTag.length() > 0) {
@@ -655,7 +662,7 @@ void loop() {
               if (responseCode > 0 && responseCode < 300) { // HTTP status codes 2xx are usually successful
                     lastDataSendTime = millis();
                     pulsesAtLastSend = currentPulseCount;
-                    // NEW: Update lastSentIdTag here since data was sent successfully
+                    // Update lastSentIdTag here since data was sent successfully
                     lastSentIdTag = idTag;
 
                     if (debugEnabled) {
@@ -949,7 +956,7 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pu
       Serial.printf("Send interval: %u s\n", sendInterval_sec);
     }
 
-    // NEW: Display current wheel circumference in log
+    // Display current wheel circumference in log
     Serial.printf("Wheel circumference: %.2f cm\n", wheel_size);
 
     Serial.println("Sending JSON data:");
@@ -1214,7 +1221,7 @@ void resetDistanceCounters() {
     }
 }
 
-// --- Buzzer control functions (NEW) ---
+// --- Buzzer control functions ---
 /**
  * @brief Generates a tone on the buzzer for a specified duration.
  * 

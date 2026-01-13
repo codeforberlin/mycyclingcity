@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    test_json_generation.cpp
+ * @author  Roland Rutz
+ */
+
 #include <unity.h>
 
 #ifdef UNITY_TEST_MODE

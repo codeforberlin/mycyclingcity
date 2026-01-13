@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    timezone-converter.js
+ * @author  Roland Rutz
+ */
+
+/**
  * Timezone Converter - Converts UTC datetime strings to browser's local timezone
  * 
  * This script automatically finds and converts all datetime elements

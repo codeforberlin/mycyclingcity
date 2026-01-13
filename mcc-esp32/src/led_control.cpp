@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    led_control.cpp
+ * @author  Roland Rutz
+ */
+
 #include "led_control.h"
 
 static bool ledIsOn = false;

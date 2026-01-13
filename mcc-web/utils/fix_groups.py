@@ -1,10 +1,15 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    fix_groups.py
+# @author  Roland Rutz
+
+#
 import os
 import sys
 import django
 from pathlib import Path
 
-# Initialize Django environment
-# Get project root directory (parent of utils/)
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')

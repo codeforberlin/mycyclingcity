@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    deploy_production.py
+# @author  Roland Rutz
+
+#
 """
 Production deployment script for MCC-Web application.
 

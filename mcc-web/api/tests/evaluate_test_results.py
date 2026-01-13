@@ -1,6 +1,10 @@
-#!/usr/bin/env python3
-# mcc/api/tests/evaluate_test_results.py
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    evaluate_test_results.py
+# @author  Roland Rutz
 
+#
 """
 Automated test result evaluation script.
 

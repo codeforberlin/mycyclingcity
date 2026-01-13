@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    pre_deployment_check.py
+# @author  Roland Rutz
+
+#
 """
 Pre-deployment validation checks for MCC-Web production deployment.
 

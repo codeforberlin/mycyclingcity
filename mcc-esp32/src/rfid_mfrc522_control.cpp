@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    rfid_mfrc522_control.cpp
+ * @author  Roland Rutz
+ */
+
 #include "rfid_mfrc522_control.h"
 #include "led_control.h" // For the updateLed function
 

@@ -1,3 +1,10 @@
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * @file    mock_wifi.cpp
+ * @author  Roland Rutz
+ */
+
 #ifdef UNITY_TEST_MODE
 
 #include "mocks/mock_wifi.h"
