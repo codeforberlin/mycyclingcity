@@ -3,6 +3,7 @@
 #
 # @file    0011_add_reward_fields_to_group_milestone_achievement.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations, models

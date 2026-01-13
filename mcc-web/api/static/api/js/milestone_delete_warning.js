@@ -4,6 +4,7 @@
  *
  * @file    milestone_delete_warning.js
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 // Hide delete buttons for milestones that are used in trips

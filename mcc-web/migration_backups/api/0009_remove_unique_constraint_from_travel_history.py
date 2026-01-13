@@ -3,6 +3,7 @@
 #
 # @file    0009_remove_unique_constraint_from_travel_history.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations

@@ -68,6 +68,20 @@ python manage.py runserver
 
 All code, comments, and documentation must be in English.
 
+## 🤖 AI Transparency
+
+This project embraces modern development workflows. Parts of the codebase, documentation, and logic in mcc-web and mcc-esp32 have been generated or optimized with the assistance of Artificial Intelligence (LLMs like Gemini and Cursor). All AI-assisted contributions are reviewed and maintained by the MyCyclingCity project team.
+
 ## License
 
-[Add license information here]
+Copyright (c) 2026 SAI-Lab / MyCyclingCity
+
+This project is licensed under multiple open-source licenses:
+
+- **mcc-web**: Licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](mcc-web/LICENSE)
+- **mcc-esp32**: Licensed under the [GNU General Public License v3.0 (GPL-3.0)](mcc-esp32/LICENSE)
+
+For the full license texts, please refer to:
+- [mcc-web/LICENSE](mcc-web/LICENSE) - AGPL-3.0
+- [mcc-esp32/LICENSE](mcc-esp32/LICENSE) - GPL-3.0
+- [Root LICENSE](LICENSE) - License overview

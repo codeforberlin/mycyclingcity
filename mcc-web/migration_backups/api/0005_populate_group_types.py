@@ -3,6 +3,7 @@
 #
 # @file    0005_populate_group_types.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations

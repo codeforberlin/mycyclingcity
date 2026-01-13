@@ -3,6 +3,7 @@
  *
  * @file    rfid_mfrc522_control.cpp
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #include "rfid_mfrc522_control.h"

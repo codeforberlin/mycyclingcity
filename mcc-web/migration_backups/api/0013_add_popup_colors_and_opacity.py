@@ -3,6 +3,7 @@
 #
 # @file    0013_add_popup_colors_and_opacity.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 import django.core.validators

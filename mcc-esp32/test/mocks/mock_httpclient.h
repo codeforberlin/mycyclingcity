@@ -3,6 +3,7 @@
  *
  * @file    mock_httpclient.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef MOCK_HTTPCLIENT_H

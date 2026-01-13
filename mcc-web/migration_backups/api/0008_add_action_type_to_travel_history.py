@@ -3,6 +3,7 @@
 #
 # @file    0008_add_action_type_to_travel_history.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations, models

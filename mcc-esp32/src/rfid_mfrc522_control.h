@@ -3,6 +3,7 @@
  *
  * @file    rfid_mfrc522_control.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef RFID_MFRC522_CONTROL_H

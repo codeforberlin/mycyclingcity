@@ -3,6 +3,7 @@
 #
 # @file    0015_add_goal_reached_at_to_group_travel_status.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations, models

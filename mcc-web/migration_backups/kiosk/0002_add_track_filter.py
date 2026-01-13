@@ -3,6 +3,7 @@
 #
 # @file    0002_add_track_filter.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations, models

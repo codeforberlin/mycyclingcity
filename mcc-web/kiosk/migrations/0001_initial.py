@@ -3,6 +3,7 @@
 #
 # @file    0001_initial.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 import django.core.validators

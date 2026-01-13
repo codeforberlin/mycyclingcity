@@ -4,6 +4,7 @@
  *
  * @file    map_init.js
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 // Create this file at: mcc/api/static/api/js/map_init.js

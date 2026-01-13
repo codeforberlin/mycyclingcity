@@ -3,6 +3,7 @@
  *
  * @file    configserver.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef CONFIGSERVER_H

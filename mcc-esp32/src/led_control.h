@@ -3,6 +3,7 @@
  *
  * @file    led_control.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef LED_CONTROL_H

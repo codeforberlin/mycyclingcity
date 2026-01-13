@@ -3,6 +3,7 @@
 #
 # @file    0014_add_leaf_group_travel_contribution.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 import django.db.models.deletion

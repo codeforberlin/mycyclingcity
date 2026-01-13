@@ -3,6 +3,7 @@
  *
  * @file    test_config_utils.cpp
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #include <unity.h>

@@ -3,6 +3,7 @@
  *
  * @file    mock_wifi.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef MOCK_WIFI_H

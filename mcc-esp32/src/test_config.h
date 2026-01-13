@@ -3,6 +3,7 @@
  *
  * @file    test_config.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef TEST_CONFIG_H

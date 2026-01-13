@@ -3,6 +3,7 @@
  *
  * @file    mock_arduino.cpp
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifdef UNITY_TEST_MODE

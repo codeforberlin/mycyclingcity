@@ -3,6 +3,7 @@
 #
 # @file    urls.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.urls import path

@@ -3,6 +3,7 @@
  *
  * @file    mock_mfrc522.h
  * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
  */
 
 #ifndef MOCK_MFRC522_H

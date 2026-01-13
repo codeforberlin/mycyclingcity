@@ -3,6 +3,7 @@
 #
 # @file    send_device_config_notifications.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 """

@@ -3,6 +3,7 @@
 #
 # @file    0003_cyclist_remove_hourlymetric_player_and_more.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 import django.db.models.deletion

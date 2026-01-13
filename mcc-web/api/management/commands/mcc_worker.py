@@ -3,6 +3,7 @@
 #
 # @file    mcc_worker.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.core.management.base import BaseCommand

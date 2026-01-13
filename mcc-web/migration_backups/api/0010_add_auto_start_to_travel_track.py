@@ -3,6 +3,7 @@
 #
 # @file    0010_add_auto_start_to_travel_track.py
 # @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
 
 #
 from django.db import migrations, models
