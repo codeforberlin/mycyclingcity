@@ -109,7 +109,10 @@ def push_to_minecraft_bridge(username, coins, action):
         return False
 
 def validate_api_key(api_key):
-    """Validates the API key (global or device-specific)."""
+    """Validates the API key (global or device-specific).
+    
+    Also supports previous_api_key for grace period during rotation.
+    """
     if not api_key:
         return False, None
     
@@ -117,9 +120,23 @@ def validate_api_key(api_key):
     if api_key == settings.MCC_APP_API_KEY:
         return True, None
     
-    # Check device-specific API keys
+    # Check device-specific API keys (current key)
     try:
         config = DeviceConfiguration.objects.select_related('device').get(device_specific_api_key=api_key)
+        # If device authenticated with new key and previous_key exists, clear it (rotation completed)
+        if config.previous_api_key:
+            logger.info(f"[validate_api_key] Device {config.device.name} authenticated with new API key - clearing previous key")
+            config.previous_api_key = None
+            config.previous_api_key_expires_at = None
+            config.save(update_fields=['previous_api_key', 'previous_api_key_expires_at'])
+        return True, config.device
+    except DeviceConfiguration.DoesNotExist:
+        pass
+    
+    # Check previous API key (grace period for rotation - no expiration, until device uses new key)
+    try:
+        config = DeviceConfiguration.objects.select_related('device').get(previous_api_key=api_key)
+        logger.info(f"[validate_api_key] Device {config.device.name} authenticated with previous API key (grace period)")
         return True, config.device
     except DeviceConfiguration.DoesNotExist:
         pass
@@ -163,7 +180,7 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
                 return False, None, None
         return True, None, None
     
-    # Check device-specific API key
+    # Check device-specific API key (current key)
     try:
         config = DeviceConfiguration.objects.select_related('device').get(device_specific_api_key=api_key_header)
         device = config.device
@@ -173,6 +190,30 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
             logger.warning(f"[validate_device_api_key] Device ID mismatch: API key belongs to {device.name}, but request is for {device_id}")
             return False, None, None
         
+        # If device authenticated with new key and previous_key exists, clear it (rotation completed)
+        if config.previous_api_key:
+            logger.info(f"[validate_device_api_key] Device {device.name} authenticated with new API key - clearing previous key")
+            config.previous_api_key = None
+            config.previous_api_key_expires_at = None
+            config.save(update_fields=['previous_api_key', 'previous_api_key_expires_at'])
+        
+        return True, device, config
+    except DeviceConfiguration.DoesNotExist:
+        pass
+    
+    # Check previous API key (grace period for rotation - no expiration, until device uses new key)
+    try:
+        config = DeviceConfiguration.objects.select_related('device').get(
+            previous_api_key=api_key_header
+        )
+        device = config.device
+        
+        # If device_id is provided, verify it matches
+        if device_id and device.name != device_id:
+            logger.warning(f"[validate_device_api_key] Device ID mismatch: previous API key belongs to {device.name}, but request is for {device_id}")
+            return False, None, None
+        
+        logger.info(f"[validate_device_api_key] Device {device.name} authenticated with previous API key (grace period - waiting for device to fetch new key)")
         return True, device, config
     except DeviceConfiguration.DoesNotExist:
         logger.warning(f"[validate_device_api_key] Invalid device-specific API key")
@@ -475,9 +516,13 @@ def update_data(request):
     api_key_header = request.headers.get('X-Api-Key')
     logger.debug(f"[update_data] API Key received: {api_key_header[:10] + '...' if api_key_header and len(api_key_header) > 10 else api_key_header}")
     
-    if api_key_header != settings.MCC_APP_API_KEY:
+    # Validate API key (global or device-specific)
+    # Note: We validate the key first, but device_id is extracted from JSON body later
+    # So we do a basic validation here and full device validation after parsing JSON
+    is_valid, device_from_initial_key = validate_api_key(api_key_header)
+    if not is_valid:
         logger.warning(f"[update_data] Invalid API key")
-        return JsonResponse({"error": _("Ungültig")}, status=403)
+        return JsonResponse({"error": _("Ungültiger API-Key")}, status=403)
 
     # Handle JSON POST requests
     try:
@@ -517,6 +562,13 @@ def update_data(request):
         logger.warning(f"[update_data] Missing device_id in request data")
         return JsonResponse({"error": _("device_id fehlt")}, status=400)
     
+    # Validate API key with device_id (now that we have it from JSON body)
+    # This ensures device-specific API keys match the device_id in the request
+    is_valid, device_from_key, config = validate_device_api_key(request, device_id)
+    if not is_valid:
+        logger.warning(f"[update_data] Invalid API key for device {device_id}")
+        return JsonResponse({"error": _("Ungültiger API-Key")}, status=403)
+    
     try:
         cyclist_obj = Cyclist.objects.get(id_tag__iexact=id_tag)
         logger.debug(f"[update_data] Found cyclist: {cyclist_obj.id_tag} (ID: {cyclist_obj.pk})")
@@ -530,6 +582,11 @@ def update_data(request):
     except Device.DoesNotExist:
         logger.warning(f"[update_data] Device not found: device_id={device_id}")
         return JsonResponse({"error": _("Gerät nicht gefunden"), "device_id": device_id}, status=404)
+    
+    # If device was found via API key, verify it matches the device_id from JSON
+    if device_from_key and device_from_key.name != device_id:
+        logger.warning(f"[update_data] Device ID mismatch: API key belongs to {device_from_key.name}, but request is for {device_id}")
+        return JsonResponse({"error": _("API-Key gehört zu einem anderen Gerät")}, status=403)
 
     # Check if kilometer collection is enabled for cyclist and device
     if not cyclist_obj.is_km_collection_enabled:
@@ -2012,50 +2069,74 @@ def device_config_report(request: HttpRequest) -> JsonResponse:
                 'test_mode': reported_config.get('test_mode', False),
                 'deep_sleep_seconds': reported_config.get('deep_sleep_seconds', 0),
                 'wheel_size': reported_config.get('wheel_size', 26),
-                'apache_base64_auth_key': reported_config.get('apache_base64_auth_key', ''),
             }
         )
         
-        # Create configuration report
-        report = DeviceConfigurationReport.objects.create(
-            device=device,
-            reported_config=reported_config
-        )
+        # Refresh from database to ensure we have the latest request_config_comparison value
+        config.refresh_from_db()
         
-        # Compare configurations and detect differences
+        logger.info(f"[device_config_report] Device {device_id}: request_config_comparison={config.request_config_comparison}, created={created}")
+        
+        # Only create report and compare if comparison was requested
         differences = []
-        server_config_dict = config.to_dict()
+        report = None
         
-        for key, server_value in server_config_dict.items():
-            device_value = reported_config.get(key)
-            # Convert to strings for comparison
-            server_str = str(server_value) if server_value is not None else ''
-            device_str = str(device_value) if device_value is not None else ''
+        if config.request_config_comparison:
+            # Create configuration report only when comparison is requested
+            report = DeviceConfigurationReport.objects.create(
+                device=device,
+                reported_config=reported_config
+            )
             
-            if server_str != device_str:
-                diff_info = {
-                    'field': key,
-                    'server_value': str(server_value) if server_value is not None else '',
-                    'device_value': str(device_value) if device_value is not None else ''
-                }
-                differences.append(diff_info)
+            # Compare configurations and detect differences
+            server_config_dict = config.to_dict()
+            
+            # Fields that should be excluded from comparison (security or device-only)
+            excluded_fields = {'device_api_key', 'wifi_password'}  # device_api_key is not sent for security, wifi_password is never sent
+            
+            for key, server_value in server_config_dict.items():
+                # Skip excluded fields
+                if key in excluded_fields:
+                    continue
+                    
+                device_value = reported_config.get(key)
+                # Convert to strings for comparison
+                server_str = str(server_value) if server_value is not None else ''
+                device_str = str(device_value) if device_value is not None else ''
                 
-                # Create diff record
-                DeviceConfigurationDiff.objects.create(
-                    device=device,
-                    report=report,
-                    field_name=key,
-                    server_value=server_str,
-                    device_value=device_str,
-                    is_resolved=False
-                )
-        
-        report.has_differences = len(differences) > 0
-        report.save()
-        
-        # Update last_synced_at
-        config.last_synced_at = timezone.now()
-        config.save()
+                if server_str != device_str:
+                    diff_info = {
+                        'field': key,
+                        'server_value': str(server_value) if server_value is not None else '',
+                        'device_value': str(device_value) if device_value is not None else ''
+                    }
+                    differences.append(diff_info)
+                    
+                    # Create diff record
+                    DeviceConfigurationDiff.objects.create(
+                        device=device,
+                        report=report,
+                        field_name=key,
+                        server_value=server_str,
+                        device_value=device_str,
+                        is_resolved=False
+                    )
+            
+            report.has_differences = len(differences) > 0
+            report.save()
+            
+            logger.info(f"[device_config_report] Config comparison completed for device {device_id}. Found {len(differences)} differences. Report ID: {report.id}")
+            
+            # Reset the flag after comparison
+            config.request_config_comparison = False
+            # Save immediately with update_fields to ensure the flag is persisted
+            config.save(update_fields=['request_config_comparison', 'last_synced_at'])
+            logger.info(f"[device_config_report] Flag request_config_comparison reset to False for device {device_id}")
+        else:
+            logger.info(f"[device_config_report] No comparison requested for device {device_id}. Skipping report creation.")
+            # Update last_synced_at (always, even without comparison)
+            config.last_synced_at = timezone.now()
+            config.save(update_fields=['last_synced_at'])
         
         # Update device last_active and health
         device.last_active = timezone.now()
@@ -2077,14 +2158,22 @@ def device_config_report(request: HttpRequest) -> JsonResponse:
             details={'differences_count': len(differences)}
         )
         
-        logger.info(f"[device_config_report] Device {device_id} reported config. Differences: {len(differences)}")
-        
-        return JsonResponse({
-            "success": True,
-            "has_differences": len(differences) > 0,
-            "differences": differences,
-            "message": "Konfiguration erfolgreich gemeldet"
-        })
+        if config.request_config_comparison:
+            logger.info(f"[device_config_report] Device {device_id} reported config. Comparison requested. Differences: {len(differences)}")
+            return JsonResponse({
+                "success": True,
+                "has_differences": len(differences) > 0,
+                "differences": differences,
+                "message": "Konfiguration erfolgreich gemeldet und verglichen"
+            })
+        else:
+            logger.info(f"[device_config_report] Device {device_id} reported config. No comparison requested.")
+            return JsonResponse({
+                "success": True,
+                "has_differences": False,
+                "differences": [],
+                "message": "Konfiguration erfolgreich gemeldet"
+            })
         
     except json.JSONDecodeError as e:
         logger.error(f"[device_config_report] JSON decode error: {str(e)}")
@@ -2125,17 +2214,19 @@ def device_config_fetch(request: HttpRequest) -> JsonResponse:
         except DeviceConfiguration.DoesNotExist:
             # Return default configuration
             default_config = {
-                'device_name': device.name,
+                # Note: device_name is NOT included - it's only configurable via device WebGUI
+                # This ensures the device can always send data even if server config is missing
                 'default_id_tag': '',
                 'send_interval_seconds': 60,
                 'server_url': '',
                 'wifi_ssid': '',
                 'wifi_password': '',
+                'ap_password': '',
                 'debug_mode': False,
                 'test_mode': False,
                 'deep_sleep_seconds': 0,
                 'wheel_size': 26,
-                'apache_base64_auth_key': '',
+                'config_fetch_interval_seconds': 3600,
             }
             return JsonResponse({
                 "success": True,

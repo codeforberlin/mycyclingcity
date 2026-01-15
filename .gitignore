@@ -136,6 +136,7 @@ virtualenv/
 *~
 *.tmp
 *.temp
+backups/
 
 # Archive Files (optional - kann entfernt werden wenn gewünscht)
 *.zip

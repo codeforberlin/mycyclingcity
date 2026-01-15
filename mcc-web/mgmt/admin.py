@@ -773,16 +773,12 @@ class DeviceConfigurationInline(admin.StackedInline):
     can_delete = False
     fieldsets = (
         (_("API-Key-Verwaltung"), {
-            'fields': ('device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button'),
-            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie den Button 'API-Key generieren', um einen neuen Key zu erstellen.")
-        }),
-        (_("Authentifizierung (Veraltet)"), {
-            'fields': ('apache_base64_auth_key',),
-            'classes': ('collapse',),
-            'description': _("Veraltet: Verwenden Sie gerätespezifische API-Keys.")
+            'fields': ('device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button'),
+            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-Key generieren' für sofortige Erneuerung oder 'Rotation testen' um die automatische Rotation zu prüfen.")
         }),
         (_("Geräte-Identifikation"), {
-            'fields': ('device_name', 'default_id_tag')
+            'fields': ('reported_device_name_display', 'default_id_tag'),
+            'description': _("Der Gerätename wird vom Gerät gemeldet und ist schreibgeschützt. Der Standard-ID-Tag kann konfiguriert werden.")
         }),
         (_("Kommunikation"), {
             'fields': ('send_interval_seconds', 'server_url')
@@ -791,8 +787,13 @@ class DeviceConfigurationInline(admin.StackedInline):
             'fields': ('wifi_ssid', 'wifi_password'),
             'classes': ('collapse',)
         }),
+        (_("Config-WLAN-Einstellungen"), {
+            'fields': ('ap_password',),
+            'classes': ('collapse',),
+            'description': _("Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen erforderlich (WPA2-Anforderung).")
+        }),
         (_("Geräte-Verhalten"), {
-            'fields': ('debug_mode', 'test_mode', 'deep_sleep_seconds')
+            'fields': ('debug_mode', 'test_mode', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
         }),
         (_("Hardware"), {
             'fields': ('wheel_size',)
@@ -801,14 +802,50 @@ class DeviceConfigurationInline(admin.StackedInline):
             'fields': ('assigned_firmware', 'last_synced_at')
         }),
     )
-    readonly_fields = ('last_synced_at', 'api_key_last_rotated', 'generate_api_key_button')
+    readonly_fields = ('last_synced_at', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'reported_device_name_display')
+    
+    def test_rotation_button(self, obj):
+        """Display button to test API key rotation."""
+        if obj and obj.pk:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:iot_deviceconfiguration_test_rotation', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" onclick="return confirm(\'Möchten Sie die API-Key-Rotation jetzt testen? Dies prüft, ob die Rotation aktiviert ist und ob das Intervall erreicht wurde.\');">Rotation testen</a>',
+                url
+            )
+        return _("Speichern Sie zuerst die Gerätekonfiguration, um die Rotation zu testen")
+    test_rotation_button.short_description = _("Rotation testen")
+    
+    def force_rotation_button(self, obj):
+        """Display button to force API key rotation immediately."""
+        if obj and obj.pk:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:iot_deviceconfiguration_force_rotation', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" onclick="return confirm(\'Möchten Sie die API-Key-Rotation jetzt ausführen? Ein neuer API-Key wird generiert und das Gerät holt ihn beim nächsten Config-Report ab. Der alte Key wird ungültig.\');">Rotation jetzt ausführen</a>',
+                url
+            )
+        return _("Speichern Sie zuerst die Gerätekonfiguration, um die Rotation auszuführen")
+    force_rotation_button.short_description = _("Rotation jetzt ausführen")
+    
+    def reported_device_name_display(self, obj):
+        """Display device name as reported by the device (not from database)."""
+        if obj:
+            reported_name = obj.get_reported_device_name()
+            if reported_name:
+                return reported_name
+            return _("Noch nicht vom Gerät gemeldet")
+        return "-"
+    reported_device_name_display.short_description = _("Gerätename (vom Gerät gemeldet)")
     
     def generate_api_key_button(self, obj):
         """Display button to generate API key."""
         if obj and obj.pk:
             from django.utils.html import format_html
             from django.urls import reverse
-            url = reverse('admin:api_deviceconfiguration_generate_api_key', args=[obj.pk])
+            url = reverse('admin:iot_deviceconfiguration_generate_api_key', args=[obj.pk])
             return format_html(
                 '<a class="button" href="{}" onclick="return confirm(\'Are you sure you want to generate a new API key? The old key will be invalidated.\');">Generate New API Key</a>',
                 url
@@ -3037,12 +3074,98 @@ class WebhookConfigurationAdmin(admin.ModelAdmin):
 class DeviceConfigurationAdmin(admin.ModelAdmin):
     """Standalone admin for DeviceConfiguration with API key generation."""
     
+    readonly_fields = ('reported_device_name_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button')
+    exclude = ('apache_base64_auth_key', 'device_name')  # Remove deprecated Apache Base64 Auth Key field and device_name (use reported name instead)
+    
+    fieldsets = (
+        (_("API-Key-Verwaltung"), {
+            'fields': ('device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button'),
+            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-Key generieren' für sofortige Erneuerung, 'Rotation jetzt ausführen' um die Rotation manuell zu triggern, oder 'Rotation testen' um die automatische Rotation zu prüfen.")
+        }),
+        (_("Geräte-Identifikation"), {
+            'fields': ('reported_device_name_display', 'default_id_tag'),
+            'description': _("Der Gerätename wird vom Gerät gemeldet und ist schreibgeschützt. Der Standard-ID-Tag kann konfiguriert werden.")
+        }),
+        (_("Kommunikation"), {
+            'fields': ('send_interval_seconds', 'server_url')
+        }),
+        (_("WLAN-Einstellungen"), {
+            'fields': ('wifi_ssid', 'wifi_password'),
+            'classes': ('collapse',)
+        }),
+        (_("Config-WLAN-Einstellungen"), {
+            'fields': ('ap_password',),
+            'classes': ('collapse',),
+            'description': _("Passwort für den Config-WLAN-Hotspot. Minimum 8 Zeichen erforderlich (WPA2-Anforderung).")
+        }),
+        (_("Geräte-Verhalten"), {
+            'fields': ('debug_mode', 'test_mode', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
+        }),
+        (_("Hardware"), {
+            'fields': ('wheel_size',)
+        }),
+        (_("Firmware"), {
+            'fields': ('assigned_firmware', 'last_synced_at')
+        }),
+    )
+    
+    def reported_device_name_display(self, obj):
+        """Display device name as reported by the device (not from database)."""
+        if obj:
+            reported_name = obj.get_reported_device_name()
+            if reported_name:
+                return reported_name
+            return _("Noch nicht vom Gerät gemeldet")
+        return "-"
+    reported_device_name_display.short_description = _("Gerätename (vom Gerät gemeldet)")
+    
+    def generate_api_key_button(self, obj):
+        """Display button to generate API key."""
+        if obj and obj.pk:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:iot_deviceconfiguration_generate_api_key', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" onclick="return confirm(\'Sind Sie sicher, dass Sie einen neuen API-Key generieren möchten? Der alte Key wird ungültig.\');">API-Key generieren</a>',
+                url
+            )
+        return _("Speichern Sie zuerst die Gerätekonfiguration, um einen API-Key zu generieren")
+    generate_api_key_button.short_description = _("API-Key-Aktionen")
+    
+    def test_rotation_button(self, obj):
+        """Display button to test API key rotation."""
+        if obj and obj.pk:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:iot_deviceconfiguration_test_rotation', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" onclick="return confirm(\'Möchten Sie die API-Key-Rotation jetzt testen? Dies prüft, ob die Rotation aktiviert ist und ob das Intervall erreicht wurde.\');">Rotation testen</a>',
+                url
+            )
+        return _("Speichern Sie zuerst die Gerätekonfiguration, um die Rotation zu testen")
+    test_rotation_button.short_description = _("Rotation testen")
+    
+    def force_rotation_button(self, obj):
+        """Display button to force API key rotation immediately."""
+        if obj and obj.pk:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            url = reverse('admin:iot_deviceconfiguration_force_rotation', args=[obj.pk])
+            return format_html(
+                '<a class="button" href="{}" onclick="return confirm(\'Möchten Sie die API-Key-Rotation jetzt ausführen? Ein neuer API-Key wird generiert und das Gerät holt ihn beim nächsten Config-Report ab. Der alte Key wird ungültig.\');">Rotation jetzt ausführen</a>',
+                url
+            )
+        return _("Speichern Sie zuerst die Gerätekonfiguration, um die Rotation auszuführen")
+    force_rotation_button.short_description = _("Rotation jetzt ausführen")
+    
     def get_urls(self):
-        """Add custom URLs for API key generation."""
+        """Add custom URLs for API key generation and rotation testing."""
         from django.urls import path
         urls = super().get_urls()
         custom_urls = [
-            path('<path:object_id>/generate_api_key/', self.admin_site.admin_view(self.generate_api_key_view), name='api_deviceconfiguration_generate_api_key'),
+            path('<path:object_id>/generate_api_key/', self.admin_site.admin_view(self.generate_api_key_view), name='iot_deviceconfiguration_generate_api_key'),
+            path('<path:object_id>/test_rotation/', self.admin_site.admin_view(self.test_rotation_view), name='iot_deviceconfiguration_test_rotation'),
+            path('<path:object_id>/force_rotation/', self.admin_site.admin_view(self.force_rotation_view), name='iot_deviceconfiguration_force_rotation'),
         ]
         return custom_urls + urls
     
@@ -3073,7 +3196,117 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
             messages.error(request, f'Fehler beim Generieren des API-Keys: {str(e)}')
             logger.error(f"[generate_api_key] Error: {str(e)}", exc_info=True)
         
-        return redirect('admin:api_device_change', object_id=config.device.pk)
+        return redirect('admin:iot_device_change', object_id=config.device.pk)
+    
+    def test_rotation_view(self, request, object_id):
+        """View to test API key rotation logic."""
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        from django.utils import timezone
+        
+        try:
+            config = DeviceConfiguration.objects.get(pk=object_id)
+            
+            # Test rotation logic
+            rotation_test_result = {
+                'rotation_enabled': config.api_key_rotation_enabled,
+                'last_rotated': config.api_key_last_rotated,
+                'rotation_interval_days': config.api_key_rotation_interval_days,
+            }
+            
+            if config.api_key_rotation_enabled:
+                if config.api_key_last_rotated:
+                    days_since_rotation = (timezone.now() - config.api_key_last_rotated).days
+                    rotation_test_result['days_since_rotation'] = days_since_rotation
+                    rotation_test_result['should_rotate'] = days_since_rotation >= config.api_key_rotation_interval_days
+                    
+                    if rotation_test_result['should_rotate']:
+                        messages.warning(
+                            request,
+                            f'Rotation ist fällig! Letzte Rotation: {config.api_key_last_rotated.strftime("%Y-%m-%d %H:%M")}, '
+                            f'Intervall: {config.api_key_rotation_interval_days} Tage, '
+                            f'Vergangene Tage: {days_since_rotation}. '
+                            f'Die Rotation wird beim nächsten Config-Report automatisch durchgeführt.'
+                        )
+                    else:
+                        days_until_rotation = config.api_key_rotation_interval_days - days_since_rotation
+                        messages.info(
+                            request,
+                            f'Rotation ist aktiviert. Letzte Rotation: {config.api_key_last_rotated.strftime("%Y-%m-%d %H:%M")}, '
+                            f'Intervall: {config.api_key_rotation_interval_days} Tage, '
+                            f'Vergangene Tage: {days_since_rotation}, '
+                            f'Verbleibende Tage bis zur nächsten Rotation: {days_until_rotation}.'
+                        )
+                else:
+                    messages.warning(
+                        request,
+                        f'Rotation ist aktiviert, aber noch keine Rotation durchgeführt. '
+                        f'Die erste Rotation erfolgt beim nächsten Config-Report. '
+                        f'Intervall: {config.api_key_rotation_interval_days} Tage.'
+                    )
+            else:
+                messages.info(
+                    request,
+                    f'Rotation ist deaktiviert. Letzte Rotation: '
+                    f'{config.api_key_last_rotated.strftime("%Y-%m-%d %H:%M") if config.api_key_last_rotated else "Nie"}.'
+                )
+            
+            logger.info(f"[test_rotation] Rotation test for device {config.device.name}: {rotation_test_result}")
+        except DeviceConfiguration.DoesNotExist:
+            messages.error(request, 'Gerätekonfiguration nicht gefunden.')
+        except Exception as e:
+            messages.error(request, f'Fehler beim Testen der Rotation: {str(e)}')
+            logger.error(f"[test_rotation] Error: {str(e)}", exc_info=True)
+        
+        # Redirect to DeviceConfiguration change page (standalone admin) or Device change page (inline admin)
+        if str(object_id) == str(config.pk):
+            return redirect('admin:iot_deviceconfiguration_change', object_id=config.pk)
+        else:
+            return redirect('admin:iot_device_change', object_id=config.device.pk)
+    
+    def force_rotation_view(self, request, object_id):
+        """View to force API key rotation immediately (regardless of interval)."""
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        
+        try:
+            config = DeviceConfiguration.objects.get(pk=object_id)
+            old_key = config.device_specific_api_key
+            new_key = config.generate_api_key()
+            
+            # Create audit log
+            DeviceAuditLog.objects.create(
+                device=config.device,
+                action='api_key_rotated_manually',
+                user=request.user if request.user.is_authenticated else None,
+                ip_address=get_client_ip(request) if hasattr(request, 'META') else None,
+                details={
+                    'old_key_preview': old_key[:8] + '...' if old_key else None,
+                    'rotation_triggered_by': 'admin_manual',
+                    'rotation_interval_days': config.api_key_rotation_interval_days,
+                    'rotation_enabled': config.api_key_rotation_enabled
+                }
+            )
+            
+            messages.success(
+                request,
+                f'API-Key-Rotation für Gerät {config.device.name} erfolgreich ausgeführt. '
+                f'Neuer Key: {new_key}. '
+                f'Das Gerät wird den neuen Key beim nächsten Config-Report automatisch abholen.'
+            )
+            logger.info(f"[force_rotation] Manually triggered API key rotation for device {config.device.name}")
+        except DeviceConfiguration.DoesNotExist:
+            messages.error(request, 'Gerätekonfiguration nicht gefunden.')
+        except Exception as e:
+            messages.error(request, f'Fehler beim Ausführen der Rotation: {str(e)}')
+            logger.error(f"[force_rotation] Error: {str(e)}", exc_info=True)
+        
+        # Redirect to DeviceConfiguration change page (standalone admin) or Device change page (inline admin)
+        # Check if we're in standalone admin by checking if object_id matches config.pk
+        if str(object_id) == str(config.pk):
+            return redirect('admin:iot_deviceconfiguration_change', object_id=config.pk)
+        else:
+            return redirect('admin:iot_device_change', object_id=config.device.pk)
 
 
 def get_client_ip(request):

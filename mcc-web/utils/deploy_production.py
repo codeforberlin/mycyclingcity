@@ -62,11 +62,142 @@ def print_step(step: int, total: int, message: str) -> None:
     print(f"\n{Colors.BOLD}[{step}/{total}]{Colors.RESET} {message}")
 
 
+def find_python_executable(project_dir: Path, verbose: bool = False) -> Optional[str]:
+    """
+    Find the Python executable from virtual environment.
+    
+    Checks for virtual environment in:
+    1. project_dir/venv/bin/python
+    2. ~/venv_mcc/bin/python
+    3. Falls back to system 'python' if no venv found
+    
+    Args:
+        project_dir: Project root directory
+        verbose: If True, print debug information
+    
+    Returns:
+        Path to Python executable, or None if not found
+    """
+    # Check for venv in project directory
+    venv_dir = project_dir / 'venv'
+    if venv_dir.exists() and venv_dir.is_dir():
+        venv_python = venv_dir / 'bin' / 'python'
+        if venv_python.exists():
+            if verbose:
+                print_info(f"Found venv Python: {venv_python}")
+            return str(venv_python)
+        
+        # Check for venv in project directory (alternative name)
+        venv_python3 = venv_dir / 'bin' / 'python3'
+        if venv_python3.exists():
+            if verbose:
+                print_info(f"Found venv Python3: {venv_python3}")
+            return str(venv_python3)
+        
+        # Venv directory exists but no Python executable found
+        if verbose:
+            print_warning(f"Virtual environment directory found at {venv_dir}, but Python executable not found")
+            print_warning(f"  Checked: {venv_python} and {venv_python3}")
+    
+    # Check for development venv in home directory
+    home_venv = Path.home() / 'venv_mcc' / 'bin' / 'python'
+    if home_venv.exists():
+        if verbose:
+            print_info(f"Found home venv Python: {home_venv}")
+        return str(home_venv)
+    
+    home_venv3 = Path.home() / 'venv_mcc' / 'bin' / 'python3'
+    if home_venv3.exists():
+        if verbose:
+            print_info(f"Found home venv Python3: {home_venv3}")
+        return str(home_venv3)
+    
+    # Check if VIRTUAL_ENV is set (already activated)
+    if 'VIRTUAL_ENV' in os.environ:
+        venv_path = Path(os.environ['VIRTUAL_ENV'])
+        venv_python = venv_path / 'bin' / 'python'
+        if venv_python.exists():
+            if verbose:
+                print_info(f"Found VIRTUAL_ENV Python: {venv_python}")
+            return str(venv_python)
+        venv_python3 = venv_path / 'bin' / 'python3'
+        if venv_python3.exists():
+            if verbose:
+                print_info(f"Found VIRTUAL_ENV Python3: {venv_python3}")
+            return str(venv_python3)
+    
+    # Fallback to system python
+    if verbose:
+        print_warning("No virtual environment found, will use system Python")
+    return None
+
+
+def get_python_executable(project_dir: Path, verbose: bool = False) -> str:
+    """
+    Get Python executable, preferring virtual environment.
+    
+    Args:
+        project_dir: Project root directory
+        verbose: If True, print debug information
+    
+    Returns:
+        Path to Python executable
+    
+    Raises:
+        RuntimeError: If no Python executable can be found
+    """
+    if verbose:
+        print_info(f"Searching for Python executable in: {project_dir}")
+    
+    python_exe = find_python_executable(project_dir, verbose=verbose)
+    
+    if python_exe:
+        if verbose:
+            print_success(f"Found Python in virtual environment: {python_exe}")
+        return python_exe
+    
+    # Try to find system python
+    if verbose:
+        print_warning("No virtual environment found, trying system Python...")
+    for python_cmd in ['python3', 'python']:
+        try:
+            result = subprocess.run(
+                [python_cmd, '--version'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            if verbose:
+                print_warning(f"Using system Python: {python_cmd} ({result.stdout.strip()})")
+                print_warning("⚠ WARNING: System Python may not have Django installed!")
+                print_warning("   Consider creating a virtual environment:")
+                print_warning(f"     cd {project_dir}")
+                print_warning(f"     python3 -m venv venv")
+                print_warning(f"     source venv/bin/activate")
+                print_warning(f"     pip install -r requirements.txt")
+            return python_cmd
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    
+    raise RuntimeError(
+        f"No Python executable found. Please ensure:\n"
+        f"  1. Virtual environment is activated, OR\n"
+        f"  2. Virtual environment exists at: {project_dir}/venv/, OR\n"
+        f"  3. System Python (python3 or python) is available\n"
+        f"\nChecked paths:\n"
+        f"  - {project_dir / 'venv' / 'bin' / 'python'}\n"
+        f"  - {project_dir / 'venv' / 'bin' / 'python3'}\n"
+        f"  - {Path.home() / 'venv_mcc' / 'bin' / 'python'}\n"
+        f"  - {Path.home() / 'venv_mcc' / 'bin' / 'python3'}"
+    )
+
+
 def run_command(
     command: list[str],
     cwd: Optional[Path] = None,
     check: bool = True,
-    capture_output: bool = False
+    capture_output: bool = False,
+    python_exe: Optional[str] = None
 ) -> Tuple[int, str, str]:
     """
     Run a shell command and return the result.
@@ -76,10 +207,15 @@ def run_command(
         cwd: Working directory
         check: If True, raise exception on non-zero exit code
         capture_output: If True, capture stdout and stderr
+        python_exe: Python executable to use (if command starts with 'python')
     
     Returns:
         Tuple of (exit_code, stdout, stderr)
     """
+    # Replace 'python' with actual python executable if provided
+    if python_exe and len(command) > 0 and command[0] == 'python':
+        command = [python_exe] + command[1:]
+    
     try:
         result = subprocess.run(
             command,
@@ -97,12 +233,13 @@ def run_command(
         raise
 
 
-def check_django_environment(project_dir: Path) -> bool:
+def check_django_environment(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
     Check if Django environment is properly set up.
     
     Args:
         project_dir: Project root directory
+        python_exe: Python executable to use
     
     Returns:
         True if environment is valid, False otherwise
@@ -115,19 +252,65 @@ def check_django_environment(project_dir: Path) -> bool:
         print_error(f"manage.py not found in {project_dir}")
         return False
     
-    # Check if settings module can be imported
+    # Try to find Python executable if not provided
+    if python_exe is None:
+        try:
+            python_exe = get_python_executable(project_dir)
+        except RuntimeError as e:
+            print_error(str(e))
+            return False
+    
+    # Verify Python executable exists and is executable
+    python_path = Path(python_exe)
+    if not python_path.exists():
+        print_error(f"Python executable not found: {python_exe}")
+        return False
+    
+    if not os.access(python_path, os.X_OK):
+        print_error(f"Python executable is not executable: {python_exe}")
+        return False
+    
+    print_info(f"Using Python: {python_exe}")
+    
+    # Check Python version first
     try:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        sys.path.insert(0, str(project_dir))
+        exit_code, stdout, stderr = run_command(
+            [python_exe, '--version'],
+            cwd=project_dir,
+            check=False,
+            capture_output=True
+        )
+        if exit_code == 0:
+            print_info(f"Python version: {stdout.strip()}")
+        else:
+            print_warning(f"Could not get Python version: {stderr.strip()}")
+    except Exception as e:
+        print_warning(f"Could not check Python version: {e}")
+    
+    # Check if Django is available by running a simple check command
+    try:
+        exit_code, stdout, stderr = run_command(
+            [python_exe, '-c', 'import django; print(django.__version__)'],
+            cwd=project_dir,
+            check=False,
+            capture_output=True
+        )
         
-        import django
-        django.setup()
-        
-        from django.conf import settings
-        print_success("Django environment is valid")
-        return True
+        if exit_code == 0:
+            django_version = stdout.strip()
+            print_success(f"Django environment is valid (Django {django_version})")
+            return True
+        else:
+            error_msg = stderr.strip() if stderr else stdout.strip()
+            print_error(f"Django not found in Python environment: {error_msg}")
+            print_info(f"Python executable used: {python_exe}")
+            print_info("Hint: Make sure virtual environment is activated or exists at project_dir/venv/")
+            print_info("      Try: source project_dir/venv/bin/activate")
+            return False
     except Exception as e:
         print_error(f"Django environment check failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -176,37 +359,56 @@ def backup_database(project_dir: Path, db_path: Path, backup_dir: Optional[Path]
         return None
 
 
-def check_database_exists(project_dir: Path) -> bool:
+def check_database_exists(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
     Check if database file exists.
     
     Args:
         project_dir: Project root directory
+        python_exe: Python executable to use
     
     Returns:
         True if database exists, False otherwise
     """
     try:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        sys.path.insert(0, str(project_dir))
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
         
-        import django
-        django.setup()
+        # Use Python to check database existence
+        check_script = f"""
+import os
+import sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.insert(0, '{project_dir}')
+import django
+django.setup()
+from django.conf import settings
+from pathlib import Path
+db_path = Path(settings.DATABASES['default']['NAME'])
+print('EXISTS' if db_path.exists() else 'NOT_EXISTS')
+"""
+        exit_code, stdout, stderr = run_command(
+            [python_exe, '-c', check_script],
+            cwd=project_dir,
+            check=False,
+            capture_output=True
+        )
         
-        from django.conf import settings
-        db_path = Path(settings.DATABASES['default']['NAME'])
-        return db_path.exists()
+        if exit_code == 0 and 'EXISTS' in stdout:
+            return True
+        return False
     except Exception:
         return False
 
 
-def run_migrations(project_dir: Path, fake_initial: bool = False) -> bool:
+def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Optional[str] = None) -> bool:
     """
     Run Django migrations.
     
     Args:
         project_dir: Project root directory
         fake_initial: If True, mark initial migrations as applied without running them
+        python_exe: Python executable to use
     
     Returns:
         True if migrations succeeded, False otherwise
@@ -214,7 +416,10 @@ def run_migrations(project_dir: Path, fake_initial: bool = False) -> bool:
     print_info("Running database migrations...")
     
     try:
-        command = ['python', 'manage.py', 'migrate']
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
+        
+        command = [python_exe, 'manage.py', 'migrate']
         if fake_initial:
             command.append('--fake-initial')
         
@@ -240,13 +445,14 @@ def run_migrations(project_dir: Path, fake_initial: bool = False) -> bool:
         return False
 
 
-def collect_static_files(project_dir: Path, clear: bool = False) -> bool:
+def collect_static_files(project_dir: Path, clear: bool = False, python_exe: Optional[str] = None) -> bool:
     """
     Collect static files using Django's collectstatic command.
     
     Args:
         project_dir: Project root directory
         clear: If True, clear existing files before collecting
+        python_exe: Python executable to use
     
     Returns:
         True if collection succeeded, False otherwise
@@ -254,7 +460,10 @@ def collect_static_files(project_dir: Path, clear: bool = False) -> bool:
     print_info("Collecting static files...")
     
     try:
-        command = ['python', 'manage.py', 'collectstatic', '--noinput']
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
+        
+        command = [python_exe, 'manage.py', 'collectstatic', '--noinput']
         if clear:
             command.append('--clear')
         
@@ -278,12 +487,13 @@ def collect_static_files(project_dir: Path, clear: bool = False) -> bool:
         return False
 
 
-def compile_messages(project_dir: Path) -> bool:
+def compile_messages(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
     Compile translation messages.
     
     Args:
         project_dir: Project root directory
+        python_exe: Python executable to use
     
     Returns:
         True if compilation succeeded, False otherwise
@@ -291,8 +501,11 @@ def compile_messages(project_dir: Path) -> bool:
     print_info("Compiling translation messages...")
     
     try:
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
+        
         exit_code, stdout, stderr = run_command(
-            ['python', 'manage.py', 'compilemessages'],
+            [python_exe, 'manage.py', 'compilemessages'],
             cwd=project_dir,
             check=False,
             capture_output=True
@@ -313,58 +526,73 @@ def compile_messages(project_dir: Path) -> bool:
         return True  # Not critical, continue anyway
 
 
-def ensure_media_directories(project_dir: Path) -> bool:
+def ensure_media_directories(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
     Ensure required media directories exist.
     
     Args:
         project_dir: Project root directory
+        python_exe: Python executable to use
     
     Returns:
         True if directories were created/verified, False otherwise
     """
     try:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        sys.path.insert(0, str(project_dir))
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
         
-        import django
-        django.setup()
+        # Use Python to ensure media directories
+        ensure_script = f"""
+import os
+import sys
+from pathlib import Path
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.insert(0, '{project_dir}')
+import django
+django.setup()
+from django.conf import settings
+media_root = Path(settings.MEDIA_ROOT)
+required_dirs = ['firmware', 'group_logos', 'player_avatars', 'tracks']
+created_dirs = []
+for subdir in required_dirs:
+    dir_path = media_root / subdir
+    if not dir_path.exists():
+        dir_path.mkdir(parents=True, exist_ok=True)
+        created_dirs.append(subdir)
+if created_dirs:
+    print('CREATED:' + ','.join(created_dirs))
+else:
+    print('EXISTS')
+"""
+        exit_code, stdout, stderr = run_command(
+            [python_exe, '-c', ensure_script],
+            cwd=project_dir,
+            check=False,
+            capture_output=True
+        )
         
-        from django.conf import settings
-        media_root = Path(settings.MEDIA_ROOT)
-        
-        # Required subdirectories based on project structure
-        required_dirs = [
-            'firmware',
-            'group_logos',
-            'player_avatars',
-            'tracks',
-        ]
-        
-        created_dirs = []
-        for subdir in required_dirs:
-            dir_path = media_root / subdir
-            if not dir_path.exists():
-                dir_path.mkdir(parents=True, exist_ok=True)
-                created_dirs.append(subdir)
-        
-        if created_dirs:
-            print_success(f"Created media directories: {', '.join(created_dirs)}")
+        if exit_code == 0:
+            if 'CREATED:' in stdout:
+                created = stdout.split('CREATED:')[1].strip()
+                print_success(f"Created media directories: {created}")
+            else:
+                print_info("Media directories already exist")
+            return True
         else:
-            print_info("Media directories already exist")
-        
-        return True
+            print_warning(f"Could not ensure media directories: {stderr}")
+            return True  # Non-critical, continue anyway
     except Exception as e:
         print_warning(f"Could not ensure media directories: {e}")
         return True  # Non-critical, continue anyway
 
 
-def validate_deployment(project_dir: Path) -> bool:
+def validate_deployment(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
     Run basic validation checks after deployment.
     
     Args:
         project_dir: Project root directory
+        python_exe: Python executable to use
     
     Returns:
         True if validation passed, False otherwise
@@ -372,31 +600,51 @@ def validate_deployment(project_dir: Path) -> bool:
     print_info("Validating deployment...")
     
     try:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        sys.path.insert(0, str(project_dir))
+        if python_exe is None:
+            python_exe = get_python_executable(project_dir)
         
-        import django
-        django.setup()
+        # Use Python to validate deployment
+        validate_script = f"""
+import os
+import sys
+from pathlib import Path
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.insert(0, '{project_dir}')
+import django
+django.setup()
+from django.conf import settings
+from django.db import connection
+with connection.cursor() as cursor:
+    cursor.execute("SELECT 1")
+static_root = Path(settings.STATIC_ROOT)
+if static_root.exists():
+    print('STATIC_OK:' + str(static_root))
+else:
+    print('STATIC_MISSING:' + str(static_root))
+print('DB_OK')
+"""
+        exit_code, stdout, stderr = run_command(
+            [python_exe, '-c', validate_script],
+            cwd=project_dir,
+            check=False,
+            capture_output=True
+        )
         
-        from django.conf import settings
-        from django.core.management import call_command
-        from io import StringIO
-        
-        # Check database connection
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        
-        print_success("Database connection validated")
-        
-        # Check static files directory
-        static_root = Path(settings.STATIC_ROOT)
-        if static_root.exists():
-            print_success(f"Static files directory exists: {static_root}")
+        if exit_code == 0:
+            if 'DB_OK' in stdout:
+                print_success("Database connection validated")
+            
+            if 'STATIC_OK:' in stdout:
+                static_path = stdout.split('STATIC_OK:')[1].strip()
+                print_success(f"Static files directory exists: {static_path}")
+            elif 'STATIC_MISSING:' in stdout:
+                static_path = stdout.split('STATIC_MISSING:')[1].strip()
+                print_warning(f"Static files directory not found: {static_path}")
+            
+            return True
         else:
-            print_warning(f"Static files directory not found: {static_root}")
-        
-        return True
+            print_error(f"Deployment validation failed: {stderr}")
+            return False
     except Exception as e:
         print_error(f"Deployment validation failed: {e}")
         return False
@@ -433,28 +681,76 @@ def deploy(
     print(f"\n{Colors.BOLD}=== MCC-Web Production Deployment ==={Colors.RESET}\n")
     print_info(f"Project directory: {project_dir}")
     
+    # Find Python executable early
+    print_info("Searching for Python executable...")
+    try:
+        python_exe = get_python_executable(project_dir, verbose=True)
+        print_info(f"✓ Using Python executable: {python_exe}")
+        
+        # Verify it's actually executable
+        if not Path(python_exe).exists() and python_exe not in ['python', 'python3']:
+            print_error(f"Python executable not found: {python_exe}")
+            return False
+    except RuntimeError as e:
+        print_error(str(e))
+        return False
+    
     # Step 1: Check Django environment
     print_step(1, 6, "Checking Django environment")
-    if not check_django_environment(project_dir):
+    if not check_django_environment(project_dir, python_exe=python_exe):
+        print_error("\n" + "="*60)
+        print_error("Django environment check failed!")
+        print_error("="*60)
+        print_info(f"Python executable used: {python_exe}")
+        print_info(f"Project directory: {project_dir}")
+        venv_path = project_dir / 'venv'
+        if venv_path.exists():
+            print_warning(f"Virtual environment directory exists: {venv_path}")
+            print_warning("But Django is not installed in it.")
+            print_info("To fix this, run:")
+            print_info(f"  cd {project_dir}")
+            print_info(f"  source venv/bin/activate")
+            print_info(f"  pip install -r requirements.txt")
+        else:
+            print_warning(f"Virtual environment not found at: {venv_path}")
+            print_info("To create it, run:")
+            print_info(f"  cd {project_dir}")
+            print_info(f"  python3 -m venv venv")
+            print_info(f"  source venv/bin/activate")
+            print_info(f"  pip install -r requirements.txt")
         return False
     
     # Step 2: Database backup
     print_step(2, 6, "Database backup")
-    db_exists = check_database_exists(project_dir)
+    db_exists = check_database_exists(project_dir, python_exe=python_exe)
     
     if db_exists and not skip_backup:
         try:
-            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-            sys.path.insert(0, str(project_dir))
+            # Get database path using Python
+            get_db_path_script = f"""
+import os
+import sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.insert(0, '{project_dir}')
+import django
+django.setup()
+from django.conf import settings
+print(settings.DATABASES['default']['NAME'])
+"""
+            exit_code, stdout, stderr = run_command(
+                [python_exe, '-c', get_db_path_script],
+                cwd=project_dir,
+                check=False,
+                capture_output=True
+            )
             
-            import django
-            django.setup()
-            
-            from django.conf import settings
-            db_path = Path(settings.DATABASES['default']['NAME'])
-            backup_path = backup_database(project_dir, db_path)
-            if backup_path is None and db_exists:
-                print_warning("Backup failed, but continuing...")
+            if exit_code == 0:
+                db_path = Path(stdout.strip())
+                backup_path = backup_database(project_dir, db_path)
+                if backup_path is None and db_exists:
+                    print_warning("Backup failed, but continuing...")
+            else:
+                print_warning(f"Could not determine database path: {stderr}")
         except Exception as e:
             print_warning(f"Could not create backup: {e}")
             response = input("Continue without backup? (yes/no): ")
@@ -468,14 +764,14 @@ def deploy(
     
     # Step 3: Run migrations
     print_step(3, 6, "Running database migrations")
-    if not run_migrations(project_dir, fake_initial=fake_initial):
+    if not run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe):
         print_error("Migration failed - deployment aborted")
         return False
     
     # Step 4: Collect static files
     print_step(4, 6, "Collecting static files")
     if not skip_static:
-        if not collect_static_files(project_dir, clear=clear_static):
+        if not collect_static_files(project_dir, clear=clear_static, python_exe=python_exe):
             print_error("Static file collection failed - deployment aborted")
             return False
     else:
@@ -483,18 +779,18 @@ def deploy(
     
     # Step 5: Ensure media directories
     print_step(5, 7, "Ensuring media directories")
-    ensure_media_directories(project_dir)  # Non-critical, don't fail on error
+    ensure_media_directories(project_dir, python_exe=python_exe)  # Non-critical, don't fail on error
     
     # Step 6: Compile messages
     print_step(6, 7, "Compiling translation messages")
     if not skip_compilemessages:
-        compile_messages(project_dir)  # Non-critical, don't fail on error
+        compile_messages(project_dir, python_exe=python_exe)  # Non-critical, don't fail on error
     else:
         print_info("Skipping message compilation (--skip-compilemessages flag)")
     
     # Step 7: Validate deployment
     print_step(7, 7, "Validating deployment")
-    if not validate_deployment(project_dir):
+    if not validate_deployment(project_dir, python_exe=python_exe):
         print_warning("Validation had issues, but deployment completed")
     
     print(f"\n{Colors.GREEN}{Colors.BOLD}=== Deployment completed successfully! ==={Colors.RESET}\n")
@@ -570,8 +866,22 @@ Examples:
     
     args = parser.parse_args()
     
-    # Default to project root (parent of utils/)
-    project_dir = Path(args.project_dir) if args.project_dir else Path(__file__).parent.parent
+    # Default to project root
+    if args.project_dir:
+        project_dir = Path(args.project_dir).resolve()
+    else:
+        # Try to use current working directory first (for production deployments)
+        # If we're in a project directory with manage.py, use it
+        cwd = Path.cwd().resolve()
+        if (cwd / 'manage.py').exists():
+            project_dir = cwd
+            print_info(f"Using current working directory as project directory: {project_dir}")
+        else:
+            # Fallback to parent of script location (for development)
+            # But resolve symlinks to get actual location
+            script_path = Path(__file__).resolve()
+            project_dir = script_path.parent.parent
+            print_info(f"Using script location as project directory: {project_dir}")
     
     try:
         success = deploy(

@@ -17,6 +17,8 @@
 #include "configserver.h"
 #include "esp_system.h" // unique chip ID
 #include "led_control.h" // Header for LED control
+#include "device_management.h" // Device management APIs
+// getFirmwareVersion() is declared in device_management.h
 
 #ifdef ENABLE_OLED
 #include <U8g2lib.h>  // OLED display library if an OLED display is used
@@ -88,9 +90,9 @@ bool DeepSleep = true;
 unsigned long deepSleepTimeout_sec = 300; // Time in seconds until deep sleep, default 300 seconds
 
 // --- Global variables (definitions) ---
-// API endpoint paths
-const char* API_UPDATE_DATA_PATH = "/api/update-data"; // Example path for sending tachometer data
-const char* API_GET_USER_ID_PATH = "/api/get-user-id"; // Example path for retrieving user data
+// API endpoint paths (legacy - device management APIs are in device_management.h)
+const char* API_UPDATE_DATA_PATH = "/api/update-data"; // Path for sending tachometer data
+const char* API_GET_USER_ID_PATH = "/api/get-user-id"; // Path for retrieving user data
 
 // global variables for configuration mode
 const unsigned long CONFIG_TIMEOUT_SEC = 300; // Timeout in seconds (5 minutes)
@@ -106,6 +108,11 @@ bool testActive = false;
 bool debugEnabled = true;
 bool testModeActive = false;
 
+// Static variables for config mode RFID tag detection
+// These track the idTag value when config mode started to detect NEW RFID tags
+static String idTagAtConfigStart = "";
+static bool idTagAtConfigStartInitialized = false;
+
 String wifi_ssid = "";
 String wifi_password = "";
 String deviceName = "";
@@ -114,7 +121,7 @@ String username ="";      // internal symbolic name from admin database
 String lastSentIdTag = "";
 float wheel_size = 210.0;
 String serverUrl = "";
-String authToken = "";
+String apiKey = "";
 unsigned int sendInterval_sec = 30;
 bool ledEnabled = true;
 float testDistance = 1.0;
@@ -122,6 +129,8 @@ unsigned int testInterval_sec = 10;
 bool ledIsOn = false;
 unsigned long ledOnTime = 0;
 float speed_kmh = 0;
+unsigned int configFetchInterval_sec = 3600; // Default: 1 hour
+unsigned long lastConfigFetchTime = 0; // Timestamp of last config fetch
 // variables for OLED
 int textWidth=0;
 const char* textline="";
@@ -340,6 +349,9 @@ void setup() {
     delay(1000);
     preferences.begin("bike-tacho", false);
     getPreferences();
+    
+    // Initialize device management (loads timestamps, firmware version)
+    initDeviceManagement();
 
     // ----------------------------------------------------------------------
     // CHECK and CLEAR CONFIG-EXIT FLAG
@@ -353,14 +365,38 @@ void setup() {
     // ----------------------------------------------------------------------
     // CHECK CRITICAL CONFIGURATIONS
     // ----------------------------------------------------------------------
+    // Note: serverUrl and apiKey are not critical if DEFAULT values are available
+    // This allows devices to connect to server without manual configuration
+    // Final configuration can be done remotely via mcc-web admin interface
+    bool serverUrlMissing = (serverUrl.length() == 0);
+    bool apiKeyMissing = (apiKey.length() == 0);
+    
+    #ifdef DEFAULT_SERVER_URL
+    bool serverUrlCritical = false; // Default available, not critical
+    #else
+    bool serverUrlCritical = serverUrlMissing; // No default, so missing is critical
+    #endif
+    
+    #ifdef DEFAULT_API_KEY
+    bool apiKeyCritical = false; // Default available, not critical
+    #else
+    bool apiKeyCritical = apiKeyMissing; // No default, so missing is critical
+    #endif
+    
+    // Check for default_id_tag (not idTag, as idTag might be temporarily set by RFID)
+    String defaultIdTagCheck = preferences.getString("default_id_tag", "");
+    if (defaultIdTagCheck.length() == 0) {
+        defaultIdTagCheck = preferences.getString("idTag", ""); // Fallback to legacy key
+    }
+    
     bool criticalConfigMissing = (
         wifi_ssid.length() == 0 ||
         // wifi_password.length() == 0 || // Password can be empty, e.g. for Freifunk
-        idTag.length() == 0 ||
+        defaultIdTagCheck.length() == 0 ||
         wheel_size == 0.0 ||
-        serverUrl.length() == 0 ||
-        authToken.length() == 0 ||
-        sendInterval_sec == 0
+        sendInterval_sec == 0 ||
+        serverUrlCritical ||
+        apiKeyCritical
     );
 
     if (criticalConfigMissing) {
@@ -409,10 +445,43 @@ void setup() {
         
         Serial.println("Starting configuration mode (Automatic on every restart).");
         configModeStartTime = millis(); // Start of timeout
+        
+        // Store current idTag value to detect if a new RFID tag is detected during config mode
+        // This prevents false triggers from the idTag loaded from NVS
+        // Note: This will be reset when config mode starts in loop()
 
         String ap_ssid_dynamic = "MCC" + deviceIdSuffix;
 
         #ifdef ENABLE_OLED
+        // First show firmware version for 5 seconds on first start
+        display.clearBuffer();
+        display.setFont(u8g2_font_7x14_tf);
+
+        textline = "MyCyclingCity";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 12); 
+        display.print(textline);
+
+        textline = deviceName.c_str();
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 28); 
+        display.print(textline);
+
+        textline = "Firmware Version";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 44);
+        display.print(textline);
+
+        String fwVersion = "v" + getFirmwareVersion();
+        textline = fwVersion.c_str();
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 60);
+        display.print(textline);
+
+        display.sendBuffer();
+        delay(5000);  // Show firmware version for 5 seconds
+
+        // Now show config mode parameters
         display.clearBuffer();
         display.setFont(u8g2_font_7x14_tf);
 
@@ -446,6 +515,43 @@ void setup() {
         play_wakeup_tone(); // <-- CALL: 2x short
         Serial.println("DEBUG: Setup - connectToWiFi() ...");
         connectToWiFi();
+        
+        // Send heartbeat and fetch config after wakeup from deep sleep
+        if (WiFi.status() == WL_CONNECTED) {
+            if (debugEnabled) {
+                Serial.println("DEBUG: Sending heartbeat after wakeup from deep sleep...");
+            }
+            sendHeartbeat();
+            
+            // Fetch device configuration after wakeup from deep sleep
+            if (configFetchInterval_sec > 0) {
+                if (debugEnabled) {
+                    Serial.println("DEBUG: Fetching device configuration after wakeup from deep sleep...");
+                }
+                if (fetchDeviceConfig()) {
+                    lastConfigFetchTime = millis();
+                    // Reload default_id_tag from NVS after config fetch, in case it was updated
+                    // This ensures we use the default_id_tag, not any temporary RFID tag
+                    String defaultIdTag = preferences.getString("default_id_tag", "");
+                    if (defaultIdTag.length() == 0) {
+                        defaultIdTag = preferences.getString("idTag", ""); // Fallback to legacy key
+                    }
+                    if (defaultIdTag.length() > 0) {
+                        idTag = defaultIdTag; // Restore default_id_tag after config fetch
+                        if (debugEnabled) {
+                            Serial.printf("DEBUG: Default ID tag restored after config fetch: %s\n", defaultIdTag.c_str());
+                        }
+                    }
+                    if (debugEnabled) {
+                        Serial.println("DEBUG: Config fetched successfully after wakeup");
+                    }
+                } else {
+                    if (debugEnabled) {
+                        Serial.println("DEBUG: Config fetch failed after wakeup, will retry later");
+                    }
+                }
+            }
+        }
 
         // ... (OLED code for deep sleep wakeup remains) ...
     }
@@ -514,8 +620,86 @@ void loop() {
         server.handleClient();
         delay(1);
 
+        // --- End configuration mode on RFID tag detection ---
+        // Check if an RFID tag was detected (idTag was updated by RFID_MFRC522_loop_handler)
+        // IMPORTANT: Only react if idTag was actually changed by RFID detection, not if it was loaded from NVS
+        
+        // Initialize idTagAtConfigStart on first entry to config mode
+        if (!idTagAtConfigStartInitialized) {
+            idTagAtConfigStart = idTag; // Store idTag value when config mode started
+            idTagAtConfigStartInitialized = true;
+            if (debugEnabled) {
+                Serial.printf("DEBUG: Config mode started with idTag: %s\n", idTagAtConfigStart.c_str());
+            }
+        }
+        
+        // Only end config mode if:
+        // 1. idTag has a value
+        // 2. idTag is different from what it was when config mode started (means new RFID tag detected)
+        if (idTag.length() > 0 && idTag != idTagAtConfigStart) {
+            idTagAtConfigStartInitialized = false; // Reset for next config mode entry
+            Serial.println("\nINFO: RFID tag detected. Ending configuration mode and switching to normal operation.");
+            
+            // Play tag detected tone (same as in normal mode)
+            play_tag_detected_tone(); // <-- CALL: 1x long
+            
+            // NOTE: Do NOT save the detected RFID tag to NVS - it should only be used temporarily
+            // The default_id_tag from Config-GUI or Server config should remain unchanged
+            // The RFID tag will be used temporarily in RAM to start counting pulses immediately
+            
+            if (debugEnabled) {
+                Serial.printf("DEBUG: Using RFID tag temporarily (not saving to NVS): %s\n", idTag.c_str());
+                Serial.println("DEBUG: Default-ID-Tag remains unchanged in NVS");
+            }
+
+            #ifdef ENABLE_OLED
+            display.clearBuffer();
+            display.setFont(u8g2_font_7x14_tf);
+            display.drawStr(20, 12, "ID Tag erkannt!");
+            display.drawStr(20, 28, idTag.c_str());
+            display.drawStr(20, 44, "Wechsel zu");
+            display.drawStr(20, 60, "Normalbetrieb");
+            display.sendBuffer();
+            delay(2000);
+            #endif
+            
+            // Stop config server
+            server.stop();
+            if (debugEnabled) {
+                Serial.println("DEBUG: Config server stopped");
+            }
+            
+            // Disconnect WiFi AP
+            WiFi.softAPdisconnect(true);
+            if (debugEnabled) {
+                Serial.println("DEBUG: WiFi AP disconnected");
+            }
+            
+            // Switch WiFi mode to Station only
+            WiFi.mode(WIFI_STA);
+            
+            // End configuration mode
+            configMode = false;
+            
+            // Connect to WiFi and start normal operation
+            if (debugEnabled) {
+                Serial.println("DEBUG: Connecting to WiFi and starting normal operation...");
+            }
+            connectToWiFi();
+            
+            // Reset lastSentIdTag so the RFID tag is recognized as new and counting starts immediately
+            lastSentIdTag = "";
+            
+            // Continue with normal operation (no restart needed)
+            // The RFID tag in idTag will be used immediately for pulse counting
+            return; // Exit config mode handling, continue with normal mode in next loop iteration
+        }
+
         // --- End configuration mode on timeout ---
         if (millis() - configModeStartTime >= configModeTimeout_sec * 1000) {
+            // Reset static variables for next config mode entry
+            idTagAtConfigStartInitialized = false;
+            
             configMode = false;
             Serial.println("\nWARNING: Configuration mode timeout reached. Restart in 5 seconds.");
             
@@ -538,23 +722,55 @@ void loop() {
         // Optional: Pulse detection in config mode for quick switch to normal mode
         pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
         if (currentPulseCount > 0 && !configModeForced) { // Only end if not forced by missing config
-            configMode = false;
-            Serial.println("\nINFO: Pulse detected. Ending configuration mode and restarting.");
+            // Reset static variables for next config mode entry
+            idTagAtConfigStartInitialized = false;
             
-            // Set flag to signal that restart is an intended end of config mode
-            preferences.putBool("configExit", true);
+            Serial.println("\nINFO: Pulse detected. Ending configuration mode and switching to normal operation.");
+            
+            if (debugEnabled) {
+                Serial.println("DEBUG: Pulse detected, switching to normal operation without restart");
+            }
 
             #ifdef ENABLE_OLED
             display.clearBuffer();
             display.setFont(u8g2_font_7x14_tf);
             display.drawStr(20, 12, "Puls erkannt!");
-            display.drawStr(20, 40, "Warmstart ...");
+            display.drawStr(20, 44, "Wechsel zu");
+            display.drawStr(20, 60, "Normalbetrieb");
             display.sendBuffer();
+            delay(2000);
             #endif
             
-            delay(3000);
-            ESP.restart();
-            return; // End loop
+            // Stop config server
+            server.stop();
+            if (debugEnabled) {
+                Serial.println("DEBUG: Config server stopped");
+            }
+            
+            // Disconnect WiFi AP
+            WiFi.softAPdisconnect(true);
+            if (debugEnabled) {
+                Serial.println("DEBUG: WiFi AP disconnected");
+            }
+            
+            // Switch WiFi mode to Station only
+            WiFi.mode(WIFI_STA);
+            
+            // End configuration mode
+            configMode = false;
+            
+            // Connect to WiFi and start normal operation
+            if (debugEnabled) {
+                Serial.println("DEBUG: Connecting to WiFi and starting normal operation...");
+            }
+            connectToWiFi();
+            
+            // Reset lastSentIdTag so the default_id_tag is recognized as new and counting starts immediately
+            lastSentIdTag = "";
+            
+            // Continue with normal operation (no restart needed)
+            // Pulse counting will start immediately
+            return; // Exit config mode handling, continue with normal mode in next loop iteration
         }
     } else {
 
@@ -603,6 +819,16 @@ void loop() {
               reconnectLastAttemptTime = millis();
             }
         }
+        
+        // Note: Heartbeat is only sent:
+        // 1. At first start (after WiFi connection in connectToWiFi)
+        // 2. After wakeup from deep sleep (in setup, when wakeup_reason == ESP_SLEEP_WAKEUP_EXT0)
+        // This reduces the number of heartbeats and server load
+        
+        // Note: Firmware checks are done:
+        // 1. After WiFi connection (in setup/connectToWiFi)
+        // 2. Before deep sleep (below, when no pulses detected)
+        // This avoids interrupting active pulse data collection
     
         // Query counter value and output in log, but only on change
         pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
@@ -634,6 +860,40 @@ void loop() {
                 delay(50);
                 //ledIsOn = false;
                 digitalWrite(LED_PIN, LOW);
+            }
+        }
+        
+        // Periodic config fetch (even when Deep Sleep is disabled)
+        // Also fetches on first start (lastConfigFetchTime == 0) or when interval is reached
+        if (configFetchInterval_sec > 0) {
+            if (WiFi.status() == WL_CONNECTED) {
+                unsigned long elapsed_ms = (lastConfigFetchTime == 0) ? 0 : (millis() - lastConfigFetchTime);
+                bool shouldFetch = (lastConfigFetchTime == 0) || (elapsed_ms >= (unsigned long)configFetchInterval_sec * 1000);
+                
+                if (debugEnabled && shouldFetch) {
+                    if (lastConfigFetchTime == 0) {
+                        Serial.println("DEBUG: Periodic config fetch - first fetch after startup");
+                    } else {
+                        Serial.printf("DEBUG: Periodic config fetch triggered (interval: %u s, elapsed: %lu s)\n", 
+                            configFetchInterval_sec, elapsed_ms / 1000);
+                    }
+                }
+                
+                if (shouldFetch) {
+                    if (fetchDeviceConfig()) {
+                        lastConfigFetchTime = millis();
+                        if (debugEnabled) {
+                            Serial.printf("DEBUG: Config fetched successfully. Next fetch in %u seconds\n", configFetchInterval_sec);
+                        }
+                    } else {
+                        if (debugEnabled) {
+                            Serial.println("DEBUG: Config fetch failed, will retry on next interval");
+                        }
+                        // Don't update lastConfigFetchTime on failure, so it retries sooner
+                    }
+                }
+            } else if (debugEnabled && (millis() % 60000 < 100)) { // Log every ~60 seconds when WiFi not connected
+                Serial.printf("DEBUG: Periodic config fetch skipped - WiFi not connected (interval: %u s)\n", configFetchInterval_sec);
             }
         }
         
@@ -685,12 +945,30 @@ void loop() {
             lastDataSendTime = millis();
         }
 
-        // Deep Sleep Check
-        if ( (millis() - lastPulseTime >= (unsigned long)deepSleepTimeout_sec * 1000) && DeepSleep ) {
+        // Deep Sleep Check - only if deepSleepTimeout_sec > 0 (0 = disabled)
+        if ( deepSleepTimeout_sec > 0 && (millis() - lastPulseTime >= (unsigned long)deepSleepTimeout_sec * 1000) && DeepSleep ) {
           if (debugEnabled) {
               Serial.println("DEBUG: Deep Sleep check ...");
               Serial.printf("DEBUG: deepSleepTimeout_sec= %d.\n", deepSleepTimeout_sec);
           }
+          
+          // Check for firmware update before going to sleep
+          // This ensures we don't miss updates when device is inactive
+          if (WiFi.status() == WL_CONNECTED) {
+              if (debugEnabled) {
+                  Serial.println("DEBUG: Checking for firmware update before deep sleep...");
+              }
+              if (checkFirmwareUpdate()) {
+                  // Update is available, download and install
+                  if (debugEnabled) {
+                      Serial.println("DEBUG: Firmware update available. Starting download before sleep...");
+                  }
+                  downloadFirmware();
+                  // Note: downloadFirmware() will restart the device on success
+                  return; // Exit loop if update is being installed
+              }
+          }
+          
           if (digitalRead(SENSOR_PIN) == HIGH) {
             if (debugEnabled) {
               Serial.println("DEBUG: Pin is HIGH. Switching to deep sleep mode.");
@@ -786,6 +1064,9 @@ void connectToWiFi() {
     delay(2000);
     #endif
 
+    // Turn on LED to indicate WiFi connection activity
+    digitalWrite(LED_PIN, HIGH);
+    
     WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
@@ -795,12 +1076,87 @@ void connectToWiFi() {
         }
         attempts++;
     }
+    
     if (WiFi.status() == WL_CONNECTED) {
         if (debugEnabled) {
           Serial.println("\nDEBUG: Connected!");
           Serial.print("DEBUG: IP address: ");
           Serial.println(WiFi.localIP());
         }
+        
+        // Report device configuration to server after successful WiFi connection
+        // This allows the server to detect configuration differences
+        if (debugEnabled) {
+          Serial.println("DEBUG: Reporting device configuration to server...");
+        }
+        bool configReported = reportDeviceConfig();
+        if (debugEnabled) {
+            Serial.printf("DEBUG: reportDeviceConfig() returned: %s\n", configReported ? "true" : "false");
+        }
+        
+        // Fetch server-side configuration if available
+        // Only fetch if config was successfully reported (server is reachable)
+        if (configReported) {
+            if (debugEnabled) {
+                Serial.println("DEBUG: Fetching server-side configuration after WiFi connection...");
+            }
+            bool fetchSuccess = fetchDeviceConfig();
+            if (fetchSuccess) {
+                lastConfigFetchTime = millis();
+                if (debugEnabled) {
+                    Serial.println("DEBUG: Config fetched successfully after WiFi connection");
+                }
+            } else {
+                if (debugEnabled) {
+                    Serial.println("DEBUG: Config fetch failed after WiFi connection, will retry later");
+                }
+            }
+        } else {
+            if (debugEnabled) {
+                Serial.println("DEBUG: Skipping fetchDeviceConfig() because reportDeviceConfig() returned false");
+            }
+        }
+        
+        // Check for firmware update immediately after WiFi connection
+        // This ensures firmware check happens even if device goes to sleep soon
+        if (debugEnabled) {
+            Serial.println("DEBUG: Checking for firmware update after WiFi connection...");
+        }
+        bool updateAvailable = checkFirmwareUpdate();
+        if (debugEnabled) {
+            Serial.printf("DEBUG: checkFirmwareUpdate() returned: %s\n", updateAvailable ? "true" : "false");
+        }
+        if (updateAvailable) {
+            // Update is available, download and install
+            if (debugEnabled) {
+                Serial.println("DEBUG: Firmware update available. Starting download...");
+            }
+            bool downloadSuccess = downloadFirmware();
+            if (debugEnabled) {
+                Serial.printf("DEBUG: downloadFirmware() returned: %s\n", downloadSuccess ? "true" : "false");
+            }
+            // Note: downloadFirmware() will restart the device on success
+        } else {
+            if (debugEnabled) {
+                Serial.println("DEBUG: No firmware update available or check failed.");
+            }
+        }
+        
+        // Send heartbeat at first start (only if not woken from deep sleep)
+        // Note: wakeup_reason is checked here because connectToWiFi() is called from both
+        // first start and wakeup scenarios, but we only want heartbeat at first start here
+        esp_sleep_wakeup_cause_t wakeup_reason_check = esp_sleep_get_wakeup_cause();
+        if (wakeup_reason_check != ESP_SLEEP_WAKEUP_EXT0) {
+            // This is first start, not wakeup from deep sleep
+            if (debugEnabled) {
+                Serial.println("DEBUG: Sending heartbeat at first start...");
+            }
+            sendHeartbeat();  // LED is controlled inside sendHeartbeat()
+        }
+        // Note: If wakeup from deep sleep, heartbeat is sent in setup() after connectToWiFi()
+
+        // Turn off LED after all WiFi activities are complete
+        digitalWrite(LED_PIN, LOW);
 
         #ifdef ENABLE_OLED
         display.clearBuffer();
@@ -861,7 +1217,14 @@ void connectToWiFi() {
         display.sendBuffer();
         delay(2000); 
         #endif
+        
+        // Turn off LED on connection failure
+        digitalWrite(LED_PIN, LOW);
     }
+    
+    // Turn off LED after all WiFi activities are complete (if not already turned off)
+    // Note: LED is already turned off in the else block above, but we ensure it's off here too
+    digitalWrite(LED_PIN, LOW);
 }
 
 /**
@@ -966,12 +1329,12 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pu
 
   http.begin(finalUrl);
   http.addHeader("Content-Type", "application/json");
-  if (authToken.length() > 0) {
+  if (apiKey.length() > 0) {
     if (debugEnabled) {
       Serial.print("Using API key header: X-Api-Key: ");
-      Serial.println(authToken);
+      Serial.println(apiKey);
     }
-    http.addHeader("X-Api-Key", authToken);
+    http.addHeader("X-Api-Key", apiKey);
   }
   
   digitalWrite(LED_PIN, HIGH);  // Turn on LED when sending
@@ -1040,8 +1403,8 @@ String getUserIdFromTag(String& tagId) {
     http.begin(finalUrl);
     http.addHeader("Content-Type", "application/json");
     // Add API key header
-    if (authToken.length() > 0) {
-        http.addHeader("X-Api-Key", authToken);
+    if (apiKey.length() > 0) {
+        http.addHeader("X-Api-Key", apiKey);
     }
     
     int httpCode = http.POST(jsonPayload);
@@ -1104,13 +1467,22 @@ void displayNVSConfig() {
     Serial.printf("ID Tag: %s\n", preferences.getString("idTag", "").c_str());
     Serial.printf("Wheel size: %.2f cm\n", preferences.getFloat("wheel_size", 210.0));
     Serial.printf("Server URL: %s\n", preferences.getString("serverUrl", "").c_str());
-    Serial.printf("Auth Token: %s\n", preferences.getString("authToken", "").c_str());
+    Serial.printf("API Key: %s\n", preferences.getString("apiKey", "").c_str());
     Serial.printf("Send interval: %d s\n", preferences.getUInt("sendInterval", 30));
     Serial.printf("LED enabled: %s\n", preferences.getBool("ledEnabled", true) ? "Yes" : "No");
+    Serial.printf("Debug mode: %s\n", preferences.getBool("debugEnabled", false) ? "Yes" : "No");
+    // NVS key max length is 15 characters, so use shorter key
+    Serial.printf("Deep-Sleep-Zeit: %lu s\n", preferences.getUInt("deep_sleep", 300));
     Serial.printf("Test mode: %s\n", preferences.getBool("testModeEnabled", false) ? "Yes" : "No");
     Serial.printf("  Test distance: %.2f km\n", preferences.getFloat("testDistance", 0.01));
     Serial.printf("  Test interval: %d s\n", preferences.getUInt("testInterval", 5));
-    Serial.printf("Debug mode: %s\n", preferences.getBool("debugEnabled", false) ? "Yes" : "No");
+    // Config-WLAN-Passwort (nicht im Klartext aus Sicherheitsgründen)
+    String apPassword = preferences.getString("ap_passwd", "");
+    if (apPassword.length() > 0) {
+        Serial.printf("Config-WLAN-Passwort: *** (gesetzt, %d Zeichen)\n", apPassword.length());
+    } else {
+        Serial.printf("Config-WLAN-Passwort: (Standard)\n");
+    }
     Serial.println("------------------------------\n");
 }
 
@@ -1159,32 +1531,97 @@ void getPreferences() {
     wifi_ssid = preferences.getString("wifi_ssid", "");
     wifi_password = preferences.getString("wifi_password", "");
     deviceName = preferences.getString("deviceName", "");
-    idTag = preferences.getString("idTag", "");
+    // Load default_id_tag from NVS (set via Config-GUI or Server config)
+    // This is the default that should NOT be overwritten by RFID tag detection
+    String defaultIdTag = preferences.getString("default_id_tag", "");
+    // If default_id_tag doesn't exist, try legacy "idTag" key for backward compatibility
+    if (defaultIdTag.length() == 0) {
+        defaultIdTag = preferences.getString("idTag", "");
+        // If found in legacy key, migrate to new key
+        if (defaultIdTag.length() > 0) {
+            preferences.putString("default_id_tag", defaultIdTag);
+        }
+    }
+    idTag = defaultIdTag; // Start with default, RFID tags will override temporarily in RAM only
+    
+    // Reset lastSentIdTag on wakeup/startup to ensure default_id_tag is recognized as new
+    // This is important after deep sleep wakeup, as the default_id_tag should be used
+    // even if a different RFID tag was used before deep sleep
+    lastSentIdTag = "";
     wheel_size = preferences.getFloat("wheel_size", 210.0);
     serverUrl = preferences.getString("serverUrl", "");
-    authToken = preferences.getString("authToken", "");
+    // Check if apiKey exists in NVS before reading to avoid error log
+    if (preferences.isKey("apiKey")) {
+        apiKey = preferences.getString("apiKey", "");
+    } else {
+        apiKey = "";  // Key doesn't exist, use empty string
+    }
     sendInterval_sec = preferences.getUInt("sendInterval", 30);
     ledEnabled = preferences.getBool("ledEnabled", true);
-    deepSleepTimeout_sec = preferences.getUInt("deepSleepTimeout", deepSleepTimeout_sec); // TODO: Add to WEB-GUI
+    // NVS key max length is 15 characters, so use shorter key
+    deepSleepTimeout_sec = preferences.getUInt("deep_sleep", deepSleepTimeout_sec);
+    // If deepSleepTimeout_sec is 0, disable deep sleep
+    if (deepSleepTimeout_sec == 0) {
+        DeepSleep = false;
+        if (debugEnabled) {
+            Serial.println("DEBUG: Deep Sleep disabled (timeout = 0)");
+        }
+    } else {
+        DeepSleep = true;
+    }
+    
+    // Load config fetch interval from NVS
+    // NVS key max length is 15 characters, so use shorter key
+    configFetchInterval_sec = preferences.getUInt("cfg_fetch_int", configFetchInterval_sec);
+    if (debugEnabled) {
+        Serial.printf("DEBUG: Config fetch interval loaded from NVS: %u seconds\n", configFetchInterval_sec);
+    }
+    lastConfigFetchTime = 0; // Will be set after first config fetch
     
     // Fallback to build flags if NVS values are empty
+    // This ensures devices can connect to server without manual configuration
     #ifdef DEFAULT_SERVER_URL
     if (serverUrl.length() == 0) {
         serverUrl = String(DEFAULT_SERVER_URL);
         if (debugEnabled) {
-            Serial.println("DEBUG: Using build flag DEFAULT_SERVER_URL as fallback.");
+            Serial.print("DEBUG: Using build flag DEFAULT_SERVER_URL as fallback: ");
+            Serial.println(serverUrl);
         }
     }
     #endif
     
     #ifdef DEFAULT_API_KEY
-    if (authToken.length() == 0) {
-        authToken = String(DEFAULT_API_KEY);
+    if (apiKey.length() == 0) {
+        apiKey = String(DEFAULT_API_KEY);
         if (debugEnabled) {
-            Serial.println("DEBUG: Using build flag DEFAULT_API_KEY as fallback.");
+            Serial.print("DEBUG: Using build flag DEFAULT_API_KEY as fallback: ");
+            Serial.println(apiKey);
         }
     }
     #endif
+    
+    // Validate serverUrl format - remove invalid entries like "http://http:"
+    if (serverUrl.length() > 0) {
+        // Check for malformed URLs (e.g., "http://http:" or "http://https:")
+        if (serverUrl.indexOf("http://http") >= 0 || serverUrl.indexOf("https://http") >= 0 ||
+            serverUrl.indexOf("http://https") >= 0 || serverUrl.indexOf("https://https") >= 0) {
+            if (debugEnabled) {
+                Serial.print("DEBUG: Detected malformed serverUrl: ");
+                Serial.println(serverUrl);
+                Serial.println("DEBUG: Clearing malformed URL, will use default.");
+            }
+            preferences.remove("serverUrl");
+            serverUrl = "";
+            // Apply default if available
+            #ifdef DEFAULT_SERVER_URL
+            serverUrl = String(DEFAULT_SERVER_URL);
+            if (debugEnabled) {
+                Serial.print("DEBUG: Using default serverUrl: ");
+                Serial.println(serverUrl);
+            }
+            #endif
+        }
+    }
     
     testActive = preferences.getBool("testModeEnabled", false);
     if (testActive) {

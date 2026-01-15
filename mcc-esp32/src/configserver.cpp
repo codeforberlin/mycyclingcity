@@ -12,7 +12,29 @@
 
 // --- Configuration ---
 // SSID and password for configuration access point
-const char* ap_password = "mccmuims";
+// Default password (used if not set in NVS)
+const char* DEFAULT_AP_PASSWORD = "mccmuims";
+
+/**
+ * @brief Gets the AP password from NVS or returns default.
+ * 
+ * @return String AP password (minimum 8 characters, default if not set)
+ */
+String getAPPassword() {
+    // NVS key max length is 15 characters, so use shorter key
+    String password = preferences.getString("ap_passwd", "");
+    if (password.length() == 0 || password.length() < 8) {
+        // Use default if not set or invalid (minimum 8 chars for WPA2)
+        if (debugEnabled) {
+            Serial.printf("DEBUG: Using default AP password: %s\n", DEFAULT_AP_PASSWORD);
+        }
+        return String(DEFAULT_AP_PASSWORD);
+    }
+    if (debugEnabled) {
+        Serial.printf("DEBUG: AP password loaded from NVS: %s\n", password.c_str());
+    }
+    return password;
+}
 
 // Wheel sizes in inches and calculated circumference in cm
 struct WheelSize {
@@ -75,10 +97,16 @@ const char* HTML_FORM = R"rawliteral(
 
   <label for="serverUrl">Webserver-URL (mit http:// oder https://):</label>
   <input type="text" id="serverUrl" name="serverUrl" value="%SERVERURL%">
-  <label for="authToken">Base64 Auth Token:</label>
-  <input type="text" id="authToken" name="authToken" value="%AUTHTOKEN%">
+  <label for="apiKey">API Key:</label>
+  <input type="text" id="apiKey" name="apiKey" value="%APIKEY%">
   <label for="sendInterval">Sendeintervall (Sekunden):</label>
   <input type="number" id="sendInterval" name="sendInterval" value="%SENDINTERVAL%" required>
+
+  <hr>
+  <h2>Config-WLAN-Einstellungen</h2>
+  <label for="ap_password">Config-WLAN-Passwort (min. 8 Zeichen):</label>
+  <input type="text" id="ap_password" name="ap_password" value="%AP_PASSWORD%" minlength="8" maxlength="64" required>
+  <small>Passwort für den Config-WLAN-Hotspot. Änderung erfordert Neustart.</small>
 
   <h2>Geräte-Optionen</h2>
   <label for="ledEnabled">LED bei Puls</label>
@@ -87,6 +115,11 @@ const char* HTML_FORM = R"rawliteral(
   <br>
   <label for="debugEnabled">Debug-Modus</label>
   <input type="checkbox" id="debugEnabled" name="debugEnabled" value="1" %DEBUG_ENABLED%>
+  
+  <br><br>
+  <label for="deepSleepTimeout">Deep-Sleep-Zeit (Sekunden, 0 = deaktiviert):</label>
+  <input type="number" id="deepSleepTimeout" name="deepSleepTimeout" value="%DEEPSLEEPTIMEOUT%" min="0" required>
+  <small>Zeit in Sekunden ohne Impulse bis zum Deep-Sleep (0 = Deep-Sleep deaktiviert)</small>
   
   <hr>
   <h2>Testmodus</h2>
@@ -132,6 +165,7 @@ void handleRoot() {
   String html = HTML_FORM;
   html.replace("%WIFI_SSID%", preferences.getString("wifi_ssid", wifi_ssid));
   html.replace("%WIFI_PASSWORD%", preferences.getString("wifi_password", wifi_password));
+  html.replace("%AP_PASSWORD%", getAPPassword());
   
   // Load device name and create full name with suffix
   String currentDeviceName = preferences.getString("deviceName", deviceName);
@@ -190,8 +224,12 @@ void handleRoot() {
   html.replace("%TESTMODECHECKED%", preferences.getBool("testModeEnabled", false) ? "checked" : "");
   
   html.replace("%SERVERURL%", preferences.getString("serverUrl", serverUrl));
-  html.replace("%AUTHTOKEN%", preferences.getString("authToken", authToken));
+  html.replace("%APIKEY%", preferences.getString("apiKey", apiKey));
   html.replace("%SENDINTERVAL%", String(preferences.getUInt("sendInterval", sendInterval_sec)));
+  
+  // Load deep sleep timeout from NVS
+  unsigned long currentDeepSleep = preferences.getUInt("deep_sleep", 300);
+  html.replace("%DEEPSLEEPTIMEOUT%", String(currentDeepSleep));
   
   server.send(200, "text/html", html);
 }
@@ -220,8 +258,12 @@ void handleSave() {
     deviceName = server.arg("deviceName");
   }
   if (server.hasArg("idTag")) {
-    preferences.putString("idTag", server.arg("idTag"));
-    idTag = server.arg("idTag");
+    // Save as default_id_tag (not idTag) to distinguish from temporary RFID tag
+    String newDefaultTag = server.arg("idTag");
+    preferences.putString("default_id_tag", newDefaultTag);
+    // Also update legacy "idTag" key for backward compatibility
+    preferences.putString("idTag", newDefaultTag);
+    idTag = newDefaultTag; // Update global variable
   }
   
   // Correctly accept wheel circumference: manual entry takes priority
@@ -239,25 +281,86 @@ void handleSave() {
 
   if (server.hasArg("serverUrl")) {
     String url = server.arg("serverUrl");
+    url.trim(); // Remove leading/trailing whitespace
 
-    // Remove any trailing slashes to save only the base URL.
-    while (url.endsWith("/")) {
-        url.remove(url.length() - 1);
+    // If URL is empty, clear it from NVS (will use default from build flag)
+    if (url.length() == 0) {
+        preferences.remove("serverUrl");
+        serverUrl = "";
+        // Default will be applied in getPreferences() if DEFAULT_SERVER_URL is defined
+    } else {
+        // Remove any trailing slashes to save only the base URL.
+        while (url.endsWith("/")) {
+            url.remove(url.length() - 1);
+        }
+        // Only add http:// prefix if URL doesn't already have a protocol
+        // AND if the URL is not empty after trimming
+        if (url.length() > 0 && !url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "http://" + url;
+        }
+        // Only save if URL is valid (not empty and has content after processing)
+        if (url.length() > 0) {
+            preferences.putString("serverUrl", url);
+            serverUrl = url;
+        } else {
+            preferences.remove("serverUrl");
+            serverUrl = "";
+        }
     }
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        url = "http://" + url;
-    }
-    preferences.putString("serverUrl", url);
-    serverUrl = url;
   }
 
-  if (server.hasArg("authToken")) {
-    preferences.putString("authToken", server.arg("authToken"));
-    authToken = server.arg("authToken");
+  if (server.hasArg("apiKey")) {
+    String key = server.arg("apiKey");
+    key.trim(); // Remove leading/trailing whitespace
+    
+    // If key is empty, clear it from NVS (will use default from build flag)
+    if (key.length() == 0) {
+        preferences.remove("apiKey");
+        apiKey = "";
+        // Default will be applied in getPreferences() if DEFAULT_API_KEY is defined
+    } else {
+        preferences.putString("apiKey", key);
+        apiKey = key;
+    }
+  }
+  
+  if (server.hasArg("ap_password")) {
+    String newAPPassword = server.arg("ap_password");
+    newAPPassword.trim();
+    
+    // Validate: minimum 8 characters (WPA2 requirement), empty not allowed
+    if (newAPPassword.length() >= 8) {
+        preferences.putString("ap_passwd", newAPPassword);
+        Serial.println("Config AP password updated (restart required)");
+        if (debugEnabled) {
+            Serial.printf("DEBUG: New AP password saved: %s\n", newAPPassword.c_str());
+        }
+    } else if (newAPPassword.length() > 0) {
+        Serial.println("WARNING: AP password too short (min 8 chars), keeping current password");
+        if (debugEnabled) {
+            Serial.printf("DEBUG: Rejected AP password (too short): %s\n", newAPPassword.c_str());
+        }
+    }
+    // If empty, do nothing (empty password not allowed)
   }
   if (server.hasArg("sendInterval")) {
     preferences.putUInt("sendInterval", server.arg("sendInterval").toInt());
     sendInterval_sec = server.arg("sendInterval").toInt();
+  }
+  
+  if (server.hasArg("deepSleepTimeout")) {
+    unsigned long newDeepSleep = server.arg("deepSleepTimeout").toInt();
+    // NVS key max length is 15 characters, so use shorter key
+    preferences.putUInt("deep_sleep", newDeepSleep);
+    deepSleepTimeout_sec = newDeepSleep;
+    // If deepSleepTimeout_sec is 0, disable deep sleep immediately
+    if (newDeepSleep == 0) {
+        DeepSleep = false;
+        Serial.println("Deep-Sleep deaktiviert (Zeit = 0)");
+    } else {
+        DeepSleep = true;
+        Serial.printf("Deep-Sleep-Zeit aktualisiert: %lu Sekunden\n", newDeepSleep);
+    }
   }
   
   ledEnabled = server.hasArg("ledEnabled");
@@ -287,7 +390,7 @@ void handleSave() {
     Serial.printf("ID Tag: %s\n", idTag.c_str());
     Serial.printf("Wheel circumference: %.2f cm\n", wheel_size);
     Serial.printf("Server URL: %s\n", serverUrl.c_str());
-    Serial.printf("Auth Token: %s\n", authToken.c_str());
+    Serial.printf("API Key: %s\n", apiKey.c_str());
     Serial.printf("Send interval: %d s\n", sendInterval_sec);
     Serial.printf("LED enabled: %s\n", ledEnabled ? "Yes" : "No");
     Serial.printf("Debug mode: %s\n", debugEnabled ? "Yes" : "No");
@@ -328,24 +431,53 @@ void handleReboot() {
  * @note Side effects: Writes firmware to flash, may trigger device restart on success
  */
 void handleUpdate() {
-  server.sendHeader("Connection", "close");
-  server.send(200, "text/plain", "Update gestartet...");
-
   HTTPUpload& upload = server.upload();
+  
   if (upload.status == UPLOAD_FILE_START) {
+    Serial.printf("Update start: %s\n", upload.filename.c_str());
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       Update.printError(Serial);
+      server.send(500, "text/plain", "Update failed to start");
+      return;
     }
   } else if (upload.status == UPLOAD_FILE_WRITE) {
     if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
       Update.printError(Serial);
+      server.send(500, "text/plain", "Update write failed");
+      return;
+    }
+    // Progress feedback
+    if (upload.totalSize > 0) {
+      Serial.printf("Progress: %d%%\n", (upload.currentSize * 100) / upload.totalSize);
     }
   } else if (upload.status == UPLOAD_FILE_END) {
     if (Update.end(true)) {
-      Serial.printf("Update successful. Restarting...\n");
+      Serial.printf("Update successful: %u bytes\n", upload.totalSize);
+      
+      // Clear firmware version in NVS so it gets re-initialized from build flag on next boot
+      // The new firmware will have its own FIRMWARE_VERSION build flag, which will be loaded
+      // when getFirmwareVersion() is called on next boot (in initDeviceManagement())
+      preferences.remove("fw_ver");
+      if (debugEnabled) {
+        Serial.println("DEBUG: Manual firmware upload completed. Firmware version cleared from NVS.");
+        Serial.println("DEBUG: Version will be set from FIRMWARE_VERSION build flag on next boot.");
+      }
+      
+      // Send success response before restart
+      server.sendHeader("Connection", "close");
+      server.send(200, "text/plain", "Update erfolgreich! Gerät startet neu...");
+      
+      // Small delay to ensure response is sent
+      delay(500);
+      ESP.restart();
     } else {
       Update.printError(Serial);
+      server.send(500, "text/plain", "Update failed");
     }
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    Update.abort();
+    Serial.println("Update aborted");
+    server.send(500, "text/plain", "Update aborted");
   }
 }
 
@@ -369,7 +501,11 @@ void setupConfigServer() {
     // Create Wi-Fi access point (AP) to host web server
     Serial.print("Creating access point with SSID: "); 
     Serial.println(ap_ssid_dynamic);
-    WiFi.softAP(ap_ssid_dynamic.c_str(), ap_password);
+    String ap_password_dynamic = getAPPassword();
+    if (debugEnabled) {
+        Serial.printf("DEBUG: Starting AP with password: %s\n", ap_password_dynamic.c_str());
+    }
+    WiFi.softAP(ap_ssid_dynamic.c_str(), ap_password_dynamic.c_str());
     Serial.print("Access point created! IP address: "); 
     Serial.println(WiFi.softAPIP());
 
@@ -380,9 +516,10 @@ void setupConfigServer() {
     server.on("/", handleRoot);
     server.on("/save", handleSave);
     server.on("/reboot", handleReboot);
+    // For multipart/form-data uploads, don't send response in POST handler
+    // Response will be sent in handleUpdate() after upload completes
     server.on("/update", HTTP_POST, [](){
-      server.sendHeader("Connection", "close");
-      server.send(200, "text/plain", "Update gestartet...");
+      // Do nothing here - handleUpdate() will process the upload
     }, handleUpdate);
     server.begin();
     Serial.println("HTTP server started");

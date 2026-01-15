@@ -26,7 +26,7 @@ extern String deviceName;
 extern String idTag;
 extern float wheel_size;
 extern String serverUrl;
-extern String authToken;
+extern String apiKey;
 extern unsigned int sendInterval_sec;
 extern bool ledEnabled;
 extern float testDistance;
@@ -34,6 +34,8 @@ extern unsigned int testInterval_sec;
 extern bool debugEnabled; 
 extern bool testModeActive;
 extern String deviceIdSuffix;
+extern bool DeepSleep;
+extern unsigned long deepSleepTimeout_sec;
 
 extern const unsigned long CONFIG_TIMEOUT_SEC; // NEU: Timeout-Konstante
 

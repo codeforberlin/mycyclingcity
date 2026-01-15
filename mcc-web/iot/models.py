@@ -77,6 +77,22 @@ class DeviceConfiguration(models.Model):
         help_text=_("Anzahl der Tage zwischen automatischen API-Key-Rotationen")
     )
     
+    # Grace period for API key rotation: old key remains valid until device authenticates with new key
+    previous_api_key = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name=_("Vorheriger API-Key"),
+        help_text=_("Der vorherige API-Key bleibt gültig, bis das Gerät sich erfolgreich mit dem neuen Key authentifiziert hat. Wird automatisch gelöscht, sobald das Gerät den neuen Key verwendet.")
+    )
+    
+    previous_api_key_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Vorheriger API-Key läuft ab am (optional)"),
+        help_text=_("Optional: Zeitpunkt für automatische Bereinigung abgelaufener Keys. Wenn nicht gesetzt, bleibt der Key gültig bis das Gerät den neuen Key verwendet.")
+    )
+    
     # Legacy: Apache Base64 Auth Key (deprecated, use device_specific_api_key instead)
     apache_base64_auth_key = models.CharField(
         max_length=200,
@@ -111,6 +127,19 @@ class DeviceConfiguration(models.Model):
         help_text=_("Intervall in Sekunden zwischen Datenübertragungen")
     )
     
+    config_fetch_interval_seconds = models.IntegerField(
+        default=3600,
+        validators=[MinValueValidator(0)],
+        verbose_name=_("Config-Abruf-Intervall (Sekunden)"),
+        help_text=_("Intervall in Sekunden zum regelmäßigen Abrufen der Konfiguration vom Server. 0 = deaktiviert. Wird auch verwendet, wenn Deep Sleep deaktiviert ist.")
+    )
+    
+    request_config_comparison = models.BooleanField(
+        default=False,
+        verbose_name=_("Konfigurationsvergleich anfordern"),
+        help_text=_("Wenn aktiviert, wird beim nächsten Config-Report vom Gerät ein Vergleich durchgeführt und Unterschiede werden im Admin GUI angezeigt. Wird nach dem Vergleich automatisch zurückgesetzt.")
+    )
+    
     server_url = models.URLField(
         max_length=500,
         blank=True,
@@ -134,6 +163,15 @@ class DeviceConfiguration(models.Model):
         null=True,
         verbose_name=_("WLAN-Passwort"),
         help_text=_("WiFi-Netzwerkpasswort")
+    )
+    
+    # Config WLAN settings
+    ap_password = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        verbose_name=_("Config-WLAN-Passwort"),
+        help_text=_("Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen (WPA2-Anforderung).")
     )
     
     # Device behavior
@@ -200,21 +238,36 @@ class DeviceConfiguration(models.Model):
         return f"{_('Configuration for')} {self.device.name}"
     
     def generate_api_key(self) -> str:
-        """Generate a new unique API key for this device."""
+        """Generate a new unique API key for this device.
+        
+        The old API key is stored in previous_api_key and remains valid until
+        the device successfully authenticates with the new key. This allows
+        devices that are inactive for extended periods to still fetch the new key.
+        """
         import secrets
         import string
+        
+        # Store current key as previous key (if exists) for grace period
+        # The previous key remains valid until device authenticates with new key
+        old_key = self.device_specific_api_key
+        if old_key:
+            self.previous_api_key = old_key
+            # Optional: Set expiration for cleanup (e.g., 1 year), but validation doesn't check it
+            # The key is cleared when device uses new key, not when it expires
+            # previous_api_key_expires_at can be used for periodic cleanup of orphaned keys
         
         # Generate a secure random API key
         alphabet = string.ascii_letters + string.digits
         api_key = ''.join(secrets.choice(alphabet) for _ in range(32))
         
-        # Ensure uniqueness
-        while DeviceConfiguration.objects.filter(device_specific_api_key=api_key).exists():
+        # Ensure uniqueness (check both current and previous keys)
+        while (DeviceConfiguration.objects.filter(device_specific_api_key=api_key).exists() or
+               DeviceConfiguration.objects.filter(previous_api_key=api_key).exists()):
             api_key = ''.join(secrets.choice(alphabet) for _ in range(32))
         
         self.device_specific_api_key = api_key
         self.api_key_last_rotated = timezone.now()
-        self.save(update_fields=['device_specific_api_key', 'api_key_last_rotated'])
+        self.save(update_fields=['device_specific_api_key', 'api_key_last_rotated', 'previous_api_key', 'previous_api_key_expires_at'])
         
         return api_key
     
@@ -238,18 +291,43 @@ class DeviceConfiguration(models.Model):
     def to_dict(self) -> dict:
         """Convert configuration to dictionary for JSON serialization."""
         return {
-            'device_name': self.device_name or '',
+            # Note: device_name is NOT included - it's only configurable via device WebGUI
+            # This ensures the device can always send data even if server config is missing
             'default_id_tag': self.default_id_tag or '',
             'send_interval_seconds': self.send_interval_seconds,
             'server_url': self.server_url or '',
             'wifi_ssid': self.wifi_ssid or '',
             'wifi_password': self.wifi_password or '',
+            'ap_password': self.ap_password or '',
             'debug_mode': self.debug_mode,
             'test_mode': self.test_mode,
             'deep_sleep_seconds': self.deep_sleep_seconds,
             'wheel_size': self.wheel_size,
             'device_api_key': self.device_specific_api_key or '',
+            'config_fetch_interval_seconds': self.config_fetch_interval_seconds,
         }
+    
+    def get_reported_device_name(self) -> str:
+        """
+        Gets the device_name from the most recent configuration report sent by the device.
+        
+        Returns the device_name as reported by the device, not from the database.
+        Returns empty string if no report exists.
+        """
+        try:
+            # Get the most recent configuration report
+            latest_report = self.device.configuration_reports.order_by('-created_at').first()
+            if latest_report and latest_report.reported_config:
+                reported_config = latest_report.reported_config
+                if isinstance(reported_config, dict):
+                    # The reported_config contains the config dict directly
+                    # Structure: {"device_name": "...", "default_id_tag": "...", ...}
+                    device_name = reported_config.get('device_name', '')
+                    if device_name:
+                        return str(device_name)
+        except Exception:
+            pass
+        return ''
 
 
 class DeviceConfigurationReport(models.Model):
