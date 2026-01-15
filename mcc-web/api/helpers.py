@@ -15,8 +15,9 @@ Used by map, ranking, and leaderboard apps.
 """
 
 from typing import List, Dict, Any, Optional
-from django.db.models import QuerySet
-from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, Event, GroupEventStatus
+from django.db.models import QuerySet, Sum
+from django.utils import timezone
+from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, Event, GroupEventStatus, HourlyMetric
 from iot.models import Device
 
 
@@ -63,6 +64,183 @@ def are_all_parents_visible(group: Group) -> bool:
     return True
 
 
+def _calculate_cyclist_totals_from_metrics(cyclists: List[Cyclist], use_cache: bool = True) -> Dict[int, float]:
+    """
+    Calculate total kilometers for cyclists from HourlyMetric.
+    
+    This ensures ranking tables use the same data source as the leaderboard.
+    Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Args:
+        cyclists: List of Cyclist objects to calculate totals for
+        use_cache: Whether to use cache (default: True)
+    
+    Returns:
+        Dictionary mapping cyclist_id to total kilometers
+    """
+    cyclist_ids = [c.id for c in cyclists]
+    if not cyclist_ids:
+        return {}
+    
+    # Sanitize cyclist IDs for cache key
+    cyclist_ids_str = "-".join(map(str, sorted(cyclist_ids)))
+    
+    # Try to get from cache first
+    cache_key = f'ranking_cyclist_totals_{cyclist_ids_str}_{timezone.now().strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+    
+    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each cyclist
+    result: Dict[int, float] = {}
+    
+    total_metrics = HourlyMetric.objects.filter(
+        cyclist_id__in=cyclist_ids
+    ).values('cyclist_id').annotate(
+        total=Sum('distance_km')
+    )
+    
+    for metric in total_metrics:
+        cyclist_id = metric['cyclist_id']
+        if cyclist_id:
+            result[cyclist_id] = float(metric['total'] or 0.0)
+    
+    # Initialize missing cyclists with 0.0
+    for cyclist_id in cyclist_ids:
+        if cyclist_id not in result:
+            result[cyclist_id] = 0.0
+    
+    # Cache the result for 55 seconds
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+    
+    return result
+
+
+def _calculate_device_totals_from_metrics(devices: List[Device], use_cache: bool = True) -> Dict[int, float]:
+    """
+    Calculate total kilometers for devices from HourlyMetric.
+    
+    This ensures ranking tables use the same data source as the leaderboard.
+    Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Args:
+        devices: List of Device objects to calculate totals for
+        use_cache: Whether to use cache (default: True)
+    
+    Returns:
+        Dictionary mapping device_id to total kilometers
+    """
+    device_ids = [d.id for d in devices]
+    if not device_ids:
+        return {}
+    
+    # Sanitize device IDs for cache key
+    device_ids_str = "-".join(map(str, sorted(device_ids)))
+    
+    # Try to get from cache first
+    cache_key = f'ranking_device_totals_{device_ids_str}_{timezone.now().strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+    
+    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each device
+    result: Dict[int, float] = {}
+    
+    total_metrics = HourlyMetric.objects.filter(
+        device_id__in=device_ids
+    ).values('device_id').annotate(
+        total=Sum('distance_km')
+    )
+    
+    for metric in total_metrics:
+        device_id = metric['device_id']
+        if device_id:
+            result[device_id] = float(metric['total'] or 0.0)
+    
+    # Initialize missing devices with 0.0
+    for device_id in device_ids:
+        if device_id not in result:
+            result[device_id] = 0.0
+    
+    # Cache the result for 55 seconds
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+    
+    return result
+
+
+def _calculate_group_totals_from_metrics(groups: List[Group], use_cache: bool = True) -> Dict[int, float]:
+    """
+    Calculate total kilometers for groups from HourlyMetric.
+    
+    This ensures ranking tables use the same data source as the leaderboard.
+    Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Args:
+        groups: List of Group objects to calculate totals for
+        use_cache: Whether to use cache (default: True)
+    
+    Returns:
+        Dictionary mapping group_id to total kilometers
+    """
+    group_ids = [g.id for g in groups]
+    if not group_ids:
+        return {}
+    
+    # Sanitize group IDs for cache key
+    group_ids_str = "-".join(map(str, sorted(group_ids)))
+    
+    # Try to get from cache first
+    cache_key = f'ranking_group_totals_{group_ids_str}_{timezone.now().strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+    
+    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each group
+    result: Dict[int, float] = {}
+    
+    total_metrics = HourlyMetric.objects.filter(
+        group_at_time_id__in=group_ids
+    ).values('group_at_time_id').annotate(
+        total=Sum('distance_km')
+    )
+    
+    for metric in total_metrics:
+        group_id = metric['group_at_time_id']
+        if group_id and group_id in group_ids:
+            result[group_id] = float(metric['total'] or 0.0)
+    
+    # Propagate values to parent groups (hierarchical aggregation)
+    # Process from leaf groups upward to ensure correct aggregation
+    for group in groups:
+        if group.id in result and group.parent and group.parent.id in group_ids:
+            parent_id = group.parent.id
+            if parent_id not in result:
+                result[parent_id] = 0.0
+            result[parent_id] += result[group.id]
+    
+    # Initialize missing groups with 0.0
+    for group_id in group_ids:
+        if group_id not in result:
+            result[group_id] = 0.0
+    
+    # Cache the result for 55 seconds
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+    
+    return result
+
+
 def build_group_hierarchy(
     target_group: Optional[Group] = None,
     kiosk: bool = False,
@@ -89,6 +267,14 @@ def build_group_hierarchy(
         if kiosk:
             parent_groups = parent_groups.filter(distance_total__gt=0)
     
+    # Calculate group totals from HourlyMetric for all groups at once
+    all_groups_list = list(parent_groups)
+    # Also collect all subgroups for calculation
+    for p_group in parent_groups:
+        all_groups_list.extend(list(p_group.children.filter(is_visible=True)))
+    
+    group_totals = _calculate_group_totals_from_metrics(all_groups_list, use_cache=True)
+    
     hierarchy = []
     for p_group in parent_groups:
         p_filter = {'is_visible': True}
@@ -99,20 +285,30 @@ def build_group_hierarchy(
         if show_cyclists:
             direct_qs = p_group.members.filter(**p_filter).select_related(
                 'cyclistdevicecurrentmileage'
-            ).order_by('-distance_total')
+            )
+            direct_members_list = list(direct_qs)
+            
+            # Calculate totals from HourlyMetric for all cyclists at once
+            cyclist_totals = _calculate_cyclist_totals_from_metrics(direct_members_list, use_cache=True)
+            
             direct_members = []
-            for m in direct_qs:
+            for m in direct_members_list:
                 session_km = 0
                 try:
                     if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
                         session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
                 except (AttributeError, ValueError, TypeError):
                     pass
+                # Use total from HourlyMetric instead of distance_total from model
+                total_km = cyclist_totals.get(m.id, 0.0)
                 direct_members.append({
                     'name': m.user_id,
-                    'km': round(m.distance_total, 3),
+                    'km': round(total_km, 3),
                     'session_km': round(session_km, 3)
                 })
+            
+            # Sort by km (from HourlyMetric) descending
+            direct_members = sorted(direct_members, key=lambda x: x['km'], reverse=True)
         
         # Filter subgroups: in kiosk mode, only show groups with distance_total > 0
         # Sort by name to match the group menu sorting
@@ -126,37 +322,51 @@ def build_group_hierarchy(
             if show_cyclists:
                 m_qs = sub.members.filter(**p_filter).select_related(
                     'cyclistdevicecurrentmileage'
-                ).order_by('-distance_total')
+                )
+                sub_members_list = list(m_qs)
+                
+                # Calculate totals from HourlyMetric for all cyclists at once
+                cyclist_totals = _calculate_cyclist_totals_from_metrics(sub_members_list, use_cache=True)
+                
                 sub_member_data = []
-                for m in m_qs:
+                for m in sub_members_list:
                     session_km = 0
                     try:
                         if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
                             session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
                     except (AttributeError, ValueError, TypeError):
                         pass
+                    # Use total from HourlyMetric instead of distance_total from model
+                    total_km = cyclist_totals.get(m.id, 0.0)
                     sub_member_data.append({
                         'name': m.user_id,
-                        'km': round(m.distance_total, 3),
+                        'km': round(total_km, 3),
                         'session_km': round(session_km, 3)
                     })
+                
+                # Sort by km (from HourlyMetric) descending
+                sub_member_data = sorted(sub_member_data, key=lambda x: x['km'], reverse=True)
+            # Use total from HourlyMetric instead of distance_total from model
+            sub_total_km = group_totals.get(sub.id, 0.0)
             # In kiosk mode, only add subgroup if it has distance_total > 0 or has members with distance_total > 0
-            if not kiosk or (sub.distance_total > 0 or len(sub_member_data) > 0):
+            if not kiosk or (sub_total_km > 0 or len(sub_member_data) > 0):
                 subgroups_data.append({
                     'id': sub.id,  # Add subgroup ID for filtering
                     'name': sub.name,
-                    'km': round(sub.distance_total, 3),
+                    'km': round(sub_total_km, 3),
                     'members': sub_member_data
                 })
         
         # Limit subgroups to top 10 by distance_total (sorted descending)
         subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)[:10]
         
-        if not kiosk or (p_group.distance_total > 0 or subgroups_data or direct_members):
+        # Use total from HourlyMetric instead of distance_total from model
+        p_group_total_km = group_totals.get(p_group.id, 0.0)
+        if not kiosk or (p_group_total_km > 0 or subgroups_data or direct_members):
             hierarchy.append({
                 'id': p_group.id,  # Add group ID for filtering
                 'name': p_group.name,
-                'km': round(p_group.distance_total, 3),
+                'km': round(p_group_total_km, 3),
                 'direct_members': direct_members,
                 'subgroups': subgroups_data
             })
