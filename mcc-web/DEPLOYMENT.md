@@ -61,6 +61,28 @@ The version is determined from:
 2. Git tag/describe (fallback)
 3. "dev" (if neither available)
 
+### Generating version.txt
+
+You can generate `version.txt` automatically using:
+
+```bash
+# Auto-detect from git
+python utils/generate_version.py
+# Or using make
+make version
+
+# Set specific version
+python utils/generate_version.py --version 1.2.3
+
+# Use current git tag (if HEAD is on a tag)
+python utils/generate_version.py --tag
+
+# Remove version.txt (fallback to git describe)
+python utils/generate_version.py --clean
+# Or using make
+make version-clean
+```
+
 ## Step 2: Deploy to Production
 
 Use `utils/deploy_production.py` to deploy the application on the production server.

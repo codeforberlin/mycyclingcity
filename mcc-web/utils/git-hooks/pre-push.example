@@ -1,0 +1,26 @@
+#!/bin/bash
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Example Git pre-push hook to automatically update version.txt
+#
+# Installation:
+#   cp utils/git-hooks/pre-push.example .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+#
+# This hook runs before pushing and ensures version.txt is up-to-date
+# based on the current git state.
+
+# Get the project root directory
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+cd "$PROJECT_ROOT"
+
+# Generate version.txt from current git state
+python utils/generate_version.py --force --quiet
+
+# Add version.txt to the commit if it changed
+if ! git diff --quiet version.txt; then
+    echo "Updating version.txt..."
+    git add version.txt
+fi

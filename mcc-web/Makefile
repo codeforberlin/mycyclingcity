@@ -1,4 +1,4 @@
-.PHONY: test test-regression test-load-data test-reset help
+.PHONY: test test-regression test-load-data test-reset help version version-clean
 
 help:
 	@echo "MCC Test Suite Commands:"
@@ -7,6 +7,10 @@ help:
 	@echo "  make test-load-data    - Load test data into database"
 	@echo "  make test-reset        - Reset database and load test data"
 	@echo "  make test-clean        - Reset database (clears all mileage data)"
+	@echo ""
+	@echo "Version Management:"
+	@echo "  make version          - Generate version.txt from git"
+	@echo "  make version-clean    - Remove version.txt"
 
 test:
 	@echo "Running all tests..."
@@ -36,4 +40,12 @@ test-coverage:
 	@echo "Running tests with coverage..."
 	pip install pytest-cov || true
 	pytest api/tests/ --cov=api --cov-report=html --cov-report=term
+
+version:
+	@echo "Generating version.txt from git..."
+	python utils/generate_version.py
+
+version-clean:
+	@echo "Removing version.txt..."
+	python utils/generate_version.py --clean
 

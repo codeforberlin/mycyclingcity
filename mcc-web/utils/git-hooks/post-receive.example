@@ -1,0 +1,24 @@
+#!/bin/bash
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Example Git post-receive hook to automatically generate version.txt
+#
+# Installation:
+#   cp utils/git-hooks/post-receive.example .git/hooks/post-receive
+#   chmod +x .git/hooks/post-receive
+#
+# This hook runs after receiving a push and generates version.txt
+# if a new tag was pushed.
+
+# Get the project root directory
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+# Check if any tags were pushed
+while read oldrev newrev refname; do
+    if [[ "$refname" =~ ^refs/tags/ ]]; then
+        echo "Tag detected: $refname"
+        cd "$PROJECT_ROOT"
+        python utils/generate_version.py --tag
+    fi
+done
