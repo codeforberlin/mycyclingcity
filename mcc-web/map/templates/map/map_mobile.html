@@ -1,0 +1,3341 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    map_mobile.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+     
+     Mobile-only template - Minimal version for testing
+-->
+
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% trans "Live-Map" %}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* Full-screen layout */
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            background: #000; 
+            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Map fills entire viewport */
+        #map { 
+            height: 100dvh; 
+            width: 100vw; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* View Switcher Button - Top Right */
+        .view-switcher-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000 !important;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            font-size: 16px;
+            font-weight: 500;
+            color: #1a1a1a;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 44px; /* Touch-friendly */
+        }
+
+        .view-switcher-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.05);
+        }
+
+        /* Table View Section */
+        #table-view {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            background: #fff;
+            z-index: 500;
+            overflow: hidden; /* Prevent scrolling on container */
+            padding: 0;
+            padding-top: 80px; /* Space for view switcher button */
+            flex-direction: column;
+        }
+
+        #table-view.active {
+            display: flex;
+        }
+
+        .table-view-content {
+            padding: 20px;
+            padding-top: 0; /* No top padding, filter bar is in normal flow */
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            order: 2; /* Second in flex order */
+            position: relative;
+            z-index: 0;
+            min-height: 0; /* Important for flex scrolling */
+            margin-top: 0; /* No margin, filter bar is above */
+        }
+
+        .table-group-container {
+            background: white;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-group-header {
+            background: #007bff;
+            color: white;
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 600;
+            min-height: 44px; /* Touch-friendly */
+        }
+
+        .table-group-header:hover {
+            background: #0056b3;
+        }
+
+        .table-group-content {
+            padding: 16px;
+            display: none;
+        }
+
+        .table-group-container.is-open .table-group-content {
+            display: block;
+        }
+
+        .table-group-toggle-icon {
+            margin-right: 8px;
+            transition: transform 0.3s;
+            display: inline-block;
+        }
+
+        .table-group-container.is-open .table-group-toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .table-subgroup {
+            border-left: 4px solid #007bff;
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .table-subgroup-header {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .table-subgroup-members {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .table-member-item {
+            background: white;
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .table-member-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .table-member-km {
+            font-weight: 600;
+            color: #28a745;
+            margin-left: 8px;
+        }
+
+        .table-member-session {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .table-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .table-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        /* Table Filter Bar */
+        .table-filter-bar {
+            position: relative; /* Not sticky, just in normal flow */
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            flex-shrink: 0; /* Don't shrink */
+            width: 100%;
+            order: 1; /* First in flex order */
+        }
+
+        .table-filter-bar.collapsed {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .table-filter-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            cursor: pointer;
+            min-height: 44px; /* Touch-friendly */
+            user-select: none;
+            background: #fff;
+        }
+
+        .table-filter-toggle:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        .table-filter-toggle-text {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-filter-toggle-icon {
+            font-size: 18px;
+            color: #666;
+            transition: transform 0.3s ease;
+        }
+
+        .table-filter-bar.expanded .table-filter-toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .table-filter-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 16px;
+            margin-bottom: 0;
+            background: #fff;
+        }
+
+        .table-filter-bar.expanded .table-filter-content {
+            max-height: 300px;
+            padding: 12px 16px 16px 16px;
+            overflow-y: auto;
+            margin-bottom: 0;
+            background: #fff;
+        }
+
+        .table-filter-chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .table-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            min-height: 40px; /* Touch-friendly */
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(0, 0, 0, 0.15);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .table-filter-chip:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: rgba(0, 123, 255, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-filter-chip.active {
+            background: var(--chip-color, #007bff);
+            color: white;
+            border-color: var(--chip-color, #007bff);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+            opacity: 1;
+        }
+
+        .table-filter-chip:not(.active) {
+            background: rgba(255, 255, 255, 0.7);
+            color: #666;
+            border-color: rgba(0, 0, 0, 0.2);
+            opacity: 0.7;
+        }
+
+        .table-filter-chip .chip-check {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .table-filter-chip.active .chip-check {
+            display: inline;
+        }
+
+        .table-filter-chip:not(.active) .chip-check {
+            display: none;
+        }
+
+        /* Info Hub Button */
+        .info-hub-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000 !important;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            font-size: 28px;
+            color: #1a1a1a;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            min-height: 44px; /* Touch-friendly */
+            min-width: 44px;
+        }
+
+        .info-hub-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.05);
+        }
+
+        /* Info Hub Modal */
+        .info-hub-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .info-hub-modal-overlay.show {
+            display: flex;
+        }
+
+        .info-hub-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            max-width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .info-hub-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .info-hub-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: #1a1a1a;
+        }
+
+        .info-hub-version {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-hub-body {
+            padding: 20px;
+        }
+
+        .info-hub-section {
+            margin-bottom: 24px;
+        }
+
+        .info-hub-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .info-hub-accordion-item {
+            margin-bottom: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .info-hub-accordion-header {
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .info-hub-accordion-question {
+            font-weight: 500;
+            color: #1a1a1a;
+        }
+
+        .info-hub-accordion-icon {
+            transition: transform 0.2s;
+        }
+
+        .info-hub-accordion-item.open .info-hub-accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        .info-hub-accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s;
+        }
+
+        .info-hub-accordion-item.open .info-hub-accordion-content {
+            max-height: 500px;
+        }
+
+        .info-hub-accordion-answer {
+            padding: 12px;
+            color: #4a4a4a;
+            line-height: 1.6;
+        }
+
+        .info-hub-language-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 16px;
+            background: #fff;
+            min-height: 44px; /* Touch-friendly */
+        }
+
+        .info-hub-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .info-hub-footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-hub-footer-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .info-hub-footer-link:hover {
+            text-decoration: underline;
+        }
+
+        .info-hub-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            font-size: 28px;
+            color: #666;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .info-hub-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #1a1a1a;
+        }
+
+        /* Milestone Overlay */
+        .milestone-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            max-width: 90%;
+            width: auto;
+        }
+
+        .milestone-overlay.hidden {
+            display: none;
+        }
+
+        .milestone-card {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            animation: milestoneSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            min-width: 280px;
+            max-width: 400px;
+        }
+
+        @keyframes milestoneSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(100px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .milestone-card.fade-out {
+            animation: milestoneSlideOut 0.3s ease-in forwards;
+        }
+
+        @keyframes milestoneSlideOut {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(100px) scale(0.8);
+            }
+        }
+
+        .milestone-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .milestone-card-icon {
+            font-size: 24px;
+            line-height: 1;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+        }
+
+        .milestone-card-title {
+            flex: 1;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.8);
+        }
+
+        .milestone-card-close-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .milestone-card-close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .milestone-card-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .milestone-card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .milestone-card-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .milestone-card-info-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .milestone-card-info-value {
+            font-size: 13px;
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .milestone-card-info-value.highlight {
+            color: #ffd700;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
+        }
+
+        /* Champions Overlay */
+        .champions-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            transition: opacity 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .champions-overlay.hidden {
+            display: none;
+        }
+
+        .mini-podium {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .mini-podium-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            min-width: 70px;
+            max-width: 80px;
+        }
+
+        .mini-podium-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid;
+            object-fit: cover;
+            background: white;
+        }
+
+        .mini-podium-item[data-rank="1"] .mini-podium-avatar {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
+        .mini-podium-item[data-rank="2"] .mini-podium-avatar {
+            border-color: #c0c0c0;
+            box-shadow: 0 0 8px rgba(192, 192, 192, 0.5);
+        }
+
+        .mini-podium-item[data-rank="3"] .mini-podium-avatar {
+            border-color: #cd7f32;
+            box-shadow: 0 0 8px rgba(205, 127, 50, 0.5);
+        }
+
+        .mini-podium-rank {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.8);
+        }
+
+        .mini-podium-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60px;
+        }
+
+        .mini-podium-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: 4px;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            max-width: 70px;
+        }
+
+        .mini-podium-parent-group {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-podium-travel-time {
+            color: rgba(255, 255, 255, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-podium-top-contributor {
+            color: rgba(255, 215, 0, 0.9);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-podium-mvp {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Floating Layer Control */
+        .floating-layer-control {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 2000 !important;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 280px;
+            transition: all 0.3s;
+        }
+
+        .layer-control-toggle {
+            width: 48px;
+            height: 48px;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            transition: all 0.3s;
+            padding: 0;
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .layer-control-toggle:hover {
+            background: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+        }
+
+        .layer-control-content {
+            display: none;
+            padding: 16px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .floating-layer-control.expanded .layer-control-content {
+            display: block;
+        }
+
+        .layer-control-section {
+            margin-bottom: 16px;
+        }
+
+        .layer-control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .layer-control-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .layer-control-toggles {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modern-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px 12px;
+            min-height: 44px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .modern-toggle:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        .layer-toggle-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .modern-toggle-slider {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 24px;
+            transition: background 0.3s;
+            flex-shrink: 0;
+            border: 2px solid transparent;
+        }
+
+        .modern-toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .layer-toggle-input:checked + .modern-toggle-slider {
+            background: #007bff;
+        }
+
+        .layer-toggle-input:checked + .modern-toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .modern-toggle-label {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        /* Activity Toast System (Activity Chips) */
+        .activity-toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 2000 !important;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        /* List mode for activity toasts */
+        .activity-toast-container.list-mode {
+            max-width: 320px;
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+        }
+
+        .activity-toast-container.list-mode::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .activity-toast-container.list-mode::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+        }
+
+        .activity-toast-container.list-mode::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .activity-toast-container.list-mode::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Toggle button for list/toast mode */
+        .activity-list-toggle {
+            position: fixed;
+            top: 80px;
+            right: 340px;
+            z-index: 2001;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .activity-list-toggle:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.05);
+        }
+
+        .activity-list-toggle.active {
+            background: rgba(0, 123, 255, 0.9);
+            color: white;
+        }
+
+        .activity-toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+            animation: toastSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .activity-toast.fade-out {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toastSlideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+        }
+
+        .activity-toast-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .activity-toast-icon {
+            font-size: 18px;
+        }
+
+        .activity-toast-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #1a1a1a;
+        }
+
+        .activity-toast-body {
+            font-size: 12px;
+            color: #4a4a4a;
+            line-height: 1.4;
+        }
+
+        .activity-toast-cyclist {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .activity-toast-distance {
+            font-weight: 600;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <!-- View Switcher Button - Top Right -->
+    <button class="view-switcher-button" id="view-switcher-button" onclick="toggleView()">
+        <span id="view-switcher-text">{% trans "Tabelle" %}</span>
+    </button>
+
+    <!-- Floating Layer Control (Routes Selection) -->
+    <div class="floating-layer-control" id="floating-layer-control">
+        <button class="layer-control-toggle" onclick="toggleLayerControl()" title="{% trans 'Ebenen anzeigen/verstecken' %}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                <path d="M2 17l10 5 10-5"></path>
+                <path d="M2 12l10 5 10-5"></path>
+            </svg>
+        </button>
+        <div class="layer-control-content" id="layer-control-content">
+            <div class="layer-control-section" id="layer-control-tracks-section">
+                <h3 class="layer-control-title">{% trans "Routen" %}</h3>
+                <div class="layer-control-toggles">
+                    <label class="modern-toggle">
+                        <input type="checkbox" id="layer-track-all" class="layer-toggle-input" 
+                               {% if not selected_track_ids or selected_track_ids|length == 0 %}checked{% endif %}
+                               onchange="handleLayerTrackAllChange(this)">
+                        <span class="modern-toggle-slider"></span>
+                        <span class="modern-toggle-label">{% trans "Alle Routen" %}</span>
+                    </label>
+                    {% for track in all_tracks %}
+                    <label class="modern-toggle">
+                        <input type="checkbox" class="layer-toggle-input layer-track-toggle" 
+                               value="{{ track.id }}" 
+                               data-color="#007bff"
+                               style="--toggle-color: #007bff;"
+                               {% if selected_track_ids and track.id|stringformat:"s" in selected_track_ids %}checked{% else %}{% if not selected_track_ids or selected_track_ids|length == 0 %}checked{% endif %}{% endif %}
+                               onchange="handleLayerTrackChange(this)" 
+                               id="layer-track-{{ track.id }}">
+                        <span class="modern-toggle-slider"></span>
+                        <span class="modern-toggle-label">{% trans track.name %}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Table View Section -->
+    <div id="table-view">
+        <!-- Table Filter Bar -->
+        <div class="table-filter-bar collapsed" id="table-filter-bar">
+            <div class="table-filter-toggle" onclick="toggleTableFilterBar()">
+                <span class="table-filter-toggle-text">
+                    <span>🔽</span>
+                    <span>{% trans "Filter" %}</span>
+                </span>
+                <span class="table-filter-toggle-icon">▼</span>
+            </div>
+            <div class="table-filter-content">
+                <div class="table-filter-chips-container" id="table-filter-chips-container">
+                    <!-- Filter chips will be dynamically generated -->
+                </div>
+            </div>
+        </div>
+        <!-- Table Content (scrollable) -->
+        <div class="table-view-content" id="table-view-content">
+            {% load map_filters %}
+            {% if hierarchy %}
+                {% for group in hierarchy %}
+                <div class="table-group-container" id="table-group-{{ forloop.counter }}">
+                    <div class="table-group-header" onclick="toggleTableGroup('table-group-{{ forloop.counter }}')">
+                        <span>
+                            <span class="table-group-toggle-icon">▶</span>
+                            🏢 {{ group.name }}
+                        </span>
+                        <span style="font-weight: bold;">{{ group.km|default:0|format_km_de:2 }} km</span>
+                    </div>
+                    
+                    <div class="table-group-content">
+                        {% for sub in group.subgroups %}
+                        <div class="table-subgroup">
+                            <div class="table-subgroup-header">
+                                <span>👥 {{ sub.name }}</span>
+                                <span style="font-weight: bold; color: #007bff;">{{ sub.km|default:0|format_km_de:2 }} km</span>
+                            </div>
+                            
+                            {% if sub.members %}
+                            <div class="table-subgroup-members">
+                                {% for m in sub.members %}
+                                <div class="table-member-item">
+                                    <div>
+                                        <span class="table-member-name">👤 {{ m.name }}</span>
+                                        <span class="table-member-km">{{ m.km|default:0|format_km_de:2 }} km</span>
+                                    </div>
+                                    {% if m.session_km %}
+                                    <div class="table-member-session">
+                                        {% trans "Session" %}: {{ m.session_km|default:0|format_km_de:2 }} km
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        {% if group.direct_members %}
+                        <div class="table-subgroup">
+                            <div class="table-subgroup-header">
+                                <span>👥 {% trans "Direkte Mitglieder" %}</span>
+                            </div>
+                            <div class="table-subgroup-members">
+                                {% for m in group.direct_members %}
+                                <div class="table-member-item">
+                                    <div>
+                                        <span class="table-member-name">👤 {{ m.name }}</span>
+                                        <span class="table-member-km">{{ m.km|default:0|format_km_de:2 }} km</span>
+                                    </div>
+                                    {% if m.session_km %}
+                                    <div class="table-member-session">
+                                        {% trans "Session" %}: {{ m.session_km|default:0|format_km_de:2 }} km
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="table-empty">{% trans "Keine aktiven Gruppen gefunden." %}</div>
+            {% endif %}
+            
+            {% if events_data %}
+            <div style="margin-top: 30px; border-top: 3px solid #28a745; padding-top: 20px;">
+                <h2 style="color: #28a745; margin-bottom: 20px; font-size: 18px; font-weight: 600;">🎉 {% trans "Events" %}</h2>
+                {% for event in events_data %}
+                <div class="table-group-container" id="table-event-{{ event.id }}" style="{% if event.is_ended %}background: #f5f5f5; border: 2px solid #6c757d;{% else %}background: #f0f9ff; border: 2px solid #28a745;{% endif %}">
+                    <div class="table-group-header" onclick="toggleTableGroup('table-event-{{ event.id }}')" style="{% if event.is_ended %}background: #6c757d;{% else %}background: #28a745;{% endif %}">
+                        <span>
+                            <span class="table-group-toggle-icon">▶</span>
+                            {% if event.is_ended %}🏁{% else %}🎉{% endif %} {{ event.name }}
+                            {% if event.event_type %}<small style="font-size: 0.85em; opacity: 0.9;">({{ event.event_type }})</small>{% endif %}
+                            {% if event.is_ended %}<span style="font-size: 0.85em; opacity: 0.8;">- {% trans "Beendet" %}</span>{% endif %}
+                        </span>
+                        <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {{ event.total_km|default:0|format_km_de:2 }} km</span>
+                    </div>
+                    
+                    <div class="table-group-content">
+                        {% if event.start_time or event.end_time %}
+                        <div style="padding: 12px; margin-bottom: 12px; background: {% if event.is_ended %}#e9ecef{% else %}#e8f5e9{% endif %}; border-radius: 6px; border-left: 4px solid {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">
+                            <div style="font-weight: 600; color: {% if event.is_ended %}#495057{% else %}#2e7d32{% endif %}; margin-bottom: 6px; font-size: 14px;">📅 {% trans "Zeitraum" %}:</div>
+                            {% if event.start_time %}
+                            <div style="color: #495057; font-size: 13px;">{% trans "Start" %}: <strong>{{ event.start_time|date:"d.m.Y H:i" }}</strong></div>
+                            {% endif %}
+                            {% if event.end_time %}
+                            <div style="color: #495057; font-size: 13px;">{% trans "Ende" %}: <strong>{{ event.end_time|date:"d.m.Y H:i" }}</strong>{% if event.is_ended %} <span style="color: #dc3545; font-weight: bold;">({% trans "Beendet" %})</span>{% endif %}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if event.description %}
+                        <div style="padding: 12px; margin-bottom: 12px; background: white; border-radius: 6px; font-style: italic; color: #495057; font-size: 13px;">
+                            {{ event.description }}
+                        </div>
+                        {% endif %}
+                        
+                        {% for group in event.groups %}
+                        <div class="table-subgroup" style="border-left-color: {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">
+                            <div class="table-subgroup-header">
+                                <span>👥 {{ group.name }}</span>
+                                <span style="font-weight: bold; color: {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">{{ group.km|default:0|format_km_de:2 }} km</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Activity List Toggle Button -->
+    <button class="activity-list-toggle" id="activity-list-toggle" onclick="toggleActivityListMode()" title="{% trans "Listenansicht umschalten" %}">
+        📋
+    </button>
+
+    <!-- Activity Toast Container (Activity Chips) -->
+    <div class="activity-toast-container" id="activity-toast-container"></div>
+
+    <!-- Global Information Hub Button -->
+    <button class="info-hub-button" onclick="openInfoHubModal()" title="{% trans 'Information' %}">
+        ℹ
+    </button>
+
+    <!-- Global Information Hub Modal -->
+    {% include "map/partials/info_modal.html" %}
+
+    <!-- Champions Overlay (Winners Podium) -->
+    <div id="champions-overlay" class="champions-overlay hidden">
+        <div id="mini-podium" class="mini-podium">
+            <!-- Top 3 avatars will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <!-- Milestone Overlay -->
+    <div id="milestone-overlay" class="milestone-overlay hidden">
+        <div id="milestone-card" class="milestone-card">
+            <div class="milestone-card-header">
+                <div class="milestone-card-icon">🏆</div>
+                <div class="milestone-card-title">{% trans "Meilenstein erreicht!" %}</div>
+                <button class="milestone-card-close-btn" onclick="closeMilestoneOverlay()">&times;</button>
+            </div>
+            <div class="milestone-card-name" id="milestone-overlay-name"></div>
+            <div class="milestone-card-info">
+                <div class="milestone-card-info-item">
+                    <div class="milestone-card-info-label">{% trans "Reiseroute" %}</div>
+                    <div class="milestone-card-info-value highlight" id="milestone-overlay-track-name"></div>
+                </div>
+                <div class="milestone-card-info-item">
+                    <div class="milestone-card-info-label">{% trans "TOP Gruppe" %}</div>
+                    <div class="milestone-card-info-value highlight" id="milestone-overlay-top-group"></div>
+                </div>
+                <div class="milestone-card-info-item">
+                    <div class="milestone-card-info-label">{% trans "Gruppe" %}</div>
+                    <div class="milestone-card-info-value highlight" id="milestone-overlay-leaf-group"></div>
+                </div>
+                <div class="milestone-card-info-item">
+                    <div class="milestone-card-info-label">{% trans "Belohnung" %}</div>
+                    <div class="milestone-card-info-value" id="milestone-overlay-reward"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js"></script>
+    {% load static %}
+    <script src="{% static 'js/timezone-converter.js' %}"></script>
+    <script>
+        /* eslint-disable */
+        // Django Template Variables
+        var milestonePopupDuration = {{ milestone_popup_duration|default:30000 }};
+        var textCurrentlyCycling = '{% trans "Aktuell radelnd" %}';
+        // Initialize map
+        var map = L.map('map', {
+            zoomControl: true,
+            zoomControlOptions: {
+                position: 'topleft'
+            }
+        }).setView([51.16, 10.45], 6);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Ensure buttons are visible after map initialization
+        setTimeout(function() {
+            var viewButton = document.getElementById('view-switcher-button');
+            var infoButton = document.querySelector('.info-hub-button');
+            if (viewButton) {
+                viewButton.style.display = 'block';
+                viewButton.style.visibility = 'visible';
+            }
+            if (infoButton) {
+                infoButton.style.display = 'flex';
+                infoButton.style.visibility = 'visible';
+            }
+        }, 100);
+
+        // Make map available globally
+        window.map = map;
+
+        // Initialize data structures
+        var tracks = {{ tracks_json|safe }};
+        window.tracks = tracks;
+        console.log('Tracks loaded:', tracks, 'Count:', tracks ? tracks.length : 0);
+        var trackLayers = L.featureGroup().addTo(map);
+        var polylineLookup = {};
+        var trackPolylineMap = {};
+        var trackStartEndMarkersMap = {};
+        var avatarMarkers = {};
+        var finishTimes = {};
+        window.polylineLookup = polylineLookup;
+        window.avatarMarkers = avatarMarkers;
+        window.finishTimes = finishTimes;
+        var milestones = {{ milestones_json|safe }};
+        var milestoneMarkers = L.layerGroup().addTo(map);
+        var devices = {{ devices_json|safe }};
+        var deviceMarkers = L.layerGroup().addTo(map);
+
+        // Map size adjustment function - fixes quarter-map issue on mobile
+        function adjustMap() {
+            if (typeof map !== 'undefined') {
+                map.invalidateSize();
+            }
+        }
+        
+        window.addEventListener('resize', adjustMap);
+        
+        // CRITICAL: Call invalidateSize after 300ms delay to prevent quarter-map issue
+        setTimeout(function() {
+            adjustMap();
+        }, 300);
+        
+        // Additional calls to ensure map fills after CSS is fully applied
+        setTimeout(adjustMap, 500);
+        setTimeout(adjustMap, 1000);
+
+        // Format number based on current language
+        function formatNumberDE(value, decimals) {
+            if (value === null || value === undefined || isNaN(value)) {
+                const lang = document.documentElement.lang || 'de';
+                const isGerman = lang.startsWith('de');
+                const decimalSep = isGerman ? ',' : '.';
+                return '0' + (decimals > 0 ? decimalSep + '0'.repeat(decimals) : '');
+            }
+            const num = parseFloat(value);
+            const fixed = num.toFixed(decimals || 2);
+            const parts = fixed.split('.');
+            const integerStr = parts[0];
+            const decimalPart = parts[1] || '';
+            
+            const lang = document.documentElement.lang || 'de';
+            const isGerman = lang.startsWith('de');
+            
+            let integerWithSeparators = '';
+            for (let i = 0; i < integerStr.length; i++) {
+                if (i > 0 && (integerStr.length - i) % 3 === 0) {
+                    integerWithSeparators += isGerman ? '.' : ',';
+                }
+                integerWithSeparators += integerStr[i];
+            }
+            
+            if (decimalPart) {
+                return integerWithSeparators + (isGerman ? ',' : '.') + decimalPart;
+            }
+            return integerWithSeparators;
+        }
+
+        // Calculate position on track
+        function calculatePosition(g) {
+            var mapInstance = window.map || map;
+            var lookup = window.polylineLookup || polylineLookup;
+            if (lookup[g.track_id]) {
+                var poly = lookup[g.track_id], latlngs = poly.getLatLngs(), total = 0;
+                for (var i = 0; i < latlngs.length - 1; i++) total += latlngs[i].distanceTo(latlngs[i+1]);
+                var ratio = Math.max(0, Math.min(1, (g.km * 1000) / total));
+                return L.GeometryUtil.interpolateOnLine(mapInstance, poly, ratio).latLng;
+            }
+            return null;
+        }
+        window.calculatePosition = calculatePosition;
+
+        // Create avatar icon
+        function createAvatarIcon(g, xOffset, yOffset, rank) {
+            var displayKm = g.km || 0;
+            var groupName = ((g.display_name || g.name) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            var transform = '';
+            if (xOffset !== 0 || yOffset !== 0) {
+                transform = `transform: translate(${xOffset}px, -${yOffset}px);`;
+            }
+            var rankDisplay = '';
+            if (rank !== undefined && rank !== null && rank > 0) {
+                var rankEmoji = '';
+                if (rank === 1) rankEmoji = '🥇';
+                else if (rank === 2) rankEmoji = '🥈';
+                else if (rank === 3) rankEmoji = '🥉';
+                rankDisplay = `<div style="font-size: 16px; font-weight: bold; margin-bottom: 2px;">${rankEmoji} ${rank}.</div>`;
+            }
+            
+            var html = '<div style="text-align: center; ' + transform + '">' +
+                rankDisplay +
+                '<img src="' + (g.logo || '/static/map/images/default_group.png') + '" ' +
+                'style="width: 50px; height: 50px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); background: #fff;" ' +
+                'onerror="this.src=\'/static/map/images/default_group.png\'" />' +
+                '<div style="background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-top: 4px; white-space: nowrap;">' +
+                groupName + '<br>' + formatNumberDE(displayKm, 2) + ' km' +
+                '</div>' +
+                '</div>';
+            
+            return L.divIcon({
+                className: 'avatar-marker',
+                html: html,
+                iconSize: [60, 80],
+                iconAnchor: [30, 80]
+            });
+        }
+
+        // Initialize tracks
+        function initializeTracks() {
+            // Use window.tracks to ensure we have access to the global variable
+            var tracks = window.tracks || [];
+            
+            if (!tracks || !Array.isArray(tracks) || tracks.length === 0) {
+                console.warn('No tracks available for initialization', tracks);
+                return;
+            }
+            if (!map) {
+                console.warn('Map not available for initialization');
+                return;
+            }
+            if (!trackLayers) {
+                console.warn('TrackLayers not available for initialization');
+                return;
+            }
+            
+            var urlParams = new URLSearchParams(window.location.search);
+            var urlTrackIds = urlParams.get('track_ids');
+            var visibleTrackIds = [];
+            
+            if (urlTrackIds === 'none') {
+                visibleTrackIds = [];
+            } else if (urlTrackIds && urlTrackIds !== 'none') {
+                visibleTrackIds = urlTrackIds.split(',').map(function(id) { 
+                    return parseInt(id.trim()); 
+                }).filter(function(id) { return !isNaN(id); });
+            } else {
+                // No URL parameter - show all tracks by default
+                visibleTrackIds = tracks.map(function(t) { 
+                    return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
+                }).filter(function(id) { return !isNaN(id); });
+            }
+            
+            console.log('Initializing tracks with visibleTrackIds:', visibleTrackIds, 'from', tracks.length, 'total tracks');
+            
+            // Use updateTrackVisibility to handle tracks and milestones together
+            updateTrackVisibility(visibleTrackIds);
+            
+            // Fit bounds on initial load
+            if (visibleTrackIds.length > 0 && !map._initialBoundsSet) {
+                var visibleBounds = [];
+                visibleTrackIds.forEach(function(trackId) {
+                    var track = tracks.find(function(t) { 
+                        var tid = typeof t.id === 'string' ? parseInt(t.id) : t.id;
+                        return tid === trackId; 
+                    });
+                    if (track && track.points && Array.isArray(track.points) && track.points.length > 0) {
+                        try {
+                            var bounds = L.latLngBounds(track.points);
+                            visibleBounds.push(bounds);
+                        } catch (e) {
+                            console.error('Error creating bounds for track', trackId, e);
+                        }
+                    }
+                });
+                if (visibleBounds.length > 0) {
+                    try {
+                        var combinedBounds = visibleBounds[0];
+                        for (var i = 1; i < visibleBounds.length; i++) {
+                            combinedBounds.extend(visibleBounds[i]);
+                        }
+                        map.fitBounds(combinedBounds);
+                        map._initialBoundsSet = true;
+                    } catch (e) {
+                        console.error('Error fitting bounds', e);
+                    }
+                }
+            }
+        }
+
+        // Display devices as markers
+        devices.forEach(function(d) {
+            if (d.lat && d.lon) {
+                var deviceIcon = L.divIcon({
+                    className: 'device-marker',
+                    html: '<div style="background: #28a745; border: 3px solid #155724; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">🚲</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                var marker = L.marker([d.lat, d.lon], {icon: deviceIcon}).addTo(deviceMarkers);
+                var popupContent = '<strong>{% trans "Gerät" %}: ' + d.name + '</strong><br>{% trans "Gesamt" %}: ' + formatNumberDE(d.distance_total, 2) + ' km';
+                if (d.last_active) {
+                    popupContent += '<br>{% trans "Zuletzt aktiv" %}: ' + new Date(d.last_active).toLocaleString('de-DE');
+                }
+                marker.bindPopup(popupContent);
+            }
+        });
+
+        // Display milestones as markers
+        var milestoneMarkerMap = {};
+        var milestonesByTrackId = {}; // Group milestones by track_id
+        milestones.forEach(function(m) {
+            if (m.lat && m.lon) {
+                // Store track_id for this milestone
+                var trackId = m.track_id || null;
+                if (trackId) {
+                    trackId = typeof trackId === 'string' ? parseInt(trackId) : trackId;
+                    if (!milestonesByTrackId[trackId]) {
+                        milestonesByTrackId[trackId] = [];
+                    }
+                }
+                var isTarget = false;
+                if (m.name && (m.name.toLowerCase().includes('ziel') || m.name.toLowerCase().includes('target'))) {
+                    isTarget = true;
+                } else if (m.track_total_length_km) {
+                    var distanceToEnd = Math.abs(m.track_total_length_km - (m.km || 0));
+                    if (distanceToEnd < 0.1) {
+                        isTarget = true;
+                    }
+                }
+                
+                var isReached = m.is_reached || false;
+                var bgColor, borderColor, iconEmoji;
+                
+                if (isTarget) {
+                    bgColor = isReached ? '#28a745' : '#20c997';
+                    borderColor = isReached ? '#155724' : '#17a2b8';
+                    iconEmoji = '🏁';
+                } else {
+                    bgColor = isReached ? '#28a745' : '#ffd700';
+                    borderColor = isReached ? '#1e7e34' : '#ff8c00';
+                    iconEmoji = isReached ? '✅' : '🏆';
+                }
+                
+                var milestoneIcon = L.divIcon({
+                    className: 'milestone-marker',
+                    html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: ' + (isTarget ? '8px' : '50%') + '; width: ' + (isTarget ? '40px' : '30px') + '; height: ' + (isTarget ? '40px' : '30px') + '; display: flex; align-items: center; justify-content: center; font-size: ' + (isTarget ? '24px' : '18px') + '; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: ' + (isTarget ? 'rotate(-5deg)' : 'none') + ';">' + iconEmoji + '</div>',
+                    iconSize: [isTarget ? 40 : 30, isTarget ? 40 : 30],
+                    iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
+                });
+                var marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
+                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
+                popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + m.name : m.name) + '</div>';
+                popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 1) + ' km</div>';
+                if (isTarget) {
+                    popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
+                } else {
+                    if (m.text) {
+                        popupContent += '<div class="milestone-reward-text">' + m.text + '</div>';
+                    }
+                }
+                if (isReached && m.winner_group_name) {
+                    popupContent += '<div class="milestone-group-label">{% trans "Erreicht von" %}</div>';
+                    var groupDisplay = m.winner_group_name;
+                    if (m.winner_parent_group_name) {
+                        groupDisplay += '<br><span style="font-size: 0.85em; opacity: 0.9;">(' + m.winner_parent_group_name + ')</span>';
+                    }
+                    popupContent += '<div class="milestone-group-name">' + groupDisplay + '</div>';
+                    if (m.reached_at) {
+                        var reachedDate = new Date(m.reached_at);
+                        popupContent += '<div class="milestone-date">{% trans "Erreicht am" %}: ' + reachedDate.toLocaleString('de-DE') + '</div>';
+                    }
+                }
+                marker.bindPopup(popupContent);
+                if (m.id) {
+                    milestoneMarkerMap[m.id] = marker;
+                    // Store marker with track_id reference
+                    if (trackId && milestonesByTrackId[trackId]) {
+                        milestonesByTrackId[trackId].push({
+                            id: m.id,
+                            marker: marker
+                        });
+                    }
+                } else {
+                    milestoneMarkerMap[m.name] = marker;
+                    // Store marker with track_id reference
+                    if (trackId && milestonesByTrackId[trackId]) {
+                        milestonesByTrackId[trackId].push({
+                            name: m.name,
+                            marker: marker
+                        });
+                    }
+                }
+            }
+        });
+        window.milestonesByTrackId = milestonesByTrackId;
+
+        // Refresh avatars
+        function refreshAvatars(data) {
+            if (!data || !data.avatars) {
+                data = { avatars: data || [] };
+            }
+            var avatars = data.avatars || data;
+            var mapInstance = window.map || map;
+            var markers = window.avatarMarkers || avatarMarkers;
+            var calcPos = window.calculatePosition || calculatePosition;
+            var finishTimes = window.finishTimes || {};
+
+            // Group avatars by track_id
+            var avatarsByTrack = {};
+            avatars.forEach(function(g) {
+                if (!avatarsByTrack[g.track_id]) {
+                    avatarsByTrack[g.track_id] = [];
+                }
+                avatarsByTrack[g.track_id].push(g);
+            });
+
+            // Check if exactly one track is active
+            var urlParams = new URLSearchParams(window.location.search);
+            var urlTrackIds = urlParams.get('track_ids');
+            var activeTrackIds = [];
+            
+            if (urlTrackIds === 'none') {
+                // Explicitly no tracks selected
+                activeTrackIds = [];
+            } else if (urlTrackIds && urlTrackIds !== 'none') {
+                // Specific tracks selected in URL
+                activeTrackIds = urlTrackIds.split(',').map(function(id) { 
+                    return parseInt(id.trim()); 
+                }).filter(function(id) { return !isNaN(id); });
+            } else {
+                // No track_ids in URL - show all tracks
+                var tracks = window.tracks || [];
+                activeTrackIds = tracks.map(function(t) { 
+                    return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
+                }).filter(function(id) { return !isNaN(id); });
+            }
+            
+            var showBoxes = activeTrackIds.length === 1;
+
+            // Collect finish avatars from active tracks
+            var allFinishAvatars = [];
+            Object.keys(avatarsByTrack).forEach(function(trackId) {
+                var trackIdInt = parseInt(trackId);
+                if (activeTrackIds.length === 0 || activeTrackIds.includes(trackIdInt)) {
+                    var finishAvatars = avatarsByTrack[trackId].filter(function(g) {
+                        var trackTotalLength = g.track_total_length_km || 0;
+                        return trackTotalLength > 0 && g.km >= trackTotalLength;
+                    });
+                    
+                    if (finishAvatars.length > 0) {
+                        finishAvatars.forEach(function(avatar) {
+                            if (!finishTimes[trackId]) {
+                                finishTimes[trackId] = {};
+                            }
+                            if (!avatar.goal_reached_at && !finishTimes[trackId][avatar.name]) {
+                                finishTimes[trackId][avatar.name] = Date.now();
+                            }
+                        });
+                        allFinishAvatars = allFinishAvatars.concat(finishAvatars);
+                    }
+                }
+            });
+
+            // Sort all finish avatars by goal_reached_at
+            if (allFinishAvatars.length > 0) {
+                allFinishAvatars.sort(function(a, b) {
+                    var timeA = null;
+                    var timeB = null;
+                    
+                    if (a.goal_reached_at) {
+                        timeA = new Date(a.goal_reached_at).getTime();
+                    } else {
+                        var trackIdA = a.track_id;
+                        timeA = (finishTimes[trackIdA] && finishTimes[trackIdA][a.name]) || Infinity;
+                    }
+                    
+                    if (b.goal_reached_at) {
+                        timeB = new Date(b.goal_reached_at).getTime();
+                    } else {
+                        var trackIdB = b.track_id;
+                        timeB = (finishTimes[trackIdB] && finishTimes[trackIdB][b.name]) || Infinity;
+                    }
+                    
+                    if (a.goal_reached_at && b.goal_reached_at) {
+                        return timeA - timeB;
+                    } else if (a.goal_reached_at && !b.goal_reached_at) {
+                        return -1;
+                    } else if (!a.goal_reached_at && b.goal_reached_at) {
+                        return 1;
+                    } else {
+                        return timeA - timeB;
+                    }
+                });
+                
+                // Assign ranks
+                allFinishAvatars.forEach(function(avatar, index) {
+                    avatar.finishRank = index + 1;
+                });
+            }
+
+            // Store globally for Champions Overlay
+            window.allFinishAvatars = allFinishAvatars;
+            window.showBoxes = showBoxes;
+
+            // Update Champions Overlay
+            updateChampionsOverlay(allFinishAvatars);
+
+            // Display avatars on map (skip those at finish)
+            avatars.forEach(function(g) {
+                var trackTotalLength = g.track_total_length_km || 0;
+                var isAtFinish = trackTotalLength > 0 && g.km >= trackTotalLength;
+                
+                if (isAtFinish) {
+                    if (markers[g.name]) {
+                        mapInstance.removeLayer(markers[g.name]);
+                        delete markers[g.name];
+                    }
+                    return;
+                }
+                
+                var pos = calcPos(g);
+                if (!pos) return;
+
+                var xOffset = 0;
+                var yOffset = (g.offset_index || 0) * 20;
+
+                if (markers[g.name]) {
+                    markers[g.name].setLatLng(pos);
+                    markers[g.name].setIcon(createAvatarIcon(g, xOffset, yOffset, null));
+                } else {
+                    markers[g.name] = L.marker(pos, {
+                        icon: createAvatarIcon(g, xOffset, yOffset, null),
+                        zIndexOffset: 5000
+                    }).addTo(mapInstance);
+                }
+            });
+            
+            window.avatarMarkers = markers;
+            window.finishTimes = finishTimes;
+        }
+
+        // Update Champions Overlay
+        function updateChampionsOverlay(allFinishAvatars) {
+            var overlay = document.getElementById('champions-overlay');
+            var miniPodium = document.getElementById('mini-podium');
+            
+            if (!overlay || !miniPodium) return;
+            
+            // Don't show overlay in table view
+            var tableView = document.getElementById('table-view');
+            var isTableView = tableView && tableView.classList.contains('active');
+            if (isTableView) {
+                overlay.classList.add('hidden');
+                return;
+            }
+            
+            if (!allFinishAvatars || !Array.isArray(allFinishAvatars)) {
+                allFinishAvatars = [];
+            }
+            
+            var showBoxes = window.showBoxes !== undefined ? window.showBoxes : false;
+            var top3 = allFinishAvatars.slice(0, 3);
+            
+            // Show overlay only if exactly one track is active and we have finishers
+            var shouldShow = showBoxes && top3.length > 0;
+            
+            if (shouldShow) {
+                overlay.classList.remove('hidden');
+                
+                // Clear existing content
+                miniPodium.innerHTML = '';
+                
+                // Create mini podium items
+                top3.forEach(function(avatar, index) {
+                    var rank = index + 1;
+                    var medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                    
+                    var miniItem = document.createElement('div');
+                    miniItem.className = 'mini-podium-item';
+                    miniItem.setAttribute('data-rank', rank);
+                    
+                    var miniAvatar = document.createElement('img');
+                    miniAvatar.className = 'mini-podium-avatar';
+                    miniAvatar.src = avatar.logo || '/static/map/images/default_group.png';
+                    miniAvatar.onerror = function() { this.src = '/static/map/images/default_group.png'; };
+                    miniAvatar.alt = avatar.name;
+                    
+                    var miniRank = document.createElement('div');
+                    miniRank.className = 'mini-podium-rank';
+                    miniRank.textContent = medal;
+                    
+                    // Group name
+                    var miniName = document.createElement('div');
+                    miniName.className = 'mini-podium-name';
+                    miniName.textContent = avatar.display_name || avatar.name || '';
+                    
+                    // Info container for additional details
+                    var miniInfo = document.createElement('div');
+                    miniInfo.className = 'mini-podium-info';
+                    
+                    // Parent group (TOP-Gruppe) if available
+                    if (avatar.parent_group_name) {
+                        var parentGroupDiv = document.createElement('div');
+                        parentGroupDiv.className = 'mini-podium-parent-group';
+                        parentGroupDiv.textContent = avatar.parent_group_name;
+                        miniInfo.appendChild(parentGroupDiv);
+                    }
+                    
+                    // Travel time if available
+                    if (avatar.travel_duration_seconds !== undefined && avatar.travel_duration_seconds !== null) {
+                        var travelTimeDiv = document.createElement('div');
+                        travelTimeDiv.className = 'mini-podium-travel-time';
+                        var days = Math.floor(avatar.travel_duration_seconds / 86400);
+                        var hours = Math.floor((avatar.travel_duration_seconds % 86400) / 3600);
+                        var minutes = Math.floor((avatar.travel_duration_seconds % 3600) / 60);
+                        var seconds = Math.floor(avatar.travel_duration_seconds % 60);
+                        var timeText = '';
+                        if (days > 0) {
+                            timeText = days + 'd ' + hours + 'h';
+                        } else if (hours > 0) {
+                            timeText = hours + 'h ' + minutes + 'm';
+                        } else if (minutes > 0) {
+                            timeText = minutes + 'm ' + seconds + 's';
+                        } else {
+                            timeText = seconds + 's';
+                        }
+                        travelTimeDiv.innerHTML = '⏱️ ' + timeText;
+                        miniInfo.appendChild(travelTimeDiv);
+                    }
+                    
+                    // Top contributor leaf group if available
+                    if (avatar.top_contributor_leaf_group) {
+                        var topContributorDiv = document.createElement('div');
+                        topContributorDiv.className = 'mini-podium-top-contributor';
+                        var leafGroup = avatar.top_contributor_leaf_group;
+                        var displayName = leafGroup.display_name || leafGroup.name || '';
+                        var contributionKm = formatNumberDE(leafGroup.contribution_km || 0, 1);
+                        topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionKm + ' km)';
+                        miniInfo.appendChild(topContributorDiv);
+                    }
+                    
+                    // MVP class if available
+                    if (avatar.mvp_class) {
+                        var mvpDiv = document.createElement('div');
+                        mvpDiv.className = 'mini-podium-mvp';
+                        mvpDiv.textContent = '⭐ ' + avatar.mvp_class;
+                        miniInfo.appendChild(mvpDiv);
+                    }
+                    
+                    miniItem.appendChild(miniAvatar);
+                    miniItem.appendChild(miniRank);
+                    miniItem.appendChild(miniName);
+                    if (miniInfo.children.length > 0) {
+                        miniItem.appendChild(miniInfo);
+                    }
+                    miniPodium.appendChild(miniItem);
+                });
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+        window.refreshAvatars = refreshAvatars;
+
+        // Initial call
+        refreshAvatars({{ group_avatars_json|safe }});
+
+        // Automatic icon update
+        function updateMapIcons() {
+            var url = "{% url 'map:get_group_avatars' %}";
+            {% if group_id %}
+            url += "?group_id={{ group_id|urlencode }}";
+            {% elif group_name %}
+            url += "?group_name={{ group_name|urlencode }}";
+            {% endif %}
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    refreshAvatars(data);
+                })
+                .catch(error => {
+                    console.error('{% trans "Fehler beim Laden der Avatar-Daten" %}:', error);
+                });
+        }
+        window.updateMapIcons = updateMapIcons;
+        setInterval(updateMapIcons, 5000);
+
+        // Sync checkboxes with actual track visibility
+        function syncCheckboxesWithTracks() {
+            // Use window.tracks to ensure we have access to the global variable
+            var tracks = window.tracks || [];
+            
+            if (!tracks || !Array.isArray(tracks) || tracks.length === 0) {
+                console.warn('No tracks available for syncCheckboxesWithTracks');
+                return;
+            }
+            
+            var urlParams = new URLSearchParams(window.location.search);
+            var urlTrackIds = urlParams.get('track_ids');
+            var visibleTrackIds = [];
+            
+            if (urlTrackIds === 'none') {
+                visibleTrackIds = [];
+            } else if (urlTrackIds && urlTrackIds !== 'none') {
+                visibleTrackIds = urlTrackIds.split(',').map(function(id) {
+                    return parseInt(id.trim());
+                }).filter(function(id) { return !isNaN(id); });
+            } else {
+                // No URL parameter - all tracks should be visible
+                visibleTrackIds = tracks.map(function(t) {
+                    return typeof t.id === 'string' ? parseInt(t.id) : t.id;
+                }).filter(function(id) { return !isNaN(id); });
+            }
+            
+            // Update checkboxes to match visible tracks
+            var allToggle = document.getElementById('layer-track-all');
+            var trackToggles = document.querySelectorAll('.layer-track-toggle');
+            
+            if (visibleTrackIds.length === 0) {
+                // No tracks visible
+                if (allToggle) {
+                    allToggle.checked = false;
+                }
+                trackToggles.forEach(function(toggle) {
+                    toggle.checked = false;
+                });
+            } else if (visibleTrackIds.length === tracks.length) {
+                // All tracks visible
+                if (allToggle) {
+                    allToggle.checked = true;
+                }
+                trackToggles.forEach(function(toggle) {
+                    toggle.checked = true;
+                });
+            } else {
+                // Some tracks visible
+                if (allToggle) {
+                    allToggle.checked = false;
+                }
+                trackToggles.forEach(function(toggle) {
+                    var trackId = parseInt(toggle.value);
+                    toggle.checked = visibleTrackIds.includes(trackId);
+                });
+            }
+        }
+        
+        // Initialize tracks after map is ready
+        setTimeout(function() {
+            // Double-check that tracks are available
+            if (!window.tracks || !Array.isArray(window.tracks) || window.tracks.length === 0) {
+                console.error('Tracks not available when initializing. window.tracks:', window.tracks);
+                // Try to get tracks from the template variable again
+                var tracksFromTemplate = {{ tracks_json|safe }};
+                if (tracksFromTemplate && Array.isArray(tracksFromTemplate) && tracksFromTemplate.length > 0) {
+                    console.log('Re-initializing tracks from template variable');
+                    window.tracks = tracksFromTemplate;
+                } else {
+                    console.error('Tracks are empty in template variable as well:', tracksFromTemplate);
+                    return;
+                }
+            }
+            initializeTracks();
+            // Sync checkboxes with actual track visibility after initialization
+            setTimeout(function() {
+                syncCheckboxesWithTracks();
+            }, 100);
+        }, 500);
+
+        // Update track visibility based on selected track IDs
+        function updateTrackVisibility(visibleTrackIds) {
+            // Use window.tracks to ensure we have access to the global variable
+            var tracks = window.tracks || [];
+            
+            if (!tracks || !Array.isArray(tracks)) {
+                console.error('Tracks not available for updateTrackVisibility', tracks);
+                return;
+            }
+
+            if (!trackLayers) {
+                console.error('TrackLayers not available for updateTrackVisibility');
+                return;
+            }
+
+            // Ensure visibleTrackIds is an array of numbers
+            visibleTrackIds = visibleTrackIds || [];
+            visibleTrackIds = visibleTrackIds.map(function(id) { 
+                return typeof id === 'string' ? parseInt(id) : id; 
+            }).filter(function(id) { 
+                return !isNaN(id); 
+            });
+
+            tracks.forEach(function(t) {
+                if (!t || !t.id) {
+                    return;
+                }
+
+                var trackId = typeof t.id === 'string' ? parseInt(t.id) : t.id;
+                if (isNaN(trackId)) {
+                    return;
+                }
+
+                var shouldBeVisible = visibleTrackIds.includes(trackId);
+                var isCurrentlyVisible = trackPolylineMap[trackId] !== undefined;
+
+                if (shouldBeVisible && !isCurrentlyVisible) {
+                    // Create track polyline
+                    if (t.points && Array.isArray(t.points) && t.points.length > 0) {
+                        try {
+                            var poly = L.polyline(t.points, {
+                                color: '#007bff',
+                                weight: 6,
+                                opacity: 0.5
+                            }).addTo(trackLayers);
+
+                            polylineLookup[trackId] = poly;
+                            trackPolylineMap[trackId] = poly;
+
+                            // Create start and end markers
+                            var startPoint = t.points[0];
+                            var endPoint = t.points[t.points.length - 1];
+
+                            if (startPoint && Array.isArray(startPoint) && startPoint.length >= 2) {
+                                var startIcon = L.divIcon({
+                                    className: 'start-marker',
+                                    html: '<div style="font-size: 30px; line-height: 1;">🚩</div>',
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 30]
+                                });
+                                var startMarker = L.marker([startPoint[0], startPoint[1]], {
+                                    icon: startIcon,
+                                    title: '{% trans "Start" %}: ' + (t.name || '')
+                                }).addTo(trackLayers);
+                                startMarker.bindPopup('<strong>{% trans "Start" %}</strong><br>' + (t.name || ''));
+
+                                if (endPoint && Array.isArray(endPoint) && endPoint.length >= 2) {
+                                    var endIcon = L.divIcon({
+                                        className: 'end-marker',
+                                        html: '<div style="font-size: 30px; line-height: 1;">🏁</div>',
+                                        iconSize: [30, 30],
+                                        iconAnchor: [15, 30]
+                                    });
+                                    var endMarker = L.marker([endPoint[0], endPoint[1]], {
+                                        icon: endIcon,
+                                        title: '{% trans "Ziel" %}: ' + (t.name || '')
+                                    }).addTo(trackLayers);
+                                    endMarker.bindPopup('<strong>{% trans "Ziel" %}</strong><br>' + (t.name || ''));
+
+                                    if (!trackStartEndMarkersMap[trackId]) {
+                                        trackStartEndMarkersMap[trackId] = {};
+                                    }
+                                    trackStartEndMarkersMap[trackId].start = startMarker;
+                                    trackStartEndMarkersMap[trackId].end = endMarker;
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error creating track polyline for track', trackId, e);
+                        }
+                    }
+                } else if (!shouldBeVisible && isCurrentlyVisible) {
+                    // Remove track polyline
+                    var poly = trackPolylineMap[trackId];
+                    if (poly) {
+                        trackLayers.removeLayer(poly);
+                        delete trackPolylineMap[trackId];
+                        delete polylineLookup[trackId];
+                    }
+
+                    // Remove start and end markers
+                    if (trackStartEndMarkersMap[trackId]) {
+                        if (trackStartEndMarkersMap[trackId].start) {
+                            trackLayers.removeLayer(trackStartEndMarkersMap[trackId].start);
+                        }
+                        if (trackStartEndMarkersMap[trackId].end) {
+                            trackLayers.removeLayer(trackStartEndMarkersMap[trackId].end);
+                        }
+                        delete trackStartEndMarkersMap[trackId];
+                    }
+
+                    // Hide milestones for this track
+                    var milestonesByTrack = window.milestonesByTrackId || {};
+                    if (milestonesByTrack[trackId]) {
+                        milestonesByTrack[trackId].forEach(function(ms) {
+                            if (ms.marker && milestoneMarkers.hasLayer(ms.marker)) {
+                                milestoneMarkers.removeLayer(ms.marker);
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Show milestones for all visible tracks (after processing all tracks)
+            visibleTrackIds.forEach(function(trackId) {
+                var milestonesByTrack = window.milestonesByTrackId || {};
+                if (milestonesByTrack[trackId]) {
+                    milestonesByTrack[trackId].forEach(function(ms) {
+                        if (ms.marker && !milestoneMarkers.hasLayer(ms.marker)) {
+                            milestoneMarkers.addLayer(ms.marker);
+                        }
+                    });
+                }
+            });
+
+            // Update window.polylineLookup
+            window.polylineLookup = polylineLookup;
+        }
+        window.updateTrackVisibility = updateTrackVisibility;
+
+        // Layer Control functions
+        function toggleLayerControl() {
+            var layerControl = document.getElementById('floating-layer-control');
+            if (layerControl) {
+                layerControl.classList.toggle('expanded');
+            }
+        }
+
+        // Handle "All Tracks" toggle
+        function handleLayerTrackAllChange(toggle) {
+            var trackToggles = document.querySelectorAll('.layer-track-toggle');
+            trackToggles.forEach(function(t) {
+                if (toggle.checked) {
+                    t.checked = true;
+                } else {
+                    t.checked = false;
+                }
+            });
+            applyTrackFilter();
+        }
+
+        // Handle individual track toggle
+        function handleLayerTrackChange(toggle) {
+            var allToggle = document.getElementById('layer-track-all');
+            var trackToggles = document.querySelectorAll('.layer-track-toggle');
+            var allChecked = Array.from(trackToggles).every(function(t) { return t.checked; });
+            
+            if (allToggle) {
+                allToggle.checked = allChecked;
+            }
+            
+            applyTrackFilter();
+        }
+
+        // Apply track filter based on checkboxes
+        function applyTrackFilter() {
+            var trackToggles = document.querySelectorAll('.layer-track-toggle');
+            var selectedTracks = Array.from(trackToggles).filter(function(cb) {
+                return cb.checked && cb.value !== 'all';
+            });
+            var totalCheckboxes = trackToggles.length;
+            
+            var visibleTrackIds = [];
+            if (selectedTracks.length > 0 && selectedTracks.length < totalCheckboxes) {
+                visibleTrackIds = selectedTracks.map(function(cb) {
+                    return parseInt(cb.value);
+                });
+            } else if (selectedTracks.length === totalCheckboxes) {
+                // All tracks selected - show all
+                visibleTrackIds = Array.from(trackToggles).map(function(cb) {
+                    return parseInt(cb.value);
+                });
+            } else {
+                // No tracks selected
+                visibleTrackIds = [];
+            }
+            
+            updateTrackVisibility(visibleTrackIds);
+            
+            // Update URL without page reload
+            var urlParams = new URLSearchParams(window.location.search);
+            if (visibleTrackIds.length === 0) {
+                urlParams.set('track_ids', 'none');
+            } else if (visibleTrackIds.length === tracks.length) {
+                urlParams.delete('track_ids');
+            } else {
+                urlParams.set('track_ids', visibleTrackIds.join(','));
+            }
+            
+            var newUrl = window.location.pathname;
+            if (urlParams.toString()) {
+                newUrl += '?' + urlParams.toString();
+            }
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        // Milestone tracking variables
+        var lastMilestoneCheck = localStorage.getItem('lastMilestoneCheck') || null;
+        var shownMilestoneIds = new Set(JSON.parse(localStorage.getItem('shownMilestoneIds') || '[]'));
+        var previousMilestoneStates = {};
+        var isFirstCheck = !lastMilestoneCheck;
+
+        // Initialize milestone states
+        function initializeMilestoneStates() {
+            milestones.forEach(function(m) {
+                if (m.id) {
+                    previousMilestoneStates[m.id] = m.is_reached || false;
+                }
+            });
+        }
+
+        // Function to update milestone markers based on current status from server
+        function updateMilestoneMarkers() {
+            var url = "{% url 'map:get_all_milestones_status' %}";
+            var params = [];
+
+            {% if group_id %}
+            params.push("group_id={{ group_id|urlencode }}");
+            {% elif group_name %}
+            params.push("group_name={{ group_name|urlencode }}");
+            {% endif %}
+
+            if (params.length > 0) {
+                url += "?" + params.join("&");
+            }
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.milestones && data.milestones.length > 0) {
+                        data.milestones.forEach(function(ms) {
+                            if (ms.id && milestoneMarkerMap[ms.id]) {
+                                var marker = milestoneMarkerMap[ms.id];
+                                
+                                var isTarget = false;
+                                if (ms.name && (ms.name.toLowerCase().includes('ziel') || ms.name.toLowerCase().includes('target'))) {
+                                    isTarget = true;
+                                } else if (ms.track_total_length_km) {
+                                    var distanceToEnd = Math.abs(ms.track_total_length_km - (ms.km || 0));
+                                    if (distanceToEnd < 0.1) {
+                                        isTarget = true;
+                                    }
+                                }
+                                
+                                var isReached = ms.is_reached || false;
+                                
+                                if (previousMilestoneStates[ms.id] === undefined) {
+                                    previousMilestoneStates[ms.id] = isReached;
+                                }
+                                
+                                var wasReached = previousMilestoneStates[ms.id];
+                                var isNewlyReached = isReached && (wasReached === false);
+                                
+                                previousMilestoneStates[ms.id] = isReached;
+                                
+                                var bgColor, borderColor, iconEmoji;
+                                
+                                if (isTarget) {
+                                    bgColor = isReached ? '#28a745' : '#20c997';
+                                    borderColor = isReached ? '#155724' : '#17a2b8';
+                                    iconEmoji = '🏁';
+                                } else {
+                                    bgColor = isReached ? '#28a745' : '#ffd700';
+                                    borderColor = isReached ? '#1e7e34' : '#ff8c00';
+                                    iconEmoji = isReached ? '✅' : '🏆';
+                                }
+                                
+                                var milestoneIcon = L.divIcon({
+                                    className: 'milestone-marker',
+                                    html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: ' + (isTarget ? '8px' : '50%') + '; width: ' + (isTarget ? '40px' : '30px') + '; height: ' + (isTarget ? '40px' : '30px') + '; display: flex; align-items: center; justify-content: center; font-size: ' + (isTarget ? '24px' : '18px') + '; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: ' + (isTarget ? 'rotate(-5deg)' : 'none') + ';">' + iconEmoji + '</div>',
+                                    iconSize: [isTarget ? 40 : 30, isTarget ? 40 : 30],
+                                    iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
+                                });
+                                marker.setIcon(milestoneIcon);
+                                
+                                // Update popup content
+                                var kmValue = ms.km || ms.distance_km || 0;
+                                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
+                                popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + ms.name : ms.name) + '</div>';
+                                popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 1) + ' km</div>';
+                                if (isTarget) {
+                                    popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
+                                }
+                                if (ms.reward_text && ms.reward_text.trim()) {
+                                    popupContent += '<div class="milestone-reward-label">{% trans "Belohnung" %}</div>';
+                                    popupContent += '<div class="milestone-reward-text">' + ms.reward_text + '</div>';
+                                } else if (ms.text && ms.text.trim()) {
+                                    popupContent += '<div class="milestone-reward-text">' + ms.text + '</div>';
+                                }
+                                if (isReached && ms.winner_group_name) {
+                                    popupContent += '<div class="milestone-group-label">{% trans "Erreicht von" %}</div>';
+                                    var groupDisplay = ms.winner_group_name;
+                                    if (ms.winner_parent_group_name) {
+                                        groupDisplay += '<br><span style="font-size: 0.85em; opacity: 0.9;">(' + ms.winner_parent_group_name + ')</span>';
+                                    }
+                                    popupContent += '<div class="milestone-group-name">' + groupDisplay + '</div>';
+                                    if (ms.reached_at) {
+                                        var reachedDate = new Date(ms.reached_at);
+                                        popupContent += '<div class="milestone-date">{% trans "Erreicht am" %}: ' + reachedDate.toLocaleString('de-DE') + '</div>';
+                                    }
+                                }
+                                marker.setPopupContent(popupContent);
+                                
+                                if (isNewlyReached) {
+                                    showMilestoneOverlay(ms);
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating milestone markers:', error);
+                });
+        }
+
+        // Check for new milestones
+        function checkNewMilestones() {
+            var url = "{% url 'map:get_new_milestones' %}";
+            var params = [];
+
+            {% if group_id %}
+            params.push("group_id={{ group_id|urlencode }}");
+            {% elif group_name %}
+            params.push("group_name={{ group_name|urlencode }}");
+            {% endif %}
+
+            if (lastMilestoneCheck) {
+                params.push("last_check=" + encodeURIComponent(lastMilestoneCheck));
+            } else {
+                var now = new Date();
+                now.setSeconds(now.getSeconds() - 30);
+                var lastCheckTime = now.toISOString();
+                params.push("last_check=" + encodeURIComponent(lastCheckTime));
+                lastMilestoneCheck = lastCheckTime;
+                localStorage.setItem('lastMilestoneCheck', lastCheckTime);
+            }
+
+            if (params.length > 0) {
+                url += "?" + params.join("&");
+            }
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.milestones && data.milestones.length > 0) {
+                        data.milestones.forEach(function(ms) {
+                            if (!shownMilestoneIds.has(ms.id)) {
+                                showMilestoneOverlay(ms);
+                                shownMilestoneIds.add(ms.id);
+                                
+                                var marker = milestoneMarkerMap[ms.id] || milestoneMarkerMap[ms.name];
+                                if (marker) {
+                                    var kmValue = ms.km || ms.distance_km || 0;
+                                    var isTarget = false;
+                                    if (ms.name && (ms.name.toLowerCase().includes('ziel') || ms.name.toLowerCase().includes('target'))) {
+                                        isTarget = true;
+                                    } else if (ms.track_total_length_km) {
+                                        var distanceToEnd = Math.abs(ms.track_total_length_km - kmValue);
+                                        if (distanceToEnd < 0.1) {
+                                            isTarget = true;
+                                        }
+                                    }
+                                    
+                                    var isReached = ms.is_reached || false;
+                                    var bgColor, borderColor, iconEmoji;
+                                    
+                                    if (isTarget) {
+                                        bgColor = isReached ? '#28a745' : '#20c997';
+                                        borderColor = isReached ? '#155724' : '#17a2b8';
+                                        iconEmoji = '🏁';
+                                    } else {
+                                        bgColor = isReached ? '#28a745' : '#ffd700';
+                                        borderColor = isReached ? '#1e7e34' : '#ff8c00';
+                                        iconEmoji = isReached ? '✅' : '🏆';
+                                    }
+                                    
+                                    var reachedIcon = L.divIcon({
+                                        className: 'milestone-marker',
+                                        html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: ' + (isTarget ? '8px' : '50%') + '; width: ' + (isTarget ? '40px' : '30px') + '; height: ' + (isTarget ? '40px' : '30px') + '; display: flex; align-items: center; justify-content: center; font-size: ' + (isTarget ? '24px' : '18px') + '; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: ' + (isTarget ? 'rotate(-5deg)' : 'none') + ';">' + iconEmoji + '</div>',
+                                        iconSize: [isTarget ? 40 : 30, isTarget ? 40 : 30],
+                                        iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
+                                    });
+                                    marker.setIcon(reachedIcon);
+                                }
+                            }
+                        });
+                        lastMilestoneCheck = new Date().toISOString();
+                        localStorage.setItem('lastMilestoneCheck', lastMilestoneCheck);
+                        localStorage.setItem('shownMilestoneIds', JSON.stringify(Array.from(shownMilestoneIds)));
+                        isFirstCheck = false;
+                    } else {
+                        if (isFirstCheck) {
+                            var now = new Date();
+                            now.setSeconds(now.getSeconds() - 5);
+                            lastMilestoneCheck = now.toISOString();
+                            localStorage.setItem('lastMilestoneCheck', lastMilestoneCheck);
+                            isFirstCheck = false;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der Meilensteine:', error);
+                });
+        }
+
+        // Show milestone overlay
+        function showMilestoneOverlay(milestone) {
+            var overlay = document.getElementById('milestone-overlay');
+            var card = document.getElementById('milestone-card');
+            var nameEl = document.getElementById('milestone-overlay-name');
+            var trackNameEl = document.getElementById('milestone-overlay-track-name');
+            var topGroupEl = document.getElementById('milestone-overlay-top-group');
+            var leafGroupEl = document.getElementById('milestone-overlay-leaf-group');
+            var rewardEl = document.getElementById('milestone-overlay-reward');
+
+            if (!overlay || !card) {
+                console.error('Milestone overlay elements not found');
+                return;
+            }
+
+            if (nameEl) nameEl.textContent = milestone.name || '';
+            if (trackNameEl) trackNameEl.textContent = milestone.track_name || '-';
+            if (topGroupEl) topGroupEl.textContent = milestone.winner_parent_group_name || milestone.parent_group_name || '-';
+            if (leafGroupEl) leafGroupEl.textContent = milestone.winner_group_name || milestone.group_name || '-';
+            if (rewardEl) rewardEl.textContent = milestone.reward_text || milestone.text || '{% trans "Herzlichen Glückwunsch!" %}';
+
+            overlay.classList.remove('hidden');
+            card.classList.remove('fade-out');
+
+            setTimeout(function() {
+                closeMilestoneOverlay();
+            }, 15000); // 15 seconds
+        }
+
+        // Close milestone overlay
+        function closeMilestoneOverlay() {
+            var overlay = document.getElementById('milestone-overlay');
+            var card = document.getElementById('milestone-card');
+            if (overlay && card) {
+                card.classList.add('fade-out');
+                setTimeout(function() {
+                    overlay.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // Initialize milestone states
+        setTimeout(initializeMilestoneStates, 1000);
+
+        // Check for new milestones every 5 seconds
+        setInterval(checkNewMilestones, 5000);
+        setTimeout(checkNewMilestones, 2000);
+
+        // Update milestone markers every 10 seconds
+        setInterval(updateMilestoneMarkers, 10000);
+        setTimeout(updateMilestoneMarkers, 5000);
+
+        // View Switcher functions
+        var currentView = 'map'; // 'map' or 'table'
+        var tableRefreshInterval = null; // Table refresh interval handle
+        
+        // Translated texts for view switcher
+        var textTable = '{% trans "Table" %}';
+        var textMap = '{% trans "Map" %}';
+
+        function toggleView() {
+            var mapView = document.getElementById('map');
+            var tableView = document.getElementById('table-view');
+            var button = document.getElementById('view-switcher-button');
+            var buttonText = document.getElementById('view-switcher-text');
+            var championsOverlay = document.getElementById('champions-overlay');
+            var milestoneOverlay = document.getElementById('milestone-overlay');
+            var layerControl = document.getElementById('floating-layer-control');
+
+            if (currentView === 'map') {
+                // Switch to table view
+                currentView = 'table';
+                mapView.style.display = 'none';
+                tableView.classList.add('active');
+                buttonText.textContent = textMap;
+                
+                // Hide Champions Overlay, Milestone Overlay, Layer Control, and Activity Toasts in table view
+                if (championsOverlay) {
+                    championsOverlay.classList.add('hidden');
+                    championsOverlay.style.display = 'none';
+                }
+                if (milestoneOverlay) {
+                    milestoneOverlay.classList.add('hidden');
+                    milestoneOverlay.style.display = 'none';
+                }
+                if (layerControl) {
+                    layerControl.style.display = 'none';
+                }
+                var activityToastContainer = document.getElementById('activity-toast-container');
+                if (activityToastContainer) {
+                    activityToastContainer.style.display = 'none';
+                }
+                var activityListToggle = document.getElementById('activity-list-toggle');
+                if (activityListToggle) {
+                    activityListToggle.style.display = 'none';
+                }
+                
+                // Initialize table filters
+                initializeTableFilters();
+                
+                // Load table data immediately
+                loadTableData();
+                
+                // Start periodic table refresh
+                startTableRefresh();
+                
+                // Invalidate map size when switching back (for when we return)
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 100);
+            } else {
+                // Switch to map view
+                currentView = 'map';
+                mapView.style.display = 'block';
+                tableView.classList.remove('active');
+                buttonText.textContent = textTable;
+                
+                // Stop table refresh interval
+                stopTableRefresh();
+                
+                // Remove inline display:none from overlays (let CSS and updateChampionsOverlay handle visibility)
+                if (championsOverlay) {
+                    championsOverlay.style.display = '';
+                }
+                if (milestoneOverlay) {
+                    milestoneOverlay.style.display = '';
+                }
+                if (layerControl) {
+                    layerControl.style.display = '';
+                }
+                var activityToastContainer = document.getElementById('activity-toast-container');
+                if (activityToastContainer) {
+                    activityToastContainer.style.display = 'flex';
+                }
+                var activityListToggle = document.getElementById('activity-list-toggle');
+                if (activityListToggle) {
+                    activityListToggle.style.display = 'flex';
+                }
+                
+                // Invalidate map size to fix quarter-map issue
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                    // Refresh Champions Overlay after map is ready
+                    if (window.allFinishAvatars && window.updateChampionsOverlay) {
+                        updateChampionsOverlay(window.allFinishAvatars);
+                    }
+                }, 300);
+            }
+        }
+
+        // Start periodic table refresh
+        function startTableRefresh() {
+            // Clear any existing interval
+            stopTableRefresh();
+            
+            // Get refresh interval from context (default: 20 seconds)
+            var interval = {{ refresh_interval|default:20 }} * 1000; // Convert to milliseconds
+            
+            // Set up interval to refresh table data
+            tableRefreshInterval = setInterval(function() {
+                // Only refresh if table view is currently active
+                if (currentView === 'table') {
+                    loadTableData();
+                } else {
+                    // If we're not in table view, stop the interval
+                    stopTableRefresh();
+                }
+            }, interval);
+        }
+
+        // Stop periodic table refresh
+        function stopTableRefresh() {
+            if (tableRefreshInterval) {
+                clearInterval(tableRefreshInterval);
+                tableRefreshInterval = null;
+            }
+        }
+
+        // Load table data (refresh from server)
+        function loadTableData() {
+            var content = document.getElementById('table-view-content');
+            if (!content) return;
+            
+            // Only load if table view is active
+            if (currentView !== 'table') {
+                return;
+            }
+
+            // Show loading state only if content is empty or on first load
+            var isFirstLoad = !content.querySelector('.table-group-container') && !content.querySelector('.table-empty');
+            var originalContent = content.innerHTML;
+            
+            if (isFirstLoad) {
+                content.innerHTML = '<div class="table-loading">{% trans "Lade Daten..." %}</div>';
+            }
+
+            // Build URL with current group filter (use selectedGroupIds from filter)
+            var url = "{% url 'map:map_page' %}";
+            var urlParams = new URLSearchParams();
+            
+            // Always use selectedGroupIds if available (from filter state)
+            if (typeof selectedGroupIds !== 'undefined') {
+                if (selectedGroupIds.length === 0) {
+                    // No groups selected: show none
+                    urlParams.set('group_id', 'none');
+                } else if (selectedGroupIds.length === allTopGroupsData.length) {
+                    // All groups selected: no filter needed (show all)
+                    // Don't set group_id parameter
+                } else {
+                    // Some groups selected: add group_id parameter
+                    urlParams.set('group_id', selectedGroupIds.join(','));
+                }
+            } else {
+                // Fallback to URL parameters (only if selectedGroupIds is not defined)
+                {% if group_id %}
+                urlParams.set('group_id', '{{ group_id|urlencode }}');
+                {% elif group_name %}
+                urlParams.set('group_name', '{{ group_name|urlencode }}');
+                {% endif %}
+            }
+
+            if (urlParams.toString()) {
+                url += '?' + urlParams.toString();
+            }
+            
+            console.log('loadTableData: URL =', url);
+            console.log('loadTableData: selectedGroupIds =', selectedGroupIds);
+
+            // Fetch page and extract table content
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Only update if still in table view
+                if (currentView !== 'table') {
+                    return;
+                }
+                
+                // Parse HTML to extract table content
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Find the table-view-content in the fetched HTML
+                var fetchedContent = tempDiv.querySelector('#table-view-content');
+                if (fetchedContent) {
+                    // Store which groups are currently open
+                    var openGroups = [];
+                    content.querySelectorAll('.table-group-container.is-open').forEach(function(container) {
+                        if (container.id) {
+                            openGroups.push(container.id);
+                        }
+                    });
+                    
+                    // Update content
+                    content.innerHTML = fetchedContent.innerHTML;
+                    
+                    // Re-open groups that were open before
+                    openGroups.forEach(function(groupId) {
+                        var container = document.getElementById(groupId);
+                        if (container) {
+                            container.classList.add('is-open');
+                        }
+                    });
+                    
+                    // Re-initialize toggle functionality
+                    initializeTableGroups();
+                } else {
+                    // Fallback: restore original content
+                    if (isFirstLoad) {
+                        content.innerHTML = originalContent;
+                    }
+                    initializeTableGroups();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading table data:', error);
+                // Only restore on error if it was first load
+                if (isFirstLoad) {
+                    content.innerHTML = originalContent;
+                }
+            });
+        }
+
+        // Initialize table group toggles
+        function initializeTableGroups() {
+            var groupContainers = document.querySelectorAll('#table-view .table-group-container');
+            groupContainers.forEach(function(container) {
+                var header = container.querySelector('.table-group-header');
+                if (header && !header.dataset.initialized) {
+                    header.onclick = function() {
+                        container.classList.toggle('is-open');
+                    };
+                    header.dataset.initialized = 'true';
+                }
+            });
+        }
+
+        // Toggle table group function (for inline onclick handlers)
+        function toggleTableGroup(groupId) {
+            var container = document.getElementById(groupId);
+            if (container) {
+                container.classList.toggle('is-open');
+            }
+        }
+        window.toggleTableGroup = toggleTableGroup;
+        
+        // Initialize table groups on page load
+        setTimeout(function() {
+            initializeTableGroups();
+            initializeTableFilters();
+        }, 500);
+
+        // Table Filter Functions
+        // ============================================
+        
+        // All top-level groups data (from template)
+        var allTopGroupsData = [
+            {% for group in all_groups %}
+            {
+                id: '{{ group.id }}',
+                name: '{{ group.name|escapejs }}',
+                color: '{% if group.color %}{{ group.color }}{% else %}#6b7280{% endif %}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // Currently selected group IDs (from URL or default: all)
+        var selectedGroupIds = [];
+        {% if selected_group_ids and selected_group_ids|length > 0 %}
+        selectedGroupIds = [{% for gid in selected_group_ids %}'{{ gid }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+        {% else %}
+        // If no selection in URL, check if group_id=none was explicitly set
+        {% if group_id == 'none' %}
+        // Explicitly set to 'none' - no groups selected
+        selectedGroupIds = [];
+        {% else %}
+        // If no selection, all groups are active by default
+        selectedGroupIds = allTopGroupsData.map(function(g) { return g.id; });
+        {% endif %}
+        {% endif %}
+
+        // Toggle filter bar expand/collapse
+        function toggleTableFilterBar() {
+            var filterBar = document.getElementById('table-filter-bar');
+            if (filterBar) {
+                var isExpanded = filterBar.classList.contains('expanded');
+                if (isExpanded) {
+                    filterBar.classList.remove('expanded');
+                    filterBar.classList.add('collapsed');
+                } else {
+                    filterBar.classList.remove('collapsed');
+                    filterBar.classList.add('expanded');
+                }
+            }
+        }
+        window.toggleTableFilterBar = toggleTableFilterBar;
+
+        // Initialize table filters
+        function initializeTableFilters() {
+            var container = document.getElementById('table-filter-chips-container');
+            if (!container) return;
+            
+            // Check if allTopGroupsData is available
+            if (!allTopGroupsData || allTopGroupsData.length === 0) {
+                console.warn('No top groups data available for table filters');
+                return;
+            }
+
+            // Initialize selectedGroupIds if not already set
+            if (typeof selectedGroupIds === 'undefined' || selectedGroupIds.length === 0) {
+                // If no selection from URL, all groups are active by default
+                selectedGroupIds = allTopGroupsData.map(function(g) { return g.id; });
+            }
+
+            container.innerHTML = '';
+
+            // Create chips for all top-level groups
+            allTopGroupsData.forEach(function(group) {
+                var isActive = selectedGroupIds.includes(group.id);
+                
+                var chip = document.createElement('div');
+                chip.className = 'table-filter-chip';
+                if (isActive) {
+                    chip.classList.add('active');
+                    chip.style.setProperty('--chip-color', group.color);
+                    chip.style.backgroundColor = group.color;
+                    chip.style.color = 'white';
+                    chip.style.borderColor = group.color;
+                } else {
+                    chip.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                    chip.style.color = '#666';
+                    chip.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                }
+                
+                chip.setAttribute('data-group-id', group.id);
+                chip.setAttribute('data-group-color', group.color);
+                
+                var checkMark = document.createElement('span');
+                checkMark.className = 'chip-check';
+                checkMark.textContent = '✓ ';
+                chip.appendChild(checkMark);
+                
+                var chipText = document.createElement('span');
+                chipText.textContent = group.name;
+                chip.appendChild(chipText);
+                
+                // Click handler: toggle group
+                chip.addEventListener('click', function() {
+                    toggleTableFilterGroup(group.id, chip);
+                });
+                
+                container.appendChild(chip);
+            });
+        }
+        window.initializeTableFilters = initializeTableFilters;
+
+        // Toggle group filter
+        function toggleTableFilterGroup(groupId, chipElement) {
+            var isCurrentlyActive = chipElement.classList.contains('active');
+            
+            console.log('Toggle filter group:', groupId, 'Currently active:', isCurrentlyActive);
+            console.log('SelectedGroupIds before:', selectedGroupIds);
+            
+            if (isCurrentlyActive) {
+                // Deactivate: remove from selected groups
+                selectedGroupIds = selectedGroupIds.filter(function(id) {
+                    return id !== groupId;
+                });
+                chipElement.classList.remove('active');
+                var groupColor = chipElement.getAttribute('data-group-color') || '#6b7280';
+                chipElement.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                chipElement.style.color = '#666';
+                chipElement.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                chipElement.style.opacity = '0.7';
+            } else {
+                // Activate: add to selected groups
+                if (!selectedGroupIds.includes(groupId)) {
+                    selectedGroupIds.push(groupId);
+                }
+                chipElement.classList.add('active');
+                var groupColor = chipElement.getAttribute('data-group-color') || '#007bff';
+                chipElement.style.setProperty('--chip-color', groupColor);
+                chipElement.style.backgroundColor = groupColor;
+                chipElement.style.color = 'white';
+                chipElement.style.borderColor = groupColor;
+                chipElement.style.opacity = '1';
+            }
+            
+            console.log('SelectedGroupIds after:', selectedGroupIds);
+            
+            // Reload table data with new filter
+            applyTableFilter();
+        }
+
+        // Apply filter and reload table data
+        function applyTableFilter() {
+            console.log('applyTableFilter called, selectedGroupIds:', selectedGroupIds);
+            console.log('allTopGroupsData.length:', allTopGroupsData ? allTopGroupsData.length : 0);
+            
+            // Build URL with selected group IDs
+            var url = "{% url 'map:map_page' %}";
+            var urlParams = new URLSearchParams();
+            
+            if (selectedGroupIds.length === 0) {
+                // No groups selected: show none
+                console.log('No groups selected, setting group_id=none');
+                urlParams.set('group_id', 'none');
+            } else if (selectedGroupIds.length === allTopGroupsData.length) {
+                // All groups selected: no filter needed (show all)
+                console.log('All groups selected, no filter');
+                // Don't set group_id parameter
+            } else {
+                // Some groups selected: add group_id parameter
+                console.log('Some groups selected:', selectedGroupIds.join(','));
+                urlParams.set('group_id', selectedGroupIds.join(','));
+            }
+            
+            if (urlParams.toString()) {
+                url += '?' + urlParams.toString();
+            }
+            
+            console.log('Loading table data from URL:', url);
+
+            // Update URL without reloading page (for history)
+            if (window.history && window.history.pushState) {
+                window.history.pushState({}, '', url);
+            }
+
+            // Reload table data
+            loadTableData();
+        }
+
+        // Information Hub Modal functions
+        function openInfoHubModal() {
+            var overlay = document.getElementById('info-hub-modal-overlay');
+            if (overlay) {
+                overlay.classList.add('show');
+            }
+        }
+
+        function closeInfoHubModal(event) {
+            if (event && event.target !== event.currentTarget) {
+                return;
+            }
+            var overlay = document.getElementById('info-hub-modal-overlay');
+            if (overlay) {
+                overlay.classList.remove('show');
+            }
+        }
+
+        function toggleInfoHubFAQItem(header) {
+            var item = header.closest('.info-hub-accordion-item');
+            if (item) {
+                item.classList.toggle('open');
+            }
+        }
+
+        // Close Information Hub modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeInfoHubModal();
+            }
+        });
+
+        // ============================================
+        // Activity Toast System (Activity Chips)
+        // ============================================
+        var activityToastQueue = [];
+        var maxToasts = 5; // Increased for better visibility
+        var toastDuration = 8000; // 8 seconds (increased from 5)
+        var lastTickerData = {};
+        var lastTickerUpdate = null;
+        var activityListMode = false; // Toggle between toast mode and list mode
+
+        // Toggle between toast mode and list mode
+        function toggleActivityListMode() {
+            activityListMode = !activityListMode;
+            var container = document.getElementById('activity-toast-container');
+            var toggleButton = document.getElementById('activity-list-toggle');
+            
+            if (!container || !toggleButton) return;
+            
+            if (activityListMode) {
+                container.classList.add('list-mode');
+                toggleButton.classList.add('active');
+                toggleButton.textContent = '📱'; // Switch icon
+                toggleButton.title = '{% trans "Toast-Ansicht" %}';
+                // In list mode, don't auto-remove toasts
+                // Keep all active cyclists visible
+                // Sort by km (highest first)
+                sortActivityToasts();
+            } else {
+                container.classList.remove('list-mode');
+                toggleButton.classList.remove('active');
+                toggleButton.textContent = '📋'; // List icon
+                toggleButton.title = '{% trans "Listenansicht" %}';
+                // Sort by km (highest first) first
+                sortActivityToasts();
+                // Remove excess toasts if more than maxToasts (keep top 5 by km)
+                // Use setTimeout to ensure DOM is updated after sort
+                setTimeout(function() {
+                    var toasts = Array.from(container.querySelectorAll('.activity-toast'));
+                    console.log('Switching to toast mode, found', toasts.length, 'toasts, maxToasts:', maxToasts);
+                    if (toasts.length > maxToasts) {
+                        // Toasts are already sorted by km (highest first) from sortActivityToasts()
+                        // Remove the ones beyond maxToasts (lowest km)
+                        // Keep first maxToasts (highest km), remove the rest
+                        var toastsToRemove = toasts.slice(maxToasts);
+                        console.log('Removing', toastsToRemove.length, 'excess toasts');
+                        toastsToRemove.forEach(function(toast, index) {
+                            // Add small delay between removals for smoother animation
+                            setTimeout(function() {
+                                toast.classList.add('fade-out');
+                                setTimeout(function() {
+                                    if (toast.parentNode) {
+                                        toast.remove();
+                                        console.log('Removed toast', index);
+                                    }
+                                }, 300);
+                            }, index * 50); // Stagger removals slightly
+                        });
+                    }
+                }, 150); // Small delay to ensure sort is complete
+            }
+        }
+        window.toggleActivityListMode = toggleActivityListMode;
+
+        // Sort toasts by session_km (descending - highest first)
+        function sortActivityToasts() {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+
+            var toasts = Array.from(container.querySelectorAll('.activity-toast'));
+            if (toasts.length === 0) return;
+
+            // Sort by session_km (extract from distance span)
+            toasts.sort(function(a, b) {
+                var aDistanceSpan = a.querySelector('.activity-toast-distance');
+                var bDistanceSpan = b.querySelector('.activity-toast-distance');
+                
+                if (!aDistanceSpan || !bDistanceSpan) return 0;
+                
+                // Extract km value from text (format: "X.XX km")
+                var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
+                var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
+                
+                // Parse German number format (e.g., "1.234,56" -> 1234.56)
+                var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
+                var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
+                
+                // Sort descending (highest km first)
+                return bKm - aKm;
+            });
+
+            // Re-append sorted toasts
+            toasts.forEach(function(toast) {
+                container.appendChild(toast);
+            });
+        }
+
+        function createActivityToast(cyclist) {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+
+            // Don't show toasts in table view
+            var tableView = document.getElementById('table-view');
+            var isTableView = tableView && tableView.classList.contains('active');
+            if (isTableView) {
+                return;
+            }
+
+            // Create unique key for this cyclist
+            var cyclistKey = cyclist.user_id + '|' + (cyclist.group_short_name || '');
+            
+            // Check if a toast for this cyclist already exists
+            var existingToasts = container.querySelectorAll('.activity-toast');
+            var toastExists = false;
+            var existingToast = null;
+            for (var i = 0; i < existingToasts.length; i++) {
+                var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                    // Toast for this cyclist already exists - update it instead of creating new one
+                    existingToast = existingToasts[i];
+                    var distanceSpan = existingToast.querySelector('.activity-toast-distance');
+                    if (distanceSpan) {
+                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                    }
+                    toastExists = true;
+                    break;
+                }
+            }
+            
+            // If toast already exists, update and re-sort
+            if (toastExists) {
+                sortActivityToasts();
+                return;
+            }
+
+            // In list mode, show all cyclists (no limit)
+            // In toast mode, limit to maxToasts (remove lowest km if needed)
+            if (!activityListMode) {
+                var currentToasts = container.querySelectorAll('.activity-toast');
+                if (currentToasts.length >= maxToasts) {
+                    // Sort current toasts to find the one with lowest km
+                    var toastsArray = Array.from(currentToasts);
+                    toastsArray.sort(function(a, b) {
+                        var aDistanceSpan = a.querySelector('.activity-toast-distance');
+                        var bDistanceSpan = b.querySelector('.activity-toast-distance');
+                        
+                        if (!aDistanceSpan || !bDistanceSpan) return 0;
+                        
+                        var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
+                        var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
+                        
+                        var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
+                        var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
+                        
+                        return aKm - bKm; // Ascending to find lowest
+                    });
+                    
+                    // Remove the toast with lowest km
+                    var lowestToast = toastsArray[0];
+                    if (lowestToast) {
+                        // Only remove if new cyclist has more km
+                        var newKm = cyclist.session_km;
+                        var lowestKmText = lowestToast.querySelector('.activity-toast-distance').textContent.replace(' km', '').trim();
+                        var lowestKm = parseFloat(lowestKmText.replace(/\./g, '').replace(',', '.'));
+                        
+                        if (newKm > lowestKm) {
+                            lowestToast.classList.add('fade-out');
+                            setTimeout(function() {
+                                if (lowestToast.parentNode) {
+                                    lowestToast.remove();
+                                }
+                            }, 300);
+                        } else {
+                            // New cyclist has fewer km, don't add
+                            return;
+                        }
+                    }
+                }
+            }
+
+            var toast = document.createElement('div');
+            toast.className = 'activity-toast';
+            toast.setAttribute('data-cyclist-key', cyclistKey); // Store key for easy lookup
+            toast.setAttribute('data-session-km', cyclist.session_km); // Store km for sorting
+
+            var icon = '🚴';
+            var title = textCurrentlyCycling;
+            var body = cyclist.user_id;
+            if (cyclist.group_short_name) {
+                body += ' (' + cyclist.group_short_name + ')';
+            }
+            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+
+            toast.innerHTML =
+                '<div class="activity-toast-header">' +
+                '<span class="activity-toast-icon">' + icon + '</span>' +
+                '<span class="activity-toast-title">' + title + '</span>' +
+                '</div>' +
+                '<div class="activity-toast-body">' + body + '</div>';
+
+            container.appendChild(toast);
+            
+            // Sort all toasts by km (highest first)
+            sortActivityToasts();
+
+            // Auto-remove after duration (only in toast mode)
+            if (!activityListMode) {
+                setTimeout(function() {
+                    if (toast.parentNode) {
+                        toast.classList.add('fade-out');
+                        setTimeout(function() {
+                            if (toast.parentNode) {
+                                toast.remove();
+                            }
+                        }, 300);
+                    }
+                }, toastDuration);
+            }
+        }
+
+        // Fetch ticker data and create Activity Toasts
+        function updateActivityToasts() {
+            var url = "{% url 'map:map_ticker' %}";
+            {% if group_id %}
+            url += "?group_id={{ group_id|urlencode }}";
+            {% elif group_name %}
+            url += "?group_name={{ group_name|urlencode }}";
+            {% endif %}
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    // Create a temporary DOM element to parse the HTML
+                    var tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    
+                    var tickerItems = tempDiv.querySelectorAll('.ticker-item');
+                    var currentTime = Date.now();
+
+                    // Only process if enough time has passed since last update (avoid duplicates)
+                    if (lastTickerUpdate && (currentTime - lastTickerUpdate) < 1000) {
+                        return;
+                    }
+                    lastTickerUpdate = currentTime;
+
+                    // Extract cyclist data from ticker items
+                    tickerItems.forEach(function(item) {
+                        var text = item.textContent.trim();
+                        if (text && !text.includes('Warten auf Radler') && !text.includes('Ready to start') && text.includes('km')) {
+                            // Parse cyclist info from ticker format: "● USER_ID (GROUP) 🚴 X.XXX km"
+                            var parts = text.split('●');
+                            if (parts.length > 1) {
+                                var cyclistText = parts[1].trim();
+
+                                // Extract user ID (text before first parenthesis or emoji)
+                                var userMatch = cyclistText.match(/^([^\s(🚴]+)/);
+                                if (!userMatch) return;
+
+                                // Extract group name (in parentheses)
+                                var groupMatch = cyclistText.match(/\(([^)]+)\)/);
+
+                                // Extract km value (number before "km")
+                                // Handle German format: "1.234,56 km" -> 1234.56
+                                var kmMatch = cyclistText.match(/([\d.,]+)\s*km/i);
+                                if (!kmMatch) return;
+
+                                var kmStr = kmMatch[1];
+                                // German format: dots are thousands, comma is decimal
+                                // Remove dots (thousands separators) and replace comma with dot
+                                var sessionKm = parseFloat(kmStr.replace(/\./g, '').replace(',', '.'));
+
+                                var cyclist = {
+                                    user_id: userMatch[1].trim(),
+                                    session_km: sessionKm,
+                                    group_short_name: groupMatch ? groupMatch[1].trim() : null
+                                };
+
+                                // Create unique key for this cyclist
+                                var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
+
+                                // Check if we should show/create a toast for this cyclist
+                                var lastKm = lastTickerData[key];
+                                var shouldShowToast = false;
+                                
+                                if (!lastKm) {
+                                    // First time seeing this cyclist - always show toast
+                                    shouldShowToast = true;
+                                } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
+                                    // Kilometers have increased significantly - show toast
+                                    shouldShowToast = true;
+                                } else {
+                                    // Check if a toast for this cyclist is already visible
+                                    var container = document.getElementById('activity-toast-container');
+                                    if (container) {
+                                        var existingToasts = container.querySelectorAll('.activity-toast');
+                                        var toastVisible = false;
+                                        for (var i = 0; i < existingToasts.length; i++) {
+                                            var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                                            if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                                                toastVisible = true;
+                                                break;
+                                            }
+                                        }
+                                        // If no toast is visible for this cyclist, show one even if km hasn't changed much
+                                        // This ensures all active cyclists get a toast
+                                        if (!toastVisible) {
+                                            shouldShowToast = true;
+                                        }
+                                    }
+                                }
+                                
+                                if (shouldShowToast) {
+                                    createActivityToast(cyclist);
+                                    lastTickerData[key] = cyclist.session_km;
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching ticker data:', error);
+                });
+        }
+
+        // Update Activity Toasts periodically
+        var refreshInterval = {{ refresh_interval|default:5 }};
+        setInterval(updateActivityToasts, refreshInterval * 1000);
+        
+        // Initial call after a short delay
+        setTimeout(updateActivityToasts, 2000);
+    </script>
+</body>
+</html>

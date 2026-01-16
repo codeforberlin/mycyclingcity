@@ -88,6 +88,18 @@ def map_page(request: HttpRequest) -> HttpResponse:
         HTTP response with map page.
     """
     
+    # Check if request is from mobile/tablet device
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_mobile = any(mobile_string in user_agent for mobile_string in [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
+        'windows phone', 'opera mini', 'iemobile'
+    ])
+    
+    # Logging: Output template selection and User-Agent for debugging
+    user_agent_original = request.META.get('HTTP_USER_AGENT', 'Unknown')
+    template_mode = "MOBILE" if is_mobile else "KIOSK"
+    print(f"[map_page] Serving {template_mode} template | User-Agent: {user_agent_original}")
+    
     target_group_id = request.GET.get('group_id')
     target_group_name = request.GET.get('group_name')
     show_cyclists = request.GET.get('show_cyclists', 'true').lower() == 'true'
@@ -424,9 +436,15 @@ def map_page(request: HttpRequest) -> HttpResponse:
                     logger = logging.getLogger(__name__)
                     logger.warning(f"[map_page] Error calculating travel duration for {s.group.name}: {e}", exc_info=True)
 
+            # Get parent group name (TOP-Gruppe)
+            parent_group_name = None
+            if s.group.parent:
+                parent_group_name = s.group.parent.name
+
             group_avatars.append({
                 'name': s.group.name,
                 'display_name': s.group.get_kiosk_label(),  # Use short_name if available, otherwise name
+                'parent_group_name': parent_group_name,  # TOP-Gruppe
                 'km': current_km,  # Use current_km for positioning (0 = start point) - capped at total_length_km
                 'logo': s.group.logo.url if s.group.logo else '/static/map/images/default_group.png',
                 'track_id': s.track.id,
@@ -505,6 +523,13 @@ def map_page(request: HttpRequest) -> HttpResponse:
     # Get popup settings
     popup_settings = MapPopupSettings.get_settings()
     
+    # Create JSON for all tracks (needed for layer control, even if not all are visible)
+    # This ensures the layer control always has access to all tracks, regardless of visibility
+    all_tracks_data = []
+    for track in all_tracks:
+        if track.geojson_data:
+            all_tracks_data.append({'id': track.id, 'name': track.name, 'points': json.loads(track.geojson_data)})
+    
     context = {
         'hierarchy': hierarchy,
         'group_id': target_group_id,  # Comma-separated IDs or None
@@ -518,7 +543,7 @@ def map_page(request: HttpRequest) -> HttpResponse:
         'selected_track_ids': [str(tid) for tid in selected_track_ids],  # List of selected track IDs as strings
         'refresh_interval': refresh_interval,
         'show_cyclists': show_cyclists,
-        'tracks_json': json.dumps(tracks_data),
+        'tracks_json': json.dumps(all_tracks_data),  # Use all_tracks_data (all tracks) instead of tracks_data (only visible tracks) for layer control
         'milestones_json': json.dumps(milestones_data),
         'group_avatars_json': json.dumps(group_avatars),
         'devices_json': json.dumps(devices_data),
@@ -537,8 +562,9 @@ def map_page(request: HttpRequest) -> HttpResponse:
         from django.shortcuts import redirect
         return redirect('ranking:ranking_page')
 
-
-    return render(request, 'map/dashboard.html', context)
+    # Return mobile template for mobile devices, kiosk template for desktop
+    template_name = 'map/map_mobile.html' if is_mobile else 'map/dashboard.html'
+    return render(request, template_name, context)
 
     group_id = request.GET.get('group_id')
     now = timezone.now()
@@ -1000,9 +1026,15 @@ def get_group_avatars(request):
                     logger = logging.getLogger(__name__)
                     logger.warning(f"[get_group_avatars] Error calculating travel duration for {s.group.name}: {e}", exc_info=True)
 
+            # Get parent group name (TOP-Gruppe)
+            parent_group_name = None
+            if s.group.parent:
+                parent_group_name = s.group.parent.name
+
             group_avatars.append({
                 'name': s.group.name,
                 'display_name': s.group.get_kiosk_label(),  # Use short_name if available, otherwise name
+                'parent_group_name': parent_group_name,  # TOP-Gruppe
                 'km': current_km,  # Use current_km for positioning (0 = start point) - capped at total_length_km
                 'logo': s.group.logo.url if s.group.logo else '/static/map/images/default_group.png',
                 'track_id': s.track.id,

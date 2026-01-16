@@ -2098,7 +2098,7 @@ msgstr "Event-Name"
 
 #: kiosk/models.py:75
 msgid "Map"
-msgstr ""
+msgstr "Karte"
 
 #: kiosk/models.py:82
 #, fuzzy
@@ -2321,7 +2321,7 @@ msgstr "Live-Map & Wettbewerb"
 
 #: map/templates/map/dashboard.html:1328
 msgid "Karte"
-msgstr ""
+msgstr "Karte"
 
 #: map/templates/map/dashboard.html:1329 ranking/apps.py:18
 #: ranking/templates/ranking/ranking_page.html:7
@@ -3868,3 +3868,11 @@ msgstr ""
 #~| msgid "SITZUNGS-WELTMEISTER"
 #~ msgid "KILOMETER-WELTMEISTER"
 #~ msgstr "SITZUNGS-WELTMEISTER"
+
+#: map/templates/map/map_mobile.html
+msgid "Table"
+msgstr "Tabelle"
+
+#: map/templates/map/map_mobile.html
+msgid "Tabelle"
+msgstr "Tabelle"

@@ -1445,7 +1445,7 @@ msgid "Eventboard"
 msgstr "Eventboard"
 
 msgid "Map"
-msgstr ""
+msgstr "Map"
 
 msgid "Kiosk Device"
 msgstr ""
@@ -2645,3 +2645,11 @@ msgstr ""
 #, fuzzy
 #~ msgid "Startpunkt"
 #~ msgstr "Start point"
+
+#: map/templates/map/map_mobile.html
+msgid "Table"
+msgstr "Table"
+
+#: map/templates/map/map_mobile.html
+msgid "Tabelle"
+msgstr "Table"
