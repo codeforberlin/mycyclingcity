@@ -16,33 +16,81 @@
     hx-swap="outerHTML"
     hx-include="#targetKm" 
     
-    {# Setze den Trigger nur, wenn das Spiel aktiv ist und kein Gewinner feststeht #}
-    {% if game_is_active and not winner_name %}
-        {# Fester Wert 10 Sekunden #}
-        hx-trigger="every 10s" 
+    {# Setze den Trigger nur, wenn das Spiel aktiv ist und nicht gestoppt wurde (Spiel läuft weiter auch bei Gewinnern) #}
+    {% if game_is_active and not is_game_stopped %}
+        {# Fester Wert 10 Sekunden + refresh event für sofortige Updates #}
+        hx-trigger="every 10s, refresh" 
     {% else %}
-        {# KRITISCHE KORREKTUR: "none" verhindert Endlosschleifen nach POST/GET #}
-        hx-trigger="none" 
+        {# refresh event für sofortige Updates nach Start/Stop #}
+        hx-trigger="refresh" 
     {% endif %}
     
     {# CRITICAL: Data attributes for JS control and winner check #}
     data-game-active="{{ game_is_active|yesno:'true,false' }}"
     data-game-stopped="{{ is_game_stopped|yesno:'true,false' }}"
-    data-winner-name="{{ winner_name|default:'' }}"
+    data-new-winners="{{ new_winners|join:',' }}"
     >
     {% if game_results %}
         {% for result in game_results %}
+        {% with rank=forloop.counter %}
         {% with is_winner=False %}
-            {% if winner_name and winner_name == result.cyclist_name %}
+            {% if result.cyclist_name in winner_names %}
                 {% with is_winner=True %}{% endwith %}
             {% endif %}
         {% endwith %}
         
         <tr data-cyclist="{{ result.cyclist_name }}" data-device="{{ result.device_name }}" 
-            {% if is_winner %}style="background-color: #d4edda;"{% endif %}>
-            <td>{{ result.cyclist_name }}</td>
+            class="{% if is_winner %}winner-row {% endif %}{% if is_game_stopped and rank == 1 %}rank-1{% elif is_game_stopped and rank == 2 %}rank-2{% elif is_game_stopped and rank == 3 %}rank-3{% endif %}">
+            {# Rank column: Medals when game is stopped, numbers when game is running #}
+            <td class="rank-cell">
+                {% if is_game_stopped %}
+                    {# Show medals for top 3 when game is stopped #}
+                    {% if rank == 1 %}
+                        <span class="medal">🥇</span>
+                    {% elif rank == 2 %}
+                        <span class="medal">🥈</span>
+                    {% elif rank == 3 %}
+                        <span class="medal">🥉</span>
+                    {% else %}
+                        {{ rank }}.
+                    {% endif %}
+                {% else %}
+                    {# Show numbers when game is running #}
+                    {{ rank }}.
+                {% endif %}
+            </td>
+            
+            {# Cyclist name with winner badge #}
+            <td>
+                {{ result.cyclist_name }}
+                {% if is_winner %}
+                    <span class="winner-badge">{% trans "Gewinner!" %}</span>
+                {% endif %}
+            </td>
+            
             <td>{{ result.device_name }}</td>
-            <td>{{ result.distance_km|floatformat:2 }}</td>
+            
+            {# Kilometers with progress bar if target is set #}
+            <td>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="font-weight: bold; margin-bottom: 3px;">{{ result.distance_km|floatformat:2 }} km</div>
+                    {% if target_km > 0 %}
+                        <div class="progress-container">
+                            <div class="progress-bar {% if result.progress_percent >= 100 %}progress-bar-full{% endif %}" 
+                                 style="width: {% if result.progress_percent > 100 %}100{% else %}{{ result.progress_percent|floatformat:1 }}{% endif %}%;">
+                            </div>
+                            <div class="progress-text">
+                                {% if result.progress_percent >= 100 %}
+                                    100% ✓
+                                {% else %}
+                                    {{ result.progress_percent|floatformat:0 }}%
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </td>
+            
             <td>{{ result.coins|floatformat:0 }}</td>
             <td>
                 <button hx-post="{% url 'game:handle_assignment_form' %}"
@@ -55,8 +103,9 @@
                 </button>
             </td>
         </tr>
+        {% endwith %}
         {% endfor %}
     {% else %}
-        <tr><td colspan="5" style="text-align:center;">{% trans "Warte auf Spielstart oder keine Zuweisungen aktiv." %}</td></tr>
+        <tr><td colspan="6" style="text-align:center;">{% trans "Warte auf Spielstart oder keine Zuweisungen aktiv." %}</td></tr>
     {% endif %}
 </tbody>

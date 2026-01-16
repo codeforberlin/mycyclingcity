@@ -27,16 +27,55 @@
         .controls h3 { margin-top: 0; text-align: center; }
         .controls label { font-weight: bold; }
         select, input[type="range"], input[type="number"] { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        .target-km-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 5px 0 10px 0; align-items: start; }
+        .target-km-option { display: flex; align-items: center; justify-content: flex-start; min-height: 32px; }
+        .target-km-option input[type="checkbox"] { width: 24px; height: 24px; margin-right: 8px; cursor: pointer; flex-shrink: 0; }
+        .target-km-option label { font-weight: normal; cursor: pointer; margin: 0; display: flex; align-items: center; white-space: nowrap; min-width: 50px; text-align: right; justify-content: flex-end; }
+        .target-km-manual { margin-top: 15px; }
         .assignments { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .top-controls { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
-        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.3s ease, background-color 0.3s ease; }
         #startButton { background-color: #28a745; color: white; }
         #stopButton { background-color: #dc3545; color: white; }
+        /* Button States - Simple and Clear */
+        #startButton.inactive,
+        #stopButton.inactive { 
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+            background-color: #6c757d !important;
+            pointer-events: none !important;
+        }
+        #startButton:not(.inactive) {
+            opacity: 1 !important;
+            background-color: #28a745 !important;
+            pointer-events: auto !important;
+        }
+        #stopButton:not(.inactive) {
+            opacity: 1 !important;
+            background-color: #dc3545 !important;
+            pointer-events: auto !important;
+        }
+        #startButton:not(.inactive):hover { 
+            background-color: #218838; 
+        }
+        #stopButton:not(.inactive):hover { 
+            background-color: #c82333; 
+        }
         #clearAssignmentsButton { background-color: #ffc107; color: #333; }
         .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .results-table th, .results-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .results-table th { background-color: #f2f2f2; text-align: center; }
-        .results-table td:nth-child(3), .results-table td:nth-child(4) { text-align: center; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .results-table th { background-color: #f2f2f2; }
+        .rank-cell { font-weight: bold; font-size: 1.1em; }
+        .medal { font-size: 1.5em; }
+        .winner-badge { background-color: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 5px; }
+        .progress-container { width: 100%; background-color: #e9ecef; border-radius: 10px; height: 20px; margin: 5px 0; position: relative; }
+        .progress-bar { height: 100%; border-radius: 10px; background: linear-gradient(90deg, #28a745 0%, #20c997 100%); transition: width 0.3s ease; }
+        .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75em; font-weight: bold; color: #333; z-index: 1; }
+        .progress-bar-full { background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%); }
+        tr.winner-row { background-color: #d4edda !important; }
+        tr.rank-1 { background-color: #fff9e6; }
+        tr.rank-2 { background-color: #f5f5f5; }
+        tr.rank-3 { background-color: #faf0e6; }
         footer { margin-top: 20px; text-align: center; padding: 10px; color: #777; }
         .remove-checkbox { cursor: pointer; width: 20px; height: 20px; margin: 0 auto; display: block; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -136,6 +175,17 @@
                 margin-bottom: 10px;
             }
 
+            /* Target KM options: Stack vertically on mobile */
+            .target-km-options {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .target-km-option input[type="checkbox"] {
+                width: 28px; /* Larger touch target */
+                height: 28px;
+            }
+
             /* Results table: Better mobile readability */
             .results-table {
                 font-size: 15px; /* Increased from 14px */
@@ -183,49 +233,41 @@
         <img id="logo-right" class="logo-right" src="{% static logo_right %}" alt="Right Logo">
     </div>
 
-    <p style="text-align: center;">{% trans "Willkommen zur Kilometer-Challenge! Wähle die Spieler und ihre zugewiesenen Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst." %}</p>
+    <p style="text-align: center;">{% trans "Willkommen zur Kilometer-Challenge! Wähle die Radler und ihre zugewiesenen Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst." %}</p>
 
     <div class="top-controls">
         {% csrf_token %}
+        <script>
+            // Debug: Check CSRF token
+            document.addEventListener('DOMContentLoaded', function() {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                console.log('CSRF Token found:', csrfToken !== null, 'value:', csrfToken ? csrfToken.value.substring(0, 10) + '...' : 'N/A');
+            });
+        </script>
 
         <button id="startButton"
                 hx-post="{% url 'game:start_game' %}"
                 hx-target="#startButton"
                 hx-swap="none"
                 hx-include="[name='csrfmiddlewaretoken']"
-                hx-on::after-request="
-                    if (event.detail.successful) {
-                        // KRITISCHE KORREKTUR: Verwende setTimeout zur Sicherstellung der DOM-Bereitschaft
-                        setTimeout(() => {
-                           const tbody = document.getElementById('resultsTableBody');
-                           if (tbody) tbody.click();
-                        }, 50);
-                    } else {
-                        alert('{% trans "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)." %}');
-                    }
-                ">{% trans "Spiel starten" %}</button>
+                hx-on::htmx:after-request="handleStartGameResponse(event)">{% trans "Spiel starten" %}</button>
 
         <button id="stopButton"
                 hx-post="{% url 'game:start_game' %}"
-                name="action" value="stop"
+                hx-target="#stopButton"
+                hx-swap="none"
+                hx-vals='{"action": "stop"}'
                 hx-include="[name='csrfmiddlewaretoken']"
-
-                hx-on::after-request="
-                    if (event.detail.successful) {
-                        // Erzwinge das Neuladen der Tabelle, um den periodischen Trigger zu entfernen
-                        document.getElementById('resultsTableBody').click();
-                    } else {
-                        alert('{% trans "Spiel konnte nicht gestoppt werden." %}');
-                    }
-                "
-                disabled>{% trans "Spiel stoppen" %}</button>
+                hx-on::htmx:after-request="handleStopGameResponse(event)"
+                class="inactive">{% trans "Spiel stoppen" %}</button>
     </div>
 
     <div>
         <table class="results-table">
             <thead>
                 <tr>
-                    <th>{% trans "Spieler" %}</th>
+                    <th style="width: 60px;">{% trans "Rang" %}</th>
+                    <th>{% trans "Radler" %}</th>
                     <th>{% trans "Gerät" %}</th>
                     <th>{% trans "Kilometer (km)" %}</th>
                     <th>{% trans "MCC-Coins" %}</th>
@@ -248,7 +290,7 @@
     <div class="controls">
         <div class="two-column-layout">
             <div id="player-device-assignment">
-                <h3>{% trans "Spieler & Geräte zuweisen" %}</h3>
+                <h3>{% trans "Radler & Geräte zuweisen" %}</h3>
 
                 <form hx-post="{% url 'game:handle_assignment_form' %}"
                       hx-target="#resultsTableBody"
@@ -256,15 +298,13 @@
                       hx-vals='{"action": "add"}'>
                     {% csrf_token %}
                     <div class="assignments">
-                        <label for="cyclistSelect">{% trans "Radler" %}:</label>
                         <select id="cyclistSelect" name="cyclist">
-                            <option value="">{% trans "Wähle einen Spieler" %}</option>
+                            <option value="">{% trans "Wähle einen Radler" %}</option>
                             {% for cyclist in cyclists %}
                             <option value="{{ cyclist.user_id }}">{{ cyclist.user_id }}</option>
                             {% endfor %}
                         </select>
 
-                        <label for="deviceSelect">{% trans "Gerät" %}:</label>
                         <select id="deviceSelect" name="device">
                             <option value="">{% trans "Wähle ein Gerät" %}</option>
                             {% for device in devices %}
@@ -285,14 +325,76 @@
             </div>
 
             <div>
-                <h3>{% trans "Ziel-Einstellungen" %}</h3>
+                <h3>{% trans "Zielkilometer (optional)" %}</h3>
+                
+                {# Checkbox options for quick selection #}
+                <div class="target-km-options">
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm1" name="target_km_checkbox" value="1" onchange="handleTargetKmCheckbox(1)">
+                        <label for="targetKm1">1 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm2" name="target_km_checkbox" value="2" onchange="handleTargetKmCheckbox(2)">
+                        <label for="targetKm2">2 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm3" name="target_km_checkbox" value="3" onchange="handleTargetKmCheckbox(3)">
+                        <label for="targetKm3">3 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm4" name="target_km_checkbox" value="4" onchange="handleTargetKmCheckbox(4)">
+                        <label for="targetKm4">4 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm5" name="target_km_checkbox" value="5" onchange="handleTargetKmCheckbox(5)">
+                        <label for="targetKm5">5 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm10" name="target_km_checkbox" value="10" onchange="handleTargetKmCheckbox(10)">
+                        <label for="targetKm10">10 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm15" name="target_km_checkbox" value="15" onchange="handleTargetKmCheckbox(15)">
+                        <label for="targetKm15">15 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm20" name="target_km_checkbox" value="20" onchange="handleTargetKmCheckbox(20)">
+                        <label for="targetKm20">20 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm25" name="target_km_checkbox" value="25" onchange="handleTargetKmCheckbox(25)">
+                        <label for="targetKm25">25 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm30" name="target_km_checkbox" value="30" onchange="handleTargetKmCheckbox(30)">
+                        <label for="targetKm30">30 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm35" name="target_km_checkbox" value="35" onchange="handleTargetKmCheckbox(35)">
+                        <label for="targetKm35">35 km</label>
+                    </div>
+                    <div class="target-km-option">
+                        <input type="checkbox" id="targetKm40" name="target_km_checkbox" value="40" onchange="handleTargetKmCheckbox(40)">
+                        <label for="targetKm40">40 km</label>
+                    </div>
+                </div>
 
-                <label for="targetKm" style="text-align:center;">{% trans "Zielkilometer (optional)" %}:</label>
-                <input type="number" id="targetKm" name="target_km" min="1" placeholder="{% trans 'Ziel-km eingeben' %}" style="max-width: 200px;"
-                       hx-trigger="input changed delay:500ms"
-                       hx-get="{% url 'game:render_results_table' %}"
-                       hx-target="#resultsTableBody"
-                       hx-swap="outerHTML">
+                {# Manual input field #}
+                <div class="target-km-manual">
+                    <label for="targetKm" style="text-align:center; display: block; margin-bottom: 5px;">{% trans "Oder manuell eingeben" %}:</label>
+                    <input type="number" 
+                           id="targetKm" 
+                           name="target_km" 
+                           min="1" 
+                           placeholder="{% trans 'Ziel-km eingeben' %}" 
+                           style="max-width: 200px; margin: 0 auto; display: block;"
+                           hx-trigger="input changed delay:500ms"
+                           hx-get="{% url 'game:render_results_table' %}"
+                           hx-target="#resultsTableBody"
+                           hx-swap="outerHTML"
+                           hx-include="this"
+                           oninput="handleTargetKmInput()">
+                </div>
 
                 {# NEU: Button zum Session-Reset #}
                 <button id="endSessionButton"
@@ -323,13 +425,20 @@
 
 <script>
     const winnerSoundUrl = '{% url "game:serve_goal_sound" %}';
-    let winnerAnnounced = false;
+    const announcedWinners = new Set(); // Track which winners have been announced
 
-    function showWinnerPopupAndPlaySound(winnerNames) {
-        if (winnerAnnounced) return;
-        winnerAnnounced = true;
+    function showWinnerPopupAndPlaySound(winnerName) {
+        // Skip if this winner was already announced
+        if (announcedWinners.has(winnerName)) {
+            console.log('Winner already announced:', winnerName);
+            return;
+        }
+        
+        // Mark as announced
+        announcedWinners.add(winnerName);
+        console.log('Showing winner popup for:', winnerName);
 
-        document.getElementById('winnerName').textContent = winnerNames;
+        document.getElementById('winnerName').textContent = winnerName;
         document.getElementById('winnerModal').style.display = 'flex';
 
         const audio = new Audio(winnerSoundUrl);
@@ -340,61 +449,351 @@
         }, { once: true });
 
         audio.load();
+        
+        // Auto-close popup after 5 seconds
+        setTimeout(function() {
+            closeModal();
+        }, 5000);
     }
 
     function closeModal() {
         document.getElementById('winnerModal').style.display = 'none';
-
-        const tbody = document.getElementById('resultsTableBody');
-        const isActive = tbody.dataset.gameActive === 'true';
-        const isStopped = tbody.dataset.gameStopped === 'true';
-
-        // Reset flag when game is no longer running
-        if (!isActive || isStopped) {
-            winnerAnnounced = false;
-        }
+        
+        // Note: We don't reset announcedWinners here because we want to track
+        // all winners for the current game session. The set is cleared when
+        // a new game starts (handled in backend by clearing session).
     }
     window.closeModal = closeModal;
 
+    // ============================================
+    // Target Kilometer Management
+    // ============================================
+    // Store the render_results_table URL for use in JavaScript
+    const renderResultsTableUrl = '{% url "game:render_results_table" %}';
+    
+    function handleTargetKmCheckbox(kmValue) {
+        const targetKmInput = document.getElementById('targetKm');
+        const checkbox = document.getElementById('targetKm' + kmValue);
+        const currentValue = parseFloat(targetKmInput.value) || 0;
+        
+        if (checkbox.checked) {
+            // CRITICAL: Reset announced winners if target changed
+            if (currentValue !== kmValue) {
+                announcedWinners.clear();
+                console.log('✅ Target KM changed to', kmValue, '- announcedWinners cleared');
+            }
+            
+            // Set input value
+            targetKmInput.value = kmValue;
+            // Uncheck all other checkboxes
+            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+                if (cb.id !== checkbox.id) {
+                    cb.checked = false;
+                }
+            });
+            // Trigger HTMX update directly with the value
+            console.log('Checkbox selected:', kmValue, 'Triggering HTMX update');
+            // Use htmx.ajax to ensure the value is sent correctly
+            htmx.ajax('GET', renderResultsTableUrl + '?target_km=' + kmValue, {
+                target: '#resultsTableBody',
+                swap: 'outerHTML',
+                include: '#targetKm'
+            });
+        } else {
+            // Clear input if checkbox is unchecked
+            targetKmInput.value = '';
+            // Uncheck all other checkboxes
+            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            // CRITICAL: Reset announced winners when target is cleared
+            announcedWinners.clear();
+            console.log('✅ Target KM cleared - announcedWinners cleared');
+            // Trigger HTMX update to clear target
+            console.log('Checkbox unchecked, clearing target');
+            htmx.ajax('GET', renderResultsTableUrl + '?target_km=', {
+                target: '#resultsTableBody',
+                swap: 'outerHTML',
+                include: '#targetKm'
+            });
+        }
+    }
+
+    // Store last target KM value to detect changes
+    let lastTargetKm = 0;
+    
+    function handleTargetKmInput() {
+        const targetKmInput = document.getElementById('targetKm');
+        const inputValue = parseFloat(targetKmInput.value) || 0;
+        
+        // CRITICAL: Reset announced winners if target changed
+        if (Math.abs(inputValue - lastTargetKm) > 0.01) {
+            announcedWinners.clear();
+            console.log('✅ Target KM changed from', lastTargetKm, 'to', inputValue, '- announcedWinners cleared');
+            lastTargetKm = inputValue;
+        }
+        
+        // Check/uncheck checkboxes based on input value
+        document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+            const cbValue = parseFloat(cb.value);
+            cb.checked = (inputValue > 0 && inputValue === cbValue);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         // Schieberegler-Logik entfernt
+        
+        // Debug: Check if HTMX is loaded
+        console.log('DOMContentLoaded - HTMX available:', typeof htmx !== 'undefined');
+        if (typeof htmx === 'undefined') {
+            console.error('HTMX is not loaded!');
+            alert('HTMX konnte nicht geladen werden. Bitte Seite neu laden.');
+        }
+        
+        // Initialize GameStateManager on page load
+        GameStateManager.init();
     });
 
-    // Global button and state control logic (executed after EVERY HTMX swap)
-    document.addEventListener('htmx:afterSwap', function(event) {
-        if (event.target.id === 'resultsTableBody') {
-            const tbody = event.target;
+    // ============================================
+    // GameStateManager - Centralized State Management
+    // ============================================
+    const GameStateManager = {
+        _isRunning: false,
+        
+        init() {
+            // Initialize from table data if available
+            const tbody = document.getElementById('resultsTableBody');
+            if (tbody && tbody.dataset.gameActive) {
+                const isActive = tbody.dataset.gameActive === 'true';
+                const isStopped = tbody.dataset.gameStopped === 'true';
+                this._isRunning = isActive && !isStopped;
+            }
+            this.updateButtons();
+        },
+        
+        isRunning() {
+            return this._isRunning;
+        },
+        
+        setGameRunning(running) {
+            console.log('GameStateManager.setGameRunning(' + running + ')');
+            this._isRunning = running;
+            this.updateButtons();
+        },
+        
+        updateButtons() {
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
-
-            // Read state variables from data attributes
-            const isActive = tbody.dataset.gameActive === 'true';
-            const isStopped = tbody.dataset.gameStopped === 'true';
-            const winnerName = tbody.dataset.winnerName;
-
-            // Game is running if it is active AND NOT stopped
-            const isRunning = isActive && !isStopped;
-
-            if (startButton && stopButton) {
-                if (isRunning) {
-                    // Game is running
-                    startButton.disabled = true;
-                    stopButton.disabled = false;
+            
+            if (!startButton || !stopButton) {
+                console.warn('Buttons not found in updateButtons()');
+                return;
+            }
+            
+            console.log('Updating buttons: isRunning=' + this._isRunning);
+            
+            // Use requestAnimationFrame to ensure immediate visual update
+            requestAnimationFrame(() => {
+                if (this._isRunning) {
+                    // Game is running: Start disabled, Stop enabled
+                    startButton.classList.add('inactive');
+                    stopButton.classList.remove('inactive');
+                    // Force immediate style update
+                    startButton.style.opacity = '0.4';
+                    startButton.style.backgroundColor = '#6c757d';
+                    startButton.style.pointerEvents = 'none';
+                    stopButton.style.opacity = '1';
+                    stopButton.style.backgroundColor = '#dc3545';
+                    stopButton.style.pointerEvents = 'auto';
+                    console.log('Game running: Start=inactive, Stop=active');
                 } else {
-                    // Game inactive (before start, stopped, or winner)
-                    startButton.disabled = false;
-                    stopButton.disabled = true;
+                    // Game is stopped: Start enabled, Stop disabled
+                    startButton.classList.remove('inactive');
+                    stopButton.classList.add('inactive');
+                    // Force immediate style update
+                    startButton.style.opacity = '1';
+                    startButton.style.backgroundColor = '#28a745';
+                    startButton.style.pointerEvents = 'auto';
+                    stopButton.style.opacity = '0.4';
+                    stopButton.style.backgroundColor = '#6c757d';
+                    stopButton.style.pointerEvents = 'none';
+                    console.log('Game stopped: Start=active, Stop=inactive');
+                }
+            });
+        },
+        
+        syncFromTable() {
+            const tbody = document.getElementById('resultsTableBody');
+            if (tbody && tbody.dataset.gameActive) {
+                const isActive = tbody.dataset.gameActive === 'true';
+                const isStopped = tbody.dataset.gameStopped === 'true';
+                const newRunningState = isActive && !isStopped;
+                if (newRunningState !== this._isRunning) {
+                    console.log('State changed from table: isRunning=' + newRunningState);
+                    this._isRunning = newRunningState;
+                    this.updateButtons();
                 }
             }
+        }
+    };
 
-            // Winner check and sound trigger
-            if (winnerName) {
-                showWinnerPopupAndPlaySound(winnerName);
-            } else {
-                if (!isRunning) {
-                     winnerAnnounced = false;
-                }
+    // ============================================
+    // Button Event Handlers - Direct and Immediate
+    // ============================================
+    function handleStartGameResponse(event) {
+        console.log('handleStartGameResponse called', event.detail);
+        if (event.detail && event.detail.successful) {
+            // CRITICAL: Reset announced winners when starting a new game
+            // This ensures that winners can be announced again in the new game
+            announcedWinners.clear();
+            console.log('✅ New game started: announcedWinners cleared');
+            
+            // Update buttons IMMEDIATELY with direct DOM manipulation
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            if (startButton && stopButton) {
+                // Direct style update for immediate visual feedback
+                startButton.style.opacity = '0.4';
+                startButton.style.backgroundColor = '#6c757d';
+                startButton.style.pointerEvents = 'none';
+                startButton.classList.add('inactive');
+                
+                stopButton.style.opacity = '1';
+                stopButton.style.backgroundColor = '#dc3545';
+                stopButton.style.pointerEvents = 'auto';
+                stopButton.classList.remove('inactive');
             }
+            
+            // Update state manager
+            GameStateManager.setGameRunning(true);
+            
+            // Reload table after a short delay
+            setTimeout(() => {
+                htmx.trigger('#resultsTableBody', 'refresh');
+            }, 50);
+        } else {
+            alert('{% trans "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)." %}');
+        }
+    }
+
+    function handleStopGameResponse(event) {
+        console.log('handleStopGameResponse called', event.detail);
+        if (event.detail && event.detail.successful) {
+            // Update buttons IMMEDIATELY with direct DOM manipulation
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            if (startButton && stopButton) {
+                // Direct style update for immediate visual feedback
+                startButton.style.opacity = '1';
+                startButton.style.backgroundColor = '#28a745';
+                startButton.style.pointerEvents = 'auto';
+                startButton.classList.remove('inactive');
+                
+                stopButton.style.opacity = '0.4';
+                stopButton.style.backgroundColor = '#6c757d';
+                stopButton.style.pointerEvents = 'none';
+                stopButton.classList.add('inactive');
+            }
+            
+            // Update state manager
+            GameStateManager.setGameRunning(false);
+            
+            // Reload table after a short delay
+            setTimeout(() => {
+                htmx.trigger('#resultsTableBody', 'refresh');
+            }, 50);
+        } else {
+            alert('{% trans "Spiel konnte nicht gestoppt werden." %}');
+        }
+    }
+
+    // Global HTMX event listeners for button state management (backup)
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        const target = event.detail.target || event.target;
+        const successful = event.detail.successful;
+        
+        // Handle Start button response
+        if (target && target.id === 'startButton' && successful) {
+            console.log('Global handler: Start button successful');
+            // CRITICAL: Reset announced winners when starting a new game
+            announcedWinners.clear();
+            console.log('✅ Global handler: announcedWinners cleared');
+            
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            if (startButton && stopButton) {
+                startButton.style.opacity = '0.4';
+                startButton.style.backgroundColor = '#6c757d';
+                startButton.style.pointerEvents = 'none';
+                startButton.classList.add('inactive');
+                
+                stopButton.style.opacity = '1';
+                stopButton.style.backgroundColor = '#dc3545';
+                stopButton.style.pointerEvents = 'auto';
+                stopButton.classList.remove('inactive');
+            }
+            
+            GameStateManager.setGameRunning(true);
+            setTimeout(() => {
+                htmx.trigger('#resultsTableBody', 'refresh');
+            }, 50);
+        }
+        
+        // Handle Stop button response
+        if (target && target.id === 'stopButton' && successful) {
+            console.log('Global handler: Stop button successful');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            if (startButton && stopButton) {
+                startButton.style.opacity = '1';
+                startButton.style.backgroundColor = '#28a745';
+                startButton.style.pointerEvents = 'auto';
+                startButton.classList.remove('inactive');
+                
+                stopButton.style.opacity = '0.4';
+                stopButton.style.backgroundColor = '#6c757d';
+                stopButton.style.pointerEvents = 'none';
+                stopButton.classList.add('inactive');
+            }
+            
+            GameStateManager.setGameRunning(false);
+            setTimeout(() => {
+                htmx.trigger('#resultsTableBody', 'refresh');
+            }, 50);
+        }
+    });
+
+    // Sync state from table after HTMX swaps
+    document.addEventListener('htmx:afterSwap', function(event) {
+        if (event.target.id === 'resultsTableBody') {
+            GameStateManager.syncFromTable();
+            
+            // Winner check and sound trigger - handle multiple new winners
+            const tbody = event.target;
+            const newWinnersStr = tbody.dataset.newWinners || '';
+            if (newWinnersStr) {
+                const newWinners = newWinnersStr.split(',').filter(w => w.trim() !== '');
+                console.log('New winners detected:', newWinners, 'announcedWinners size:', announcedWinners.size);
+                // Show popup for each new winner (one at a time)
+                newWinners.forEach((winnerName, index) => {
+                    setTimeout(() => {
+                        showWinnerPopupAndPlaySound(winnerName);
+                    }, index * 2000); // 2 seconds between each popup
+                });
+            } else {
+                console.log('No new winners in this update');
+            }
+        }
+    });
+    
+    // Also sync on load event
+    document.addEventListener('htmx:load', function(event) {
+        if (event.target.id === 'resultsTableBody') {
+            GameStateManager.syncFromTable();
         }
     });
 </script>
