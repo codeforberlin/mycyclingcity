@@ -929,6 +929,9 @@ msgstr ""
 msgid "Session beenden / Zurücksetzen"
 msgstr "End / Reset session"
 
+msgid "Session beenden"
+msgstr "End session"
+
 msgid "Datenschutzerklärung"
 msgstr "Privacy Policy"
 

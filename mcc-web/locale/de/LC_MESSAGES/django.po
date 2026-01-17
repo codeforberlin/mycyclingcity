@@ -1376,6 +1376,9 @@ msgstr ""
 msgid "Session beenden / Zurücksetzen"
 msgstr "Session beenden / Zurücksetzen"
 
+msgid "Session beenden"
+msgstr "Session beenden"
+
 #: game/templates/game/mcc_game.html:184 map/templates/map/mcc_map.html:100
 msgid "Datenschutzerklärung"
 msgstr ""

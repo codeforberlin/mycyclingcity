@@ -37,6 +37,7 @@
         button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.3s ease, background-color 0.3s ease; }
         #startButton { background-color: #28a745; color: white; }
         #stopButton { background-color: #dc3545; color: white; }
+        #endSessionButton { background-color: #f4a261; color: white; }
         /* Button States - Simple and Clear */
         #startButton.inactive,
         #stopButton.inactive { 
@@ -60,6 +61,9 @@
         }
         #stopButton:not(.inactive):hover { 
             background-color: #c82333; 
+        }
+        #endSessionButton:hover { 
+            background-color: #e76f51; 
         }
         #clearAssignmentsButton { background-color: #ffc107; color: #333; }
         .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -260,6 +264,14 @@
                 hx-include="[name='csrfmiddlewaretoken']"
                 hx-on::htmx:after-request="handleStopGameResponse(event)"
                 class="inactive">{% trans "Spiel stoppen" %}</button>
+
+        <button id="endSessionButton"
+                hx-post="{% url 'game:end_session' %}"
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
+                hx-on::after-request="window.location.reload();">
+            {% trans "Session beenden" %}
+        </button>
     </div>
 
     <div>
@@ -395,16 +407,6 @@
                            hx-include="this"
                            oninput="handleTargetKmInput()">
                 </div>
-
-                {# NEU: Button zum Session-Reset #}
-                <button id="endSessionButton"
-                        style="background-color: #f4a261; color: white; margin-top: 15px;"
-                        hx-post="{% url 'game:end_session' %}"
-                        hx-include="[name='csrfmiddlewaretoken']"
-                        hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
-                        hx-on::after-request="window.location.reload();">
-                    {% trans "Session beenden / Zurücksetzen" %}
-                </button>
             </div>
         </div>
     </div>
