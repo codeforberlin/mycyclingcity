@@ -2656,3 +2656,155 @@ msgstr "Table"
 #: map/templates/map/map_mobile.html
 msgid "Tabelle"
 msgstr "Table"
+
+#: game/templates/game/mcc_game.html
+msgid "Radler und Geräte zuweisen → Spiel starten → Kilometer sammeln!"
+msgstr "Assign cyclists & devices → Start game → Collect kilometers!"
+
+#: game/templates/game/mcc_game.html
+msgid "Radler & Geräte zuweisen"
+msgstr "Assign cyclists & devices"
+
+#: game/templates/game/mcc_game.html
+msgid "Wähle einen Radler"
+msgstr "Select a cyclist"
+
+#: game/templates/game/mcc_game.html
+msgid "Oder manuell eingeben"
+msgstr "Or enter manually"
+
+#: game/templates/game/mcc_game.html
+msgid "Raum"
+msgstr "Room"
+
+#: game/templates/game/mcc_game.html
+msgid "Verlassen"
+msgstr "Leave"
+
+#: game/templates/game/mcc_game.html
+msgid "Beenden"
+msgstr "End"
+
+#: game/templates/game/mcc_game.html
+msgid "Tipp: 👑 neben Radlernamen = Spielleiter-Rolle übertragen"
+msgstr "Tip: 👑 next to cyclist name = Transfer master role"
+
+#: game/templates/game/mcc_game.html
+msgid "Gemeinsam spielen"
+msgstr "Play together"
+
+#: game/templates/game/mcc_game.html
+msgid "Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die gleiche Tabelle sehen können."
+msgstr "Create a game room so other cyclists in different locations can see the same table."
+
+#: game/templates/game/mcc_game.html
+msgid "Raum erstellen"
+msgstr "Create room"
+
+#: game/templates/game/mcc_game.html
+msgid "Raum beitreten"
+msgstr "Join room"
+
+#: game/templates/game/mcc_game.html
+msgid "Logo links"
+msgstr "Left logo"
+
+#: game/templates/game/mcc_game.html
+msgid "Logo rechts"
+msgstr "Right logo"
+
+#: game/templates/game/mcc_game.html
+msgid "QR-Code zum Beitreten"
+msgstr "QR code to join"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Kurzanleitung"
+msgstr "Quick guide"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Wie funktioniert das Spiel?"
+msgstr "How does the game work?"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Weisen Sie Radler Geräten zu, setzen Sie optional ein Ziel in Kilometern und starten Sie das Spiel. Das System verfolgt automatisch die zurückgelegten Kilometer und berechnet die verdienten Coins."
+msgstr "Assign cyclists to devices, optionally set a target in kilometers, and start the game. The system automatically tracks kilometers traveled and calculates coins earned."
+
+#: game/templates/game/partials/info_modal.html
+msgid "Was sind Spielräume?"
+msgstr "What are game rooms?"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Spielräume ermöglichen es mehreren Spielern, gemeinsam an derselben Challenge teilzunehmen. Der Raum-Ersteller ist der Spielleiter und kann Einstellungen ändern. Alle Teilnehmer sehen die gleichen Ergebnisse in Echtzeit."
+msgstr "Game rooms allow multiple players to participate together in the same challenge. The room creator is the master and can change settings. All participants see the same results in real-time."
+
+#: game/templates/game/partials/info_modal.html
+msgid "Wie werden Coins berechnet?"
+msgstr "How are coins calculated?"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Coins werden basierend auf den zurückgelegten Kilometern und einem individuellen Umrechnungsfaktor jedes Radlers berechnet. Die Formel lautet: Coins = Kilometer × Umrechnungsfaktor."
+msgstr "Coins are calculated based on kilometers traveled and an individual conversion factor for each cyclist. The formula is: Coins = Kilometers × Conversion Factor."
+
+#: game/templates/game/partials/info_modal.html
+msgid "Ausführliche Dokumentation im Wiki"
+msgstr "Full documentation in wiki"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Schließen"
+msgstr "Close"
+
+#: game/templates/game/partials/info_modal.html
+msgid "Sprache"
+msgstr "Language"
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter"
+msgstr "Master"
+
+#: game/templates/game/mcc_game.html
+msgid "Nur der Spielleiter kann das Ziel ändern"
+msgstr "Only the master can change the target"
+
+#: game/templates/game/mcc_game.html
+msgid "Nur Spielleiter"
+msgstr "Master only"
+
+#: game/templates/game/mcc_game.html
+msgid "Sie sind der Spielleiter"
+msgstr "You are the master"
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter-Rolle"
+msgstr "Master role"
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter-Rolle übertragen"
+msgstr "Transfer master role"
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter-Rolle an diesen Teilnehmer übertragen"
+msgstr "Transfer master role to this participant"
+
+#: game/templates/game/mcc_game.html
+msgid "Möchten Sie die Spielleiter-Rolle wirklich an"
+msgstr "Do you really want to transfer the master role to"
+
+#: game/templates/game/mcc_game.html
+msgid "übertragen?"
+msgstr "?"
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter-Rolle wurde übertragen."
+msgstr "Master role has been transferred."
+
+#: game/templates/game/mcc_game.html
+msgid "Spielleiter-Rolle wurde übertragen. Die Seite wird neu geladen."
+msgstr "Master role has been transferred. The page will reload."
+
+#: game/templates/game/mcc_game.html
+msgid "Fehler beim Übertragen der Spielleiter-Rolle"
+msgstr "Error transferring master role"
+
+#: game/templates/game/mcc_game.html
+msgid "Tipp: Klicken Sie auf 👑 neben einem Radlernamen, um die Spielleiter-Rolle zu übertragen"
+msgstr "Tip: Click on 👑 next to a cyclist name to transfer the master role"

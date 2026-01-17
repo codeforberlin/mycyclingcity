@@ -17,7 +17,40 @@ from django.conf import settings
 from django.urls import reverse
 from api.models import Cyclist
 from iot.models import Device
-from django.db.models.functions import Coalesce 
+from django.db.models.functions import Coalesce
+
+
+def format_css_number(value, decimals=1):
+    """
+    Format a number for use in CSS values, always using dot as decimal separator.
+    
+    This utility function ensures that numeric values used in CSS (like width, height, etc.)
+    are always formatted with a dot (.) as decimal separator, regardless of the current
+    locale setting. This prevents issues where German locale would use commas (,) which
+    CSS doesn't accept.
+    
+    Args:
+        value: Numeric value to format
+        decimals: Number of decimal places (default: 1)
+    
+    Returns:
+        String representation of the number with dot as decimal separator
+    
+    Example:
+        format_css_number(90.5, 1)  # Returns "90.5" (never "90,5")
+        format_css_number(90.5, 2)  # Returns "90.50" (never "90,50")
+    """
+    if value is None:
+        return "0"
+    
+    try:
+        num = float(value)
+        # Format with specified decimals, always using dot
+        formatted = f"{num:.{decimals}f}"
+        # Ensure dot is used (replace comma if locale added one)
+        return formatted.replace(',', '.')
+    except (ValueError, TypeError):
+        return "0" 
 from django.utils.translation import gettext_lazy as _
 from .models import GameRoom
 
@@ -202,6 +235,18 @@ def game_page(request):
 def end_session(request):
     """Ends the current user session by deleting all session data."""
     
+    # CRITICAL: If in a room, only master can end the session
+    room_code = request.session.get('room_code')
+    if room_code:
+        try:
+            room = GameRoom.objects.get(room_code=room_code, is_active=True)
+            if not is_master(request, room):
+                logger.warning(f"❌ Nicht-Master versucht Session zu beenden: {room_code}, Session: {request.session.session_key}")
+                return JsonResponse({"error": _("Nur der Spielleiter kann die Session beenden")}, status=403)
+        except GameRoom.DoesNotExist:
+            # Room doesn't exist, allow action (user will be redirected)
+            pass
+    
     # Log the action
     if request.session.get('device_assignments'):
         logger.info(_(f"🛑 Session für Gast-Spiel wurde beendet. Zuweisungen: {request.session.get('device_assignments')}"))
@@ -367,11 +412,13 @@ def render_results_table(request):
     is_game_stopped = request.session.get('is_game_stopped', False)
     
     logger.info(f"🔍 render_results_table: device_assignments={device_assignments}, room_code={room_code}")
+    logger.info(f"🔍 Game state: start_distances={start_distances}, stop_distances={stop_distances}, is_game_stopped={is_game_stopped}")
     
     # Update interval is now fixed
     update_interval = 10 
     
     game_is_active = bool(start_distances)
+    logger.info(f"🔍 game_is_active={game_is_active} (based on start_distances)")
     
     if not device_assignments:
         # Get target_km from session even if no assignments
@@ -437,15 +484,18 @@ def render_results_table(request):
             # Game is running - calculate distance gained since game start
             start_distance = start_distances.get(user_id, current_distance_total)
             distance_gained = max(0, current_distance_total - start_distance)
+            logger.info(f"🔍 Distance calculation (running): user_id={user_id}, current_distance_total={current_distance_total}, start_distance={start_distance}, distance_gained={distance_gained}")
         elif game_is_active and is_game_stopped:
             # Game was stopped - use frozen distance at stop time
             start_distance = start_distances.get(user_id, current_distance_total)
             stop_distance = stop_distances.get(user_id, current_distance_total)
             # Use the distance at stop time, not current distance
             distance_gained = max(0, stop_distance - start_distance)
+            logger.info(f"🔍 Distance calculation (stopped): user_id={user_id}, stop_distance={stop_distance}, start_distance={start_distance}, distance_gained={distance_gained}")
         else:
             # Before game start, always show 0 km
             distance_gained = 0
+            logger.info(f"🔍 Distance calculation (not started): user_id={user_id}, current_distance_total={current_distance_total}, game_is_active={game_is_active}, is_game_stopped={is_game_stopped}, start_distances={start_distances}, distance_gained={distance_gained}")
             
         # Default value 100 from settings is used if not found
         coin_factor = cyclist_factors.get(user_id, settings.DEFAULT_COIN_CONVERSION_FACTOR) 
@@ -514,10 +564,17 @@ def render_results_table(request):
     if target_km > 0:
         for result in game_results:
             progress = (result['distance_km'] / target_km) * 100
-            result['progress_percent'] = min(100.0, round(progress, 1))
+            result['progress_percent'] = float(min(100.0, round(progress, 1)))
+            # Format progress_percent as string with dot (for CSS compatibility)
+            # CRITICAL: Always use format_css_number() for CSS values to avoid locale issues
+            result['progress_percent_str'] = format_css_number(result['progress_percent'], decimals=1)
+            # Debug logging - show calculated progress_percent
+            logger.info(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, distance_km={result['distance_km']}, target_km={target_km}, progress={progress}, progress_percent={result['progress_percent']}, progress_percent_str={result['progress_percent_str']}")
     else:
         for result in game_results:
             result['progress_percent'] = 0.0
+            result['progress_percent_str'] = "0.0"
+            logger.info(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, target_km=0, progress_percent=0.0")
     
     # Get previous target_km from session to detect changes
     previous_target_km = request.session.get('current_target_km', None)
@@ -592,6 +649,18 @@ def start_game(request):
     """Starts the game and saves the initial distances (reads assignments from session)."""
     # Sync from room if in a shared room
     sync_session_from_room(request)
+    
+    # CRITICAL: Check if user is in a room and if so, only master can start/stop game
+    room_code = request.session.get('room_code')
+    if room_code:
+        try:
+            room = GameRoom.objects.get(room_code=room_code, is_active=True)
+            if not is_master(request, room):
+                logger.warning(f"❌ Nicht-Master versucht Spiel zu starten/stoppen: {room_code}, Session: {request.session.session_key}")
+                return JsonResponse({"error": _("Nur der Spielleiter kann das Spiel starten oder stoppen")}, status=403)
+        except GameRoom.DoesNotExist:
+            # Room doesn't exist, allow action (user will be redirected)
+            pass
     
     logger.info(f"🔍 start_game called: method={request.method}, path={request.path}, POST data={dict(request.POST)}")
     if request.method == 'POST':

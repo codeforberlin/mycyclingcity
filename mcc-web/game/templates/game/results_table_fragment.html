@@ -9,6 +9,7 @@
 {# mcc/game/templates/game/results_table_fragment.html #}
 {% load static %}
 {% load i18n %}
+{% load game_filters %}
 
 <tbody id="resultsTableBody"
     hx-get="{% url 'game:render_results_table' %}"
@@ -90,11 +91,15 @@
                 <div style="display: flex; flex-direction: column; align-items: center;">
                     <div style="font-weight: bold; margin-bottom: 3px;">{{ result.distance_km|floatformat:2 }} km</div>
                     {% if target_km > 0 %}
-                        <div class="progress-container">
-                            <div class="progress-bar {% if result.progress_percent >= 100 %}progress-bar-full{% endif %}" 
-                                 style="width: {% if result.progress_percent > 100 %}100{% else %}{{ result.progress_percent|floatformat:1 }}{% endif %}%;">
-                            </div>
-                            <div class="progress-text">
+                        <div class="progress-container" style="position: relative;">
+                            {% if result.progress_percent > 100.0 %}
+                                <div class="progress-bar progress-bar-full" style="width: 100% !important; max-width: 100% !important; background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%) !important; height: 100% !important; display: block !important;"></div>
+                            {% elif result.progress_percent < 0.0 %}
+                                <div class="progress-bar" style="width: 0% !important; max-width: 0% !important; min-width: 0% !important; background: linear-gradient(90deg, #28a745 0%, #20c997 100%) !important; height: 100% !important; display: block !important; overflow: hidden !important;"></div>
+                            {% else %}
+                                <div class="progress-bar" style="width: {{ result.progress_percent_str }}% !important; max-width: {{ result.progress_percent_str }}% !important; min-width: 0% !important; background: linear-gradient(90deg, #28a745 0%, #20c997 100%) !important; height: 100% !important; display: block !important;"></div>
+                            {% endif %}
+                            <div class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75em; font-weight: bold; color: #333; z-index: 1;">
                                 {% if result.progress_percent >= 100 %}
                                     100% ✓
                                 {% else %}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    join_room.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+<html lang="de">
+<head>
+    {% load static %}
+    {% load i18n %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Raum beitreten" %} - MCC Spiel</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f4f9; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+            justify-content: center;
+            align-items: center;
+        }
+        .container { 
+            max-width: 500px; 
+            width: 100%;
+            margin: auto; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+            margin-bottom: 30px; 
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button[type="submit"] {
+            background-color: #28a745;
+            color: white;
+        }
+        button[type="submit"]:hover {
+            background-color: #218838;
+        }
+        .back-button {
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-button:hover {
+            background-color: #5a6268;
+        }
+        .help-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{% trans "Raum beitreten" %}</h1>
+        
+        {% if error %}
+        <div class="error-message">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post" action="{% url 'game:join_room' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="room_code">{% trans "Raumcode eingeben" %}:</label>
+                <input 
+                    type="text" 
+                    id="room_code" 
+                    name="room_code" 
+                    value="{{ room_code|default:'' }}" 
+                    placeholder="RSVNGNG5"
+                    maxlength="8"
+                    required
+                    autofocus
+                    autocomplete="off"
+                >
+            </div>
+            
+            <div class="button-group">
+                <button type="submit">{% trans "Beitreten" %}</button>
+                <a href="{% url 'game:game_page' %}" class="back-button" style="padding: 12px 30px; border-radius: 4px; text-decoration: none; display: inline-block;">
+                    {% trans "Zurück" %}
+                </a>
+            </div>
+        </form>
+        
+        <div class="help-text">
+            {% trans "Geben Sie den 8-stelligen Raumcode ein, um einem Spielraum beizutreten." %}
+        </div>
+    </div>
+</body>
+</html>
