@@ -16,12 +16,15 @@
     hx-swap="outerHTML"
     hx-include="#targetKm" 
     
-    {# Setze den Trigger nur, wenn das Spiel aktiv ist und nicht gestoppt wurde (Spiel läuft weiter auch bei Gewinnern) #}
+    {# Setze den Trigger basierend auf Spielstatus und Raum-Status #}
     {% if game_is_active and not is_game_stopped %}
-        {# Fester Wert 10 Sekunden + refresh event für sofortige Updates #}
+        {# Spiel läuft: Alle 10 Sekunden aktualisieren + refresh event #}
         hx-trigger="every 10s, refresh" 
+    {% elif room_code %}
+        {# Raum aktiv, aber Spiel noch nicht gestartet: Alle 3 Sekunden aktualisieren für Echtzeit-Synchronisation #}
+        hx-trigger="every 3s, refresh" 
     {% else %}
-        {# refresh event für sofortige Updates nach Start/Stop #}
+        {# Kein Raum, kein aktives Spiel: Nur bei refresh event #}
         hx-trigger="refresh" 
     {% endif %}
     
@@ -29,6 +32,9 @@
     data-game-active="{{ game_is_active|yesno:'true,false' }}"
     data-game-stopped="{{ is_game_stopped|yesno:'true,false' }}"
     data-new-winners="{{ new_winners|join:',' }}"
+    data-room-code="{{ room_code|default:'' }}"
+    data-target-km="{% if target_km > 0 %}{{ target_km|floatformat:0 }}{% else %}0{% endif %}"
+    data-is-master="{{ is_master|yesno:'true,false' }}"
     >
     {% if game_results %}
         {% for result in game_results %}
@@ -40,7 +46,7 @@
         {% endwith %}
         
         <tr data-cyclist="{{ result.cyclist_name }}" data-device="{{ result.device_name }}" 
-            class="{% if is_winner %}winner-row {% endif %}{% if is_game_stopped and rank == 1 %}rank-1{% elif is_game_stopped and rank == 2 %}rank-2{% elif is_game_stopped and rank == 3 %}rank-3{% endif %}">
+            class="{% if is_winner %}winner-row {% endif %}{% if is_game_stopped and rank == 1 %}rank-1{% elif is_game_stopped and rank == 2 %}rank-2{% elif is_game_stopped and rank == 3 %}rank-3{% endif %}{% if result.is_master_cyclist %} master-row{% endif %}{% if result.is_own_assignment %} own-assignment{% endif %}">
             {# Rank column: Medals when game is stopped, numbers when game is running #}
             <td class="rank-cell">
                 {% if is_game_stopped %}
@@ -62,10 +68,19 @@
             
             {# Cyclist name with winner badge #}
             <td>
-                {{ result.cyclist_name }}
-                {% if is_winner %}
-                    <span class="winner-badge">{% trans "Gewinner!" %}</span>
-                {% endif %}
+                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                    <span>{{ result.cyclist_name }}</span>
+                    {% if is_winner %}
+                        <span class="winner-badge">{% trans "Gewinner!" %}</span>
+                    {% endif %}
+                    {% if is_master and room_code %}
+                        <button onclick="transferMasterTo('{{ result.cyclist_name }}')"
+                                title="{% trans 'Spielleiter-Rolle an diesen Teilnehmer übertragen' %}"
+                                style="background-color: #ffc107; color: #333; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7em; cursor: pointer; margin-left: 5px;">
+                            👑
+                        </button>
+                    {% endif %}
+                </div>
             </td>
             
             <td>{{ result.device_name }}</td>
@@ -93,14 +108,21 @@
             
             <td>{{ result.coins|floatformat:0 }}</td>
             <td>
+                {% if result.can_delete %}
                 <button hx-post="{% url 'game:handle_assignment_form' %}"
                         hx-target="#resultsTableBody"
                         hx-swap="outerHTML"
                         hx-confirm="{% trans 'Sind Sie sicher, dass Sie die Zuweisung entfernen möchten?' %}"
                         hx-vals='{"action": "remove", "cyclist": "{{ result.cyclist_name }}"}'
+                        {% if room_code %}
+                        hx-on::after-request="if(event.detail.successful) { setTimeout(() => htmx.trigger('#resultsTableBody', 'refresh'), 100); }"
+                        {% endif %}
                         style="background-color: #dc3545; color: white; padding: 5px 8px; font-size: 0.8em;">
                     {% trans "Entfernen" %}
                 </button>
+                {% else %}
+                <span style="color: #999; font-size: 0.8em;">{% trans "Nur Spielleiter" %}</span>
+                {% endif %}
             </td>
         </tr>
         {% endwith %}

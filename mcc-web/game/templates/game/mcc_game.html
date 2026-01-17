@@ -80,6 +80,9 @@
         tr.rank-1 { background-color: #fff9e6; }
         tr.rank-2 { background-color: #f5f5f5; }
         tr.rank-3 { background-color: #faf0e6; }
+        tr.master-row { background-color: #fff3cd !important; border-left: 4px solid #ffc107 !important; }
+        tr.own-assignment { background-color: #e7f3ff !important; border-left: 4px solid #007bff !important; }
+        tr.master-row.own-assignment { background-color: #d1ecf1 !important; border-left: 4px solid #17a2b8 !important; }
         footer { margin-top: 20px; text-align: center; padding: 10px; color: #777; }
         .remove-checkbox { cursor: pointer; width: 20px; height: 20px; margin: 0 auto; display: block; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -239,6 +242,52 @@
 
     <p style="text-align: center;">{% trans "Willkommen zur Kilometer-Challenge! Wähle die Radler und ihre zugewiesenen Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins du sammeln kannst." %}</p>
 
+    {% if room_code %}
+    <div id="roomInfo" style="background-color: #d4edda; border: 2px solid #28a745; border-radius: 6px; padding: 10px; margin: 10px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px;">
+            <div id="masterBadge" style="background-color: #ffc107; padding: 4px 8px; border-radius: 3px; font-size: 0.85em; display: {% if is_master %}inline-block{% else %}none{% endif %};">
+                <strong>👑 {% trans "Spielleiter" %}</strong>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 0.9em; color: #155724; font-weight: bold; margin-bottom: 2px;">🏠 {% trans "Raum" %}</div>
+                <div style="font-size: 18px; font-weight: bold; color: #155724;">{{ room_code }}</div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <img src="{% url 'game:room_qr_code' room_code %}" alt="QR Code" style="max-width: 80px; height: 80px; border: 1px solid #28a745; border-radius: 3px; cursor: pointer;" title="{% trans 'QR-Code zum Beitreten' %}" onclick="this.style.maxWidth = this.style.maxWidth === '200px' ? '80px' : '200px'; this.style.height = this.style.height === '200px' ? '80px' : '200px';">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <a href="{% url 'game:leave_room' %}" style="display: inline-block; padding: 6px 12px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 3px; font-weight: bold; font-size: 0.85em; white-space: nowrap;">
+                    {% trans "Verlassen" %}
+                </a>
+                <div id="masterActions" style="display: {% if is_master %}inline-block{% else %}none{% endif %};">
+                    <button hx-post="{% url 'game:end_room' %}"
+                            hx-confirm="{% trans 'Möchten Sie den Raum wirklich beenden? Alle Teilnehmer werden getrennt.' %}"
+                            hx-on::after-request="if(event.detail.successful) { window.location.href='{% url 'game:game_page' %}'; }"
+                            style="background-color: #dc3545; color: white; padding: 6px 12px; border: none; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 0.85em; white-space: nowrap; width: 100%;">
+                        🏁 {% trans "Beenden" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="masterTip" style="width: 100%; font-size: 0.75em; color: #666; margin-top: 5px; display: {% if is_master %}block{% else %}none{% endif %};">
+            <em>{% trans "Tipp: 👑 neben Radlernamen = Spielleiter-Rolle übertragen" %}</em>
+        </div>
+    </div>
+    {% else %}
+    <div style="text-align: center; margin: 20px 0;">
+        <h3>{% trans "Gemeinsam spielen" %}</h3>
+        <p>{% trans "Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die gleiche Tabelle sehen können." %}</p>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+            <a href="{% url 'game:create_room' %}" style="display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                🏠 {% trans "Raum erstellen" %}
+            </a>
+            <a href="{% url 'game:join_room' %}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                ➕ {% trans "Raum beitreten" %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="top-controls">
         {% csrf_token %}
         <script>
@@ -291,8 +340,14 @@
                  hx-target="this"
                  hx-swap="outerHTML"
                  hx-include="#targetKm"
-                 hx-trigger="load once"> {# CRITICAL: Adds the trigger for the initial load #}
-                {# Content is now fetched from the backend via hx-trigger="load once" #}
+                 {% if room_code %}
+                 {# Wenn in einem Raum: Sofort laden und dann automatisch aktualisieren (alle 3 Sekunden) #}
+                 hx-trigger="load, every 3s"
+                 {% else %}
+                 {# Kein Raum: Nur einmal beim Laden #}
+                 hx-trigger="load once"
+                 {% endif %}>
+                {# Content is now fetched from the backend via HTMX #}
             </tbody>
         </table>
     </div>
@@ -307,7 +362,10 @@
                 <form hx-post="{% url 'game:handle_assignment_form' %}"
                       hx-target="#resultsTableBody"
                       hx-swap="outerHTML"
-                      hx-vals='{"action": "add"}'>
+                      hx-vals='{"action": "add"}'
+                      {% if room_code %}
+                      hx-on::after-request="if(event.detail.successful) { setTimeout(() => htmx.trigger('#resultsTableBody', 'refresh'), 100); }"
+                      {% endif %}>
                     {% csrf_token %}
                     <div class="assignments">
                         <select id="cyclistSelect" name="cyclist">
@@ -327,16 +385,20 @@
                     <button type="submit" style="margin-top: 10px;">{% trans "Zuweisung hinzufügen" %}</button>
                 </form>
 
+                {% if is_master or not room_code %}
                 <button
                     hx-post="{% url 'game:handle_assignment_form' %}"
                     hx-target="#resultsTableBody"
                     hx-swap="outerHTML"
                     hx-vals='{"action": "clear"}'
+                    hx-confirm="{% trans 'Sind Sie sicher, dass Sie alle Zuweisungen löschen möchten?' %}"
                     id="clearAssignmentsButton">{% trans "Alle Zuweisungen löschen" %}</button>
+                {% endif %}
 
             </div>
 
             <div>
+                {% if is_master or not room_code %}
                 <h3>{% trans "Zielkilometer (optional)" %}</h3>
                 
                 {# Checkbox options for quick selection #}
@@ -398,15 +460,48 @@
                            id="targetKm" 
                            name="target_km" 
                            min="1" 
+                           step="1"
                            placeholder="{% trans 'Ziel-km eingeben' %}" 
+                           value="{% if current_target_km > 0 %}{{ current_target_km|floatformat:0 }}{% endif %}"
                            style="max-width: 200px; margin: 0 auto; display: block;"
                            hx-trigger="input changed delay:500ms"
                            hx-get="{% url 'game:render_results_table' %}"
                            hx-target="#resultsTableBody"
                            hx-swap="outerHTML"
                            hx-include="this"
-                           oninput="handleTargetKmInput()">
+                           oninput="handleTargetKmInput()"
+                           onkeydown="return handleTargetKmKeydown(event)"
+                           onpaste="handleTargetKmPaste(event)">
                 </div>
+                {% else %}
+                {# Non-master view: show target but not editable - HTMX-updateable #}
+                <div id="targetKmDisplayContainer"
+                     hx-get="{% url 'game:render_target_km_display' %}"
+                     hx-target="this"
+                     hx-swap="innerHTML"
+                     {% if room_code %}
+                     {# Wenn in einem Raum: Sofort laden und dann automatisch aktualisieren (alle 3 Sekunden) #}
+                     hx-trigger="load, every 3s"
+                     {% else %}
+                     {# Kein Raum: Nur einmal beim Laden #}
+                     hx-trigger="load once"
+                     {% endif %}>
+                    {# Initial content - wird sofort durch HTMX ersetzt #}
+                    <h3>{% trans "Zielkilometer" %}</h3>
+                    {% if current_target_km > 0 %}
+                    <p style="font-size: 20px; font-weight: bold; text-align: center; color: #28a745; margin: 20px 0;">
+                        {{ current_target_km|floatformat:0 }} km
+                    </p>
+                    {% else %}
+                    <p style="text-align: center; color: #666; font-style: italic; margin: 20px 0;">
+                        {% trans "Kein Ziel gesetzt" %}
+                    </p>
+                    {% endif %}
+                    <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: 10px;">
+                        <em>{% trans "Nur der Spielleiter kann das Ziel ändern" %}</em>
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -468,12 +563,207 @@
     window.closeModal = closeModal;
 
     // ============================================
+    // Master Transfer Functionality
+    // ============================================
+    function transferMasterTo(cyclistUserId) {
+        if (!confirm('{% trans "Möchten Sie die Spielleiter-Rolle wirklich an" %} ' + cyclistUserId + ' {% trans "übertragen?" %}')) {
+            return;
+        }
+        
+        // Get CSRF token from meta tag or form
+        let csrfToken = '';
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+            csrfToken = metaToken.getAttribute('content');
+        } else {
+            const inputToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (inputToken) {
+                csrfToken = inputToken.value;
+            }
+        }
+        
+        fetch('{% url "game:transfer_master" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+            },
+            body: 'cyclist_user_id=' + encodeURIComponent(cyclistUserId)
+        })
+        .then(response => {
+            console.log('Transfer master response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'HTTP ' + response.status);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Transfer master response data:', data);
+            if (data.status === 'master_transferred') {
+                // CRITICAL: Immediately trigger a refresh for the old master's browser
+                // This ensures the old master sees they're no longer master
+                htmx.trigger('#resultsTableBody', 'refresh');
+                
+                // Also trigger refresh for target_km_display if visible (for non-master clients)
+                const targetKmDisplay = document.getElementById('targetKmDisplayContainer');
+                if (targetKmDisplay) {
+                    htmx.trigger('#targetKmDisplayContainer', 'refresh');
+                }
+                
+                // Show success message
+                alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                
+                // Reload after a short delay to ensure everything is synced
+                // This ensures both old and new master see the correct state
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else if (data.error) {
+                let errorMsg = data.error;
+                if (data.debug) {
+                    console.error('Debug info:', data.debug);
+                }
+                alert('Fehler: ' + errorMsg);
+            }
+        })
+        .catch(error => {
+            console.error('Error transferring master:', error);
+            alert('{% trans "Fehler beim Übertragen der Spielleiter-Rolle" %}: ' + error.message);
+        });
+    }
+    // Make function globally available
+    window.transferMasterTo = transferMasterTo;
+    
+    // Also ensure it's available after HTMX updates
+    document.addEventListener('htmx:afterSwap', function(event) {
+        if (event.target.id === 'resultsTableBody') {
+            // Re-ensure function is available
+            if (typeof window.transferMasterTo === 'undefined') {
+                window.transferMasterTo = transferMasterTo;
+            }
+        }
+    });
+
+    // ============================================
     // Target Kilometer Management
     // ============================================
     // Store the render_results_table URL for use in JavaScript
     const renderResultsTableUrl = '{% url "game:render_results_table" %}';
     
+    // Track when user last interacted with target KM controls
+    let lastUserInteractionTime = 0;
+    const USER_INTERACTION_TIMEOUT = 2000; // 2 seconds
+    
+    // Function to update checkboxes and input field based on target_km value
+    function updateTargetKmUI(targetKmValue) {
+        const targetKmInput = document.getElementById('targetKm');
+        if (!targetKmInput) {
+            console.log('updateTargetKmUI: targetKmInput not found');
+            return;
+        }
+        
+        const value = parseFloat(targetKmValue) || 0;
+        const currentValue = parseFloat(targetKmInput.value) || 0;
+        
+        console.log('updateTargetKmUI called:', { targetKmValue, value, currentValue, timeSinceLastInteraction: Date.now() - lastUserInteractionTime, justUnchecked });
+        
+        // Don't update if user interacted recently (within timeout period)
+        const timeSinceLastInteraction = Date.now() - lastUserInteractionTime;
+        if (timeSinceLastInteraction < USER_INTERACTION_TIMEOUT) {
+            console.log('Skipping UI update - user interaction too recent (', timeSinceLastInteraction, 'ms ago)');
+            return;
+        }
+        
+        // Only update if value actually changed (with small epsilon for float comparison)
+        if (Math.abs(value - currentValue) < 0.01) {
+            console.log('Skipping UI update - value unchanged');
+            return;
+        }
+        
+        // Check if user is currently typing (input field has focus)
+        if (document.activeElement === targetKmInput) {
+            console.log('Skipping UI update - user is currently typing');
+            return;
+        }
+        
+        console.log('✅ Updating target KM UI:', currentValue, '->', value);
+        
+        // Round value to integer (whole number only)
+        const intValue = Math.round(value);
+        
+        // Update input field - preserve user's exact input if they're typing
+        // Only update if the value is significantly different
+        if (intValue > 0) {
+            // Format value as integer (whole number only)
+            targetKmInput.value = intValue.toString();
+        } else {
+            targetKmInput.value = '';
+        }
+        
+        // Update checkboxes - only check if value exactly matches a checkbox value
+        // BUT: Don't update checkboxes if user just unchecked (justUnchecked flag)
+        // This prevents re-checking when user just unchecked a checkbox
+        if (justUnchecked) {
+            console.log('Skipping checkbox update - user just unchecked a checkbox (justUnchecked flag is true)');
+            // Don't update checkboxes at all when justUnchecked is true
+            // This prevents checkboxes from being re-checked after user unchecks them
+            return; // Early return to prevent any checkbox updates
+        }
+        
+        // Only update checkboxes if value > 0 (never check when value is 0)
+        if (intValue > 0) {
+            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+                const cbValue = parseInt(cb.value, 10);
+                const shouldBeChecked = (intValue === cbValue);
+                if (cb.checked !== shouldBeChecked) {
+                    cb.checked = shouldBeChecked;
+                    console.log('Updated checkbox', cb.id, 'to', shouldBeChecked);
+                }
+            });
+        } else {
+            // Value is 0 - uncheck all checkboxes
+            console.log('Value is 0, unchecking all checkboxes');
+            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+                if (cb.checked) {
+                    cb.checked = false;
+                    console.log('Unchecked checkbox', cb.id);
+                }
+            });
+        }
+    }
+    
+    // Initialize checkboxes and input field on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const targetKmInput = document.getElementById('targetKm');
+        const currentValue = parseFloat(targetKmInput.value) || 0;
+        updateTargetKmUI(currentValue);
+    });
+    
+    // Track if user just unchecked a checkbox to prevent re-checking
+    let justUnchecked = false;
+    
+    // Update checkboxes when table is updated via HTMX
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target && event.detail.target.id === 'resultsTableBody') {
+            const tbody = event.detail.target;
+            const targetKm = tbody.getAttribute('data-target-km');
+            console.log('HTMX afterSwap - data-target-km:', targetKm, 'justUnchecked:', justUnchecked);
+            
+            if (targetKm !== null && targetKm !== '') {
+                const targetKmValue = parseFloat(targetKm) || 0;
+                // Always update UI - updateTargetKmUI will handle justUnchecked flag for checkboxes only
+                // This ensures progress bars and kilometer synchronization continue to work
+                updateTargetKmUI(targetKm);
+            }
+        }
+    });
+    
     function handleTargetKmCheckbox(kmValue) {
+        // Record user interaction time
+        lastUserInteractionTime = Date.now();
+        
         const targetKmInput = document.getElementById('targetKm');
         const checkbox = document.getElementById('targetKm' + kmValue);
         const currentValue = parseFloat(targetKmInput.value) || 0;
@@ -511,39 +801,150 @@
             // CRITICAL: Reset announced winners when target is cleared
             announcedWinners.clear();
             console.log('✅ Target KM cleared - announcedWinners cleared');
+            // Update lastTargetKm to prevent updateTargetKmUI from re-checking
+            lastTargetKm = 0;
+            // Set flag to prevent HTMX response from re-checking checkboxes
+            justUnchecked = true;
             // Trigger HTMX update to clear target
-            console.log('Checkbox unchecked, clearing target');
+            console.log('Checkbox unchecked, clearing target, justUnchecked set to true');
             htmx.ajax('GET', renderResultsTableUrl + '?target_km=', {
                 target: '#resultsTableBody',
                 swap: 'outerHTML',
                 include: '#targetKm'
             });
+            // Reset flag after HTMX response is processed (longer timeout to prevent re-checking)
+            setTimeout(() => {
+                justUnchecked = false;
+                console.log('justUnchecked flag reset after checkbox uncheck');
+            }, USER_INTERACTION_TIMEOUT * 2); // 4 seconds instead of 2
         }
     }
 
     // Store last target KM value to detect changes
     let lastTargetKm = 0;
+    let inputDebounceTimer = null;
     
-    function handleTargetKmInput() {
-        const targetKmInput = document.getElementById('targetKm');
-        const inputValue = parseFloat(targetKmInput.value) || 0;
-        
-        // CRITICAL: Reset announced winners if target changed
-        if (Math.abs(inputValue - lastTargetKm) > 0.01) {
-            announcedWinners.clear();
-            console.log('✅ Target KM changed from', lastTargetKm, 'to', inputValue, '- announcedWinners cleared');
-            lastTargetKm = inputValue;
+    // Prevent decimal input in target KM field - only allow digits
+    function handleTargetKmKeydown(event) {
+        // Allow: backspace (8), delete (46), tab (9), escape (27), enter (13)
+        if ([8, 9, 27, 13, 46].indexOf(event.keyCode) !== -1) {
+            return true;
         }
         
-        // Check/uncheck checkboxes based on input value
+        // Allow: Ctrl+A (65), Ctrl+C (67), Ctrl+V (86), Ctrl+X (88)
+        if ((event.keyCode === 65 || event.keyCode === 67 || event.keyCode === 86 || event.keyCode === 88) && event.ctrlKey === true) {
+            return true;
+        }
+        
+        // Allow: home (36), end (35), left (37), up (38), right (39), down (40)
+        if (event.keyCode >= 35 && event.keyCode <= 40) {
+            return true;
+        }
+        
+        // Block: decimal point (190, 110), comma (188)
+        if (event.keyCode === 190 || event.keyCode === 110 || event.keyCode === 188) {
+            event.preventDefault();
+            return false;
+        }
+        
+        // Allow: digits 0-9 on main keyboard (48-57) and numpad (96-105)
+        if ((event.keyCode >= 48 && event.keyCode <= 57) || (event.keyCode >= 96 && event.keyCode <= 105)) {
+            return true;
+        }
+        
+        // Block everything else (letters, special characters, etc.)
+        event.preventDefault();
+        return false;
+    }
+    
+    // Handle paste events to remove decimal points and commas
+    function handleTargetKmPaste(event) {
+        event.preventDefault();
+        const paste = (event.clipboardData || window.clipboardData).getData('text');
+        // Remove all non-digit characters (keep only 0-9)
+        const digitsOnly = paste.replace(/[^0-9]/g, '');
+        const targetKmInput = document.getElementById('targetKm');
+        if (targetKmInput) {
+            targetKmInput.value = digitsOnly;
+            // Trigger input handler to process the value
+            handleTargetKmInput();
+        }
+    }
+    
+    function handleTargetKmInput() {
+        // Record user interaction time
+        lastUserInteractionTime = Date.now();
+        
+        const targetKmInput = document.getElementById('targetKm');
+        let inputValueStr = targetKmInput.value.trim();
+        
+        // Remove any decimal points or commas that might have been pasted
+        inputValueStr = inputValueStr.replace(/[.,]/g, '');
+        
+        // Parse as integer (whole number only)
+        const inputValue = parseInt(inputValueStr, 10) || 0;
+        
+        // Update the input field to show only whole number
+        if (inputValueStr !== '' && inputValue > 0) {
+            targetKmInput.value = inputValue;
+        } else if (inputValueStr === '') {
+            targetKmInput.value = '';
+        }
+        
+        // Uncheck all checkboxes if value doesn't match any checkbox
+        // Only check if value exactly matches a checkbox value
         document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
-            const cbValue = parseFloat(cb.value);
+            const cbValue = parseInt(cb.value, 10);
             cb.checked = (inputValue > 0 && inputValue === cbValue);
         });
+        
+        // Debounce: Wait 500ms after user stops typing before sending to server
+        if (inputDebounceTimer) {
+            clearTimeout(inputDebounceTimer);
+        }
+        
+        inputDebounceTimer = setTimeout(() => {
+            // Only send if value actually changed
+            if (Math.abs(inputValue - lastTargetKm) > 0.01) {
+                // CRITICAL: Reset announced winners if target changed
+                announcedWinners.clear();
+                console.log('✅ Target KM changed from', lastTargetKm, 'to', inputValue, '- announcedWinners cleared');
+                lastTargetKm = inputValue;
+                
+                // Send value to server via HTMX (as integer)
+                if (inputValue > 0) {
+                    console.log('Sending target KM to server:', inputValue);
+                    htmx.ajax('GET', renderResultsTableUrl + '?target_km=' + encodeURIComponent(inputValue), {
+                        target: '#resultsTableBody',
+                        swap: 'outerHTML',
+                        include: '#targetKm'
+                    });
+                } else {
+                    // Clear target if input is empty or 0
+                    console.log('Clearing target KM');
+                    htmx.ajax('GET', renderResultsTableUrl + '?target_km=', {
+                        target: '#resultsTableBody',
+                        swap: 'outerHTML',
+                        include: '#targetKm'
+                    });
+                }
+            }
+        }, 500); // 500ms debounce
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         // Schieberegler-Logik entfernt
+        
+        // Update checkboxes after initial table load
+        setTimeout(() => {
+            const tbody = document.getElementById('resultsTableBody');
+            if (tbody) {
+                const targetKm = tbody.getAttribute('data-target-km');
+                if (targetKm) {
+                    updateTargetKmUI(targetKm);
+                }
+            }
+        }, 100);
         
         // Debug: Check if HTMX is loaded
         console.log('DOMContentLoaded - HTMX available:', typeof htmx !== 'undefined');
@@ -774,8 +1175,81 @@
         if (event.target.id === 'resultsTableBody') {
             GameStateManager.syncFromTable();
             
-            // Winner check and sound trigger - handle multiple new winners
+            // Update master badge based on data-is-master attribute
             const tbody = event.target;
+            const isMaster = tbody.getAttribute('data-is-master') === 'true';
+            const roomCode = tbody.getAttribute('data-room-code');
+            const masterBadge = document.getElementById('masterBadge');
+            const masterActions = document.getElementById('masterActions');
+            const roomInfo = document.getElementById('roomInfo');
+            
+            // Check if room was ended (room_code was cleared)
+            if (!roomCode && roomInfo) {
+                // Room was ended - redirect to game page
+                console.log('🏁 Raum wurde beendet, leite um...');
+                setTimeout(() => {
+                    window.location.href = '{% url "game:game_page" %}';
+                }, 1000);
+                return;
+            }
+            
+            // CRITICAL: Check if master status changed
+            const previousIsMaster = masterBadge ? (masterBadge.style.display !== 'none') : false;
+            const masterStatusChanged = (previousIsMaster !== isMaster);
+            
+            if (masterStatusChanged) {
+                console.log('👑 Master-Status geändert:', previousIsMaster, '->', isMaster);
+            }
+            
+            if (masterBadge) {
+                masterBadge.style.display = isMaster ? 'inline-block' : 'none';
+            }
+            if (masterActions) {
+                masterActions.style.display = isMaster ? 'inline-block' : 'none';
+            }
+            // Also update master tip visibility
+            const masterTip = document.getElementById('masterTip');
+            if (masterTip) {
+                masterTip.style.display = isMaster ? 'block' : 'none';
+            }
+            
+            // CRITICAL: If master status changed and we're now the master, trigger immediate refresh
+            // This ensures the new master sees the badge immediately
+            if (masterStatusChanged && isMaster && roomCode) {
+                console.log('👑 Neuer Master erkannt, aktualisiere UI sofort...');
+                // Trigger immediate refresh of target_km_display if visible
+                const targetKmDisplay = document.getElementById('targetKmDisplayContainer');
+                if (targetKmDisplay) {
+                    htmx.trigger('#targetKmDisplayContainer', 'refresh');
+                }
+            }
+            
+            // Ensure transferMasterTo buttons work after HTMX update
+            // Use event delegation to handle clicks on dynamically added buttons
+            const transferButtons = tbody.querySelectorAll('button[onclick*="transferMasterTo"]');
+            transferButtons.forEach(button => {
+                // Remove old onclick and add new event listener
+                const onclickAttr = button.getAttribute('onclick');
+                if (onclickAttr && onclickAttr.includes('transferMasterTo')) {
+                    const match = onclickAttr.match(/transferMasterTo\('([^']+)'\)/);
+                    if (match) {
+                        const cyclistName = match[1];
+                        button.removeAttribute('onclick');
+                        button.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (typeof window.transferMasterTo === 'function') {
+                                window.transferMasterTo(cyclistName);
+                            } else {
+                                console.error('transferMasterTo function not available');
+                                alert('{% trans "Fehler: Funktion nicht verfügbar. Bitte Seite neu laden." %}');
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Winner check and sound trigger - handle multiple new winners
             const newWinnersStr = tbody.dataset.newWinners || '';
             if (newWinnersStr) {
                 const newWinners = newWinnersStr.split(',').filter(w => w.trim() !== '');
