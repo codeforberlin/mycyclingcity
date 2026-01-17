@@ -1,0 +1,63 @@
+{# Game control buttons fragment - can be loaded via HTMX #}
+{% load i18n %}
+{# CSRF token is provided by parent container #}
+
+{# CRITICAL: In a room, only master can start/stop game and end session #}
+{% if room_code %}
+    {% if is_master %}
+        <button id="startButton"
+                hx-post="{% url 'game:start_game' %}"
+                hx-target="#startButton"
+                hx-swap="none"
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-on::htmx:after-request="handleStartGameResponse(event)">{% trans "Spiel starten" %}</button>
+
+        <button id="stopButton"
+                hx-post="{% url 'game:start_game' %}"
+                hx-target="#stopButton"
+                hx-swap="none"
+                hx-vals='{"action": "stop"}'
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-on::htmx:after-request="handleStopGameResponse(event)"
+                class="inactive">{% trans "Spiel stoppen" %}</button>
+
+        <button id="endSessionButton"
+                hx-post="{% url 'game:end_session' %}"
+                hx-include="[name='csrfmiddlewaretoken']"
+                hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
+                hx-on::after-request="window.location.reload();">
+            {% trans "Session beenden" %}
+        </button>
+    {% else %}
+        {# Non-master users see disabled buttons with explanation #}
+        <button id="startButton" disabled style="opacity: 0.5; cursor: not-allowed; background-color: #6c757d !important; color: white !important; pointer-events: none !important;">{% trans "Spiel starten" %}</button>
+        <button id="stopButton" disabled style="opacity: 0.5; cursor: not-allowed; background-color: #6c757d !important; color: white !important; pointer-events: none !important;" class="inactive">{% trans "Spiel stoppen" %}</button>
+        <button id="endSessionButton" disabled style="opacity: 0.5; cursor: not-allowed; background-color: #6c757d !important; color: white !important; pointer-events: none !important;">{% trans "Session beenden" %}</button>
+        <p style="font-size: 0.85em; color: #666; margin-top: 5px;">{% trans "Nur der Spielleiter kann das Spiel starten, stoppen oder die Session beenden." %}</p>
+    {% endif %}
+{% else %}
+    {# Outside a room, everyone can use these buttons #}
+    <button id="startButton"
+            hx-post="{% url 'game:start_game' %}"
+            hx-target="#startButton"
+            hx-swap="none"
+            hx-include="[name='csrfmiddlewaretoken']"
+            hx-on::htmx:after-request="handleStartGameResponse(event)">{% trans "Spiel starten" %}</button>
+
+    <button id="stopButton"
+            hx-post="{% url 'game:start_game' %}"
+            hx-target="#stopButton"
+            hx-swap="none"
+            hx-vals='{"action": "stop"}'
+            hx-include="[name='csrfmiddlewaretoken']"
+            hx-on::htmx:after-request="handleStopGameResponse(event)"
+            class="inactive">{% trans "Spiel stoppen" %}</button>
+
+    <button id="endSessionButton"
+            hx-post="{% url 'game:end_session' %}"
+            hx-include="[name='csrfmiddlewaretoken']"
+            hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
+            hx-on::after-request="window.location.reload();">
+        {% trans "Session beenden" %}
+    </button>
+{% endif %}

@@ -27,6 +27,8 @@ urlpatterns = [
     path('htmx/assignments', views.handle_assignment_form, name='handle_assignment_form'),
     path('htmx/results', views.render_results_table, name='render_results_table'),
     path('htmx/target-km', views.render_target_km_display, name='render_target_km_display'),
+    path('htmx/sync-session', views.sync_session_endpoint, name='sync_session_endpoint'),
+    path('htmx/game-buttons', views.render_game_buttons, name='render_game_buttons'),
 
     # API Views
     path('api/game/cyclists', views.get_game_players, name='get_game_players'),

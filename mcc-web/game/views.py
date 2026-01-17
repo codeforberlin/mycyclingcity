@@ -1077,8 +1077,19 @@ def transfer_master(request):
         room.master_session_key = new_master_session
         # CRITICAL: Update last_activity to trigger immediate sync for all clients
         room.save()  # This updates last_activity automatically
+        
+        # CRITICAL: Update old master's session immediately
         request.session['is_master'] = False
         request.session.modified = True
+        
+        # CRITICAL: Force immediate sync for new master by updating room's last_activity
+        # This ensures the new master's next request will see the updated master status
+        # We can't directly update the new master's session, but updating last_activity
+        # ensures sync_session_from_room will be called on their next request
+        from django.utils import timezone
+        room.last_activity = timezone.now()
+        room.save(update_fields=['last_activity'])
+        
         logger.info(_(f"👑 Master-Rolle übertragen: {room_code}, neuer Master: {new_master_session} (Cyclist: {cyclist_user_id})"))
         return JsonResponse({
             "status": "master_transferred",
@@ -1088,3 +1099,31 @@ def transfer_master(request):
     except GameRoom.DoesNotExist:
         logger.error(f"❌ transfer_master: Raum nicht gefunden: {room_code}")
         return JsonResponse({"error": _("Raum nicht gefunden")}, status=404)
+
+
+@csrf_exempt
+def sync_session_endpoint(request):
+    """HTMX endpoint to force sync_session_from_room - useful after master transfer."""
+    sync_session_from_room(request)
+    return JsonResponse({"status": "synced", "is_master": request.session.get('is_master', False)})
+
+
+def render_game_buttons(request):
+    """HTMX endpoint to render game control buttons based on current master status."""
+    # Sync from room if in a shared room
+    sync_session_from_room(request)
+    
+    room_code = request.session.get('room_code')
+    is_master_flag = False
+    if room_code:
+        try:
+            room = GameRoom.objects.get(room_code=room_code, is_active=True)
+            is_master_flag = is_master(request, room)
+        except GameRoom.DoesNotExist:
+            pass
+    
+    context = {
+        'room_code': room_code,
+        'is_master': is_master_flag,
+    }
+    return render(request, 'game/partials/game_buttons.html', context)

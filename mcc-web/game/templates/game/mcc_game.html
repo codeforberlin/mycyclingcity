@@ -66,6 +66,16 @@
         #endSessionButton:hover { 
             background-color: #e76f51; 
         }
+        /* Ensure disabled buttons look the same for non-master users */
+        button[disabled]#startButton,
+        button[disabled]#stopButton,
+        button[disabled]#endSessionButton {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            background-color: #6c757d !important;
+            color: white !important;
+            pointer-events: none !important;
+        }
         #clearAssignmentsButton { background-color: #ffc107; color: #333; }
         .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .results-table th, .results-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
@@ -569,7 +579,7 @@
     </div>
     {% endif %}
 
-    <div class="top-controls">
+    <div class="top-controls" id="gameButtonsContainer">
         {% csrf_token %}
         <script>
             // Debug: Check CSRF token
@@ -579,65 +589,8 @@
             });
         </script>
 
-        {# CRITICAL: In a room, only master can start/stop game and end session #}
-        {% if room_code %}
-            {% if is_master %}
-                <button id="startButton"
-                        hx-post="{% url 'game:start_game' %}"
-                        hx-target="#startButton"
-                        hx-swap="none"
-                        hx-include="[name='csrfmiddlewaretoken']"
-                        hx-on::htmx:after-request="handleStartGameResponse(event)">{% trans "Spiel starten" %}</button>
-
-                <button id="stopButton"
-                        hx-post="{% url 'game:start_game' %}"
-                        hx-target="#stopButton"
-                        hx-swap="none"
-                        hx-vals='{"action": "stop"}'
-                        hx-include="[name='csrfmiddlewaretoken']"
-                        hx-on::htmx:after-request="handleStopGameResponse(event)"
-                        class="inactive">{% trans "Spiel stoppen" %}</button>
-
-                <button id="endSessionButton"
-                        hx-post="{% url 'game:end_session' %}"
-                        hx-include="[name='csrfmiddlewaretoken']"
-                        hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
-                        hx-on::after-request="window.location.reload();">
-                    {% trans "Session beenden" %}
-                </button>
-            {% else %}
-                {# Non-master users see disabled buttons with explanation #}
-                <button disabled style="opacity: 0.5; cursor: not-allowed;">{% trans "Spiel starten" %}</button>
-                <button disabled style="opacity: 0.5; cursor: not-allowed;" class="inactive">{% trans "Spiel stoppen" %}</button>
-                <button disabled style="opacity: 0.5; cursor: not-allowed;">{% trans "Session beenden" %}</button>
-                <p style="font-size: 0.85em; color: #666; margin-top: 5px;">{% trans "Nur der Spielleiter kann das Spiel starten, stoppen oder die Session beenden." %}</p>
-            {% endif %}
-        {% else %}
-            {# Outside a room, everyone can use these buttons #}
-            <button id="startButton"
-                    hx-post="{% url 'game:start_game' %}"
-                    hx-target="#startButton"
-                    hx-swap="none"
-                    hx-include="[name='csrfmiddlewaretoken']"
-                    hx-on::htmx:after-request="handleStartGameResponse(event)">{% trans "Spiel starten" %}</button>
-
-            <button id="stopButton"
-                    hx-post="{% url 'game:start_game' %}"
-                    hx-target="#stopButton"
-                    hx-swap="none"
-                    hx-vals='{"action": "stop"}'
-                    hx-include="[name='csrfmiddlewaretoken']"
-                    hx-on::htmx:after-request="handleStopGameResponse(event)"
-                    class="inactive">{% trans "Spiel stoppen" %}</button>
-
-            <button id="endSessionButton"
-                    hx-post="{% url 'game:end_session' %}"
-                    hx-include="[name='csrfmiddlewaretoken']"
-                    hx-confirm="{% trans 'Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?' %}"
-                    hx-on::after-request="window.location.reload();">
-                {% trans "Session beenden" %}
-            </button>
-        {% endif %}
+        {# Buttons are now loaded via HTMX fragment #}
+        {% include 'game/partials/game_buttons.html' %}
     </div>
 
     <div>
@@ -923,24 +876,72 @@
         .then(data => {
             console.log('Transfer master response data:', data);
             if (data.status === 'master_transferred') {
-                // CRITICAL: Immediately trigger a refresh for the old master's browser
-                // This ensures the old master sees they're no longer master
+                // CRITICAL: Force immediate sync by triggering multiple refresh events
+                // This ensures both old and new master see the updated state immediately
+                
+                // 1. Refresh results table (updates master buttons visibility)
                 htmx.trigger('#resultsTableBody', 'refresh');
                 
-                // Also trigger refresh for target_km_display if visible (for non-master clients)
+                // 2. Refresh target_km_display if visible
                 const targetKmDisplay = document.getElementById('targetKmDisplayContainer');
                 if (targetKmDisplay) {
                     htmx.trigger('#targetKmDisplayContainer', 'refresh');
                 }
                 
-                // Show success message
-                alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
-                
-                // Reload after a short delay to ensure everything is synced
-                // This ensures both old and new master see the correct state
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                // 3. CRITICAL: Force a sync request to update session immediately
+                // This ensures the new master's session is updated before page reload
+                fetch('{% url "game:sync_session_endpoint" %}', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                }).then(response => response.json()).then(syncData => {
+                    console.log('Session sync result:', syncData);
+                    
+                    // CRITICAL: Reload buttons via HTMX to get correct master status
+                    // This ensures buttons are properly rendered with all HTMX attributes
+                    const buttonsContainer = document.getElementById('gameButtonsContainer');
+                    if (buttonsContainer) {
+                        htmx.ajax('GET', '{% url "game:render_game_buttons" %}', {
+                            target: '#gameButtonsContainer',
+                            swap: 'innerHTML'
+                        }).then(() => {
+                            console.log('✅ Buttons reloaded via HTMX');
+                            
+                            // Show success message
+                            if (syncData.is_master) {
+                                alert('{% trans "Spielleiter-Rolle wurde übertragen. Die Buttons sind jetzt aktiv." %}');
+                            } else {
+                                alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                                // Reload after a short delay for old master
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 500);
+                            }
+                        }).catch(err => {
+                            console.error('Error reloading buttons:', err);
+                            // Fallback: reload page
+                            alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 500);
+                        });
+                    } else {
+                        console.error('❌ gameButtonsContainer not found');
+                        // Fallback: reload page
+                        alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    }
+                }).catch(err => {
+                    console.error('Error syncing after master transfer:', err);
+                    // Still reload even if sync fails
+                    alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                });
             } else if (data.error) {
                 let errorMsg = data.error;
                 if (data.debug) {
@@ -954,8 +955,130 @@
             alert('{% trans "Fehler beim Übertragen der Spielleiter-Rolle" %}: ' + error.message);
         });
     }
-    // Make function globally available
+    // Function to activate master buttons (for new master after transfer)
+    function activateMasterButtons() {
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const endSessionButton = document.getElementById('endSessionButton');
+        const explanationText = document.querySelector('.top-controls p');
+        
+        if (startButton && stopButton && endSessionButton) {
+            // Remove disabled state and restore functionality
+            startButton.disabled = false;
+            startButton.style.opacity = '1';
+            startButton.style.cursor = 'pointer';
+            startButton.style.pointerEvents = 'auto';
+            startButton.style.backgroundColor = '#28a745';
+            startButton.setAttribute('hx-post', '{% url "game:start_game" %}');
+            startButton.setAttribute('hx-target', '#startButton');
+            startButton.setAttribute('hx-swap', 'none');
+            startButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+            startButton.setAttribute('hx-on::htmx:after-request', 'handleStartGameResponse(event)');
+            
+            stopButton.disabled = false;
+            stopButton.style.opacity = '1';
+            stopButton.style.cursor = 'pointer';
+            stopButton.style.pointerEvents = 'auto';
+            stopButton.style.backgroundColor = '#dc3545';
+            stopButton.classList.remove('inactive');
+            stopButton.setAttribute('hx-post', '{% url "game:start_game" %}');
+            stopButton.setAttribute('hx-target', '#stopButton');
+            stopButton.setAttribute('hx-swap', 'none');
+            stopButton.setAttribute('hx-vals', '{"action": "stop"}');
+            stopButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+            stopButton.setAttribute('hx-on::htmx:after-request', 'handleStopGameResponse(event)');
+            
+            endSessionButton.disabled = false;
+            endSessionButton.style.opacity = '1';
+            endSessionButton.style.cursor = 'pointer';
+            endSessionButton.style.pointerEvents = 'auto';
+            endSessionButton.style.backgroundColor = '#f4a261';
+            endSessionButton.setAttribute('hx-post', '{% url "game:end_session" %}');
+            endSessionButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+            endSessionButton.setAttribute('hx-confirm', '{% trans "Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?" %}');
+            endSessionButton.setAttribute('hx-on::after-request', 'window.location.reload();');
+            
+            // Remove explanation text if present
+            if (explanationText) {
+                explanationText.remove();
+            }
+            
+            // CRITICAL: Process HTMX attributes so they are recognized
+            if (typeof htmx !== 'undefined') {
+                // Process each button individually
+                htmx.process(startButton);
+                htmx.process(stopButton);
+                htmx.process(endSessionButton);
+                
+                // Also process the parent container to ensure all attributes are recognized
+                const topControls = document.querySelector('.top-controls');
+                if (topControls) {
+                    htmx.process(topControls);
+                }
+                
+                console.log('✅ HTMX attributes processed for all buttons');
+            } else {
+                console.error('❌ HTMX not available');
+            }
+            
+            // Verify buttons are ready
+            console.log('Button states:', {
+                startButton: {
+                    disabled: startButton.disabled,
+                    hasHxPost: startButton.hasAttribute('hx-post'),
+                    style: window.getComputedStyle(startButton).opacity
+                },
+                stopButton: {
+                    disabled: stopButton.disabled,
+                    hasHxPost: stopButton.hasAttribute('hx-post'),
+                    style: window.getComputedStyle(stopButton).opacity
+                },
+                endSessionButton: {
+                    disabled: endSessionButton.disabled,
+                    hasHxPost: endSessionButton.hasAttribute('hx-post'),
+                    style: window.getComputedStyle(endSessionButton).opacity
+                }
+            });
+            
+            console.log('✅ Master buttons activated and HTMX processed');
+        } else {
+            console.error('❌ Could not find all buttons:', {startButton, stopButton, endSessionButton});
+        }
+    }
+    
+    // Function to deactivate master buttons (for old master after transfer)
+    function deactivateMasterButtons() {
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const endSessionButton = document.getElementById('endSessionButton');
+        
+        if (startButton && stopButton && endSessionButton) {
+            startButton.disabled = true;
+            startButton.style.opacity = '0.5';
+            startButton.style.cursor = 'not-allowed';
+            startButton.style.pointerEvents = 'none';
+            startButton.removeAttribute('hx-post');
+            
+            stopButton.disabled = true;
+            stopButton.style.opacity = '0.5';
+            stopButton.style.cursor = 'not-allowed';
+            stopButton.style.pointerEvents = 'none';
+            stopButton.removeAttribute('hx-post');
+            
+            endSessionButton.disabled = true;
+            endSessionButton.style.opacity = '0.5';
+            endSessionButton.style.cursor = 'not-allowed';
+            endSessionButton.style.pointerEvents = 'none';
+            endSessionButton.removeAttribute('hx-post');
+            
+            console.log('✅ Master buttons deactivated');
+        }
+    }
+    
+    // Make functions globally available
     window.transferMasterTo = transferMasterTo;
+    window.activateMasterButtons = activateMasterButtons;
+    window.deactivateMasterButtons = deactivateMasterButtons;
     
     // Also ensure it's available after HTMX updates
     document.addEventListener('htmx:afterSwap', function(event) {
