@@ -1,0 +1,78 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    edit_session_data.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
+    <h1>{{ title }}</h1>
+    
+    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+        <strong>⚠️ {% trans "Warnung" %}:</strong> {% trans "Das Bearbeiten von Session-Daten kann die Funktionalität der Anwendung beeinträchtigen. Bitte nur bei Bedarf und mit Vorsicht verwenden." %}
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2>{% trans "Session-Informationen" %}</h2>
+        <p><strong>{% trans "Session Key" %}:</strong> <code>{{ session.session_key }}</code></p>
+        <p><strong>{% trans "Ablauf" %}:</strong> {{ session.expire_date|date:"Y-m-d H:i:s" }}</p>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2>{% trans "Session-Daten bearbeiten" %}</h2>
+        
+        <form method="post" style="margin-top: 20px;">
+            {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                <label for="key" style="display: block; margin-bottom: 5px; font-weight: bold;">{% trans "Schlüssel" %}:</label>
+                <input type="text" id="key" name="key" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <small style="color: #6c757d;">{% trans "z.B. 'room_code', 'is_master', 'device_assignments'" %}</small>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="value" style="display: block; margin-bottom: 5px; font-weight: bold;">{% trans "Wert" %} ({% trans "leer lassen zum Löschen" %}):</label>
+                <textarea id="value" name="value" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;"></textarea>
+                <small style="color: #6c757d;">{% trans "Für JSON-Objekte (z.B. device_assignments) verwenden Sie gültiges JSON-Format" %}</small>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" style="padding: 10px 20px; background: #417690; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    {% trans "Speichern" %}
+                </button>
+                <a href="{% url 'admin:game_session_change' session.pk %}" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+                    {% trans "Abbrechen" %}
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2>{% trans "Aktuelle Session-Daten" %}</h2>
+        <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #ddd; max-height: 400px; overflow-y: auto;">
+            <pre style="margin: 0; font-size: 0.9em;">{% for key, value in session_dict.items %}{{ key }}: {{ value }}
+{% endfor %}</pre>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <h3>{% trans "Schnell-Löschen" %}</h3>
+            <p style="color: #6c757d;">{% trans "Klicken Sie auf einen Schlüssel, um ihn aus der Session zu entfernen:" %}</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                {% for key in session_dict.keys %}
+                <a href="{% url 'admin:sessions_session_delete_data_key' session.pk %}?key={{ key }}" 
+                   onclick="return confirm('{% trans 'Möchten Sie den Schlüssel wirklich löschen?' %}');"
+                   style="padding: 6px 12px; background: #dc3545; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9em;">
+                    {{ key }} ✕
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

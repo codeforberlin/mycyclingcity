@@ -51,5 +51,25 @@
         </tr>
     </table>
 </div>
+
+<div class="module">
+    <table>
+        <caption>
+            <a href="{% url 'admin:game_session_dashboard' %}" class="section" title="{% trans 'Session Management' %}">
+                {% trans "Session Management" %}
+            </a>
+        </caption>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:game_session_dashboard' %}">{% trans "Session Dashboard" %}</a>
+            </th>
+            <td>
+                <a href="{% url 'admin:game_session_dashboard' %}" class="addlink">
+                    {% trans "View Dashboard" %}
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
 {% endblock %}
 

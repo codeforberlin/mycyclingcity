@@ -130,3 +130,70 @@ class GameRoom(models.Model):
         
         # Fallback: if we can't generate a unique code after max_attempts, raise error
         raise ValueError("Could not generate unique room code after multiple attempts")
+
+
+class GameSession(models.Model):
+    """Tracks game sessions to enable efficient querying without decoding session data.
+    
+    This model provides a direct database reference for game sessions, making it
+    much faster to query and filter game sessions in the Admin GUI.
+    """
+    
+    session_key = models.CharField(
+        max_length=40,
+        unique=True,
+        db_index=True,
+        verbose_name=_("Session Key"),
+        help_text=_("Django Session Key")
+    )
+    
+    room_code = models.CharField(
+        max_length=8,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name=_("Raum-Code"),
+        help_text=_("Raum-Code, falls die Session in einem Raum ist")
+    )
+    
+    is_master = models.BooleanField(
+        default=False,
+        verbose_name=_("Master"),
+        help_text=_("Ob diese Session die Master-Session ist")
+    )
+    
+    has_assignments = models.BooleanField(
+        default=False,
+        verbose_name=_("Hat Zuweisungen"),
+        help_text=_("Ob diese Session Geräte-Zuweisungen hat")
+    )
+    
+    has_target_km = models.BooleanField(
+        default=False,
+        verbose_name=_("Hat Ziel-KM"),
+        help_text=_("Ob diese Session ein Ziel-Kilometer gesetzt hat")
+    )
+    
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Erstellt am")
+    )
+    
+    last_updated = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_("Zuletzt aktualisiert")
+    )
+    
+    class Meta:
+        verbose_name = _("Game Session")
+        verbose_name_plural = _("Game Sessions")
+        ordering = ['-last_updated']
+        indexes = [
+            models.Index(fields=['room_code', 'is_master']),
+            models.Index(fields=['has_assignments', 'has_target_km']),
+        ]
+    
+    def __str__(self):
+        room_info = f" (Raum: {self.room_code})" if self.room_code else " (Single-Player)"
+        master_info = " [Master]" if self.is_master else ""
+        return f"Game Session {self.session_key[:10]}...{room_info}{master_info}"

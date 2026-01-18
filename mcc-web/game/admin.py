@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
 from django.urls import reverse, path
-from .models import GameRoom
+from .models import GameRoom, GameSession
 from .dashboard import game_dashboard
 import json
 from datetime import timedelta
@@ -502,3 +502,47 @@ class GameRoomAdmin(admin.ModelAdmin):
             path('dashboard/', self.admin_site.admin_view(game_dashboard), name='game_gameroom_dashboard'),
         ]
         return custom_urls + urls
+
+
+@admin.register(GameSession)
+class GameSessionModelAdmin(admin.ModelAdmin):
+    """Admin interface for GameSession model (tracking game sessions)."""
+    
+    list_display = (
+        'session_key_short',
+        'room_code',
+        'is_master',
+        'has_assignments',
+        'has_target_km',
+        'created_at',
+        'last_updated',
+    )
+    
+    list_filter = (
+        'room_code',
+        'is_master',
+        'has_assignments',
+        'has_target_km',
+        'created_at',
+        'last_updated',
+    )
+    
+    search_fields = (
+        'session_key',
+        'room_code',
+    )
+    
+    readonly_fields = (
+        'session_key',
+        'created_at',
+        'last_updated',
+    )
+    
+    date_hierarchy = 'created_at'
+    
+    ordering = ['-last_updated']
+    
+    def session_key_short(self, obj):
+        """Display shortened session key."""
+        return f"{obj.session_key[:20]}..."
+    session_key_short.short_description = _('Session Key')

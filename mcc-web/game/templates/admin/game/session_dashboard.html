@@ -1,0 +1,269 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    session_dashboard.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .dashboard-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: linear-gradient(to bottom right, #417690, #205067);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        text-align: center;
+    }
+    
+    .stat-card h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0.9;
+        text-transform: uppercase;
+    }
+    
+    .stat-card .value {
+        font-size: 32px;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .stat-card.primary { background: linear-gradient(to bottom right, #417690, #205067); }
+    .stat-card.success { background: linear-gradient(to bottom right, #28a745, #20c997); }
+    .stat-card.info { background: linear-gradient(to bottom right, #17a2b8, #138496); }
+    .stat-card.warning { background: linear-gradient(to bottom right, #ffc107, #ff9800); }
+    
+    .sessions-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .sessions-section h2 {
+        margin-top: 0;
+        color: #417690;
+        border-bottom: 2px solid #417690;
+        padding-bottom: 10px;
+    }
+    
+    .sessions-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    
+    .sessions-table th {
+        background-color: #417690;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        border: 1px solid #205067;
+    }
+    
+    .sessions-table td {
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        background-color: white;
+    }
+    
+    .sessions-table tr:nth-child(even) td {
+        background-color: #f8f9fa;
+    }
+    
+    .sessions-table tr:hover td {
+        background-color: #e9ecef;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+    }
+    
+    .status-active { background-color: #28a745; color: white; }
+    .status-inactive { background-color: #6c757d; color: white; }
+    .status-master { background-color: #ffc107; color: #1e293b; }
+    
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85em;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        color: white !important;
+    }
+    
+    .btn-primary {
+        background: #417690;
+    }
+    
+    .btn-primary:hover {
+        background: #205067;
+    }
+    
+    .btn-success {
+        background: #28a745;
+    }
+    
+    .btn-success:hover {
+        background: #20c997;
+    }
+    
+    .no-sessions {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1>{{ title }}</h1>
+    
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <h4>{% trans "Aktive Game-Sessions" %}</h4>
+            <div class="value">{{ total_game_sessions }}</div>
+        </div>
+        
+        <div class="stat-card success">
+            <h4>{% trans "Sessions in Räumen" %}</h4>
+            <div class="value">{{ sessions_in_rooms }}</div>
+        </div>
+        
+        <div class="stat-card info">
+            <h4>{% trans "Einzelspieler" %}</h4>
+            <div class="value">{{ sessions_without_rooms }}</div>
+        </div>
+        
+        <div class="stat-card warning">
+            <h4>{% trans "Master-Sessions" %}</h4>
+            <div class="value">{{ master_sessions }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h4>{% trans "Mit Zuweisungen" %}</h4>
+            <div class="value">{{ sessions_with_assignments }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h4>{% trans "Heute erstellt" %}</h4>
+            <div class="value">{{ sessions_created_today }}</div>
+        </div>
+    </div>
+    
+    <!-- Current Sessions -->
+    <div class="sessions-section">
+        <h2>{% trans "Aktuelle Sessions" %}</h2>
+        
+        {% if current_sessions %}
+        <table class="sessions-table">
+            <thead>
+                <tr>
+                    <th>{% trans "Session Key" %}</th>
+                    <th>{% trans "Raum" %}</th>
+                    <th>{% trans "Radler" %}</th>
+                    <th>{% trans "Master" %}</th>
+                    <th>{% trans "Zuweisungen" %}</th>
+                    <th>{% trans "Alter" %}</th>
+                    <th>{% trans "Ablauf" %}</th>
+                    <th>{% trans "Aktionen" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in current_sessions %}
+                <tr>
+                    <td><code style="font-size: 0.85em;">{{ session.session_key_short }}</code></td>
+                    <td>
+                        {% if session.room_info %}
+                            {% if session.room_info.is_active %}
+                                <a href="{% url 'admin:game_gameroom_change' session.room_info.pk %}" target="_blank">
+                                    {{ session.room_info.code }}
+                                </a>
+                            {% else %}
+                                <span style="color: #dc3545;">{{ session.room_info.code }} (inaktiv)</span>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.cyclists %}
+                            {{ session.cyclists|join:", " }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.is_master %}
+                            <span class="status-badge status-master">👑 Master</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ session.assignments_count }}</td>
+                    <td>{{ session.age_display }}</td>
+                    <td>{{ session.expire_date|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <a href="{% url 'admin:game_session_change' session.id %}" class="btn btn-primary" style="margin-right: 5px;">
+                            {% trans "Details" %}
+                        </a>
+                        {% if session.room_info and session.room_info.is_active %}
+                        <a href="{% url 'game:room_page' session.room_info.code %}" target="_blank" class="btn btn-success">
+                            {% trans "Raum betreten" %}
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-sessions">
+            <p>{% trans "Keine aktiven Game-Sessions vorhanden." %}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="{% url 'admin:sessions_session_changelist' %}" class="btn btn-primary">
+            {% trans "Alle Sessions anzeigen" %}
+        </a>
+    </div>
+</div>
+{% endblock %}

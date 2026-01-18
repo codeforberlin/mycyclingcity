@@ -321,6 +321,17 @@ def handle_assignment_form(request):
                 if 'assignment_owners' not in request.session:
                     request.session['assignment_owners'] = {}
                 request.session['assignment_owners'][device] = request.session.session_key
+                request.session.modified = True  # CRITICAL: Ensure session is saved immediately
+                
+                # CRITICAL: Force immediate save to database so Admin GUI can see it
+                request.session.save()
+                
+                # Update GameSession tracking
+                from .signals import update_game_session
+                update_game_session(request.session.session_key)
+                
+                logger.info(f"💾 Session saved immediately after assignment: session_key={request.session.session_key}, "
+                           f"device_assignments={active_assignments}")
                 
                 # Update session_to_cyclist mapping in room
                 if room and request.session.session_key:
@@ -332,7 +343,6 @@ def handle_assignment_form(request):
                     room.save()
                     logger.info(f"✅ Updated session_to_cyclist: {session_to_cyclist}")
                 
-                request.session.modified = True  # CRITICAL: Ensure session is saved
                 logger.info(_(f"✅ Zuweisung hinzugefügt: {cyclist} -> {device}, neue Assignments: {active_assignments}"))
             else:
                 logger.warning(_(f"❌ Zuweisung konnte nicht hinzugefügt werden: cyclist={cyclist}, device={device}, active_assignments={active_assignments}"))
@@ -354,6 +364,13 @@ def handle_assignment_form(request):
                         del request.session['assignment_owners'][device_key]
                     request.session['device_assignments'] = active_assignments
                     request.session.modified = True  # CRITICAL: Ensure session is saved
+                    # CRITICAL: Force immediate save to database
+                    request.session.save()
+                    
+                    # Update GameSession tracking
+                    from .signals import update_game_session
+                    update_game_session(request.session.session_key)
+                    
                     logger.info(_(f"✅ Zuweisung entfernt: {cyclist_to_remove}, neue Assignments: {active_assignments}"))
         
         elif action == 'clear':
@@ -605,6 +622,12 @@ def render_results_table(request):
             del request.session['announced_winners']
         request.session['current_target_km'] = target_km
         request.session.modified = True
+        request.session.save()
+        
+        # Update GameSession tracking
+        from .signals import update_game_session
+        update_game_session(request.session.session_key)
+        
         # CRITICAL: If target_km came from GET parameter, sync it to room immediately
         if target_km_str and room_code:
             logger.info(f"🔄 Syncing target_km {target_km} to room {room_code}")
@@ -778,6 +801,12 @@ def create_room(request):
     request.session['room_code'] = room.room_code
     request.session['is_master'] = True  # Flag for template
     request.session.modified = True
+    request.session.save()
+    
+    # Update GameSession tracking
+    from .signals import update_game_session
+    update_game_session(request.session.session_key)
+    
     logger.info(_(f"🏠 Neuer Spiel-Raum erstellt: {room.room_code}, Master: {request.session.session_key}"))
     return redirect('game:room_page', room_code=room.room_code)
 
@@ -803,6 +832,12 @@ def join_room(request):
                 
                 request.session['room_code'] = room.room_code
                 request.session.modified = True
+                request.session.save()
+                
+                # Update GameSession tracking
+                from .signals import update_game_session
+                update_game_session(request.session.session_key)
+                
                 # Sync room data to session (includes master flag)
                 sync_session_from_room(request)
                 
