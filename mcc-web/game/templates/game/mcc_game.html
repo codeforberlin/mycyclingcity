@@ -594,6 +594,10 @@
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <img src="{% url 'game:room_qr_code' room_code %}" alt="{% trans 'QR-Code zum Beitreten' %}" style="max-width: 80px; height: 80px; border: 1px solid #28a745; border-radius: 3px; cursor: pointer;" title="{% trans 'QR-Code zum Beitreten' %}" onclick="this.style.maxWidth = this.style.maxWidth === '200px' ? '80px' : '200px'; this.style.height = this.style.height === '200px' ? '80px' : '200px';">
             <div style="display: flex; flex-direction: column; gap: 5px;">
+                <button onclick="shareRoom('{{ room_url }}', '{{ room_code }}')" 
+                        style="display: inline-block; padding: 6px 12px; background-color: #007bff; color: white; text-decoration: none; border: none; border-radius: 3px; font-weight: bold; font-size: 0.85em; white-space: nowrap; cursor: pointer;">
+                    📤 {% trans "Teilen" %}
+                </button>
                 <a href="{% url 'game:leave_room' %}" style="display: inline-block; padding: 6px 12px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 3px; font-weight: bold; font-size: 0.85em; white-space: nowrap;">
                     {% trans "Verlassen" %}
                 </a>
@@ -1789,5 +1793,108 @@
         if (item) {
             item.classList.toggle('open');
         }
+    }
+
+    // Share Room Function
+    function shareRoom(roomUrl, roomCode) {
+        const shareTitle = 'MyCyclingCity: {% trans "Spiel-Raum beitreten" %}';
+        const shareText = '{% trans "Tritt meinem Spiel-Raum bei!" %}: ' + roomCode;
+        
+        // Try Web Share API first (mobile devices)
+        if (navigator.share) {
+            navigator.share({
+                title: shareTitle,  // Used as subject in email, title in other apps
+                text: shareText,
+                url: roomUrl
+            }).then(() => {
+                console.log('✅ Raum erfolgreich geteilt');
+            }).catch((error) => {
+                console.log('Fehler beim Teilen:', error);
+                // Fallback: Try mailto link for email sharing
+                if (error.name !== 'AbortError') {
+                    copyToClipboard(roomUrl, roomCode);
+                }
+            });
+        } else {
+            // Fallback: Check if user wants to share via email
+            // For email, we can use mailto with subject prefix
+            copyToClipboard(roomUrl, roomCode);
+        }
+    }
+    
+    function copyToClipboard(roomUrl, roomCode) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(roomUrl).then(() => {
+                showShareMessage('{% trans "Raum-URL wurde in die Zwischenablage kopiert!" %}');
+            }).catch((err) => {
+                console.error('Fehler beim Kopieren:', err);
+                fallbackCopyToClipboard(roomUrl, roomCode);
+            });
+        } else {
+            fallbackCopyToClipboard(roomUrl, roomCode);
+        }
+    }
+    
+    function fallbackCopyToClipboard(roomUrl, roomCode) {
+        const textArea = document.createElement('textarea');
+        textArea.value = roomUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showShareMessage('{% trans "Raum-URL wurde in die Zwischenablage kopiert!" %}');
+            } else {
+                showShareMessage('{% trans "Bitte kopieren Sie die URL manuell:" %} ' + roomUrl, true);
+            }
+        } catch (err) {
+            console.error('Fehler beim Kopieren:', err);
+            showShareMessage('{% trans "Bitte kopieren Sie die URL manuell:" %} ' + roomUrl, true);
+        }
+        
+        document.body.removeChild(textArea);
+    }
+    
+    function shareViaEmail(roomUrl, roomCode) {
+        const subject = encodeURIComponent('MyCyclingCity: {% trans "Spiel-Raum beitreten" %} - ' + roomCode);
+        const body = encodeURIComponent('{% trans "Tritt meinem Spiel-Raum bei!" %}\n\n' + 
+                                       '{% trans "Raum-Code" %}: ' + roomCode + '\n' +
+                                       '{% trans "Link" %}: ' + roomUrl);
+        const mailtoLink = 'mailto:?subject=' + subject + '&body=' + body;
+        window.location.href = mailtoLink;
+    }
+    
+    function showShareMessage(message, showUrl = false) {
+        let messageDiv = document.getElementById('shareMessage');
+        if (!messageDiv) {
+            messageDiv = document.createElement('div');
+            messageDiv.id = 'shareMessage';
+            messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background-color: #28a745; color: white; padding: 12px 20px; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10000; font-weight: bold; max-width: 300px;';
+            document.body.appendChild(messageDiv);
+        }
+        
+        messageDiv.innerHTML = message;
+        if (showUrl) {
+            const urlDiv = document.createElement('div');
+            urlDiv.style.cssText = 'margin-top: 8px; font-size: 0.85em; word-break: break-all; background-color: rgba(255,255,255,0.2); padding: 4px; border-radius: 2px;';
+            urlDiv.textContent = message.split(': ')[1] || '';
+            messageDiv.appendChild(urlDiv);
+        }
+        
+        messageDiv.style.display = 'block';
+        
+        setTimeout(() => {
+            messageDiv.style.opacity = '0';
+            messageDiv.style.transition = 'opacity 0.3s';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+                messageDiv.style.opacity = '1';
+            }, 300);
+        }, 3000);
     }
 </script>
