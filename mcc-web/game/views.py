@@ -836,6 +836,60 @@ def room_page(request, room_code):
     """Main game page for a specific room."""
     try:
         room = GameRoom.objects.get(room_code=room_code, is_active=True)
+        
+        # CRITICAL: If user is admin and master_session_key indicates admin should become master
+        # This allows admins to take control of rooms from the admin interface
+        # Supports two modes:
+        # 1. Normal: Only if there's no active master (admin_pending_{user_id}_{username})
+        # 2. Force: Override existing master (admin_pending_force_{user_id}_{username})
+        if request.user.is_staff and request.session.session_key:
+            current_master = room.master_session_key
+            if current_master and current_master.startswith('admin_pending_'):
+                # Extract admin user info from the marker
+                parts = current_master.split('_')
+                is_force = len(parts) >= 4 and parts[2] == 'force'
+                
+                # Determine admin user ID based on mode
+                if is_force:
+                    admin_user_id = parts[3] if len(parts) >= 4 else None
+                else:
+                    admin_user_id = parts[2] if len(parts) >= 3 else None
+                
+                # Check if this matches the current admin user
+                if admin_user_id and str(request.user.id) == admin_user_id:
+                    active_sessions = room.active_sessions or []
+                    
+                    # Check if there's an active master (for non-force mode)
+                    has_active_master = False
+                    if not is_force:
+                        # In normal mode, check if there's an active master session
+                        # (other than the pending admin marker)
+                        for session in active_sessions:
+                            if session and session != current_master and not session.startswith('admin_pending_'):
+                                has_active_master = True
+                                break
+                    
+                    # Set as master if: force mode OR no active master exists
+                    if is_force or not has_active_master:
+                        # Set current session as master
+                        room.master_session_key = request.session.session_key
+                        
+                        # Add to active_sessions if not already present
+                        if request.session.session_key not in active_sessions:
+                            active_sessions.append(request.session.session_key)
+                            room.active_sessions = active_sessions
+                        
+                        # Update session_to_cyclist mapping
+                        session_to_cyclist = room.session_to_cyclist or {}
+                        session_to_cyclist[request.session.session_key] = f"admin_{request.user.username}"
+                        room.session_to_cyclist = session_to_cyclist
+                        
+                        room.save()
+                        mode_text = "erzwungen" if is_force else "kein aktiver Master vorhanden"
+                        logger.info(f"👑 Admin {request.user.username} wurde automatisch als Master für Raum {room_code} gesetzt ({mode_text})")
+                    else:
+                        logger.info(f"ℹ️ Admin {request.user.username} betrat Raum {room_code}, aber es existiert bereits ein aktiver Master")
+        
         request.session['room_code'] = room_code
         request.session.modified = True
         # Sync room data to session
