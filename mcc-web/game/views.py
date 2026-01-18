@@ -10,6 +10,18 @@ import json
 import logging
 import os
 import io
+try:
+    import qrcode
+    # Test if PIL/Pillow is available (required for image generation)
+    try:
+        from PIL import Image
+        QRCODE_AVAILABLE = True
+    except ImportError:
+        QRCODE_AVAILABLE = False
+        logging.getLogger(__name__).warning("qrcode installed but PIL/Pillow not available")
+except ImportError as e:
+    QRCODE_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"qrcode package not available: {e}")
 from django.http import JsonResponse, FileResponse, Http404, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -976,9 +988,16 @@ def leave_room(request):
 
 def generate_qr_code(request, room_code):
     """Generates a QR code image for the room URL."""
+    # Try to import at runtime in case it's available now but wasn't at module load
+    # (e.g. after installing the package and restarting the server)
     try:
         import qrcode
-        
+        from PIL import Image
+    except ImportError as e:
+        logger.error(f"qrcode/PIL not available at runtime: {e}. Install with: pip install qrcode[pil]")
+        return HttpResponse("QR code generation not available. Please install qrcode[pil] and restart the server.", status=503)
+    
+    try:
         # Build full URL
         base_url = request.build_absolute_uri('/')[:-1]
         room_url = f"{base_url}{reverse('game:room_page', args=[room_code])}"
@@ -996,12 +1015,9 @@ def generate_qr_code(request, room_code):
         buffer.seek(0)
         
         return HttpResponse(buffer.getvalue(), content_type='image/png')
-    except ImportError:
-        logger.error("qrcode package not installed. Install with: pip install qrcode[pil]")
-        return HttpResponse("QR code generation not available", status=503)
     except Exception as e:
-        logger.error(f"Error generating QR code: {e}")
-        return HttpResponse("Error generating QR code", status=500)
+        logger.error(f"Error generating QR code: {e}", exc_info=True)
+        return HttpResponse(f"Error generating QR code: {str(e)}", status=500)
 
 
 @csrf_exempt
