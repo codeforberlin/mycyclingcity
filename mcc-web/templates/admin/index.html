@@ -39,6 +39,16 @@
                 </a>
             </td>
         </tr>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:game_gameroom_dashboard' %}">{% trans "Game Dashboard" %}</a>
+            </th>
+            <td>
+                <a href="{% url 'admin:game_gameroom_dashboard' %}" class="addlink">
+                    {% trans "View Dashboard" %}
+                </a>
+            </td>
+        </tr>
     </table>
 </div>
 {% endblock %}

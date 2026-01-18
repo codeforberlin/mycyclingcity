@@ -11,8 +11,9 @@ from django.utils.safestring import mark_safe
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from django.urls import reverse
+from django.urls import reverse, path
 from .models import GameRoom
+from .dashboard import game_dashboard
 import json
 from datetime import timedelta
 
@@ -493,3 +494,11 @@ class GameRoomAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset."""
         return super().get_queryset(request)
+    
+    def get_urls(self):
+        """Add dashboard URL to admin."""
+        urls = super().get_urls()
+        custom_urls = [
+            path('dashboard/', self.admin_site.admin_view(game_dashboard), name='game_gameroom_dashboard'),
+        ]
+        return custom_urls + urls
