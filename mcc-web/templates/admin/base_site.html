@@ -84,5 +84,11 @@
         </form>
     </span>
     /
+    {% get_current_language as current_lang %}
+    {% if current_lang == 'en' %}
+        <a href="https://codeforberlin.github.io/mycyclingcity/en/" target="_blank" title="{% trans 'Documentation' %}">📚 {% trans 'Documentation' %}</a> /
+    {% else %}
+        <a href="https://codeforberlin.github.io/mycyclingcity/" target="_blank" title="{% trans 'Documentation' %}">📚 {% trans 'Documentation' %}</a> /
+    {% endif %}
     <a href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a>
 {% endblock %}
