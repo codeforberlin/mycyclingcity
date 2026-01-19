@@ -16,6 +16,7 @@ This document provides a comprehensive overview of all Python dependencies used 
 | pytest | 8.0.0 | MIT | Testing framework |
 | pytest-django | 4.8.0 | BSD-3-Clause | Django plugin for pytest |
 | factory-boy | 3.3.0 | MIT | Test data generation |
+| qrcode[pil] | 7.4.2 | BSD-3-Clause | QR code generation |
 
 ## License Summary
 
@@ -33,10 +34,11 @@ The following dependencies use permissive licenses that allow commercial use, mo
   - requests
   - gpxpy
 
-- **BSD-3-Clause** (3 packages):
+- **BSD-3-Clause** (4 packages):
   - Django
   - python-dotenv
   - pytest-django
+  - qrcode[pil]
 
 - **PIL License** (1 package):
   - pillow (HPND-like license, permissive)

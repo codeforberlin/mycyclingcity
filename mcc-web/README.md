@@ -16,17 +16,17 @@ python utils/create_deployment_archive.py
 ### Target System Preparation and Installation
 
 ```bash
-mkdir -p /data/games/mcc-web
-cd /data/games/mcc-web
+mkdir -p /data/games/mcc/mcc-web
+cd /data/games/mcc/mcc-web
 ```
 
 #### Python Environment Setup
 
-Initialize Python virtual environment in home directory:
+Initialize Python virtual environment in project directory:
 
 ```bash
 python3 -m venv venv
-source venv_mcc/bin/activate
+source venv/bin/activate
 ```
 
 **Note**: For development, you can use an external virtual environment if working from different systems with different Python installations on a NAS server (e.g., `~/venv_mcc`). Use the corresponding path to activate it.
@@ -50,9 +50,11 @@ Required packages (from requirements.txt):
 - gpxpy==1.6.2
 - pillow==12.0.0
 - python-decouple==3.8
+- python-dotenv==1.0.0
 - pytest==8.0.0
 - pytest-django==4.8.0
 - factory-boy==3.3.0
+- qrcode[pil]==7.4.2
 
 #### Deploy to Production
 
@@ -97,13 +99,57 @@ The files in this directory are served by the Apache web server to separate stat
 #### Start Gunicorn
 
 ```bash
-gunicorn --workers 5 --threads 2 --bind 0.0.0.0:8001 config.wsgi:application
+gunicorn --workers 5 --threads 2 --bind 127.0.0.1:8001 config.wsgi:application --log-level info
 ```
 
-Access the application on port 8001:
-- Admin: http://127.0.0.1:8001/admin
-- Game: http://127.0.0.1:8001/game/
-- Map: http://127.0.0.1:8001/map/
+**Security Note**: Gunicorn is bound to `127.0.0.1` (localhost only) instead of `0.0.0.0` for security. This ensures that Gunicorn is only accessible from the local machine through the Apache reverse proxy. External access is only possible through Apache, which handles SSL/TLS termination and authentication.
+
+Access the application:
+- **Via Apache (Production)**: Use the configured domain (e.g., `https://mycyclingcity.net`)
+- **Direct (Development/Testing)**: `http://127.0.0.1:8001/admin` (only accessible from localhost)
+
+## API Endpoints
+
+The web application provides various API endpoints for device communication and data access. For a complete overview, see `URLS_OVERVIEW.md`.
+
+### Main API Endpoints (under `/api/`)
+
+#### Data Transmission
+- `POST /api/update-data` - Receive tachometer data from devices
+- `POST /api/get-user-id` - Retrieve username for RFID tag
+
+#### Cyclist & Group Data
+- `GET /api/get-cyclist-coins/<username>` - Get cyclist coins
+- `POST /api/spend-cyclist-coins` - Spend cyclist coins
+- `GET /api/get-cyclist-distance/<identifier>` - Get cyclist distance
+- `GET /api/get-group-distance/<identifier>` - Get group distance
+- `GET /api/get-active-cyclists` - List active cyclists
+- `GET /api/list-cyclists` - List all cyclists
+- `GET /api/list-groups` - List all groups
+
+#### Leaderboards
+- `GET /api/get-leaderboard/cyclists` - Cyclist leaderboard
+- `GET /api/get-leaderboard/groups` - Group leaderboard
+
+#### Milestones & Rewards
+- `GET /api/get-milestones` - Get milestones
+- `GET /api/get-statistics` - Get statistics
+- `GET /api/get-travel-locations` - Get travel locations
+- `GET /api/get-group-rewards` - Get group rewards
+- `POST /api/redeem-milestone-reward` - Redeem milestone reward
+
+#### Device Management
+- `POST /api/device/config/report` - Device reports its configuration
+- `GET /api/device/config/fetch` - Device fetches server-side configuration
+- `GET /api/device/firmware/info` - Check for firmware updates
+- `GET /api/device/firmware/download` - Download firmware binary
+- `POST /api/device/heartbeat` - Device heartbeat signal
+
+#### Kiosk Management
+- `GET /api/kiosk/<uid>/playlist` - Get kiosk playlist
+- `GET /api/kiosk/<uid>/commands` - Get kiosk commands
+
+**Note**: Most endpoints require authentication via `X-Api-Key` header (device-specific or global API key).
 
 ## Simulating Devices
 
@@ -145,7 +191,7 @@ Configure `/etc/apache2/sites-enabled/mcc.conf`:
 ```apache
 <VirtualHost mycyclingcity.net:80>
     ServerName mycyclingcity.net
-    ServerAdmin adlerkiez-iot@t-online.de
+    ServerAdmin <YOUR ADMIN CONTACT>
     DocumentRoot /var/www/
 
     LogLevel info
@@ -166,7 +212,7 @@ Configure `/etc/apache2/sites-enabled/mcc.conf`:
 ```apache
 <VirtualHost *:443>
     ServerName mycyclingcity.net
-    ServerAdmin adlerkiez-iot@t-online.de
+    ServerAdmin <YOUR ADMIN CONTACT>
     DocumentRoot /var/www/
 
     LogLevel info

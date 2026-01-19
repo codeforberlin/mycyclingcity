@@ -170,7 +170,7 @@ scp mcc-web-deployment-*.tar.gz user@production-server:/tmp/
 
 ```bash
 # 1. Navigate to application directory
-cd /data/games/mcc-web
+cd /data/games/mcc/mcc-web
 
 # 2. Extract archive
 tar xzf /tmp/mcc-web-deployment-*.tar.gz

@@ -6,11 +6,11 @@ After=network.target
 Type=notify
 User=www-data
 Group=www-data
-WorkingDirectory=/data/games/mcc-web
-Environment="PATH=/data/games/mcc-web/venv/bin"
+WorkingDirectory=/data/games/mcc/mcc-web
+Environment="PATH=/data/games/mcc/mcc-web/venv/bin"
 Environment="DJANGO_SETTINGS_MODULE=config.settings"
-ExecStart=/data/games/mcc-web/venv/bin/gunicorn \
-    --config /data/games/mcc-web/gunicorn_config.py \
+ExecStart=/data/games/mcc/mcc-web/venv/bin/gunicorn \
+    --config /data/games/mcc/mcc-web/gunicorn_config.py \
     config.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
@@ -23,7 +23,7 @@ RestartSec=10
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/data/games/mcc-web
+ReadWritePaths=/data/games/mcc/mcc-web
 ReadOnlyPaths=/usr /bin /sbin /lib /lib64
 
 # Resource limits

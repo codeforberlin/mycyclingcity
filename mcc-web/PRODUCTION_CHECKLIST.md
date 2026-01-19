@@ -155,7 +155,7 @@ Add to `/etc/crontab` for daily backups:
 
 ```cron
 # Daily database backup at 2 AM
-0 2 * * * www-data cd /data/games/mcc-web && /data/games/mcc-web/venv/bin/python utils/backup_database.py --keep-days 7 --compress
+0 2 * * * www-data cd /data/games/mcc/mcc-web && /data/games/mcc/mcc-web/venv/bin/python utils/backup_database.py --keep-days 7 --compress
 ```
 
 ## Log Rotation
@@ -163,7 +163,7 @@ Add to `/etc/crontab` for daily backups:
 Create `/etc/logrotate.d/mcc-web`:
 
 ```
-/data/games/mcc-web/logs/*.log {
+/data/games/mcc/mcc-web/logs/*.log {
     daily
     rotate 14
     compress

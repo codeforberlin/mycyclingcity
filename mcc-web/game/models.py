@@ -185,8 +185,8 @@ class GameSession(models.Model):
     )
     
     class Meta:
-        verbose_name = _("Game Session")
-        verbose_name_plural = _("Game Sessions")
+        verbose_name = _("Game Session Tracking")
+        verbose_name_plural = _("Game Session Tracking")
         ordering = ['-last_updated']
         indexes = [
             models.Index(fields=['room_code', 'is_master']),

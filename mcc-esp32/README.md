@@ -117,7 +117,7 @@ Configuration mode exits automatically:
 You can set default values in `platformio.ini` build flags:
 
 ```ini
--D DEFAULT_SERVER_URL=\"https://mycyclingcity.de\"
+-D DEFAULT_SERVER_URL=\"https://mycyclingcity.net\"
 -D DEFAULT_API_KEY=\"your-api-key-here\"
 ```
 
@@ -157,6 +157,8 @@ These are only used if NVS (Non-Volatile Storage) is empty.
 
 The firmware communicates with the backend server via:
 
+### Data Transmission
+
 - **POST** `/api/update-data` - Send tachometer data
   ```json
   {
@@ -178,6 +180,69 @@ The firmware communicates with the backend server via:
     "user_id": "MaxMustermann"
   }
   ```
+
+### Device Management
+
+- **POST** `/api/device/config/report` - Report current device configuration to server
+  ```json
+  {
+    "device_id": "MCC-Device_AB12",
+    "config": {
+      "device_name": "MCC-Device_AB12",
+      "default_id_tag": "rfid001",
+      "send_interval_seconds": 60,
+      "wheel_size": 26,
+      "server_url": "https://mycyclingcity.net",
+      "api_key": "..."
+    }
+  }
+  ```
+  Response includes configuration differences if any.
+
+- **GET** `/api/device/config/fetch?device_id=MCC-Device_AB12` - Fetch server-side configuration
+  Response:
+  ```json
+  {
+    "config": {
+      "device_name": "MCC-Device_AB12",
+      "default_id_tag": "rfid001",
+      "send_interval_seconds": 60,
+      "wheel_size": 26,
+      "api_key": "...",
+      "config_fetch_interval_seconds": 3600
+    },
+    "requires_restart": false
+  }
+  ```
+
+- **GET** `/api/device/firmware/info?device_id=MCC-Device_AB12&current_version=1.0.0` - Check for firmware updates
+  Response:
+  ```json
+  {
+    "update_available": true,
+    "latest_version": "1.1.0",
+    "download_url": "/api/device/firmware/download?device_id=MCC-Device_AB12"
+  }
+  ```
+
+- **GET** `/api/device/firmware/download?device_id=MCC-Device_AB12` - Download firmware binary
+  Returns firmware binary file for OTA update.
+
+- **POST** `/api/device/heartbeat` - Send heartbeat signal to indicate device is online
+  ```json
+  {
+    "device_id": "MCC-Device_AB12"
+  }
+  ```
+  Response:
+  ```json
+  {
+    "success": true,
+    "message": "Heartbeat received"
+  }
+  ```
+
+**Note**: All device management endpoints require authentication via `X-Api-Key` header (device-specific or global API key).
 
 ## Dependencies
 

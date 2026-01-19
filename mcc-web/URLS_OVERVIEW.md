@@ -83,6 +83,8 @@ Die meisten URLs haben ein Sprach-Präfix (`/de/` oder `/en/`), außer den API-E
 - `/api/get-milestones` - Meilensteine abrufen
 - `/api/get-statistics` - Statistiken abrufen
 - `/api/get-travel-locations` - Reise-Orte abrufen
+- `/api/get-group-rewards` - Gruppen-Belohnungen abrufen
+- `/api/redeem-milestone-reward` - Meilenstein-Belohnung einlösen
 
 ### Kiosk-Management
 - `/api/kiosk/<uid>/playlist` - Playlist für Kiosk-Gerät abrufen
