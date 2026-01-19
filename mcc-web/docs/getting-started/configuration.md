@@ -178,4 +178,5 @@ python manage.py check --deploy
 
 - [Installation Guide](installation.md) - Return to installation
 - [Admin GUI Manual](../admin/index.md) - Configure via admin interface
-- [Deployment Guide](../../DEPLOYMENT.md) - Production deployment
+
+For production deployment, see the `DEPLOYMENT.md` file in the project root.
