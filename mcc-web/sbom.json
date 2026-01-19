@@ -3,7 +3,7 @@
   "specVersion": "1.5",
   "version": 1,
   "metadata": {
-    "timestamp": "2025-01-27T00:00:00Z",
+    "timestamp": "2026-01-27T00:00:00Z",
     "tools": [
       {
         "vendor": "MyCyclingCity",
@@ -158,6 +158,20 @@
         }
       ],
       "purl": "pkg:pypi/factory-boy@3.3.0"
+    },
+    {
+      "type": "library",
+      "name": "qrcode",
+      "version": "7.4.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "name": "BSD 3-Clause License"
+          }
+        }
+      ],
+      "purl": "pkg:pypi/qrcode@7.4.2"
     }
   ]
 }
