@@ -57,7 +57,12 @@
                         </div>
                     </div>
                 </div>
-                <a href="https://codeforberlin.github.io/mycyclingcity/guides/game/" target="_blank" class="info-hub-wiki-link">
+                {% get_current_language as current_lang %}
+                {% if current_lang == 'en' %}
+                    <a href="https://codeforberlin.github.io/mycyclingcity/en/guides/game/" target="_blank" class="info-hub-wiki-link">
+                {% else %}
+                    <a href="https://codeforberlin.github.io/mycyclingcity/guides/game/" target="_blank" class="info-hub-wiki-link">
+                {% endif %}
                     📚 {% trans "Ausführliche Dokumentation im Wiki" %}
                 </a>
             </div>
