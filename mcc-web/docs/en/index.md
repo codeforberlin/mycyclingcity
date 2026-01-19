@@ -33,6 +33,7 @@ Complete API documentation:
 
 Detailed guides for specific features:
 
+- [Live Map](guides/map.md) - Interactive map with real-time tracking
 - [Game (Kilometer-Challenge)](guides/game.md) - Game room and challenge system
 - [Kiosk Specification](guides/kiosk_specification.md) - Kiosk dashboard specification
 

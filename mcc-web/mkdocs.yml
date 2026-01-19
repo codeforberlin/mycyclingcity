@@ -7,6 +7,7 @@ repo_name: codeforberlin/mycyclingcity
 
 theme:
   name: material
+  language: de
   palette:
     - scheme: default
       primary: blue
@@ -34,6 +35,34 @@ theme:
 
 plugins:
   - search
+  - i18n:
+      default_language: de
+      languages:
+        de: Deutsch
+        en: English
+      nav_translations:
+        de:
+          Home: Startseite
+          Getting Started: Erste Schritte
+          Installation Guide: Installations-Anleitung
+          Configuration Guide: Konfigurations-Anleitung
+          Admin GUI Manual: Admin GUI Handbuch
+          API Reference: API Referenz
+          Guides: Anleitungen
+          Live Map: Live-Karte
+          Game (Kilometer-Challenge): Spiel (Kilometer-Challenge)
+          Kiosk Specification: Kiosk Spezifikation
+        en:
+          Home: Home
+          Getting Started: Getting Started
+          Installation Guide: Installation Guide
+          Configuration Guide: Configuration Guide
+          Admin GUI Manual: Admin GUI Manual
+          API Reference: API Reference
+          Guides: Guides
+          Live Map: Live Map
+          Game (Kilometer-Challenge): Game (Kilometer-Challenge)
+          Kiosk Specification: Kiosk Specification
   - mkdocstrings:
       handlers:
         python:
@@ -72,7 +101,9 @@ nav:
   - API Reference:
     - api/index.md
   - Guides:
+    - guides/map.md
     - guides/game.md
     - guides/kiosk_specification.md
 
-
+# Language-specific content directories
+docs_dir: docs
