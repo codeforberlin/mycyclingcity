@@ -8,7 +8,7 @@ Die Kilometer-Challenge ist ein Gamification-Feature von MyCyclingCity, das Benu
 
 - [Features](#features)
 - [Erste Schritte](#erste-schritte)
-- [Benutzeroberfläche](#benutzeroberfläche)
+- [Benutzeroberfläche](#benutzeroberflche)
 - [Spiel-Modi](#spiel-modi)
 - [API Referenz](#api-referenz)
 - [Technische Details](#technische-details)
@@ -72,7 +72,7 @@ Navigieren Sie zu: `/{sprache}/game/` (z.B. `/de/game/` oder `/en/game/`)
 4. **Ziel setzen** (Optional): Zieldistanz in Kilometern eingeben
 5. **Spiel starten**: Auf "Spiel starten" klicken, um Tracking zu beginnen
 
-## Benutzeroberfläche
+## Benutzeroberfläche {#benutzeroberflche}
 
 ### Haupt-Spiel-Seite
 

@@ -8,7 +8,7 @@ Die MyCyclingCity Live-Karte ist eine interaktive Kartenanwendung, die Echtzeit-
 
 - [Features](#features)
 - [Erste Schritte](#erste-schritte)
-- [Benutzeroberfläche](#benutzeroberfläche)
+- [Benutzeroberfläche](#benutzeroberflche)
 - [Karten-Features](#karten-features)
 - [Filterung und Ansichten](#filterung-und-ansichten)
 - [Modi](#modi)
@@ -52,7 +52,7 @@ Navigieren Sie zu: `/{sprache}/map/` (z.B. `/de/map/` oder `/en/map/`)
 4. **Gruppen filtern**: Verwenden Sie das Filter-Dropdown, um sich auf bestimmte Gruppen zu konzentrieren
 5. **Ansichten wechseln**: Zwischen Gruppen-, Geräte- und Radler-Ansichten umschalten
 
-## Benutzeroberfläche
+## Benutzeroberfläche {#benutzeroberflche}
 
 ### Haupt-Kartenansicht
 
