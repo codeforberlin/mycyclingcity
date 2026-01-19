@@ -1,7 +1,9 @@
 site_name: MyCyclingCity Documentation
 site_description: Official documentation for MyCyclingCity - A Django-based cycling activity tracking system
 site_author: MyCyclingCity Team
-site_url: https://sai-lab.github.io/mcc-web/
+site_url: https://codeforberlin.github.io/mycyclingcity/
+repo_url: https://github.com/codeforberlin/mycyclingcity
+repo_name: codeforberlin/mycyclingcity
 
 theme:
   name: material
@@ -61,8 +63,16 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - API Reference: api_reference.md
-  - Kiosk Specification: kiosk_specification.md
-  - Game (Kilometer-Challenge): game.md
+  - Getting Started:
+    - getting-started/index.md
+    - getting-started/installation.md
+    - getting-started/configuration.md
+  - Admin GUI Manual:
+    - admin/index.md
+  - API Reference:
+    - api/index.md
+  - Guides:
+    - guides/game.md
+    - guides/kiosk_specification.md
 
 

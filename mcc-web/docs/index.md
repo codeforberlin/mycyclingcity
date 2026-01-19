@@ -2,11 +2,45 @@
 
 Welcome to the MyCyclingCity project documentation.
 
+## Quick Start
+
+- [Getting Started](getting-started/index.md) - Installation and setup guide
+- [Admin GUI Manual](admin/index.md) - Django Admin interface guide
+- [API Reference](api/index.md) - Complete API documentation
+
+## Documentation Sections
+
+### Getting Started
+
+Learn how to set up and configure MyCyclingCity:
+
+- [Installation Guide](getting-started/installation.md) - Set up the development environment
+- [Configuration Guide](getting-started/configuration.md) - Configure the application
+
+### Admin GUI Manual
+
+Comprehensive guide to the Django Admin interface:
+
+- [Admin GUI Manual](admin/index.md) - Manage cyclists, groups, devices, and more
+
+### API Reference
+
+Complete API documentation:
+
+- [API Reference](api/index.md) - All API endpoints and models
+
+### Guides
+
+Detailed guides for specific features:
+
+- [Game (Kilometer-Challenge)](guides/game.md) - Game room and challenge system
+- [Kiosk Specification](guides/kiosk_specification.md) - Kiosk dashboard specification
+
 ## Project Overview
 
 MyCyclingCity is a Django-based web application for tracking cycling activities, managing groups, and displaying leaderboards.
 
-## Architecture
+### Architecture
 
 The project is organized into several Django apps:
 
@@ -19,39 +53,6 @@ The project is organized into several Django apps:
 - **game**: Kilometer challenge game
 - **mgmt**: Management and analytics
 
-## Getting Started
-
-### Installation
-
-```bash
-# Activate virtual environment (adjust path to your environment)
-# Example: source /home/roland/venv_mcc/bin/activate
-# Or: source venv/bin/activate (if using project-local venv)
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run migrations
-python manage.py migrate
-
-# Collect static files
-python manage.py collectstatic
-```
-
-### Running the Development Server
-
-```bash
-python manage.py runserver
-```
-
-## API Reference
-
-See [API Reference](api_reference.md) for detailed API documentation.
-
-## Official Manual
-
-For the complete user manual and detailed guides, visit the [Official Manual](https://sai-lab.github.io/mcc-web/).
-
 ## Contributing
 
 All code, comments, and documentation must be in English.
@@ -62,5 +63,3 @@ Current version: The project uses a version detection mechanism that:
 - First checks for a `version.txt` file in the project root
 - Falls back to `git describe --tags --always --dirty` if the file doesn't exist
 - The version is accessible via Django settings: `settings.get_project_version()`
-
-
