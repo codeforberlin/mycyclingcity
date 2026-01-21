@@ -62,6 +62,9 @@
             width: 100%;
         }
         .assignments { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .assignment-filters { margin-bottom: 15px; }
+        .assignment-filters select, .assignment-filters input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        .assignment-filters select:focus, .assignment-filters input:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); }
         .top-controls { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
         button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.3s ease, background-color 0.3s ease; }
         #startButton { background-color: #28a745; color: white; }
@@ -688,6 +691,57 @@
                       hx-on::after-request="if(event.detail.successful) { setTimeout(() => htmx.trigger('#resultsTableBody', 'refresh'), 100); }"
                       {% endif %}>
                     {% csrf_token %}
+                    <div class="assignment-filters" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <select id="topGroupSelect" 
+                                    name="top_group"
+                                    style="flex: 1; min-width: 150px;"
+                                    hx-get="{% url 'game:get_subgroups' %}"
+                                    hx-target="#subgroupSelect"
+                                    hx-swap="innerHTML"
+                                    hx-trigger="change"
+                                    hx-include="this"
+                                    onchange="handleTopGroupChange(this);"
+                                    hx-on::htmx:after-swap="handleSubgroupsUpdated()">
+                                <option value="">{% trans "Alle TOP-Gruppen" %}</option>
+                                {% for top_group in top_groups %}
+                                <option value="{{ top_group.id }}">{{ top_group.name }}</option>
+                                {% endfor %}
+                            </select>
+
+                            <select id="subgroupSelect" 
+                                    name="subgroup"
+                                    style="flex: 1; min-width: 150px;"
+                                    onchange="handleSubgroupChange(this);">
+                                <option value="">{% trans "Alle Untergruppen" %}</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" 
+                                   id="cyclistSearch" 
+                                   name="cyclist_search"
+                                   placeholder="{% trans '🔍 Radler suchen...' %}"
+                                   style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+                                   hx-get="{% url 'game:get_filtered_cyclists' %}"
+                                   hx-target="#cyclistSelect"
+                                   hx-swap="innerHTML"
+                                   hx-trigger="keyup changed delay:300ms"
+                                   hx-include="#topGroupSelect, #subgroupSelect">
+
+                            <input type="text" 
+                                   id="deviceSearch" 
+                                   name="device_search"
+                                   placeholder="{% trans '🔍 Gerät suchen...' %}"
+                                   style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+                                   hx-get="{% url 'game:get_filtered_devices' %}"
+                                   hx-target="#deviceSelect"
+                                   hx-swap="innerHTML"
+                                   hx-trigger="keyup changed delay:300ms"
+                                   hx-include="#topGroupSelect">
+                        </div>
+                    </div>
+
                     <div class="assignments">
                         <select id="cyclistSelect" name="cyclist">
                             <option value="">{% trans "Wähle einen Radler" %}</option>
@@ -699,7 +753,7 @@
                         <select id="deviceSelect" name="device">
                             <option value="">{% trans "Wähle ein Gerät" %}</option>
                             {% for device in devices %}
-                            <option value="{{ device.name }}">{{ device.name }}</option>
+                            <option value="{{ device.name }}">{{ device.display_name|default:device.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -1897,4 +1951,224 @@
             }, 300);
         }, 3000);
     }
+
+    // ============================================
+    // Cyclist and Device Filtering
+    // ============================================
+    function updateCyclistList() {
+        const topGroup = document.getElementById('topGroupSelect');
+        const subgroup = document.getElementById('subgroupSelect');
+        const search = document.getElementById('cyclistSearch');
+        
+        console.log('updateCyclistList called', {
+            topGroup: topGroup ? topGroup.value : 'null',
+            subgroup: subgroup ? subgroup.value : 'null',
+            search: search ? search.value : 'null'
+        });
+        
+        // Always update cyclist list, even if filters are empty (reset)
+        if (topGroup && subgroup) {
+            // Build URL with query parameters
+            const params = new URLSearchParams();
+            const topGroupValue = topGroup.value ? topGroup.value.trim() : '';
+            const subgroupValue = subgroup.value ? subgroup.value.trim() : '';
+            const searchValue = search && search.value ? search.value.trim() : '';
+            
+            // Only add parameters if they have values
+            if (topGroupValue) {
+                params.append('top_group', topGroupValue);
+            }
+            if (subgroupValue) {
+                params.append('subgroup', subgroupValue);
+            }
+            if (searchValue) {
+                params.append('cyclist_search', searchValue);
+            }
+            
+            const url = '{% url "game:get_filtered_cyclists" %}' + (params.toString() ? '?' + params.toString() : '');
+            console.log('Updating cyclist list with URL:', url, {
+                topGroup: topGroupValue || '(empty)',
+                subgroup: subgroupValue || '(empty)',
+                search: searchValue || '(empty)'
+            });
+            
+            // Trigger HTMX update for cyclist list
+            console.log('Calling htmx.ajax (updateCyclistList) with URL:', url);
+            htmx.ajax('GET', url, {
+                target: '#cyclistSelect',
+                swap: 'innerHTML'
+            }).then(function() {
+                // After swap, ensure the select is properly updated
+                const cyclistSelect = document.getElementById('cyclistSelect');
+                if (cyclistSelect) {
+                    const optionCount = cyclistSelect.options.length;
+                    console.log('✅ Cyclist select updated (updateCyclistList), option count:', optionCount);
+                    if (optionCount > 1) {
+                        console.log('✅ First few options:', Array.from(cyclistSelect.options).slice(0, 5).map(opt => opt.value));
+                    } else {
+                        console.warn('⚠️ Warning: Only', optionCount, 'options in cyclist select after swap');
+                    }
+                } else {
+                    console.error('❌ Error: cyclistSelect element not found after swap');
+                }
+            }).catch(function(error) {
+                console.error('❌ Error updating cyclist list:', error);
+            });
+        } else {
+            console.error('updateCyclistList: topGroup or subgroup element not found!');
+        }
+    }
+
+    function updateDeviceList() {
+        const topGroup = document.getElementById('topGroupSelect');
+        const deviceSearch = document.getElementById('deviceSearch');
+        
+        console.log('updateDeviceList called', {
+            topGroup: topGroup ? topGroup.value : 'null',
+            deviceSearch: deviceSearch ? deviceSearch.value : 'null'
+        });
+        
+        if (topGroup) {
+            // Build URL with query parameters
+            const params = new URLSearchParams();
+            const topGroupValue = topGroup.value ? topGroup.value.trim() : '';
+            const deviceSearchValue = deviceSearch && deviceSearch.value ? deviceSearch.value.trim() : '';
+            
+            // Only add parameters if they have values
+            if (topGroupValue) {
+                params.append('top_group', topGroupValue);
+            }
+            if (deviceSearchValue) {
+                params.append('device_search', deviceSearchValue);
+            }
+            
+            const url = '{% url "game:get_filtered_devices" %}' + (params.toString() ? '?' + params.toString() : '');
+            console.log('Updating device list with URL:', url, {
+                topGroup: topGroupValue || '(empty)',
+                deviceSearch: deviceSearchValue || '(empty)'
+            });
+            
+            // Trigger HTMX update for device list
+            htmx.ajax('GET', url, {
+                target: '#deviceSelect',
+                swap: 'innerHTML'
+            }).then(function() {
+                // After swap, ensure the select is properly updated
+                const deviceSelect = document.getElementById('deviceSelect');
+                if (deviceSelect) {
+                    const optionCount = deviceSelect.options.length;
+                    console.log('✅ Device select updated, option count:', optionCount);
+                    if (optionCount > 1) {
+                        console.log('✅ First few device options:', Array.from(deviceSelect.options).slice(0, 5).map(opt => opt.value));
+                    }
+                }
+            }).catch(function(error) {
+                console.error('❌ Error updating device list:', error);
+            });
+        }
+    }
+
+    function handleTopGroupChange(selectElement) {
+        console.log('handleTopGroupChange called, value:', selectElement.value);
+        const subgroupSelect = document.getElementById('subgroupSelect');
+        
+        // Always clear subgroup when top group changes (including reset to "Alle")
+        // This ensures that when resetting to "Alle TOP-Gruppen", we also reset the subgroup
+        if (subgroupSelect) {
+            console.log('Clearing subgroup because top group changed');
+            subgroupSelect.value = '';
+        }
+        
+        // Wait for HTMX to finish updating the subgroup select before updating cyclist list
+        // HTMX will trigger get_subgroups when topGroupSelect changes, so we need to wait for that
+        // Use a longer timeout to ensure HTMX has processed the change
+        setTimeout(function() {
+            const topGroupValue = selectElement.value || '';
+            const currentSubgroupValue = subgroupSelect ? subgroupSelect.value : '';
+            console.log('Updating lists after top group change:', {
+                topGroup: topGroupValue || '(empty - Alle TOP-Gruppen)',
+                subgroup: currentSubgroupValue || '(empty - Alle Untergruppen)'
+            });
+            
+            // CRITICAL: Build URL explicitly without relying on HTMX hx-include
+            // This ensures we send the correct (empty) values when filters are reset
+            const params = new URLSearchParams();
+            if (topGroupValue) {
+                params.append('top_group', topGroupValue);
+            }
+            // subgroup is always empty when top group changes, so don't add it
+            // But check if there's a search value
+            const search = document.getElementById('cyclistSearch');
+            if (search && search.value) {
+                params.append('cyclist_search', search.value);
+            }
+            
+            const url = '{% url "game:get_filtered_cyclists" %}' + (params.toString() ? '?' + params.toString() : '');
+            console.log('Updating cyclist list with explicit URL:', url);
+            
+            // Trigger HTMX update directly with explicit URL
+            // Use 'innerHTML' swap to replace all options in the select element
+            console.log('Calling htmx.ajax with URL:', url);
+            htmx.ajax('GET', url, {
+                target: '#cyclistSelect',
+                swap: 'innerHTML'
+            }).then(function() {
+                // After swap, ensure the select is properly updated
+                const cyclistSelect = document.getElementById('cyclistSelect');
+                if (cyclistSelect) {
+                    const optionCount = cyclistSelect.options.length;
+                    console.log('✅ Cyclist select updated after swap, option count:', optionCount);
+                    if (optionCount > 1) {
+                        console.log('✅ First few options:', Array.from(cyclistSelect.options).slice(0, 5).map(opt => opt.value));
+                    } else {
+                        console.warn('⚠️ Warning: Only', optionCount, 'options in cyclist select after swap');
+                    }
+                } else {
+                    console.error('❌ Error: cyclistSelect element not found after swap');
+                }
+            }).catch(function(error) {
+                console.error('❌ Error updating cyclist list:', error);
+            });
+            
+            // Update device list
+            updateDeviceList();
+        }, 200);
+    }
+
+    function handleSubgroupChange(selectElement) {
+        console.log('handleSubgroupChange called, value:', selectElement.value);
+        // Always update cyclist list when subgroup changes (including reset)
+        updateCyclistList();
+    }
+    
+    function handleSubgroupsUpdated() {
+        // This is called after HTMX updates the subgroup select
+        // Ensure subgroup is reset to empty when top group is reset to "Alle"
+        const topGroupSelect = document.getElementById('topGroupSelect');
+        const subgroupSelect = document.getElementById('subgroupSelect');
+        
+        if (topGroupSelect && subgroupSelect) {
+            // If top group is empty (Alle), ensure subgroup is also empty
+            if (!topGroupSelect.value || topGroupSelect.value === '') {
+                subgroupSelect.value = '';
+                console.log('Subgroups updated: Reset subgroup to empty because top group is "Alle"');
+            }
+        }
+    }
+    
+    // Add HTMX event listener to debug cyclist select updates
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target && event.detail.target.id === 'cyclistSelect') {
+            const cyclistSelect = event.detail.target;
+            const optionCount = cyclistSelect.options.length;
+            console.log('🔍 HTMX afterSwap event for cyclistSelect, option count:', optionCount);
+            if (optionCount > 1) {
+                console.log('✅ First few options after HTMX swap:', Array.from(cyclistSelect.options).slice(0, 5).map(opt => opt.value));
+            } else {
+                console.warn('⚠️ Warning: Only', optionCount, 'options after HTMX swap');
+                // Check if the response was empty
+                console.log('Response content length:', event.detail.xhr ? event.detail.xhr.responseText.length : 'unknown');
+            }
+        }
+    });
 </script>

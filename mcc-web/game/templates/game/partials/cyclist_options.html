@@ -1,0 +1,11 @@
+{% load i18n %}
+<option value="">{% trans "Wähle einen Radler" %}</option>
+{% if cyclists %}
+    {% for cyclist in cyclists %}
+    <option value="{{ cyclist.user_id }}" data-group="{{ cyclist.group_label }}">
+        {{ cyclist.user_id }}{% if cyclist.group_label %} ({{ cyclist.group_label }}){% endif %}
+    </option>
+    {% endfor %}
+{% else %}
+    <option value="">{% trans "Keine Radler gefunden" %}</option>
+{% endif %}

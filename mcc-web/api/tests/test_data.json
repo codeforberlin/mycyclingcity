@@ -95,7 +95,7 @@
       "name": "device-01",
       "display_name": "Device 01",
       "is_visible": true,
-      "group_id": 2,
+      "group_id": 1,
       "distance_total": 0.0
     },
     {
@@ -103,7 +103,7 @@
       "name": "device-02",
       "display_name": "Device 02",
       "is_visible": true,
-      "group_id": 3,
+      "group_id": 1,
       "distance_total": 0.0
     },
     {
@@ -111,7 +111,7 @@
       "name": "device-03",
       "display_name": "Device 03",
       "is_visible": true,
-      "group_id": 5,
+      "group_id": 4,
       "distance_total": 0.0
     }
   ],

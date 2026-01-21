@@ -1,0 +1,8 @@
+{% load i18n %}
+{% if devices %}
+    {% for device in devices %}
+    <option value="{{ device.name }}">{{ device.display_name }}</option>
+    {% endfor %}
+{% else %}
+    <option value="">{% trans "Keine Geräte gefunden" %}</option>
+{% endif %}

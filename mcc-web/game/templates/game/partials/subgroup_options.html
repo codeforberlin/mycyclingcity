@@ -1,0 +1,7 @@
+{% load i18n %}
+<option value="">{% trans "Alle Untergruppen" %}</option>
+{% if subgroups %}
+    {% for subgroup in subgroups %}
+    <option value="{{ subgroup.id }}">{{ subgroup.name }}</option>
+    {% endfor %}
+{% endif %}

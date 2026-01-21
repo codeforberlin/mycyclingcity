@@ -27,8 +27,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.urls import reverse
-from api.models import Cyclist
+from api.models import Cyclist, Group
 from iot.models import Device
+from django.db.models import Q
 from django.db.models.functions import Coalesce
 
 
@@ -227,13 +228,20 @@ def game_page(request):
     else:
         is_master_flag = False
     
+    # Get all top-level parent groups (schools) for filtering
+    top_groups = Group.objects.filter(
+        parent__isnull=True,
+        is_visible=True
+    ).order_by('name')
+    
     context = {
         # Path correction: Only send the relative path, {% static %} in template handles the rest
         'logo_left': settings.MCC_LOGO_LEFT,
         'logo_right': settings.MCC_LOGO_RIGHT,
         'winner_photo': settings.MCC_WINNER_PHOTO,
-        'cyclists': Cyclist.objects.all().values('user_id', 'id_tag').order_by('user_id'),
-        'devices': Device.objects.all().values('name').order_by('name'),
+        'cyclists': Cyclist.objects.filter(is_visible=True).values('user_id', 'id_tag').order_by('user_id'),
+        'devices': Device.objects.filter(is_visible=True).values('name', 'display_name').order_by('display_name', 'name'),
+        'top_groups': top_groups,
         'room_code': room_code,
         'room_url': room_url,
         'current_target_km': current_target_km,  # For initializing input field and checkboxes
@@ -468,7 +476,9 @@ def render_results_table(request):
         return render(request, 'game/results_table_fragment.html', context)
 
     device_names = device_assignments.keys()
-    devices = Device.objects.filter(name__in=device_names).values('name')
+    devices = Device.objects.filter(name__in=device_names).values('name', 'display_name')
+    # Create a mapping from device name to display name
+    device_display_map = {d['name']: (d['display_name'] if d['display_name'] else d['name']) for d in devices}
     user_ids = device_assignments.values()
     
     logger.info(f"🔍 Device names: {list(device_names)}, User IDs: {list(user_ids)}")
@@ -554,9 +564,12 @@ def render_results_table(request):
             master_cyclist = session_to_cyclist.get(room.master_session_key)
             is_master_cyclist = (master_cyclist == user_id)
         
+        # Use display_name for device if available, otherwise fall back to name
+        device_display_name = device_display_map.get(device_name, device_name)
+        
         game_results.append({
             "cyclist_name": user_id,
-            "device_name": device_name,
+            "device_name": device_display_name,  # Use display_name instead of name
             "distance_km": round(distance_gained, 2),
             "coins": round(coins_gained, 0),
             "progress_percent": 0.0,  # Will be calculated after target_km is known
@@ -944,12 +957,19 @@ def room_page(request, room_code):
         # Get master flag
         is_master_flag = request.session.get('is_master', False)
         
+        # Get all top-level parent groups (schools) for filtering
+        top_groups = Group.objects.filter(
+            parent__isnull=True,
+            is_visible=True
+        ).order_by('name')
+        
         context = {
             'logo_left': settings.MCC_LOGO_LEFT,
             'logo_right': settings.MCC_LOGO_RIGHT,
             'winner_photo': settings.MCC_WINNER_PHOTO,
-            'cyclists': Cyclist.objects.all().values('user_id', 'id_tag').order_by('user_id'),
-            'devices': Device.objects.all().values('name').order_by('name'),
+            'cyclists': Cyclist.objects.filter(is_visible=True).values('user_id', 'id_tag').order_by('user_id'),
+            'devices': Device.objects.filter(is_visible=True).values('name', 'display_name').order_by('display_name', 'name'),
+            'top_groups': top_groups,
             'room_code': room_code,
             'room_url': room_url,
             'current_target_km': current_target_km,  # For initializing input field and checkboxes
@@ -1232,3 +1252,175 @@ def render_game_buttons(request):
         'is_master': is_master_flag,
     }
     return render(request, 'game/partials/game_buttons.html', context)
+
+
+def get_filtered_cyclists(request):
+    """HTMX endpoint to get filtered cyclists based on group filters and search."""
+    top_group_id = request.GET.get('top_group', '').strip()
+    subgroup_id = request.GET.get('subgroup', '').strip()
+    # Support both 'search' and 'cyclist_search' parameter names
+    search_query = request.GET.get('cyclist_search', request.GET.get('search', '')).strip()
+    
+    logger.info(f"🔍 get_filtered_cyclists: top_group_id={top_group_id}, subgroup_id={subgroup_id}, search_query={search_query}")
+    
+    # Start with all visible cyclists (this handles the case when all filters are reset)
+    cyclists_qs = Cyclist.objects.filter(is_visible=True)
+    
+    # Filter by subgroup if specified (subgroup takes priority)
+    # CRITICAL: Only filter if subgroup_id is not empty
+    if subgroup_id and subgroup_id != '':
+        try:
+            subgroup = Group.objects.get(id=int(subgroup_id), is_visible=True)
+            cyclists_qs = cyclists_qs.filter(groups__id=subgroup.id).distinct()
+            logger.info(f"✅ Filtering by subgroup: {subgroup.name} (ID: {subgroup.id})")
+        except (Group.DoesNotExist, ValueError) as e:
+            logger.warning(f"⚠️ Invalid subgroup ID: {subgroup_id}, error: {e}")
+            pass
+    # Filter by top group if specified (but no subgroup)
+    # CRITICAL: Only filter if top_group_id is not empty
+    elif top_group_id and top_group_id != '':
+        try:
+            top_group = Group.objects.get(id=int(top_group_id), is_visible=True)
+            # Get all descendant group IDs
+            def get_all_descendant_ids(ancestor_id, visited=None):
+                if visited is None:
+                    visited = set()
+                if ancestor_id in visited:
+                    return set()
+                visited.add(ancestor_id)
+                
+                descendant_ids = set()
+                direct_children = Group.objects.filter(
+                    parent_id=ancestor_id,
+                    is_visible=True
+                ).values_list('id', flat=True)
+                descendant_ids.update(direct_children)
+                
+                for child_id in direct_children:
+                    descendant_ids.update(get_all_descendant_ids(child_id, visited))
+                
+                return descendant_ids
+            
+            descendant_ids = get_all_descendant_ids(top_group.id)
+            descendant_ids.add(top_group.id)  # Include the top group itself
+            
+            logger.info(f"✅ Filtering by top group: {top_group.name} (ID: {top_group.id}), descendant_ids: {descendant_ids}")
+            cyclists_qs = cyclists_qs.filter(groups__id__in=descendant_ids).distinct()
+        except (Group.DoesNotExist, ValueError) as e:
+            logger.warning(f"⚠️ Invalid top group ID: {top_group_id}, error: {e}")
+            pass
+    
+    # Apply search filter if provided
+    if search_query:
+        cyclists_qs = cyclists_qs.filter(
+            Q(user_id__icontains=search_query) |
+            Q(id_tag__icontains=search_query)
+        )
+    
+    # Log final query count for debugging
+    final_count = cyclists_qs.count()
+    logger.info(f"✅ get_filtered_cyclists: Query returns {final_count} cyclists (top_group_id='{top_group_id}', subgroup_id='{subgroup_id}', search_query='{search_query}')")
+    
+    # CRITICAL: If no filters are applied, we should return ALL visible cyclists
+    # Log the actual query being executed for debugging
+    if not top_group_id and not subgroup_id and not search_query:
+        logger.info(f"✅ get_filtered_cyclists: No filters applied - returning ALL {final_count} visible cyclists")
+    
+    # Get cyclists with their group information for display
+    cyclists = []
+    for cyclist in cyclists_qs.select_related().prefetch_related('groups').order_by('user_id')[:100]:  # Limit to 100 for performance
+        # Get primary group info for display
+        primary_group = cyclist.groups.first()
+        group_label = ''
+        if primary_group:
+            # Try to get subgroup name and top parent name
+            subgroup_name = primary_group.get_kiosk_label()
+            top_parent = primary_group.top_parent_name if hasattr(primary_group, 'top_parent_name') else ''
+            if top_parent and top_parent != subgroup_name:
+                group_label = f"{top_parent} - {subgroup_name}"
+            else:
+                group_label = subgroup_name
+        
+        cyclists.append({
+            'user_id': cyclist.user_id,
+            'id_tag': cyclist.id_tag,
+            'group_label': group_label,
+        })
+    
+    logger.info(f"✅ get_filtered_cyclists: Returning {len(cyclists)} cyclists in response")
+    return render(request, 'game/partials/cyclist_options.html', {'cyclists': cyclists})
+
+
+def get_subgroups(request):
+    """HTMX endpoint to get subgroups for a selected top group."""
+    top_group_id = request.GET.get('top_group', '')
+    
+    if not top_group_id:
+        return render(request, 'game/partials/subgroup_options.html', {'subgroups': []})
+    
+    try:
+        top_group = Group.objects.get(id=int(top_group_id), is_visible=True)
+        # Get direct children (subgroups)
+        subgroups = top_group.children.filter(is_visible=True).order_by('name')
+        
+        subgroups_data = []
+        for subgroup in subgroups:
+            subgroups_data.append({
+                'id': subgroup.id,
+                'name': subgroup.get_kiosk_label(),
+            })
+        
+        return render(request, 'game/partials/subgroup_options.html', {'subgroups': subgroups_data})
+    except (Group.DoesNotExist, ValueError):
+        return render(request, 'game/partials/subgroup_options.html', {'subgroups': []})
+
+
+def get_filtered_devices(request):
+    """HTMX endpoint to get filtered devices (using display_name).
+    
+    Devices are typically assigned to top-level groups only, as multiple classes
+    can use the same device. Therefore, we only filter by top_group, not by subgroup.
+    """
+    top_group_id = request.GET.get('top_group', '').strip()
+    # Support both 'search' and 'device_search' parameter names
+    search_query = request.GET.get('device_search', request.GET.get('search', '')).strip()
+    
+    logger.info(f"🔍 get_filtered_devices: top_group_id={top_group_id}, search_query={search_query}")
+    
+    # Start with all visible devices
+    devices_qs = Device.objects.filter(is_visible=True)
+    
+    # Filter by top group if specified
+    # Note: Devices are typically assigned to top-level groups only
+    # CRITICAL: Only filter if top_group_id is not empty
+    if top_group_id and top_group_id != '':
+        try:
+            top_group = Group.objects.get(id=int(top_group_id), is_visible=True)
+            # Filter devices that are assigned to this top group
+            devices_qs = devices_qs.filter(group=top_group)
+            logger.info(f"✅ Filtering devices by top group: {top_group.name} (ID: {top_group.id})")
+        except (Group.DoesNotExist, ValueError) as e:
+            logger.warning(f"⚠️ Invalid top group ID: {top_group_id}, error: {e}")
+            pass
+    else:
+        logger.info(f"✅ No top group filter applied - returning all visible devices")
+    
+    # Apply search filter if provided
+    if search_query:
+        devices_qs = devices_qs.filter(
+            Q(display_name__icontains=search_query) |
+            Q(name__icontains=search_query)
+        )
+    
+    # Get devices ordered by display_name (or name if display_name is empty)
+    devices = []
+    for device in devices_qs.order_by('display_name', 'name')[:100]:  # Limit to 100 for performance
+        # Use display_name if available, otherwise fall back to name
+        display_name = device.display_name if device.display_name else device.name
+        devices.append({
+            'name': device.name,  # Keep original name for form submission
+            'display_name': display_name,  # Display name for user
+        })
+    
+    logger.info(f"✅ Returning {len(devices)} filtered devices")
+    return render(request, 'game/partials/device_options.html', {'devices': devices})
