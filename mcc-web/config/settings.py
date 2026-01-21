@@ -356,7 +356,7 @@ LOGGING = {
         'api': {
             'handlers': ['console'],
             # Set this to 'DEBUG' to see your detailed views.py messages
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
     }
