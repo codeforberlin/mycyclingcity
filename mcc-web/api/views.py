@@ -912,6 +912,7 @@ def get_user_id(request):
     api_key_header = request.headers.get('X-Api-Key')
     is_valid, _device = validate_api_key(api_key_header)
     if not is_valid:
+        logger.warning(f"[get_user_id] Invalid API key")
         return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
 
     if request.method != 'POST':
@@ -921,9 +922,11 @@ def get_user_id(request):
         data = json.loads(request.body)
         id_tag = data.get('id_tag')
     except json.JSONDecodeError:
+        logger.warning(f"[get_user_id] Invalid JSON format")
         return JsonResponse({"error": _("Ungültiges Format.")}, status=400)
     
     if not id_tag:
+        logger.warning(f"[get_user_id] Missing id_tag in request")
         return JsonResponse({"error": _("id_tag erforderlich.")}, status=400)
 
     return_user_id = "NULL"
@@ -931,8 +934,11 @@ def get_user_id(request):
         cyclist_obj = Cyclist.objects.get(id_tag__iexact=id_tag)
         if cyclist_obj.user_id: 
             return_user_id = cyclist_obj.user_id
+            logger.info(f"[get_user_id] ID tag '{id_tag}' found, assigned to user_id: '{return_user_id}'")
+        else:
+            logger.info(f"[get_user_id] ID tag '{id_tag}' found but has no user_id assigned")
     except Cyclist.DoesNotExist:
-        pass
+        logger.info(f"[get_user_id] ID tag '{id_tag}' not found in database")
     
     return JsonResponse({"user_id": return_user_id})
 

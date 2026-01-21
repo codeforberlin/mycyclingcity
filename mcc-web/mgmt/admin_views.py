@@ -62,7 +62,7 @@ def bulk_create_school(request):
                 school_group_type = GroupType.objects.get(pk=school_group_type_id, is_active=True)
             except (GroupType.DoesNotExist, ValueError, TypeError):
                 # Fallback to default 'Schule' type
-                school_group_type, _ = GroupType.objects.get_or_create(name='Schule', defaults={'is_active': True})
+                school_group_type, _created = GroupType.objects.get_or_create(name='Schule', defaults={'is_active': True})
             
             # Create parent school group
             # Check if school already exists
@@ -86,7 +86,7 @@ def bulk_create_school(request):
             try:
                 class_group_type = GroupType.objects.get(name='Klasse', is_active=True)
             except GroupType.DoesNotExist:
-                class_group_type, _ = GroupType.objects.get_or_create(name='Klasse', defaults={'is_active': True})
+                class_group_type, _created = GroupType.objects.get_or_create(name='Klasse', defaults={'is_active': True})
             
             if not created:
                 messages.warning(request, _('Schule "{}" existiert bereits. Klassen werden hinzugefügt.').format(school_name))
@@ -99,7 +99,7 @@ def bulk_create_school(request):
             class_numbers = request.POST.getlist('class_number[]')
             class_letters = request.POST.getlist('class_letter[]')
             class_short_names = request.POST.getlist('class_short_name[]')
-            class_player_counts = request.POST.getlist('class_player_count[]')
+            class_cyclist_counts = request.POST.getlist('class_cyclist_count[]')
             class_is_visible = request.POST.getlist('class_is_visible[]')
             
             for i, class_number in enumerate(class_numbers):
@@ -108,7 +108,7 @@ def bulk_create_school(request):
                 
                 class_letter = class_letters[i]
                 class_short_name = class_short_names[i] if i < len(class_short_names) else ''
-                player_count = int(class_player_counts[i]) if i < len(class_player_counts) and class_player_counts[i] else 0
+                player_count = int(class_cyclist_counts[i]) if i < len(class_cyclist_counts) and class_cyclist_counts[i] else 0
                 is_visible = i < len(class_is_visible) and class_is_visible[i] == 'on'
                 
                 # Generate unique class name: school-class (e.g. "SchuleC-1a")
@@ -235,7 +235,7 @@ def bulk_create_school_preview(request):
         class_numbers = request.POST.getlist('class_number[]')
         class_letters = request.POST.getlist('class_letter[]')
         class_short_names = request.POST.getlist('class_short_name[]')
-        class_player_counts = request.POST.getlist('class_player_count[]')
+        class_cyclist_counts = request.POST.getlist('class_cyclist_count[]')
         
         preview_data = {
             'school': {
@@ -251,7 +251,7 @@ def bulk_create_school_preview(request):
             
             class_letter = class_letters[i]
             class_short_name = class_short_names[i] if i < len(class_short_names) else ''
-            player_count = int(class_player_counts[i]) if i < len(class_player_counts) and class_player_counts[i] else 0
+            player_count = int(class_cyclist_counts[i]) if i < len(class_cyclist_counts) and class_cyclist_counts[i] else 0
             
             # Generate unique class name: school-class
             school_identifier_for_class = (school_short_name or school_name).strip()
@@ -285,6 +285,7 @@ def bulk_create_school_preview(request):
                 'base_name': class_base_name,
                 'short_name': class_short_name,
                 'player_count': player_count,  # Keep for backward compatibility
+                'cyclist_count': len(cyclists),  # Number of cyclists for this class
                 'cyclists': cyclists,
             })
         
