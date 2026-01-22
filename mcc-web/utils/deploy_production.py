@@ -405,8 +405,9 @@ def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Op
     """
     Run Django migrations.
     
-    Handles special case where game.0003 migration tries to create django_session table
-    that already exists. In such cases, the migration is marked as fake.
+    Handles special cases:
+    - Ensures django.contrib.sessions migrations run first to create django_session table
+    - Handles case where game.0003 migration tries to create django_session table that already exists
     
     Args:
         project_dir: Project root directory
@@ -423,6 +424,29 @@ def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Op
         if python_exe is None:
             python_exe = get_python_executable(project_dir)
         
+        # First, ensure Django built-in app migrations are run (especially sessions)
+        # This is important because game.0003 might depend on django_session table existing
+        if retry_count == 0:
+            print_info("Ensuring Django built-in app migrations are applied...")
+            builtin_apps = ['contenttypes', 'auth', 'sessions', 'admin', 'messages']
+            for app in builtin_apps:
+                builtin_command = [python_exe, 'manage.py', 'migrate', app]
+                if fake_initial:
+                    builtin_command.append('--fake-initial')
+                
+                builtin_exit_code, builtin_stdout, builtin_stderr = run_command(
+                    builtin_command,
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True
+                )
+                
+                if builtin_exit_code != 0:
+                    print_warning(f"Warning: Migration for {app} failed, but continuing...")
+                    if builtin_stderr:
+                        print_warning(f"  {builtin_stderr[:200]}")
+        
+        # Now run all migrations
         command = [python_exe, 'manage.py', 'migrate']
         if fake_initial:
             command.append('--fake-initial')
@@ -474,6 +498,27 @@ def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Op
                         print_success("Marked pending game migrations as fake")
                         # Try running migrations again (only once)
                         return run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe, retry_count=1)
+            
+            # Check if the error is about django_session table not existing
+            if 'django_session' in error_output and ('no such table' in error_output or 'does not exist' in error_output) and retry_count == 0:
+                print_warning("Migration error: django_session table does not exist")
+                print_info("Ensuring sessions app migrations are applied first...")
+                
+                # Run sessions migrations explicitly
+                sessions_command = [python_exe, 'manage.py', 'migrate', 'sessions']
+                sessions_exit_code, sessions_stdout, sessions_stderr = run_command(
+                    sessions_command,
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True
+                )
+                
+                if sessions_exit_code == 0:
+                    print_success("Sessions app migrations applied")
+                    # Try running migrations again (only once)
+                    return run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe, retry_count=1)
+                else:
+                    print_error(f"Failed to apply sessions migrations: {sessions_stderr}")
             
             print_error(f"Migrations failed with exit code {exit_code}")
             if stderr:
