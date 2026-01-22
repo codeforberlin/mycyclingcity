@@ -237,9 +237,8 @@ def map_page(request: HttpRequest) -> HttpResponse:
     now = timezone.now()
     active_tracks = [t for t in active_tracks if t.is_currently_active()]
     
-    # Only show tracks that have at least one group assigned (via GroupTravelStatus)
-    # This prevents showing empty tracks and allows testing tracks by assigning them to a test group
-    active_tracks = [t for t in active_tracks if t.group_statuses.exists()]
+    # Show all active tracks, including those without assigned groups
+    # (Previously filtered to only show tracks with group_statuses, but now showing all)
     
     # Filter tracks by selected track IDs if track_ids parameter is set
     if not show_all_tracks:
