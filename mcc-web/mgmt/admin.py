@@ -2135,9 +2135,34 @@ class HourlyMetricAdmin(admin.ModelAdmin):
     list_display = ('timestamp', 'cyclist', 'distance_km_display', 'device', 'group_at_time')
     readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'group_at_time')
     list_filter = ('timestamp', 'device', 'cyclist', 'group_at_time')
-    search_fields = ('cyclist__name', 'device__name', 'group_at_time__name')
+    search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'device__name')
     date_hierarchy = 'timestamp'
     list_per_page = 50
+    
+    def get_search_results(self, request, queryset, search_term):
+        """Custom search that handles nullable ForeignKey relationships."""
+        # Only perform search if search_term is provided
+        if not search_term:
+            return queryset, False
+        
+        from django.db.models import Q
+        
+        # Build search query manually to avoid ForeignKey lookup issues
+        search_queries = Q()
+        
+        # Search in cyclist fields
+        search_queries |= Q(cyclist__user_id__icontains=search_term)
+        search_queries |= Q(cyclist__id_tag__icontains=search_term)
+        
+        # Search in device name
+        search_queries |= Q(device__name__icontains=search_term)
+        
+        # Search in group_at_time name (nullable ForeignKey - use isnull check to avoid lookup issues)
+        # Only search if group_at_time is not null
+        search_queries |= Q(group_at_time__isnull=False, group_at_time__name__icontains=search_term)
+        
+        queryset = queryset.filter(search_queries).distinct()
+        return queryset, True
     
     def distance_km_display(self, obj):
         """Display distance_km with German format (comma decimal)."""
