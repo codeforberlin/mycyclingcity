@@ -234,7 +234,7 @@ class GroupMilestoneAchievementInline(admin.TabularInline):
 class MilestoneInline(admin.TabularInline):
     model = Milestone
     extra = 1
-    fields = ('name', 'distance_km', 'gps_latitude', 'gps_longitude', 'reward_text', 'winner_group', 'reached_at')
+    fields = ('name', 'distance_km', 'gps_latitude', 'gps_longitude', 'reward_text', 'description', 'external_link', 'winner_group', 'reached_at')
     readonly_fields = ('reached_at', 'winner_group')
     can_delete = True
 
@@ -268,6 +268,11 @@ class MilestoneInline(admin.TabularInline):
                     if 'gps_longitude' in form.fields:
                         form.fields['gps_longitude'].widget.attrs['readonly'] = True
                         form.fields['gps_longitude'].widget.attrs['class'] = 'readonly-field'
+                    # Limit description field to 500 characters
+                    if 'description' in form.fields:
+                        form.fields['description'].widget.attrs['maxlength'] = '500'
+                        form.fields['description'].widget.attrs['rows'] = '3'
+                        form.fields['description'].widget.attrs['style'] = 'max-width: 100%;'
         
         # Add milestone data to the formset (including start point for map display)
         if obj and obj.pk:
@@ -525,6 +530,28 @@ class ShortNameWidget(forms.TextInput):
 
 class TrackMapWidget(forms.Textarea):
     """Widget for displaying track map in textarea."""
+
+class LimitedDescriptionWidget(forms.Textarea):
+    """Widget for milestone description with character limit (500 chars)."""
+    def __init__(self, attrs=None):
+        default_attrs = {
+            'maxlength': '500',
+            'rows': '4',
+            'cols': '40',
+            'style': 'max-width: 100%;'
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
+
+class MilestoneAdminForm(forms.ModelForm):
+    """Custom form for Milestone admin with limited description field."""
+    class Meta:
+        model = Milestone
+        fields = '__all__'
+        widgets = {
+            'description': LimitedDescriptionWidget()
+        }
 
 class CollapsibleCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
     """Collapsible checkbox widget for ManyToMany fields to save space in inline forms."""
@@ -1530,11 +1557,25 @@ class TravelTrackAdmin(admin.ModelAdmin):
 
 @admin.register(Milestone)
 class MilestoneAdmin(admin.ModelAdmin):
+    form = MilestoneAdminForm
     list_display = ('name', 'distance_km_display', 'track', 'winner_group', 'reached_at', 'deletion_warning')
     list_filter = ('track', 'winner_group', 'reached_at')
-    search_fields = ('name', 'track__name', 'winner_group__name')
+    search_fields = ('name', 'track__name', 'winner_group__name', 'description')
     formfield_overrides = {models.DecimalField: {'widget': MapInputWidget}}
     readonly_fields = ('reached_at',)
+    fieldsets = (
+        (_('Grundinformationen'), {
+            'fields': ('track', 'name', 'distance_km', 'gps_latitude', 'gps_longitude')
+        }),
+        (_('Beschreibung & Links'), {
+            'fields': ('description', 'external_link', 'reward_text'),
+            'description': _('Beschreibung (max. 500 Zeichen) und externe Links werden in den Milestone-Details angezeigt. Die Beschreibung wird im Overlay mit maximal 200px Höhe angezeigt.')
+        }),
+        (_('Status'), {
+            'fields': ('winner_group', 'reached_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
     def distance_km_display(self, obj):
         """Display distance_km with German format (comma decimal)."""

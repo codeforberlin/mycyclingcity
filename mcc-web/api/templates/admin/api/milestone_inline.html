@@ -39,23 +39,37 @@
             padding: 4px 3px !important;
             word-wrap: break-word;
             overflow-wrap: break-word;
-            white-space: nowrap !important;
             vertical-align: middle !important;
             line-height: 1.2 !important;
         }
         
-        /* Zeilenhöhe reduzieren */
+        /* Beschreibung und URL-Spalten: Text umbrechen erlauben */
+        .inline-group table th:nth-child(7),
+        .inline-group table td:nth-child(7),
+        .inline-group table th:nth-child(8),
+        .inline-group table td:nth-child(8) {
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+        
+        /* Andere Spalten: Text auf einer Zeile */
+        .inline-group table th:not(:nth-child(7)):not(:nth-child(8)),
+        .inline-group table td:not(:nth-child(7)):not(:nth-child(8)) {
+            white-space: nowrap !important;
+        }
+        
+        /* Zeilenhöhe anpassen - mehr Platz für Beschreibung/URL */
         .inline-group table tbody tr {
             height: auto !important;
             min-height: 32px !important;
-            max-height: 40px !important;
         }
         
         /* Spezifische Spaltenbreiten werden per JavaScript dynamisch gesetzt */
         
         /* Input-Felder anpassen */
         .inline-group table input[type="text"],
-        .inline-group table input[type="number"] {
+        .inline-group table input[type="number"],
+        .inline-group table input[type="url"] {
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
@@ -64,6 +78,21 @@
             margin: 0 !important;
             height: 24px !important;
             line-height: 1.2 !important;
+        }
+        
+        /* Textarea-Felder (für Beschreibung) anpassen */
+        .inline-group table textarea {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            font-size: 0.85em !important;
+            padding: 2px 4px !important;
+            margin: 0 !important;
+            min-height: 24px !important;
+            max-height: 60px !important;
+            line-height: 1.2 !important;
+            resize: vertical !important;
+            overflow-y: auto !important;
         }
         
         /* Readonly fields styling */
@@ -786,10 +815,10 @@
                 // Finde alle Header (alle sind jetzt sichtbar)
                 var headers = Array.from(table.querySelectorAll('thead th'));
                 
-                // Spaltenbreiten: Erste Spalte (leer), Name, KM-Marke, Breitengrad, Längengrad, Belohnung, Gewinner, Erreicht am
-                // Kompaktere Breiten für eine Zeile
-                var columnWidths = ['3%', '12%', '8%', '12%', '12%', '20%', '15%', '18%'];
-                var minWidths = ['20px', '80px', '60px', '90px', '90px', '120px', '100px', '120px'];
+                // Spaltenbreiten: Erste Spalte (leer), Name, KM-Marke, Breitengrad, Längengrad, Belohnung, Beschreibung, Info-Link, Gewinner, Erreicht am
+                // Angepasste Breiten für 10 Spalten (inkl. description und external_link)
+                var columnWidths = ['3%', '10%', '7%', '10%', '10%', '12%', '15%', '12%', '10%', '11%'];
+                var minWidths = ['20px', '70px', '50px', '75px', '75px', '90px', '100px', '90px', '70px', '80px'];
                 
                 // Setze Spaltenbreiten für alle Header
                 headers.forEach(function(header, index) {
@@ -809,10 +838,20 @@
                             cell.style.width = columnWidths[index];
                             cell.style.minWidth = minWidths[index];
                             cell.style.maxWidth = columnWidths[index];
-                            // Stelle sicher, dass der Inhalt auf einer Zeile bleibt
-                            cell.style.whiteSpace = 'nowrap';
-                            cell.style.overflow = 'hidden';
-                            cell.style.textOverflow = 'ellipsis';
+                            
+                            // Beschreibung (Spalte 7) und Info-Link (Spalte 8) erlauben Textumbruch
+                            // Index 6 = Beschreibung, Index 7 = Info-Link (nach der versteckten ersten Spalte)
+                            if (index === 6 || index === 7) {
+                                cell.style.whiteSpace = 'normal';
+                                cell.style.wordBreak = 'break-word';
+                                cell.style.overflow = 'visible';
+                                cell.style.textOverflow = '';
+                            } else {
+                                // Andere Spalten: Inhalt auf einer Zeile
+                                cell.style.whiteSpace = 'nowrap';
+                                cell.style.overflow = 'hidden';
+                                cell.style.textOverflow = 'ellipsis';
+                            }
                         }
                     });
                 });

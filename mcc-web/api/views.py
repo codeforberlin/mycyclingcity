@@ -1860,6 +1860,8 @@ def get_milestones(request):
                 'gps_latitude': float(milestone.gps_latitude),
                 'gps_longitude': float(milestone.gps_longitude),
                 'reward_text': milestone.reward_text or '',
+                'description': milestone.description or '',
+                'external_link': milestone.external_link or '',
                 'is_reached': milestone.winner_group is not None,
                 'winner_group_id': milestone.winner_group.id if milestone.winner_group else None,
                 'winner_group_name': milestone.winner_group.name if milestone.winner_group else None,

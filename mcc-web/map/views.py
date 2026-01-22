@@ -277,11 +277,14 @@ def map_page(request: HttpRequest) -> HttpResponse:
                 'lon': float(m.gps_longitude),
                 'km': float(m.distance_km),
                 'text': m.reward_text or "",
+                'description': m.description or "",
+                'external_link': m.external_link or "",
                 'is_reached': m.winner_group is not None,
                 'winner_group_name': m.winner_group.name if m.winner_group else None,
                 'winner_parent_group_name': parent_group_name,  # TOP-Gruppe
                 'reached_at': m.reached_at.isoformat() if m.reached_at else None,
                 'track_id': track.id,
+                'track_name': track.name,  # Track name for overlay display
                 'track_total_length_km': float(track.total_length_km)
             })
 
@@ -1150,6 +1153,8 @@ def get_new_milestones(request):
                 'id': ms.id,
                 'name': ms.name,
                 'reward_text': ms.reward_text or '',
+                'description': ms.description or '',
+                'external_link': ms.external_link or '',
                 'group_name': ms.winner_group.name,
                 'parent_group_name': parent_group_name,  # TOP-Gruppe
                 'reached_at': ms.reached_at.isoformat(),
@@ -1226,6 +1231,8 @@ def get_all_milestones_status(request):
             'id': ms.id,
             'name': ms.name,
             'reward_text': ms.reward_text or '',
+            'description': ms.description or '',
+            'external_link': ms.external_link or '',
             'lat': float(ms.gps_latitude) if ms.gps_latitude else None,
             'lon': float(ms.gps_longitude) if ms.gps_longitude else None,
             'is_reached': ms.winner_group is not None,

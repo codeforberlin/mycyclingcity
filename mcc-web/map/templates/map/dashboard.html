@@ -480,6 +480,98 @@
             text-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
         }
 
+        /* Beschreibung - scrollbar für lange Texte */
+        .milestone-card-description {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .milestone-card-description-text {
+            margin-top: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            line-height: 1.6;
+            max-height: 200px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Externer Link Button - groß und touch-freundlich */
+        .milestone-card-external-link {
+            margin-top: 16px;
+            padding-top: 16px;
+            padding-left: 0;
+            padding-right: 0;
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+            box-sizing: border-box;
+        }
+
+        .milestone-external-link-btn {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            padding: 14px 20px;
+            background: rgba(59, 130, 246, 0.3);
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            text-decoration: none;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-sizing: border-box;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+
+        .milestone-external-link-btn:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        .milestone-external-link-btn:active {
+            background: rgba(59, 130, 246, 0.5);
+            transform: scale(0.98);
+        }
+
+        /* Details-Button im Popup */
+        .milestone-details-btn-container {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .milestone-details-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            min-height: 44px;
+            transition: all 0.2s;
+        }
+
+        .milestone-details-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .milestone-details-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(0.98);
+        }
+
         .group-icon-container {
         text-align: center;
         transition: transform 0.3s ease-out; /* Smooth transition on position change */
@@ -1606,7 +1698,7 @@
         <div id="milestone-card" class="milestone-card">
             <div class="milestone-card-header">
                 <div class="milestone-card-icon">🏆</div>
-                <div class="milestone-card-title">{% trans "Meilenstein erreicht!" %}</div>
+                <div class="milestone-card-title" id="milestone-overlay-title">{% trans "Meilenstein" %}</div>
                 <button class="milestone-card-close-btn" onclick="closeMilestoneOverlay()">&times;</button>
             </div>
             <div class="milestone-card-name" id="milestone-overlay-name"></div>
@@ -1627,6 +1719,19 @@
                     <div class="milestone-card-info-label">{% trans "Belohnung" %}</div>
                     <div class="milestone-card-info-value" id="milestone-overlay-reward"></div>
                 </div>
+            </div>
+            <!-- Beschreibung (wenn vorhanden) -->
+            <div class="milestone-card-description" id="milestone-overlay-description" style="display: none;">
+                <div class="milestone-card-info-label">{% trans "Beschreibung" %}</div>
+                <div class="milestone-card-description-text" id="milestone-overlay-description-text"></div>
+            </div>
+            <!-- Externer Link (wenn vorhanden) -->
+            <div class="milestone-card-external-link" id="milestone-overlay-link" style="display: none;">
+                <a href="#" target="_blank" rel="noopener noreferrer" 
+                   class="milestone-external-link-btn" 
+                   id="milestone-overlay-link-btn">
+                    🔗 {% trans "Weitere Informationen" %}
+                </a>
             </div>
         </div>
     </div>
@@ -2220,7 +2325,7 @@
                     iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
                 });
                 var marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
-                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein erreicht!" %}</div>';
+                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + m.name : m.name) + '</div>';
                 popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 1) + ' km</div>';
                 if (isTarget) {
@@ -2241,6 +2346,26 @@
                         var reachedDate = new Date(m.reached_at);
                         popupContent += '<div class="milestone-date">{% trans "Erreicht am" %}: ' + reachedDate.toLocaleString('de-DE') + '</div>';
                     }
+                }
+                // Add details button if description or external_link exists
+                if ((m.description && m.description.trim()) || (m.external_link && m.external_link.trim())) {
+                    // Find track name from tracks array
+                    var trackName = '';
+                    if (m.track_id && typeof tracks !== 'undefined') {
+                        var track = tracks.find(function(t) {
+                            var tid = typeof t.id === 'string' ? parseInt(t.id) : t.id;
+                            var mid = typeof m.track_id === 'string' ? parseInt(m.track_id) : m.track_id;
+                            return tid === mid;
+                        });
+                        if (track && track.name) {
+                            trackName = track.name;
+                        }
+                    }
+                    popupContent += '<div class="milestone-details-btn-container">';
+                    popupContent += '<button class="milestone-details-btn" onclick="openMilestoneDetailsFromPopup(' + m.id + ', \'' + (m.name || '').replace(/'/g, "\\'") + '\', \'' + (m.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n') + '\', \'' + (m.external_link || '') + '\', \'' + (m.text || '') + '\', \'' + (m.winner_group_name || '') + '\', \'' + (m.winner_parent_group_name || '') + '\', \'' + (m.reached_at || '') + '\', ' + m.km + ', \'' + trackName.replace(/'/g, "\\'") + '\')">';
+                    popupContent += 'ℹ️ {% trans "Details anzeigen" %}';
+                    popupContent += '</button>';
+                    popupContent += '</div>';
                 }
                 marker.bindPopup(popupContent);
                 // Store marker with name as key (if ID not available)
@@ -3182,7 +3307,7 @@
                                 
                                 // Update popup with reward information
                                 var kmValue = ms.km || ms.distance_km || 0;
-                                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein erreicht!" %}</div>';
+                                var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + ms.name : ms.name) + '</div>';
                                 popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 1) + ' km</div>';
                                 if (isTarget) {
@@ -3202,6 +3327,26 @@
                                         var reachedDate = new Date(ms.reached_at);
                                         popupContent += '<div class="milestone-date">{% trans "Erreicht am" %}: ' + reachedDate.toLocaleString('de-DE') + '</div>';
                                     }
+                                }
+                                // Add details button if description or external_link exists
+                                if ((ms.description && ms.description.trim()) || (ms.external_link && ms.external_link.trim())) {
+                                    // Find track name from tracks array or use track_name from API
+                                    var trackName = ms.track_name || '';
+                                    if (!trackName && ms.track_id && typeof tracks !== 'undefined') {
+                                        var track = tracks.find(function(t) {
+                                            var tid = typeof t.id === 'string' ? parseInt(t.id) : t.id;
+                                            var mid = typeof ms.track_id === 'string' ? parseInt(ms.track_id) : ms.track_id;
+                                            return tid === mid;
+                                        });
+                                        if (track && track.name) {
+                                            trackName = track.name;
+                                        }
+                                    }
+                                    popupContent += '<div class="milestone-details-btn-container">';
+                                    popupContent += '<button class="milestone-details-btn" onclick="openMilestoneDetailsFromPopup(' + ms.id + ', \'' + (ms.name || '').replace(/'/g, "\\'") + '\', \'' + (ms.description || '').replace(/'/g, "\\'").replace(/\n/g, '\\n') + '\', \'' + (ms.external_link || '') + '\', \'' + (ms.reward_text || ms.text || '') + '\', \'' + (ms.winner_group_name || '') + '\', \'' + (ms.winner_parent_group_name || '') + '\', \'' + (ms.reached_at || '') + '\', ' + kmValue + ', \'' + trackName.replace(/'/g, "\\'") + '\')">';
+                                    popupContent += 'ℹ️ {% trans "Details anzeigen" %}';
+                                    popupContent += '</button>';
+                                    popupContent += '</div>';
                                 }
                                 marker.setPopupContent(popupContent);
                                 
@@ -3336,15 +3481,26 @@
         function showMilestoneOverlay(milestone) {
             var overlay = document.getElementById('milestone-overlay');
             var card = document.getElementById('milestone-card');
+            var titleEl = document.getElementById('milestone-overlay-title');
             var nameEl = document.getElementById('milestone-overlay-name');
             var trackNameEl = document.getElementById('milestone-overlay-track-name');
             var topGroupEl = document.getElementById('milestone-overlay-top-group');
             var leafGroupEl = document.getElementById('milestone-overlay-leaf-group');
             var rewardEl = document.getElementById('milestone-overlay-reward');
+            var descriptionEl = document.getElementById('milestone-overlay-description');
+            var descriptionTextEl = document.getElementById('milestone-overlay-description-text');
+            var linkEl = document.getElementById('milestone-overlay-link');
+            var linkBtn = document.getElementById('milestone-overlay-link-btn');
 
             if (!overlay || !card) {
                 console.error('Milestone overlay elements not found');
                 return;
+            }
+
+            // Set title based on whether milestone is reached
+            var isReached = milestone.is_reached || milestone.winner_group_name || milestone.group_name || false;
+            if (titleEl) {
+                titleEl.textContent = isReached ? '{% trans "Meilenstein erreicht!" %}' : '{% trans "Meilenstein" %}';
             }
 
             // Set milestone data
@@ -3354,6 +3510,22 @@
             if (leafGroupEl) leafGroupEl.textContent = milestone.winner_group_name || milestone.group_name || '-';
             if (rewardEl) rewardEl.textContent = milestone.reward_text || milestone.text || '{% trans "Herzlichen Glückwunsch!" %}';
 
+            // Beschreibung anzeigen (wenn vorhanden)
+            if (milestone.description && milestone.description.trim() && descriptionEl && descriptionTextEl) {
+                descriptionTextEl.textContent = milestone.description;
+                descriptionEl.style.display = 'block';
+            } else if (descriptionEl) {
+                descriptionEl.style.display = 'none';
+            }
+
+            // Externer Link anzeigen (wenn vorhanden)
+            if (milestone.external_link && milestone.external_link.trim() && linkEl && linkBtn) {
+                linkBtn.href = milestone.external_link;
+                linkEl.style.display = 'block';
+            } else if (linkEl) {
+                linkEl.style.display = 'none';
+            }
+
             // Show overlay
             overlay.classList.remove('hidden');
             card.classList.remove('fade-out');
@@ -3362,6 +3534,25 @@
             setTimeout(function() {
                 closeMilestoneOverlay();
             }, milestonePopupDuration || 30000);
+        }
+
+        // Open milestone details from popup
+        function openMilestoneDetailsFromPopup(id, name, description, externalLink, rewardText, winnerGroupName, winnerParentGroupName, reachedAt, km, trackName) {
+            var milestone = {
+                id: id,
+                name: name,
+                description: description,
+                external_link: externalLink,
+                reward_text: rewardText,
+                text: rewardText,
+                winner_group_name: winnerGroupName,
+                winner_parent_group_name: winnerParentGroupName,
+                reached_at: reachedAt,
+                km: km,
+                track_name: trackName || null,
+                is_reached: !!(winnerGroupName || winnerParentGroupName) // Set is_reached based on whether there's a winner
+            };
+            showMilestoneOverlay(milestone);
         }
 
         // Close milestone overlay
