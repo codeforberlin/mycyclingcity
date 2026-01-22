@@ -2327,7 +2327,7 @@
                 var marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
                 var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + m.name : m.name) + '</div>';
-                popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 1) + ' km</div>';
+                popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 2) + ' km</div>';
                 if (isTarget) {
                     popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
                 } else {
@@ -2423,7 +2423,7 @@
             if (isAtFinish && g.top_contributor_leaf_group) {
                 var leafGroup = g.top_contributor_leaf_group;
                 var leafGroupName = ((leafGroup.display_name || leafGroup.name) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                var leafContribution = formatNumberDE(leafGroup.contribution_km || 0, 1);
+                var leafContribution = formatNumberDE(leafGroup.contribution_km || 0, 2);
                 topContributorDisplay = `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd; font-size: 10px; color: #28a745; font-weight: bold;">⭐ ${leafGroupName}<br>${leafContribution} km</div>`;
             }
             
@@ -2449,7 +2449,7 @@
                 html: `
                     <div class="group-icon-container" style="${transform}">
                         <img src="${g.logo}" class="group-icon-img" onerror="this.src='/static/map/images/default_group.png'">
-                        <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${rankDisplay}${groupName}<br>${formatNumberDE(displayKm, 1)} km${travelDurationDisplay}${topContributorDisplay}</div>
+                        <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${rankDisplay}${groupName}<br>${formatNumberDE(displayKm, 2)} km${travelDurationDisplay}${topContributorDisplay}</div>
                     </div>`,
                 className: '',
                 iconSize: [50, 65],
@@ -3309,7 +3309,7 @@
                                 var kmValue = ms.km || ms.distance_km || 0;
                                 var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + ms.name : ms.name) + '</div>';
-                                popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 1) + ' km</div>';
+                                popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 2) + ' km</div>';
                                 if (isTarget) {
                                     popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
                                 }

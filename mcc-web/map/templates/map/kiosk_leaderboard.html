@@ -667,7 +667,7 @@
                         iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
                     });
                     const marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
-                    let popupContent = '<strong>' + (isTarget ? '🏁 ' + m.name : m.name) + '</strong><br>' + formatNumberDE(m.km, 1) + ' km';
+                    let popupContent = '<strong>' + (isTarget ? '🏁 ' + m.name : m.name) + '</strong><br>' + formatNumberDE(m.km, 2) + ' km';
                     if (m.text) popupContent += '<br><em>' + m.text + '</em>';
                     if (isReached && m.winner_group_name) {
                         popupContent += '<br><strong>{% trans "Erreicht von" %}: ' + m.winner_group_name + '</strong>';

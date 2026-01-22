@@ -1713,7 +1713,7 @@
                 var marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
                 var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + m.name : m.name) + '</div>';
-                popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 1) + ' km</div>';
+                popupContent += '<div class="milestone-distance">' + formatNumberDE(m.km, 2) + ' km</div>';
                 if (isTarget) {
                     popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
                 } else {
@@ -2017,7 +2017,7 @@
                         topContributorDiv.className = 'mini-podium-top-contributor';
                         var leafGroup = avatar.top_contributor_leaf_group;
                         var displayName = leafGroup.display_name || leafGroup.name || '';
-                        var contributionKm = formatNumberDE(leafGroup.contribution_km || 0, 1);
+                        var contributionKm = formatNumberDE(leafGroup.contribution_km || 0, 2);
                         topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionKm + ' km)';
                         miniInfo.appendChild(topContributorDiv);
                     }
@@ -2451,7 +2451,7 @@
                                 var kmValue = ms.km || ms.distance_km || 0;
                                 var popupContent = '<div class="milestone-header">🏆 {% trans "Meilenstein" %}</div>';
                                 popupContent += '<div class="milestone-name">' + (isTarget ? '🏁 ' + ms.name : ms.name) + '</div>';
-                                popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 1) + ' km</div>';
+                                popupContent += '<div class="milestone-distance">' + formatNumberDE(kmValue, 2) + ' km</div>';
                                 if (isTarget) {
                                     popupContent += '<div class="milestone-target-reached">{% trans "Ziel erreicht!" %}</div>';
                                 }
