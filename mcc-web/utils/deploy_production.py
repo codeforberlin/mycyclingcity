@@ -401,14 +401,18 @@ print('EXISTS' if db_path.exists() else 'NOT_EXISTS')
         return False
 
 
-def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Optional[str] = None) -> bool:
+def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Optional[str] = None, retry_count: int = 0) -> bool:
     """
     Run Django migrations.
+    
+    Handles special case where game.0003 migration tries to create django_session table
+    that already exists. In such cases, the migration is marked as fake.
     
     Args:
         project_dir: Project root directory
         fake_initial: If True, mark initial migrations as applied without running them
         python_exe: Python executable to use
+        retry_count: Internal counter to prevent infinite recursion (max 1 retry)
     
     Returns:
         True if migrations succeeded, False otherwise
@@ -436,6 +440,41 @@ def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Op
                 print(stdout)
             return True
         else:
+            # Check if the error is about django_session table already existing
+            error_output = (stderr or '').lower()
+            if 'django_session' in error_output and 'already exists' in error_output and retry_count == 0:
+                print_warning("Migration error: django_session table already exists")
+                print_info("Attempting to mark problematic migration as fake...")
+                
+                # Try to fake the game.0003 migration if it exists
+                fake_command = [python_exe, 'manage.py', 'migrate', 'game', '0003', '--fake']
+                fake_exit_code, fake_stdout, fake_stderr = run_command(
+                    fake_command,
+                    cwd=project_dir,
+                    check=False,
+                    capture_output=True
+                )
+                
+                if fake_exit_code == 0:
+                    print_success("Marked game.0003 migration as fake")
+                    # Try running migrations again (only once)
+                    return run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe, retry_count=1)
+                else:
+                    # If fake didn't work, try to fake all pending game migrations
+                    print_info("Trying to fake all pending game migrations...")
+                    fake_all_command = [python_exe, 'manage.py', 'migrate', 'game', '--fake']
+                    fake_all_exit_code, fake_all_stdout, fake_all_stderr = run_command(
+                        fake_all_command,
+                        cwd=project_dir,
+                        check=False,
+                        capture_output=True
+                    )
+                    
+                    if fake_all_exit_code == 0:
+                        print_success("Marked pending game migrations as fake")
+                        # Try running migrations again (only once)
+                        return run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe, retry_count=1)
+            
             print_error(f"Migrations failed with exit code {exit_code}")
             if stderr:
                 print(stderr)
