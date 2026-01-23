@@ -394,6 +394,22 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
+        'map_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'map.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
+        },
+        'leaderboard_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'leaderboard.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
+        },
         # Django framework logs (only WARNING and above)
         'django_file': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -444,6 +460,18 @@ LOGGING = {
         # Game application logger - writes to game.log
         'game': {
             'handlers': ['game_file'],
+            'level': 'INFO',  # Log INFO and above
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Map application logger - writes to map.log
+        'map': {
+            'handlers': ['map_file'],
+            'level': 'INFO',  # Log INFO and above
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Leaderboard application logger - writes to leaderboard.log
+        'leaderboard': {
+            'handlers': ['leaderboard_file'],
             'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },

@@ -134,7 +134,7 @@ class MgmtConfig(AppConfig):
         target_logger_level = level_map.get(min_log_level, logging.WARNING)
         
         # Update logger levels for all application loggers
-        app_loggers = ['api', 'mgmt', 'iot', 'kiosk', 'game']
+        app_loggers = ['api', 'mgmt', 'iot', 'kiosk', 'game', 'map', 'leaderboard']
         
         for logger_name in app_loggers:
             logger = logging.getLogger(logger_name)

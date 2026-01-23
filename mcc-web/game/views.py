@@ -138,7 +138,7 @@ def sync_session_from_room(request):
             # Update master flag - CRITICAL: This must be updated every time we sync
             is_master_flag = is_master(request, room)
             request.session['is_master'] = is_master_flag
-            logger.info(f"🔄 sync_session_from_room: room_code={room_code}, session_key={request.session.session_key}, is_master={is_master_flag}, master_session_key={room.master_session_key}")
+            logger.debug(f"🔄 sync_session_from_room: room_code={room_code}, session_key={request.session.session_key}, is_master={is_master_flag}, master_session_key={room.master_session_key}")
             
             # Update active sessions list
             if request.session.session_key:
@@ -152,7 +152,7 @@ def sync_session_from_room(request):
             return room
         except GameRoom.DoesNotExist:
             # Room doesn't exist, clear room_code from session
-            logger.info(f"🏁 Raum {room_code} existiert nicht mehr, bereinige Session")
+            logger.debug(f"🏁 Raum {room_code} existiert nicht mehr, bereinige Session")
             if 'room_code' in request.session:
                 del request.session['room_code']
             if 'is_master' in request.session:
@@ -224,7 +224,7 @@ def game_page(request):
     if room_code:
         # sync_session_from_room was already called above, so is_master should be current
         is_master_flag = request.session.get('is_master', False)
-        logger.info(f"🔍 game_page: room_code={room_code}, session_key={request.session.session_key}, is_master={is_master_flag}")
+        logger.debug(f"🔍 game_page: room_code={room_code}, session_key={request.session.session_key}, is_master={is_master_flag}")
     else:
         is_master_flag = False
     
@@ -312,11 +312,11 @@ def handle_assignment_form(request):
             request.session.modified = True
             pass
     
-    logger.info(f"🔍 handle_assignment_form: method={request.method}, room_code={room_code}, current_assignments={active_assignments}")
+    logger.debug(f"🔍 handle_assignment_form: method={request.method}, room_code={room_code}, current_assignments={active_assignments}")
     
     if request.method == 'POST':
         action = request.POST.get('action') 
-        logger.info(f"🔍 Action: {action}, POST data: {dict(request.POST)}")
+        logger.debug(f"🔍 Action: {action}, POST data: {dict(request.POST)}")
         
         if action == 'add':
             cyclist = request.POST.get('cyclist')
@@ -338,7 +338,7 @@ def handle_assignment_form(request):
                 from .signals import update_game_session
                 update_game_session(request.session.session_key)
                 
-                logger.info(f"💾 Session saved immediately after assignment: session_key={request.session.session_key}, "
+                logger.debug(f"💾 Session saved immediately after assignment: session_key={request.session.session_key}, "
                            f"device_assignments={active_assignments}")
                 
                 # Update session_to_cyclist mapping in room
@@ -349,9 +349,9 @@ def handle_assignment_form(request):
                     session_to_cyclist[request.session.session_key] = cyclist
                     room.session_to_cyclist = session_to_cyclist
                     room.save()
-                    logger.info(f"✅ Updated session_to_cyclist: {session_to_cyclist}")
+                    logger.debug(f"✅ Updated session_to_cyclist: {session_to_cyclist}")
                 
-                logger.info(_(f"✅ Zuweisung hinzugefügt: {cyclist} -> {device}, neue Assignments: {active_assignments}"))
+                logger.debug(_(f"✅ Zuweisung hinzugefügt: {cyclist} -> {device}, neue Assignments: {active_assignments}"))
             else:
                 logger.warning(_(f"❌ Zuweisung konnte nicht hinzugefügt werden: cyclist={cyclist}, device={device}, active_assignments={active_assignments}"))
         
@@ -379,7 +379,7 @@ def handle_assignment_form(request):
                     from .signals import update_game_session
                     update_game_session(request.session.session_key)
                     
-                    logger.info(_(f"✅ Zuweisung entfernt: {cyclist_to_remove}, neue Assignments: {active_assignments}"))
+                    logger.debug(_(f"✅ Zuweisung entfernt: {cyclist_to_remove}, neue Assignments: {active_assignments}"))
         
         elif action == 'clear':
             # Only master can clear all assignments
@@ -395,17 +395,17 @@ def handle_assignment_form(request):
             if 'assignment_owners' in request.session:
                 del request.session['assignment_owners']
             request.session.modified = True  # CRITICAL: Ensure session is saved
-            logger.info(_("✅ Alle Zuweisungen gelöscht."))
+            logger.debug(_("✅ Alle Zuweisungen gelöscht."))
     
     # Sync to room if in a shared room
     if room_code:
-        logger.info(f"🔄 Syncing to room {room_code}...")
+        logger.debug(f"🔄 Syncing to room {room_code}...")
         sync_room_from_session(request)
-        logger.info(f"✅ Sync completed. Room assignments: {request.session.get('device_assignments', {})}")
+        logger.debug(f"✅ Sync completed. Room assignments: {request.session.get('device_assignments', {})}")
     else:
-        logger.info("ℹ️ Kein Raum aktiv, keine Sync nötig.")
+        logger.debug("ℹ️ Kein Raum aktiv, keine Sync nötig.")
 
-    logger.info(f"🔍 Rendering results table with assignments: {request.session.get('device_assignments', {})}")
+    logger.debug(f"🔍 Rendering results table with assignments: {request.session.get('device_assignments', {})}")
     return render_results_table(request) 
 
 
@@ -414,7 +414,7 @@ def render_target_km_display(request):
     # Sync from room if in a shared room
     room_code = request.session.get('room_code')
     if room_code:
-        logger.info(f"🔄 Syncing from room {room_code} for target_km display...")
+        logger.debug(f"🔄 Syncing from room {room_code} for target_km display...")
         sync_session_from_room(request)
         # If room was ended, room_code might have been cleared by sync_session_from_room
         room_code = request.session.get('room_code')  # Re-read in case it was cleared
@@ -438,7 +438,7 @@ def render_results_table(request):
     room_code = request.session.get('room_code')
     room = None
     if room_code:
-        logger.info(f"🔄 Syncing from room {room_code}...")
+        logger.debug(f"🔄 Syncing from room {room_code}...")
         room = sync_session_from_room(request)
         # If room was ended, room_code might have been cleared by sync_session_from_room
         room_code = request.session.get('room_code')  # Re-read in case it was cleared
@@ -448,14 +448,14 @@ def render_results_table(request):
     stop_distances = request.session.get('stop_distances', {})
     is_game_stopped = request.session.get('is_game_stopped', False)
     
-    logger.info(f"🔍 render_results_table: device_assignments={device_assignments}, room_code={room_code}")
-    logger.info(f"🔍 Game state: start_distances={start_distances}, stop_distances={stop_distances}, is_game_stopped={is_game_stopped}")
+    logger.debug(f"🔍 render_results_table: device_assignments={device_assignments}, room_code={room_code}")
+    logger.debug(f"🔍 Game state: start_distances={start_distances}, stop_distances={stop_distances}, is_game_stopped={is_game_stopped}")
     
     # Update interval is now fixed
     update_interval = 10 
     
     game_is_active = bool(start_distances)
-    logger.info(f"🔍 game_is_active={game_is_active} (based on start_distances)")
+    logger.debug(f"🔍 game_is_active={game_is_active} (based on start_distances)")
     
     if not device_assignments:
         # Get target_km from session even if no assignments
@@ -464,7 +464,7 @@ def render_results_table(request):
             target_km = 0.0
         else:
             target_km = float(target_km)
-        logger.info("ℹ️ Keine Zuweisungen, rendere leere Tabelle, target_km=" + str(target_km))
+        logger.debug("ℹ️ Keine Zuweisungen, rendere leere Tabelle, target_km=" + str(target_km))
         context = {
             'game_results': [],
             'game_is_active': False,
@@ -523,18 +523,18 @@ def render_results_table(request):
             # Game is running - calculate distance gained since game start
             start_distance = start_distances.get(user_id, current_distance_total)
             distance_gained = max(0, current_distance_total - start_distance)
-            logger.info(f"🔍 Distance calculation (running): user_id={user_id}, current_distance_total={current_distance_total}, start_distance={start_distance}, distance_gained={distance_gained}")
+            logger.debug(f"🔍 Distance calculation (running): user_id={user_id}, current_distance_total={current_distance_total}, start_distance={start_distance}, distance_gained={distance_gained}")
         elif game_is_active and is_game_stopped:
             # Game was stopped - use frozen distance at stop time
             start_distance = start_distances.get(user_id, current_distance_total)
             stop_distance = stop_distances.get(user_id, current_distance_total)
             # Use the distance at stop time, not current distance
             distance_gained = max(0, stop_distance - start_distance)
-            logger.info(f"🔍 Distance calculation (stopped): user_id={user_id}, stop_distance={stop_distance}, start_distance={start_distance}, distance_gained={distance_gained}")
+            logger.debug(f"🔍 Distance calculation (stopped): user_id={user_id}, stop_distance={stop_distance}, start_distance={start_distance}, distance_gained={distance_gained}")
         else:
             # Before game start, always show 0 km
             distance_gained = 0
-            logger.info(f"🔍 Distance calculation (not started): user_id={user_id}, current_distance_total={current_distance_total}, game_is_active={game_is_active}, is_game_stopped={is_game_stopped}, start_distances={start_distances}, distance_gained={distance_gained}")
+            logger.debug(f"🔍 Distance calculation (not started): user_id={user_id}, current_distance_total={current_distance_total}, game_is_active={game_is_active}, is_game_stopped={is_game_stopped}, start_distances={start_distances}, distance_gained={distance_gained}")
             
         # Default value 100 from settings is used if not found
         coin_factor = cyclist_factors.get(user_id, settings.DEFAULT_COIN_CONVERSION_FACTOR) 
@@ -589,7 +589,7 @@ def render_results_table(request):
         
         # GET parameter provided - use it
         target_km = float(target_km_str) if target_km_str else 0.0
-        logger.info(f"🔍 Target KM from GET parameter: {target_km}")
+        logger.debug(f"🔍 Target KM from GET parameter: {target_km}")
     else:
         # No GET parameter - use value from session (which was synced from room if in a room)
         target_km = request.session.get('current_target_km', 0.0)
@@ -611,12 +611,12 @@ def render_results_table(request):
             # CRITICAL: Always use format_css_number() for CSS values to avoid locale issues
             result['progress_percent_str'] = format_css_number(result['progress_percent'], decimals=1)
             # Debug logging - show calculated progress_percent
-            logger.info(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, distance_km={result['distance_km']}, target_km={target_km}, progress={progress}, progress_percent={result['progress_percent']}, progress_percent_str={result['progress_percent_str']}")
+            logger.debug(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, distance_km={result['distance_km']}, target_km={target_km}, progress={progress}, progress_percent={result['progress_percent']}, progress_percent_str={result['progress_percent_str']}")
     else:
         for result in game_results:
             result['progress_percent'] = 0.0
             result['progress_percent_str'] = "0.0"
-            logger.info(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, target_km=0, progress_percent=0.0")
+            logger.debug(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, target_km=0, progress_percent=0.0")
     
     # Get previous target_km from session to detect changes
     previous_target_km = request.session.get('current_target_km', None)
@@ -630,7 +630,7 @@ def render_results_table(request):
     # If target_km changed (either from GET parameter or from room sync), update session
     # Use a small epsilon for float comparison to handle floating point precision issues
     if abs(target_km - previous_target_km) > 0.01:
-        logger.info(f"🔍 Target KM changed: {previous_target_km} -> {target_km}, resetting announced_winners")
+        logger.debug(f"🔍 Target KM changed: {previous_target_km} -> {target_km}, resetting announced_winners")
         if 'announced_winners' in request.session:
             del request.session['announced_winners']
         request.session['current_target_km'] = target_km
@@ -643,7 +643,7 @@ def render_results_table(request):
         
         # CRITICAL: If target_km came from GET parameter, sync it to room immediately
         if target_km_str and room_code:
-            logger.info(f"🔄 Syncing target_km {target_km} to room {room_code}")
+            logger.debug(f"🔄 Syncing target_km {target_km} to room {room_code}")
             sync_room_from_session(request)
     
     # Find all winners who have reached the target (game continues, no auto-stop)
@@ -663,7 +663,7 @@ def render_results_table(request):
         request.session['announced_winners'] = announced_winners
         request.session.modified = True
     
-    logger.info(f"🔍 Rendering table with {len(game_results)} results: {[r['cyclist_name'] for r in game_results]}")
+    logger.debug(f"🔍 Rendering table with {len(game_results)} results: {[r['cyclist_name'] for r in game_results]}")
     
     # Sync to room if in a shared room (only if we have changes, but not if we already synced target_km above)
     if room_code and not (target_km_str and abs(target_km - previous_target_km) > 0.01):
@@ -688,7 +688,7 @@ def render_results_table(request):
         'master_cyclist_name': master_cyclist_name,  # Master cyclist name for template
         'current_session_key': current_session_key,  # Current session key for template
     }
-    logger.info(f"✅ Returning context with {len(game_results)} game_results, is_master={is_master_flag}, master_cyclist_name={master_cyclist_name}, current_session_key={current_session_key}")
+    logger.debug(f"✅ Returning context with {len(game_results)} game_results, is_master={is_master_flag}, master_cyclist_name={master_cyclist_name}, current_session_key={current_session_key}")
     return render(request, 'game/results_table_fragment.html', context)
 
 
@@ -713,7 +713,7 @@ def start_game(request):
     logger.info(f"🔍 start_game called: method={request.method}, path={request.path}, POST data={dict(request.POST)}")
     if request.method == 'POST':
         action = request.POST.get('action')
-        logger.info(f"🔍 Action parameter: {action}")
+        logger.debug(f"🔍 Action parameter: {action}")
         if action == 'stop':
             # CRITICAL: Save the distances at stop time to freeze the game results
             device_assignments = request.session.get('device_assignments', {})
@@ -728,11 +728,11 @@ def start_game(request):
             request.session.modified = True  # CRITICAL: Ensure session is saved
             # Sync to room if in a shared room
             sync_room_from_session(request)
-            logger.info(_("Spiel via Stopp-Button gestoppt."))
+            logger.debug(_("Spiel via Stopp-Button gestoppt."))
             return JsonResponse({"status": "game_stopped"})
 
         device_assignments = request.session.get('device_assignments', {})
-        logger.info(_(f"🔍 Start-Game Request: device_assignments={device_assignments}, session_key={request.session.session_key}"))
+        logger.debug(_(f"🔍 Start-Game Request: device_assignments={device_assignments}, session_key={request.session.session_key}"))
         if not device_assignments:
              logger.warning(_("❌ Start fehlgeschlagen: Keine Zuweisungen in der Session gefunden."))
              return JsonResponse({"error": _("Keine Zuweisungen aktiv.")}, status=400) 
@@ -866,7 +866,7 @@ def join_room(request):
                                 session_to_cyclist[request.session.session_key] = cyclist
                                 room.session_to_cyclist = session_to_cyclist
                                 room.save()
-                                logger.info(f"✅ Updated session_to_cyclist on join: {session_to_cyclist}")
+                                logger.debug(f"✅ Updated session_to_cyclist on join: {session_to_cyclist}")
                                 break
                 
                 logger.info(_(f"✅ Raum beigetreten: {room_code}, Master: {is_master(request, room)}"))
@@ -1010,7 +1010,7 @@ def leave_room(request):
                         cyclist = device_assignments[device]
                         cyclists_to_remove.append(cyclist)
                         del device_assignments[device]
-                        logger.info(f"🗑️ Entferne Zuweisung {device} -> {cyclist} von Session {current_session_key}")
+                        logger.debug(f"🗑️ Entferne Zuweisung {device} -> {cyclist} von Session {current_session_key}")
                 
                 room.device_assignments = device_assignments
                 
@@ -1060,7 +1060,7 @@ def leave_room(request):
                         room.is_active = False
                 
                 room.save()
-                logger.info(f"✅ Zuweisungen entfernt: {devices_to_remove}")
+                logger.debug(f"✅ Zuweisungen entfernt: {devices_to_remove}")
             
             # Clear room-related data from session
             if 'room_code' in request.session:
@@ -1171,17 +1171,17 @@ def transfer_master(request):
             logger.warning(f"❌ transfer_master: Kein cyclist_user_id übergeben. POST data: {dict(request.POST)}")
             return JsonResponse({"error": _("Ungültige Parameter")}, status=400)
         
-        logger.info(f"🔍 transfer_master: Suche Session für Cyclist {cyclist_user_id}")
+        logger.debug(f"🔍 transfer_master: Suche Session für Cyclist {cyclist_user_id}")
         
         # Find session key for this cyclist
         session_to_cyclist = room.session_to_cyclist or {}
-        logger.info(f"🔍 transfer_master: session_to_cyclist Mapping: {session_to_cyclist}")
+        logger.debug(f"🔍 transfer_master: session_to_cyclist Mapping: {session_to_cyclist}")
         
         new_master_session = None
         for session_key, cyclist_id in session_to_cyclist.items():
             if cyclist_id == cyclist_user_id:
                 new_master_session = session_key
-                logger.info(f"✅ transfer_master: Gefundene Session {session_key} für Cyclist {cyclist_user_id}")
+                logger.debug(f"✅ transfer_master: Gefundene Session {session_key} für Cyclist {cyclist_user_id}")
                 break
         
         if not new_master_session:
@@ -1261,7 +1261,7 @@ def get_filtered_cyclists(request):
     # Support both 'search' and 'cyclist_search' parameter names
     search_query = request.GET.get('cyclist_search', request.GET.get('search', '')).strip()
     
-    logger.info(f"🔍 get_filtered_cyclists: top_group_id={top_group_id}, subgroup_id={subgroup_id}, search_query={search_query}")
+    logger.debug(f"🔍 get_filtered_cyclists: top_group_id={top_group_id}, subgroup_id={subgroup_id}, search_query={search_query}")
     
     # Start with all visible cyclists (this handles the case when all filters are reset)
     cyclists_qs = Cyclist.objects.filter(is_visible=True)
@@ -1272,7 +1272,7 @@ def get_filtered_cyclists(request):
         try:
             subgroup = Group.objects.get(id=int(subgroup_id), is_visible=True)
             cyclists_qs = cyclists_qs.filter(groups__id=subgroup.id).distinct()
-            logger.info(f"✅ Filtering by subgroup: {subgroup.name} (ID: {subgroup.id})")
+            logger.debug(f"✅ Filtering by subgroup: {subgroup.name} (ID: {subgroup.id})")
         except (Group.DoesNotExist, ValueError) as e:
             logger.warning(f"⚠️ Invalid subgroup ID: {subgroup_id}, error: {e}")
             pass
@@ -1304,7 +1304,7 @@ def get_filtered_cyclists(request):
             descendant_ids = get_all_descendant_ids(top_group.id)
             descendant_ids.add(top_group.id)  # Include the top group itself
             
-            logger.info(f"✅ Filtering by top group: {top_group.name} (ID: {top_group.id}), descendant_ids: {descendant_ids}")
+            logger.debug(f"✅ Filtering by top group: {top_group.name} (ID: {top_group.id}), descendant_ids: {descendant_ids}")
             cyclists_qs = cyclists_qs.filter(groups__id__in=descendant_ids).distinct()
         except (Group.DoesNotExist, ValueError) as e:
             logger.warning(f"⚠️ Invalid top group ID: {top_group_id}, error: {e}")
@@ -1319,12 +1319,12 @@ def get_filtered_cyclists(request):
     
     # Log final query count for debugging
     final_count = cyclists_qs.count()
-    logger.info(f"✅ get_filtered_cyclists: Query returns {final_count} cyclists (top_group_id='{top_group_id}', subgroup_id='{subgroup_id}', search_query='{search_query}')")
+    logger.debug(f"✅ get_filtered_cyclists: Query returns {final_count} cyclists (top_group_id='{top_group_id}', subgroup_id='{subgroup_id}', search_query='{search_query}')")
     
     # CRITICAL: If no filters are applied, we should return ALL visible cyclists
     # Log the actual query being executed for debugging
     if not top_group_id and not subgroup_id and not search_query:
-        logger.info(f"✅ get_filtered_cyclists: No filters applied - returning ALL {final_count} visible cyclists")
+        logger.debug(f"✅ get_filtered_cyclists: No filters applied - returning ALL {final_count} visible cyclists")
     
     # Get cyclists with their group information for display
     cyclists = []
@@ -1347,7 +1347,7 @@ def get_filtered_cyclists(request):
             'group_label': group_label,
         })
     
-    logger.info(f"✅ get_filtered_cyclists: Returning {len(cyclists)} cyclists in response")
+    logger.debug(f"✅ get_filtered_cyclists: Returning {len(cyclists)} cyclists in response")
     return render(request, 'game/partials/cyclist_options.html', {'cyclists': cyclists})
 
 
@@ -1385,7 +1385,7 @@ def get_filtered_devices(request):
     # Support both 'search' and 'device_search' parameter names
     search_query = request.GET.get('device_search', request.GET.get('search', '')).strip()
     
-    logger.info(f"🔍 get_filtered_devices: top_group_id={top_group_id}, search_query={search_query}")
+    logger.debug(f"🔍 get_filtered_devices: top_group_id={top_group_id}, search_query={search_query}")
     
     # Start with all visible devices
     devices_qs = Device.objects.filter(is_visible=True)
@@ -1398,12 +1398,12 @@ def get_filtered_devices(request):
             top_group = Group.objects.get(id=int(top_group_id), is_visible=True)
             # Filter devices that are assigned to this top group
             devices_qs = devices_qs.filter(group=top_group)
-            logger.info(f"✅ Filtering devices by top group: {top_group.name} (ID: {top_group.id})")
+            logger.debug(f"✅ Filtering devices by top group: {top_group.name} (ID: {top_group.id})")
         except (Group.DoesNotExist, ValueError) as e:
             logger.warning(f"⚠️ Invalid top group ID: {top_group_id}, error: {e}")
             pass
     else:
-        logger.info(f"✅ No top group filter applied - returning all visible devices")
+        logger.debug(f"✅ No top group filter applied - returning all visible devices")
     
     # Apply search filter if provided
     if search_query:
@@ -1422,5 +1422,5 @@ def get_filtered_devices(request):
             'display_name': display_name,  # Display name for user
         })
     
-    logger.info(f"✅ Returning {len(devices)} filtered devices")
+    logger.debug(f"✅ Returning {len(devices)} filtered devices")
     return render(request, 'game/partials/device_options.html', {'devices': devices})

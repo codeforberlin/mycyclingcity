@@ -83,8 +83,8 @@ def _sync_logger_level(logger, logger_name):
     # Map logger name to app name (e.g., 'api.views' -> 'api')
     app_name = logger_name.split('.')[0]
     
-    # Only update application loggers (api, mgmt, iot, kiosk, game)
-    if app_name not in ['api', 'mgmt', 'iot', 'kiosk', 'game']:
+    # Only update application loggers (api, mgmt, iot, kiosk, game, map, leaderboard)
+    if app_name not in ['api', 'mgmt', 'iot', 'kiosk', 'game', 'map', 'leaderboard']:
         return
     
     try:

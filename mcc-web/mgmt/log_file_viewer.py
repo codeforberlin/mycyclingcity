@@ -52,6 +52,16 @@ LOG_FILES = {
         'display_name': _('Game Application Logs'),
         'description': _('Alle Logs der Game-Anwendung'),
     },
+    'map': {
+        'name': 'map.log',
+        'display_name': _('Map Application Logs'),
+        'description': _('Alle Logs der Map-Anwendung'),
+    },
+    'leaderboard': {
+        'name': 'leaderboard.log',
+        'display_name': _('Leaderboard Application Logs'),
+        'description': _('Alle Logs der Leaderboard-Anwendung'),
+    },
     'django': {
         'name': 'django.log',
         'display_name': _('Django Framework Logs'),
