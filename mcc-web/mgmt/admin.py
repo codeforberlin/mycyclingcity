@@ -3386,128 +3386,13 @@ def get_client_ip(request):
 
 
 # --- APPLICATION LOGS ---
-from mgmt.models import ApplicationLog, LoggingConfig, GunicornConfig, RequestLog, PerformanceMetric, AlertRule
-
-
-@admin.register(ApplicationLog)
-class ApplicationLogAdmin(admin.ModelAdmin):
-    """
-    Admin interface for viewing application logs stored in the database.
-    
-    Provides filtering, searching, and color-coded display of log entries.
-    """
-    list_display = ('colored_level', 'logger_name', 'message_preview', 'module', 'timestamp')
-    
-    def changelist_view(self, request, extra_context=None):
-        """Add link to log file viewer."""
-        extra_context = extra_context or {}
-        extra_context['log_file_viewer_url'] = reverse('admin:mgmt_log_file_list')
-        return super().changelist_view(request, extra_context)
-    list_filter = ('level', 'logger_name', 'timestamp')
-    search_fields = ('message', 'logger_name', 'module', 'exception_info')
-    readonly_fields = ('level', 'logger_name', 'message', 'module', 'timestamp', 
-                      'exception_info', 'extra_data_display')
-    date_hierarchy = 'timestamp'
-    ordering = ('-timestamp',)
-    list_per_page = 50
-    
-    fieldsets = (
-        (_('Log Information'), {
-            'fields': ('level', 'logger_name', 'module', 'timestamp')
-        }),
-        (_('Message'), {
-            'fields': ('message',)
-        }),
-        (_('Exception Information'), {
-            'fields': ('exception_info',),
-            'classes': ('collapse',)
-        }),
-        (_('Extra Data'), {
-            'fields': ('extra_data_display',),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def colored_level(self, obj):
-        """Display log level with color coding."""
-        colors = {
-            'DEBUG': '#666666',
-            'INFO': '#0066CC',
-            'WARNING': '#FF9900',
-            'ERROR': '#CC0000',
-            'CRITICAL': '#990000',
-        }
-        color = colors.get(obj.level, '#000000')
-        return mark_safe(
-            f'<span style="color: {color}; font-weight: bold;">{obj.level}</span>'
-        )
-    colored_level.short_description = _('Level')
-    colored_level.admin_order_field = 'level'
-    
-    def message_preview(self, obj):
-        """Display truncated message preview."""
-        max_length = 100
-        if len(obj.message) > max_length:
-            return f"{obj.message[:max_length]}..."
-        return obj.message
-    message_preview.short_description = _('Message')
-    
-    def extra_data_display(self, obj):
-        """Display extra data as formatted JSON."""
-        if not obj.extra_data:
-            return _('No extra data')
-        try:
-            import json
-            formatted = json.dumps(obj.extra_data, indent=2, ensure_ascii=False)
-            return mark_safe(f'<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">{formatted}</pre>')
-        except Exception:
-            return str(obj.extra_data)
-    extra_data_display.short_description = _('Extra Data')
-    
-    def has_add_permission(self, request):
-        """Disable adding log entries manually."""
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        """Disable editing log entries."""
-        return False
-    
-    def has_delete_permission(self, request, obj=None):
-        """Allow deletion of log entries."""
-        return request.user.is_superuser if request else False
-    
-    actions = ['delete_old_logs']
-    
-    def get_actions(self, request):
-        """Get available actions, excluding default delete_selected."""
-        actions = super().get_actions(request)
-        # Remove default delete_selected action to avoid duplicate
-        if 'delete_selected' in actions:
-            del actions['delete_selected']
-        # Re-translate the description at runtime with current language
-        # Actions are stored as tuples: (function, name, short_description)
-        # Use gettext (not gettext_lazy) for runtime translation
-        if 'delete_old_logs' in actions:
-            func, name, old_desc = actions['delete_old_logs']
-            actions['delete_old_logs'] = (func, name, gettext('Ausgewählte Logeinträge löschen'))
-        return actions
-    
-    def delete_old_logs(self, request, queryset):
-        """Bulk action to delete selected log entries."""
-        count = queryset.count()
-        queryset.delete()
-        self.message_user(
-            request,
-            _('{} log entries deleted successfully.').format(count),
-            level='success'
-        )
-    delete_old_logs.short_description = _('Ausgewählte Logeinträge löschen')
+from mgmt.models import LoggingConfig, GunicornConfig, RequestLog, PerformanceMetric, AlertRule
 
 
 @admin.register(LoggingConfig)
 class LoggingConfigAdmin(admin.ModelAdmin):
     """
-    Admin interface for configuring logging levels stored in the database.
+    Admin interface for configuring application logging levels.
     
     This is a singleton model - only one configuration instance exists.
     Changes take effect immediately for new log entries.
@@ -3517,15 +3402,16 @@ class LoggingConfigAdmin(admin.ModelAdmin):
         (_('Log Level Configuration'), {
             'fields': ('min_log_level',),
             'description': _(
-                'Wählen Sie das minimale Log-Level, das in der Datenbank gespeichert werden soll. '
-                'Nur Logs mit diesem Level oder höher werden im Admin GUI angezeigt. '
-                'Änderungen gelten sofort für neue Log-Einträge.'
+                'Wählen Sie das minimale Log-Level, das in den Log-Dateien geschrieben werden soll. '
+                'Nur Logs mit diesem Level oder höher werden in die Log-Dateien geschrieben. '
+                'Änderungen gelten sofort für neue Log-Einträge. '
+                'Die Log-Dateien können im Admin-Tool unter "Log File Viewer" eingesehen werden.'
             ),
         }),
         (_('Request Logging'), {
             'fields': ('enable_request_logging',),
             'description': _(
-                'Aktivieren Sie Request Logging, um alle HTTP-Requests in der Datenbank zu speichern. '
+                'Aktivieren Sie Request Logging, um alle HTTP-Requests in der Datenbank zu speichern (RequestLog). '
                 'Deaktivieren Sie dies, um die Datenbank nicht zu überladen. '
                 'Änderungen gelten sofort für neue Requests.'
             ),
@@ -3592,14 +3478,27 @@ class GunicornConfigAdmin(admin.ModelAdmin):
     This is a singleton model - only one configuration instance exists.
     Changes require a server restart to take effect.
     """
-    list_display = ('log_level_display', 'updated_at', 'updated_by')
+    list_display = ('log_level_display', 'workers_display', 'threads_display', 'worker_class_display', 'updated_at', 'updated_by')
     fieldsets = (
         (_('Gunicorn Log Level Configuration'), {
             'fields': ('log_level',),
             'description': _(
                 'Wählen Sie das Log-Level für den Gunicorn-Server. '
-                'Änderungen erfordern einen Server-Neustart, um wirksam zu werden. '
-                'Sie können den Server direkt von dieser Seite neu starten.'
+                'Änderungen erfordern einen Server-Neustart, um wirksam zu werden.'
+            ),
+        }),
+        (_('Worker Configuration'), {
+            'fields': ('workers', 'threads', 'worker_class'),
+            'description': _(
+                'Konfigurieren Sie die Anzahl der Worker und Threads. '
+                '<strong>Empfohlene Kombinationen:</strong><br>'
+                '<ul>'
+                '<li><strong>Kleine Server (1-2 CPU):</strong> 2-3 Workers, 2-4 Threads</li>'
+                '<li><strong>Mittlere Server (4 CPU):</strong> 5-7 Workers, 2-4 Threads</li>'
+                '<li><strong>Große Server (8+ CPU):</strong> 9-17 Workers, 2-4 Threads</li>'
+                '</ul>'
+                '<strong>Formel:</strong> Workers = (CPU * 2) + 1, Threads = 2-4 (je nach I/O-Intensität)<br>'
+                '<strong>Hinweis:</strong> Threads werden nur bei worker_class="gthread" verwendet.'
             ),
         }),
         (_('Informationen'), {
@@ -3633,6 +3532,16 @@ class GunicornConfigAdmin(admin.ModelAdmin):
         auto_count = multiprocessing.cpu_count() * 2 + 1
         return f"{auto_count} (automatisch)"
     workers_display.short_description = _('Workers')
+    
+    def threads_display(self, obj):
+        """Display thread count."""
+        return f"{obj.threads}"
+    threads_display.short_description = _('Threads')
+    
+    def worker_class_display(self, obj):
+        """Display worker class with description."""
+        return obj.get_worker_class_display()
+    worker_class_display.short_description = _('Worker Class')
     
     def changelist_view(self, request, extra_context=None):
         """Redirect to the single config object if it exists."""

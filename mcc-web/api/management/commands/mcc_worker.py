@@ -13,9 +13,9 @@ from django.db.models import Sum
 from api.models import CyclistDeviceCurrentMileage, HourlyMetric
 from datetime import timedelta
 from decimal import Decimal
-import logging
+from config.logger_utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class Command(BaseCommand):
     help = 'Central MCC service processor for background tasks'

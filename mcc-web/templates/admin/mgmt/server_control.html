@@ -320,11 +320,29 @@ function updateStatus(status) {
         <strong>{% trans 'Script Path' %}:</strong> {{ script_path }}
     </p>
     <p>
-        <strong>{% trans 'Gunicorn Log Level' %}:</strong> {{ gunicorn_log_level }}
+        <strong>{% trans 'Gunicorn Configuration' %}:</strong>
         <a href="{% url 'admin:mgmt_gunicornconfig_change' 1 %}" style="margin-left: 10px;" class="button">
             {% trans 'Configure' %}
         </a>
     </p>
+    {% if gunicorn_config %}
+    <div style="margin-left: 20px; margin-top: 10px;">
+        <p><strong>{% trans 'Log Level' %}:</strong> {{ gunicorn_log_level }}</p>
+        <p><strong>{% trans 'Workers' %}:</strong> 
+            {% if gunicorn_config.workers > 0 %}
+                {{ gunicorn_config.workers }} ({% trans 'manually set' %})
+            {% else %}
+                {% trans 'Auto' %} (CPU * 2 + 1 = {{ gunicorn_config.get_workers_count }})
+            {% endif %}
+        </p>
+        <p><strong>{% trans 'Threads per Worker' %}:</strong> {{ gunicorn_config.threads }}</p>
+        <p><strong>{% trans 'Worker Class' %}:</strong> {{ gunicorn_config.get_worker_class_display }}</p>
+        <p><strong>{% trans 'Total Concurrent Requests' %}:</strong> 
+            {% widthratio gunicorn_config.get_workers_count 1 gunicorn_config.threads %}
+            ({{ gunicorn_config.get_workers_count }} workers × {{ gunicorn_config.threads }} threads)
+        </p>
+    </div>
+    {% endif %}
     <p>
         {% trans 'This page allows you to control the MCC-Web Gunicorn server. Only superusers can perform these actions.' %}
     </p>

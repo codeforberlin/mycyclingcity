@@ -81,6 +81,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
+    # Ensure LoggingConfig background thread is running in each worker
+    'mgmt.middleware_logging_config.LoggingConfigMiddleware',
+    
     # Request logging for performance analysis
     'mgmt.middleware_request_logging.RequestLoggingMiddleware',
 ]
@@ -324,10 +327,6 @@ MCC_LOGO_LEFT = 'game/images/MCC-Button-v3-300x300.png'
 MCC_LOGO_RIGHT = 'game/images/MCC-Button-v2-300x300.png'
 MCC_WINNER_PHOTO = 'game/images/MCC-Button-v3-300x300.png'
 
-# Logging configuration
-# Enable DEBUG/INFO logging to database (default: False, only WARNING/ERROR stored)
-LOG_DB_DEBUG = config('LOG_DB_DEBUG', default=False, cast=bool)
-
 # Ensure logs directory exists
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
@@ -355,46 +354,45 @@ LOGGING = {
     },
     'handlers': {
         # App-specific file handlers - each app writes to its own log file
-        # Using DynamicLevelFileHandler to respect LoggingConfig settings dynamically
         'api_file': {
-            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'api.log'),
             'maxBytes': 50 * 1024 * 1024,  # 50 MB
             'backupCount': 10,
             'formatter': 'verbose',
-            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
         'mgmt_file': {
-            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'mgmt.log'),
             'maxBytes': 50 * 1024 * 1024,  # 50 MB
             'backupCount': 10,
             'formatter': 'verbose',
-            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
         'iot_file': {
-            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'iot.log'),
             'maxBytes': 50 * 1024 * 1024,  # 50 MB
             'backupCount': 10,
             'formatter': 'verbose',
-            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
         'kiosk_file': {
-            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'kiosk.log'),
             'maxBytes': 50 * 1024 * 1024,  # 50 MB
             'backupCount': 10,
             'formatter': 'verbose',
-            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
         'game_file': {
-            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'game.log'),
             'maxBytes': 50 * 1024 * 1024,  # 50 MB
             'backupCount': 10,
             'formatter': 'verbose',
-            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+            'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
         },
         # Django framework logs (only WARNING and above)
         'django_file': {
@@ -404,14 +402,6 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'verbose',
             'level': 'WARNING',
-        },
-        # Database handler for critical logs (WARNING, ERROR, CRITICAL)
-        # DEBUG and INFO can be enabled via LoggingConfig in Admin GUI
-        'database': {
-            'class': 'mgmt.logging_handler.DatabaseLogHandler',
-            'level': 'DEBUG',  # Receive all logs, filtering happens in handler
-            'batch_size': 10,  # Number of logs to batch before inserting
-            'flush_interval': 5.0,  # Maximum seconds to wait before flushing batch
         },
     },
     'root': {
@@ -429,32 +419,32 @@ LOGGING = {
         },
         # API application logger - writes to api.log
         'api': {
-            'handlers': ['api_file', 'database'],
-            'level': 'INFO',  # Can be changed to INFO for production
+            'handlers': ['api_file'],
+            'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
         # Management application logger - writes to mgmt.log
         'mgmt': {
-            'handlers': ['mgmt_file', 'database'],
-            'level': 'INFO',  # Can be changed to INFO for production
+            'handlers': ['mgmt_file'],
+            'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
         # IoT application logger - writes to iot.log
         'iot': {
-            'handlers': ['iot_file', 'database'],
-            'level': 'INFO',  # Can be changed to INFO for production
+            'handlers': ['iot_file'],
+            'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
         # Kiosk application logger - writes to kiosk.log
         'kiosk': {
-            'handlers': ['kiosk_file', 'database'],
-            'level': 'INFO',  # Can be changed to INFO for production
+            'handlers': ['kiosk_file'],
+            'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
         # Game application logger - writes to game.log
         'game': {
-            'handlers': ['game_file', 'database'],
-            'level': 'INFO',  # Can be changed to INFO for production
+            'handlers': ['game_file'],
+            'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
     }

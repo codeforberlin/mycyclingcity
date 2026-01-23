@@ -10,81 +10,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-class ApplicationLog(models.Model):
-    """
-    Database model for storing critical application logs (WARNING, ERROR, CRITICAL).
-    
-    This model is used by the DatabaseLogHandler to store log entries in the database
-    for easy viewing and filtering in the Django Admin interface.
-    """
-    LEVEL_CHOICES = [
-        ('DEBUG', 'DEBUG'),
-        ('INFO', 'INFO'),
-        ('WARNING', 'WARNING'),
-        ('ERROR', 'ERROR'),
-        ('CRITICAL', 'CRITICAL'),
-    ]
-    
-    level = models.CharField(
-        max_length=10,
-        choices=LEVEL_CHOICES,
-        db_index=True,
-        verbose_name=_("Level")
-    )
-    logger_name = models.CharField(
-        max_length=100,
-        db_index=True,
-        verbose_name=_("Logger Name"),
-        help_text=_("Name of the logger that generated this log entry")
-    )
-    message = models.TextField(
-        verbose_name=_("Message"),
-        help_text=_("The log message")
-    )
-    module = models.CharField(
-        max_length=200,
-        blank=True,
-        verbose_name=_("Module"),
-        help_text=_("Module where the log was generated")
-    )
-    timestamp = models.DateTimeField(
-        auto_now_add=True,
-        db_index=True,
-        verbose_name=_("Timestamp")
-    )
-    exception_info = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name=_("Exception Info"),
-        help_text=_("Exception traceback if available")
-    )
-    extra_data = models.JSONField(
-        blank=True,
-        null=True,
-        verbose_name=_("Extra Data"),
-        help_text=_("Additional context data as JSON")
-    )
-    
-    class Meta:
-        verbose_name = _("Application Log")
-        verbose_name_plural = _("Application Logs")
-        ordering = ['-timestamp']
-        indexes = [
-            models.Index(fields=['level', '-timestamp']),
-            models.Index(fields=['logger_name', '-timestamp']),
-            models.Index(fields=['-timestamp']),
-        ]
-    
-    def __str__(self):
-        return f"[{self.level}] {self.logger_name}: {self.message[:100]}"
-
-
 class LoggingConfig(models.Model):
     """
-    Configuration for application logging in the database.
+    Configuration for application logging levels.
     
     This is a singleton model - only one instance should exist.
-    Controls which log levels are stored in the database for viewing in Admin GUI.
+    Controls which log levels are written to log files.
     """
     MIN_LOG_LEVEL_CHOICES = [
         ('DEBUG', 'DEBUG - Alle Logs (DEBUG, INFO, WARNING, ERROR, CRITICAL)'),
@@ -97,15 +28,15 @@ class LoggingConfig(models.Model):
     min_log_level = models.CharField(
         max_length=10,
         choices=MIN_LOG_LEVEL_CHOICES,
-        default='WARNING',
+        default='INFO',
         verbose_name=_("Minimum Log Level"),
-        help_text=_("Nur Logs mit diesem Level oder höher werden in der Datenbank gespeichert und im Admin GUI angezeigt.")
+        help_text=_("Nur Logs mit diesem Level oder höher werden in die Log-Dateien geschrieben.")
     )
     
     enable_request_logging = models.BooleanField(
         default=False,
         verbose_name=_("Request Logs aktivieren"),
-        help_text=_("Wenn aktiviert, werden alle HTTP-Requests in der Datenbank gespeichert. Deaktivieren Sie dies, um die Datenbank nicht zu überladen.")
+        help_text=_("Wenn aktiviert, werden alle HTTP-Requests in der Datenbank gespeichert (RequestLog). Deaktivieren Sie dies, um die Datenbank nicht zu überladen.")
     )
     
     updated_at = models.DateTimeField(
@@ -131,27 +62,8 @@ class LoggingConfig(models.Model):
     @classmethod
     def get_config(cls):
         """Get or create the singleton configuration instance."""
-        config, _ = cls.objects.get_or_create(pk=1, defaults={'min_log_level': 'WARNING', 'enable_request_logging': False})
+        config, _ = cls.objects.get_or_create(pk=1, defaults={'min_log_level': 'INFO', 'enable_request_logging': False})
         return config
-    
-    def should_store_level(self, level):
-        """
-        Check if a log level should be stored based on the configuration.
-        
-        Args:
-            level: Log level string (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        
-        Returns:
-            bool: True if the level should be stored
-        """
-        level_order = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-        try:
-            min_level_index = level_order.index(self.min_log_level)
-            log_level_index = level_order.index(level)
-            return log_level_index >= min_level_index
-        except ValueError:
-            # Unknown level, default to storing it
-            return True
 
 
 class GunicornConfig(models.Model):
@@ -171,6 +83,7 @@ class GunicornConfig(models.Model):
     
     WORKER_CLASS_CHOICES = [
         ('sync', 'sync - Synchronous workers (Standard)'),
+        ('gthread', 'gthread - Threaded workers (empfohlen für I/O-intensive Anwendungen)'),
         ('gevent', 'gevent - Async workers (benötigt gevent)'),
         ('eventlet', 'eventlet - Async workers (benötigt eventlet)'),
     ]
@@ -187,6 +100,12 @@ class GunicornConfig(models.Model):
         default=0,
         verbose_name=_("Worker Anzahl"),
         help_text=_("Anzahl der Worker-Prozesse (0 = automatisch: CPU * 2 + 1)")
+    )
+    
+    threads = models.IntegerField(
+        default=2,
+        verbose_name=_("Threads pro Worker"),
+        help_text=_("Anzahl der Threads pro Worker (nur bei worker_class='gthread' relevant)")
     )
     
     worker_class = models.CharField(
@@ -263,7 +182,15 @@ class GunicornConfig(models.Model):
     @classmethod
     def get_config(cls):
         """Get or create the singleton configuration instance."""
-        config, _ = cls.objects.get_or_create(pk=1, defaults={'log_level': 'info'})
+        config, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'log_level': 'info',
+                'workers': 0,
+                'threads': 2,
+                'worker_class': 'gthread'
+            }
+        )
         return config
     
     def get_workers_count(self):

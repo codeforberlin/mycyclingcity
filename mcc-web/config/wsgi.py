@@ -13,3 +13,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
 
+# Import key modules at startup to trigger logger initialization
+# This ensures that logger initialization logs are written at startup,
+# not just when the first request arrives
+try:
+    # Import api.views to trigger logger initialization
+    import api.views  # noqa: F401
+except Exception:
+    # Silently fail if import fails (e.g., during migrations)
+    pass

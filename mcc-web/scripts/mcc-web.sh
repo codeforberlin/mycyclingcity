@@ -89,9 +89,13 @@ start() {
     
     cd "$PROJECT_DIR" || exit 1
     
-    # Get Gunicorn log level from database (if available)
+    # Get Gunicorn configuration from database (if available)
     # This requires Django to be set up, so we try to get it via management command
     GUNICORN_LOG_LEVEL="info"  # Default
+    GUNICORN_WORKERS="0"  # Default (auto-calculated)
+    GUNICORN_THREADS="2"  # Default
+    GUNICORN_WORKER_CLASS="gthread"  # Default
+    GUNICORN_BIND="127.0.0.1:8001"  # Default
     if [ -f "$PROJECT_DIR/manage.py" ]; then
         # Try to get config from database
         PYTHON_BIN="$VENV_DIR/bin/python"
@@ -100,24 +104,54 @@ start() {
             export DJANGO_SETTINGS_MODULE=config.settings
             export PYTHONPATH="$PROJECT_DIR"
             
-            LOG_LEVEL_OUTPUT=$("$PYTHON_BIN" "$PROJECT_DIR/manage.py" get_gunicorn_config 2>/dev/null)
-            if [ $? -eq 0 ] && [ -n "$LOG_LEVEL_OUTPUT" ]; then
-                # Extract log level from output (format: GUNICORN_LOG_LEVEL=info)
-                # Try different methods to extract the value
-                if echo "$LOG_LEVEL_OUTPUT" | grep -q "GUNICORN_LOG_LEVEL="; then
-                    # Extract value after = sign
-                    EXTRACTED=$(echo "$LOG_LEVEL_OUTPUT" | grep "GUNICORN_LOG_LEVEL=" | head -1 | cut -d'=' -f2 | tr -d '[:space:]')
-                    if [ -n "$EXTRACTED" ]; then
-                        GUNICORN_LOG_LEVEL="$EXTRACTED"
-                        echo -e "${BLUE}Using log level from database: $GUNICORN_LOG_LEVEL${NC}"
+            CONFIG_OUTPUT=$("$PYTHON_BIN" "$PROJECT_DIR/manage.py" get_gunicorn_config 2>/dev/null)
+            if [ $? -eq 0 ] && [ -n "$CONFIG_OUTPUT" ]; then
+                # Extract values from output (format: GUNICORN_XXX=value)
+                while IFS= read -r line; do
+                    if echo "$line" | grep -q "GUNICORN_LOG_LEVEL="; then
+                        EXTRACTED=$(echo "$line" | cut -d'=' -f2 | tr -d '[:space:]')
+                        if [ -n "$EXTRACTED" ]; then
+                            GUNICORN_LOG_LEVEL="$EXTRACTED"
+                        fi
+                    elif echo "$line" | grep -q "GUNICORN_WORKERS="; then
+                        EXTRACTED=$(echo "$line" | cut -d'=' -f2 | tr -d '[:space:]')
+                        if [ -n "$EXTRACTED" ]; then
+                            GUNICORN_WORKERS="$EXTRACTED"
+                        fi
+                    elif echo "$line" | grep -q "GUNICORN_THREADS="; then
+                        EXTRACTED=$(echo "$line" | cut -d'=' -f2 | tr -d '[:space:]')
+                        if [ -n "$EXTRACTED" ]; then
+                            GUNICORN_THREADS="$EXTRACTED"
+                        fi
+                    elif echo "$line" | grep -q "GUNICORN_WORKER_CLASS="; then
+                        EXTRACTED=$(echo "$line" | cut -d'=' -f2 | tr -d '[:space:]')
+                        if [ -n "$EXTRACTED" ]; then
+                            GUNICORN_WORKER_CLASS="$EXTRACTED"
+                        fi
+                    elif echo "$line" | grep -q "GUNICORN_BIND="; then
+                        EXTRACTED=$(echo "$line" | cut -d'=' -f2 | tr -d '[:space:]')
+                        if [ -n "$EXTRACTED" ]; then
+                            GUNICORN_BIND="$EXTRACTED"
+                        fi
                     fi
-                fi
+                done <<< "$CONFIG_OUTPUT"
+                
+                echo -e "${BLUE}Using config from database:${NC}"
+                echo -e "${BLUE}  Bind Address: $GUNICORN_BIND${NC}"
+                echo -e "${BLUE}  Workers: $GUNICORN_WORKERS (0 = auto: CPU * 2 + 1)${NC}"
+                echo -e "${BLUE}  Threads: $GUNICORN_THREADS${NC}"
+                echo -e "${BLUE}  Worker Class: $GUNICORN_WORKER_CLASS${NC}"
+                echo -e "${BLUE}  Log Level: $GUNICORN_LOG_LEVEL${NC}"
             fi
         fi
     fi
     
-    # Export log level as environment variable
+    # Export configuration as environment variables
     export GUNICORN_LOG_LEVEL
+    export GUNICORN_WORKERS
+    export GUNICORN_THREADS
+    export GUNICORN_WORKER_CLASS
+    export GUNICORN_BIND
     
     # Start gunicorn in background
     nohup "$GUNICORN_BIN" \
