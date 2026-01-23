@@ -1,0 +1,115 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    backup_control.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div id="content-main">
+    <div class="module">
+        <h2>{% trans "Create Backup" %}</h2>
+        <p>{% trans "Create a new database backup." %}</p>
+        <button type="button" class="button" onclick="createBackup()" id="create-backup-btn">
+            {% trans "Create Backup" %}
+        </button>
+        <div id="backup-result" style="margin-top: 10px; display: none;">
+            <p id="backup-message"></p>
+        </div>
+    </div>
+
+    <div class="module">
+        <h2>{% trans "Existing Backups" %}</h2>
+        {% if backups %}
+        <table>
+            <thead>
+                <tr>
+                    <th>{% trans "Filename" %}</th>
+                    <th>{% trans "Size" %}</th>
+                    <th>{% trans "Created" %}</th>
+                    <th>{% trans "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for backup in backups %}
+                <tr>
+                    <td>{{ backup.filename }}</td>
+                    <td>{{ backup.size_mb|floatformat:2 }} MB</td>
+                    <td>{{ backup.created|date:"Y-m-d H:i:s" }}</td>
+                    <td>
+                        <a href="{% url 'admin:mgmt_backup_download' backup.filename %}" class="button" download="{{ backup.filename }}">
+                            {% trans "Download" %}
+                        </a>
+                        <br>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">{{ backup.path }}</small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>{% trans "No backups found." %}</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function createBackup() {
+    const btn = document.getElementById('create-backup-btn');
+    const resultDiv = document.getElementById('backup-result');
+    const messageP = document.getElementById('backup-message');
+    
+    // Show loading
+    btn.disabled = true;
+    btn.textContent = '{% trans "Creating..." %}';
+    resultDiv.style.display = 'block';
+    messageP.textContent = '{% trans "Creating backup..." %}';
+    messageP.style.color = 'blue';
+    
+    fetch('{% url "admin:mgmt_backup_create" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageP.textContent = '{% trans "Backup created successfully" %}: ' + data.backup_path;
+            messageP.style.color = 'green';
+            // Reload page after 2 seconds to show new backup
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            messageP.textContent = '{% trans "Error" %}: ' + (data.error || '{% trans "Unknown error" %}');
+            messageP.style.color = 'red';
+        }
+    })
+    .catch(error => {
+        messageP.textContent = '{% trans "Error" %}: ' + error.message;
+        messageP.style.color = 'red';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = '{% trans "Create Backup" %}';
+    });
+}
+</script>
+{% endblock %}

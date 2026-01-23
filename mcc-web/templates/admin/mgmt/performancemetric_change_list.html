@@ -1,0 +1,24 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    performancemetric_change_list.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{{ generate_hourly_url }}" class="addlink">
+            {% trans "Generate Hourly Metrics" %}
+        </a>
+    </li>
+    <li>
+        <a href="{{ generate_daily_url }}" class="addlink">
+            {% trans "Generate Daily Metrics" %}
+        </a>
+    </li>
+{% endblock %}

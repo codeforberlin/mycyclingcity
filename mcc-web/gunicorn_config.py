@@ -28,8 +28,12 @@ timeout = 30
 keepalive = 2
 
 # Logging
-accesslog = "-"  # Log to stdout
-errorlog = "-"  # Log to stderr
+# Log to files when running as daemon, stdout/stderr when running in foreground
+LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+accesslog = os.path.join(LOG_DIR, "gunicorn_access.log")
+errorlog = os.path.join(LOG_DIR, "gunicorn_error.log")
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -37,11 +41,11 @@ access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"
 proc_name = "mcc-web"
 
 # Server mechanics
-daemon = False
-pidfile = None  # Set via systemd or supervisor
+daemon = False  # Set to True when using --daemon flag in script
+pidfile = None  # Set via script or systemd
 umask = 0
-user = None  # Set via systemd
-group = None  # Set via systemd
+user = None  # Set via script or systemd
+group = None  # Set via script or systemd
 tmp_upload_dir = None
 
 # SSL (if needed, uncomment and configure)

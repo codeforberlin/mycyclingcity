@@ -6,12 +6,12 @@
 # @note    This code was developed with the assistance of AI (LLMs).
 
 #
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django import forms
 from django.utils.safestring import mark_safe
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, TravelHistory, Event, GroupEventStatus, EventHistory,
@@ -3385,6 +3385,296 @@ def get_client_ip(request):
     return ip
 
 
+# --- APPLICATION LOGS ---
+from mgmt.models import ApplicationLog, LoggingConfig, GunicornConfig, RequestLog, PerformanceMetric, AlertRule
+
+
+@admin.register(ApplicationLog)
+class ApplicationLogAdmin(admin.ModelAdmin):
+    """
+    Admin interface for viewing application logs stored in the database.
+    
+    Provides filtering, searching, and color-coded display of log entries.
+    """
+    list_display = ('colored_level', 'logger_name', 'message_preview', 'module', 'timestamp')
+    
+    def changelist_view(self, request, extra_context=None):
+        """Add link to log file viewer."""
+        extra_context = extra_context or {}
+        extra_context['log_file_viewer_url'] = reverse('admin:mgmt_log_file_list')
+        return super().changelist_view(request, extra_context)
+    list_filter = ('level', 'logger_name', 'timestamp')
+    search_fields = ('message', 'logger_name', 'module', 'exception_info')
+    readonly_fields = ('level', 'logger_name', 'message', 'module', 'timestamp', 
+                      'exception_info', 'extra_data_display')
+    date_hierarchy = 'timestamp'
+    ordering = ('-timestamp',)
+    list_per_page = 50
+    
+    fieldsets = (
+        (_('Log Information'), {
+            'fields': ('level', 'logger_name', 'module', 'timestamp')
+        }),
+        (_('Message'), {
+            'fields': ('message',)
+        }),
+        (_('Exception Information'), {
+            'fields': ('exception_info',),
+            'classes': ('collapse',)
+        }),
+        (_('Extra Data'), {
+            'fields': ('extra_data_display',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def colored_level(self, obj):
+        """Display log level with color coding."""
+        colors = {
+            'DEBUG': '#666666',
+            'INFO': '#0066CC',
+            'WARNING': '#FF9900',
+            'ERROR': '#CC0000',
+            'CRITICAL': '#990000',
+        }
+        color = colors.get(obj.level, '#000000')
+        return mark_safe(
+            f'<span style="color: {color}; font-weight: bold;">{obj.level}</span>'
+        )
+    colored_level.short_description = _('Level')
+    colored_level.admin_order_field = 'level'
+    
+    def message_preview(self, obj):
+        """Display truncated message preview."""
+        max_length = 100
+        if len(obj.message) > max_length:
+            return f"{obj.message[:max_length]}..."
+        return obj.message
+    message_preview.short_description = _('Message')
+    
+    def extra_data_display(self, obj):
+        """Display extra data as formatted JSON."""
+        if not obj.extra_data:
+            return _('No extra data')
+        try:
+            import json
+            formatted = json.dumps(obj.extra_data, indent=2, ensure_ascii=False)
+            return mark_safe(f'<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">{formatted}</pre>')
+        except Exception:
+            return str(obj.extra_data)
+    extra_data_display.short_description = _('Extra Data')
+    
+    def has_add_permission(self, request):
+        """Disable adding log entries manually."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Disable editing log entries."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion of log entries."""
+        return request.user.is_superuser if request else False
+    
+    actions = ['delete_old_logs']
+    
+    def get_actions(self, request):
+        """Get available actions, excluding default delete_selected."""
+        actions = super().get_actions(request)
+        # Remove default delete_selected action to avoid duplicate
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        # Re-translate the description at runtime with current language
+        # Actions are stored as tuples: (function, name, short_description)
+        # Use gettext (not gettext_lazy) for runtime translation
+        if 'delete_old_logs' in actions:
+            func, name, old_desc = actions['delete_old_logs']
+            actions['delete_old_logs'] = (func, name, gettext('Ausgewählte Logeinträge löschen'))
+        return actions
+    
+    def delete_old_logs(self, request, queryset):
+        """Bulk action to delete selected log entries."""
+        count = queryset.count()
+        queryset.delete()
+        self.message_user(
+            request,
+            _('{} log entries deleted successfully.').format(count),
+            level='success'
+        )
+    delete_old_logs.short_description = _('Ausgewählte Logeinträge löschen')
+
+
+@admin.register(LoggingConfig)
+class LoggingConfigAdmin(admin.ModelAdmin):
+    """
+    Admin interface for configuring logging levels stored in the database.
+    
+    This is a singleton model - only one configuration instance exists.
+    Changes take effect immediately for new log entries.
+    """
+    list_display = ('min_log_level_display', 'enable_request_logging_display', 'updated_at', 'updated_by')
+    fieldsets = (
+        (_('Log Level Configuration'), {
+            'fields': ('min_log_level',),
+            'description': _(
+                'Wählen Sie das minimale Log-Level, das in der Datenbank gespeichert werden soll. '
+                'Nur Logs mit diesem Level oder höher werden im Admin GUI angezeigt. '
+                'Änderungen gelten sofort für neue Log-Einträge.'
+            ),
+        }),
+        (_('Request Logging'), {
+            'fields': ('enable_request_logging',),
+            'description': _(
+                'Aktivieren Sie Request Logging, um alle HTTP-Requests in der Datenbank zu speichern. '
+                'Deaktivieren Sie dies, um die Datenbank nicht zu überladen. '
+                'Änderungen gelten sofort für neue Requests.'
+            ),
+        }),
+        (_('Informationen'), {
+            'fields': ('updated_at', 'updated_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('updated_at', 'updated_by')
+    
+    def min_log_level_display(self, obj):
+        """Display the minimum log level with description."""
+        level = obj.get_min_log_level_display()
+        colors = {
+            'DEBUG': '#666666',
+            'INFO': '#0066CC',
+            'WARNING': '#FF9900',
+            'ERROR': '#CC0000',
+            'CRITICAL': '#990000',
+        }
+        color = colors.get(obj.min_log_level, '#000000')
+        return mark_safe(
+            f'<span style="color: {color}; font-weight: bold;">{level}</span>'
+        )
+    min_log_level_display.short_description = _('Minimum Log Level')
+    
+    def enable_request_logging_display(self, obj):
+        """Display request logging status with color."""
+        if obj.enable_request_logging:
+            return mark_safe(
+                '<span style="color: #00AA00; font-weight: bold;">✓ Aktiviert</span>'
+            )
+        else:
+            return mark_safe(
+                '<span style="color: #CC0000; font-weight: bold;">✗ Deaktiviert</span>'
+            )
+    enable_request_logging_display.short_description = _('Request Logging')
+    
+    def changelist_view(self, request, extra_context=None):
+        """Redirect to the single config object if it exists."""
+        config_obj = LoggingConfig.get_config()
+        return self.change_view(request, str(config_obj.pk), extra_context)
+    
+    def save_model(self, request, obj, form, change):
+        """Set the user who made the change."""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def has_add_permission(self, request):
+        """Only allow one instance (singleton)."""
+        return not LoggingConfig.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of the configuration."""
+        return False
+
+
+@admin.register(GunicornConfig)
+class GunicornConfigAdmin(admin.ModelAdmin):
+    """
+    Admin interface for configuring Gunicorn server settings.
+    
+    This is a singleton model - only one configuration instance exists.
+    Changes require a server restart to take effect.
+    """
+    list_display = ('log_level_display', 'updated_at', 'updated_by')
+    fieldsets = (
+        (_('Gunicorn Log Level Configuration'), {
+            'fields': ('log_level',),
+            'description': _(
+                'Wählen Sie das Log-Level für den Gunicorn-Server. '
+                'Änderungen erfordern einen Server-Neustart, um wirksam zu werden. '
+                'Sie können den Server direkt von dieser Seite neu starten.'
+            ),
+        }),
+        (_('Informationen'), {
+            'fields': ('updated_at', 'updated_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('updated_at', 'updated_by')
+    
+    def log_level_display(self, obj):
+        """Display the log level with description."""
+        level = obj.get_log_level_display()
+        colors = {
+            'debug': '#666666',
+            'info': '#0066CC',
+            'warning': '#FF9900',
+            'error': '#CC0000',
+            'critical': '#990000',
+        }
+        color = colors.get(obj.log_level, '#000000')
+        return mark_safe(
+            f'<span style="color: {color}; font-weight: bold;">{level}</span>'
+        )
+    log_level_display.short_description = _('Log Level')
+    
+    def workers_display(self, obj):
+        """Display worker count with auto-calculation info."""
+        if obj.workers > 0:
+            return f"{obj.workers} (manuell)"
+        import multiprocessing
+        auto_count = multiprocessing.cpu_count() * 2 + 1
+        return f"{auto_count} (automatisch)"
+    workers_display.short_description = _('Workers')
+    
+    def changelist_view(self, request, extra_context=None):
+        """Redirect to the single config object if it exists."""
+        config_obj = GunicornConfig.get_config()
+        return self.change_view(request, str(config_obj.pk), extra_context)
+    
+    def save_model(self, request, obj, form, change):
+        """Set the user who made the change and show restart notice."""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+        
+        # Show message that restart is required with link to server control
+        from django.urls import reverse
+        server_control_url = reverse('admin:mgmt_server_control')
+        messages.warning(
+            request,
+            mark_safe(
+                _(
+                    'Gunicorn-Konfiguration wurde aktualisiert. '
+                    'Bitte starten Sie den Server neu, damit die Änderungen wirksam werden. '
+                    '<a href="{}">Server Control öffnen</a>'
+                ).format(server_control_url)
+            )
+        )
+    
+    def has_add_permission(self, request):
+        """Only allow one instance (singleton)."""
+        return not GunicornConfig.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of the configuration."""
+        return False
+    
+    def response_change(self, request, obj):
+        """Add link to server control after saving."""
+        response = super().response_change(request, obj)
+        # Add link to server control in the message
+        from django.urls import reverse
+        server_control_url = reverse('admin:mgmt_server_control')
+        return response
+
+
 # --- ANALYTICS & REPORTING ---
 # Register analytics URLs with the admin site
 from mgmt.analytics import analytics_dashboard, analytics_data_api, export_data, hierarchy_breakdown
@@ -3397,8 +3687,52 @@ _original_get_app_list = admin.site.get_app_list
 def get_app_list_with_custom_ordering(self, request, app_label=None):
     """
     Custom app list ordering: MCC Core API & Models first, then Kiosk, then IOT Management last.
+    Also adds Server Management links to the Mgmt app menu.
     """
+    from django.urls import reverse
+    from django.utils.translation import gettext_lazy as _
+    
     app_dict = self._build_app_dict(request, app_label)
+    
+    # Add Server Management links to Mgmt app menu (only for superusers)
+    if 'mgmt' in app_dict and request.user.is_superuser:
+        server_management_models = [
+            {
+                'name': _('Server Control'),
+                'object_name': 'Server Control',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:mgmt_server_control'),
+                'add_url': None,
+                'view_only': True,
+            },
+            {
+                'name': _('View Application Logs'),
+                'object_name': 'View Application Logs',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:mgmt_log_file_list'),
+                'add_url': None,
+                'view_only': True,
+            },
+            {
+                'name': _('Deployment'),
+                'object_name': 'Deployment',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:mgmt_deployment_control'),
+                'add_url': None,
+                'view_only': True,
+            },
+            {
+                'name': _('Backup Management'),
+                'object_name': 'Backup Management',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:mgmt_backup_control'),
+                'add_url': None,
+                'view_only': True,
+            },
+        ]
+        # Insert Server Management models at the beginning of the models list
+        app_dict['mgmt']['models'] = server_management_models + app_dict['mgmt']['models']
+    
     app_list = sorted(app_dict.values(), key=lambda x: x['name'].lower())
     
     # Define custom ordering
@@ -3415,17 +3749,41 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
 
 admin.site.get_app_list = get_app_list_with_custom_ordering.__get__(admin.site, type(admin.site))
 
-# Register analytics URLs with the admin site
+# Import performance admin
+from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, AlertRuleAdmin
+
+# Register analytics, log file viewer, server control, and deployment URLs with the admin site
+from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
+from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
+from mgmt.views_deployment import deployment_control, backup_control, create_backup, deployment_action, download_backup
+
 _original_get_urls = admin.site.get_urls
-def get_urls_with_analytics():
-    """Add analytics URLs to admin site."""
+def get_urls_with_custom_views():
+    """Add analytics, log file viewer, server control, and deployment URLs to admin site."""
     urls = _original_get_urls()
-    analytics_urls = [
+    custom_urls = [
+        # Analytics URLs
         path('analytics/', admin.site.admin_view(analytics_dashboard), name='api_analytics_dashboard'),
         path('analytics/data/', admin.site.admin_view(analytics_data_api), name='api_analytics_data_api'),
         path('analytics/export/', admin.site.admin_view(export_data), name='api_analytics_export'),
         path('analytics/hierarchy/', admin.site.admin_view(hierarchy_breakdown), name='api_analytics_hierarchy'),
+        # Log file viewer URLs
+        path('logs/', admin.site.admin_view(log_file_list), name='mgmt_log_file_list'),
+        path('logs/view/<str:file_key>/', admin.site.admin_view(log_file_viewer), name='mgmt_log_file_viewer'),
+        path('logs/view/<str:file_key>/rotated/<int:rotated_index>/', admin.site.admin_view(log_file_viewer), name='mgmt_log_file_viewer_rotated'),
+        path('logs/api/<str:file_key>/', admin.site.admin_view(log_file_api), name='mgmt_log_file_api'),
+        # Server control URLs
+        path('server/', admin.site.admin_view(server_control), name='mgmt_server_control'),
+        path('server/action/<str:action>/', admin.site.admin_view(server_action), name='mgmt_server_action'),
+        path('server/metrics/', admin.site.admin_view(server_metrics_api), name='mgmt_server_metrics_api'),
+        path('server/health/', admin.site.admin_view(server_health_api), name='mgmt_server_health_api'),
+        # Deployment URLs
+        path('deployment/', admin.site.admin_view(deployment_control), name='mgmt_deployment_control'),
+        path('backup/', admin.site.admin_view(backup_control), name='mgmt_backup_control'),
+        path('backup/create/', admin.site.admin_view(create_backup), name='mgmt_backup_create'),
+        path('backup/download/<str:filename>/', admin.site.admin_view(download_backup), name='mgmt_backup_download'),
+        path('deployment/action/<str:action>/', admin.site.admin_view(deployment_action), name='mgmt_deployment_action'),
     ]
-    return analytics_urls + urls
+    return custom_urls + urls
 
-admin.site.get_urls = get_urls_with_analytics
+admin.site.get_urls = get_urls_with_custom_views

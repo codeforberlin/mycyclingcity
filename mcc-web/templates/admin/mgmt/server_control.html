@@ -1,0 +1,341 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .server-control {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .server-status {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .server-status.running {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .server-status.stopped {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .server-status.error {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+    .action-buttons {
+        margin-top: 20px;
+    }
+    .action-buttons button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .action-buttons button.danger {
+        background: #dc3545;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.danger:hover {
+        background: #c82333;
+    }
+    .action-buttons button.success {
+        background: #28a745;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.success:hover {
+        background: #218838;
+    }
+    .action-buttons button.warning {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+    }
+    .action-buttons button.warning:hover {
+        background: #e0a800;
+    }
+    .action-buttons button.info {
+        background: #17a2b8;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.info:hover {
+        background: #138496;
+    }
+    .output-box {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: 15px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .loading {
+        display: none;
+        color: #666;
+        font-style: italic;
+    }
+</style>
+<script>
+function performAction(action) {
+    var confirmMessage = '';
+    if (action === 'stop') {
+        confirmMessage = '{% trans "Are you sure you want to stop the server?" %}';
+    } else if (action === 'restart') {
+        confirmMessage = '{% trans "Are you sure you want to restart the server? This will cause a brief service interruption." %}';
+    }
+    
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+    
+    var button = event.target;
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Processing..." %}';
+    
+    var outputBox = document.getElementById('action-output');
+    if (outputBox) {
+        outputBox.style.display = 'block';
+        outputBox.textContent = '{% trans "Executing action..." %}';
+    }
+    
+    fetch('{% url "admin:mgmt_server_action" "ACTION_PLACEHOLDER" %}'.replace('ACTION_PLACEHOLDER', action), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        button.disabled = false;
+        button.textContent = originalText;
+        
+        if (data.success) {
+            // Update status
+            if (data.status) {
+                updateStatus(data.status);
+            }
+            
+            if (outputBox) {
+                outputBox.textContent = data.output || data.message || '{% trans "Action completed successfully" %}';
+                outputBox.style.color = '#4ec9b0';
+            }
+            
+            // Show success message
+            alert('{% trans "Action completed successfully" %}');
+            
+            // Reload page after a moment to show updated status
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        } else {
+            if (outputBox) {
+                outputBox.textContent = data.error || data.output || '{% trans "Action failed" %}';
+                outputBox.style.color = '#f48771';
+            }
+            alert('{% trans "Action failed" %}: ' + (data.error || '{% trans "Unknown error" %}'));
+        }
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            outputBox.textContent = '{% trans "Error" %}: ' + error.message;
+            outputBox.style.color = '#f48771';
+        }
+        alert('{% trans "Error" %}: ' + error.message);
+    });
+}
+
+function updateStatus(status) {
+    var statusDiv = document.getElementById('server-status');
+    if (statusDiv) {
+        statusDiv.className = 'server-status ' + (status.running ? 'running' : 'stopped');
+        statusDiv.innerHTML = status.running 
+            ? '<strong>✓ {% trans "Server is running" %}</strong> (PID: ' + (status.pid || 'N/A') + ')'
+            : '<strong>✗ {% trans "Server is not running" %}</strong>';
+    }
+}
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:mgmt_server_control' %}">{% trans 'Server Control' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans 'Server Control' %}</h1>
+
+<div class="server-control">
+    <div id="server-status" class="server-status {% if status.running %}running{% else %}stopped{% endif %}">
+        {% if status.running %}
+            <strong>✓ {% trans 'Server is running' %}</strong>
+            {% if status.pid %}
+                <br>{% trans 'PID' %}: {{ status.pid }}
+            {% endif %}
+        {% else %}
+            <strong>✗ {% trans 'Server is not running' %}</strong>
+            {% if status.error %}
+                <br><small>{% trans 'Error' %}: {{ status.error }}</small>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    {% if status.output %}
+    <div style="margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+        <strong>{% trans 'Status Output' %}:</strong>
+        <pre style="margin: 10px 0 0 0; font-size: 12px;">{{ status.output }}</pre>
+    </div>
+    {% endif %}
+    
+    <div class="action-buttons">
+        <button class="button success" onclick="performAction('start')">
+            {% trans 'Start Server' %}
+        </button>
+        <button class="button danger" onclick="performAction('stop')">
+            {% trans 'Stop Server' %}
+        </button>
+        <button class="button warning" onclick="performAction('restart')">
+            {% trans 'Restart Server' %}
+        </button>
+        <button class="button info" onclick="performAction('reload')">
+            {% trans 'Reload Configuration' %}
+        </button>
+        <button class="button" onclick="location.reload()">
+            {% trans 'Refresh Status' %}
+        </button>
+    </div>
+    
+    <div id="action-output" class="output-box" style="display: none;"></div>
+</div>
+
+{% if metrics %}
+<div class="module" style="margin-top: 20px;">
+    <h2>{% trans 'Server Metrics' %}</h2>
+    {% if metrics.server_running %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                <strong>{% trans 'Master Process' %}</strong><br>
+                PID: {{ metrics.master.pid }}<br>
+                CPU: {{ metrics.master.cpu_percent|floatformat:1 }}%<br>
+                Memory: {{ metrics.master.memory_mb|floatformat:1 }} MB<br>
+                Uptime: {{ metrics.master.uptime_seconds|floatformat:0 }}s
+            </div>
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                <strong>{% trans 'Workers' %}</strong><br>
+                Count: {{ metrics.worker_count }}<br>
+                {% if metrics.workers %}
+                    Avg CPU: {{ metrics.workers|length|floatformat:1 }}%<br>
+                    Avg Memory: {{ metrics.workers.0.memory_mb|floatformat:1 }} MB
+                {% endif %}
+            </div>
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px;">
+                <strong>{% trans 'System' %}</strong><br>
+                CPU: {{ metrics.system.cpu_percent|floatformat:1 }}%<br>
+                Memory: {{ metrics.system.memory_percent|floatformat:1 }}%<br>
+                Disk: {{ metrics.system.disk_usage.percent|floatformat:1 }}%
+            </div>
+        </div>
+        
+        {% if metrics.workers %}
+        <div style="margin-top: 20px;">
+            <h3>{% trans 'Worker Details' %}</h3>
+            <table style="width: 100%; margin-top: 10px;">
+                <thead>
+                    <tr>
+                        <th>PID</th>
+                        <th>CPU %</th>
+                        <th>Memory (MB)</th>
+                        <th>Status</th>
+                        <th>Uptime</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worker in metrics.workers %}
+                    <tr>
+                        <td>{{ worker.pid }}</td>
+                        <td>{{ worker.cpu_percent|floatformat:1 }}</td>
+                        <td>{{ worker.memory_mb|floatformat:1 }}</td>
+                        <td>{{ worker.status }}</td>
+                        <td>{{ worker.uptime_seconds|floatformat:0 }}s</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    {% else %}
+        <p>{% trans 'Server is not running. No metrics available.' %}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if health_checks %}
+<div class="module" style="margin-top: 20px;">
+    <h2>{% trans 'Health Checks' %}</h2>
+    <div style="margin-top: 15px;">
+        <div class="server-status {% if health_checks.overall_status == 'healthy' %}running{% elif health_checks.overall_status == 'unhealthy' %}error{% else %}stopped{% endif %}" style="margin-bottom: 15px;">
+            <strong>{% trans 'Overall Status' %}: {{ health_checks.overall_status|upper }}</strong>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;">
+            {% for check_name, check_data in health_checks.checks.items %}
+            <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; border-left: 4px solid {% if check_data.status == 'ok' %}#28a745{% elif check_data.status == 'warning' %}#ffc107{% else %}#dc3545{% endif %};">
+                <strong>{{ check_name|title }}</strong><br>
+                <span style="color: {% if check_data.status == 'ok' %}#28a745{% elif check_data.status == 'warning' %}#856404{% else %}#dc3545{% endif %};">
+                    {{ check_data.status|upper }}
+                </span><br>
+                <small>{{ check_data.message }}</small>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="module" style="margin-top: 20px;">
+    <h2>{% trans 'Information' %}</h2>
+    <p>
+        <strong>{% trans 'Script Path' %}:</strong> {{ script_path }}
+    </p>
+    <p>
+        <strong>{% trans 'Gunicorn Log Level' %}:</strong> {{ gunicorn_log_level }}
+        <a href="{% url 'admin:mgmt_gunicornconfig_change' 1 %}" style="margin-left: 10px;" class="button">
+            {% trans 'Configure' %}
+        </a>
+    </p>
+    <p>
+        {% trans 'This page allows you to control the MCC-Web Gunicorn server. Only superusers can perform these actions.' %}
+    </p>
+    <p>
+        <strong>{% trans 'Note' %}:</strong> {% trans 'Restarting the server will cause a brief service interruption. Use "Reload Configuration" to apply configuration changes without stopping the server.' %}
+    </p>
+    <p>
+        <strong>{% trans 'Gunicorn Configuration' %}:</strong> 
+        {% trans 'You can configure the Gunicorn log level in' %} 
+        <a href="{% url 'admin:mgmt_gunicornconfig_change' 1 %}">{% trans 'Gunicorn Configuration' %}</a>.
+        {% trans 'Changes require a server restart to take effect.' %}
+    </p>
+</div>
+{% endblock %}

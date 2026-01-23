@@ -15,12 +15,15 @@ from django.conf.urls.i18n import i18n_patterns
 from django.views.generic import RedirectView
 from config import views as config_views
 from config.views import set_language, privacy_policy
+from mgmt.health_check_api import health_check_api
 
 # Language switcher and API endpoints must be outside i18n_patterns
 urlpatterns = [
     path('i18n/setlang/', set_language, name='set_language'),
     # Health check endpoint (for monitoring/load balancers)
     path('health/', config_views.health_check, name='health_check'),
+    # Health check API endpoint (for external monitoring systems with API key)
+    path('api/health/', health_check_api, name='health_check_api'),
     # API endpoints (no language prefix needed)
     path('api/', include('api.urls')),       # MCC-DB logic
     # cath empty path and redirect to /de/map/

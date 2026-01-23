@@ -168,3 +168,4 @@ SECURITY_AUDIT.md
 .ssh_keys/github_mcc_key_rr
 .ssh_keys/github_mcc_key_rr.pub
 mcc-web/db.sqlite3-shm
+mcc-web/db.sqlite3-wal

@@ -1,0 +1,201 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .log-viewer {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        padding: 15px;
+        border-radius: 4px;
+        max-height: 70vh;
+        overflow-y: auto;
+        margin: 20px 0;
+    }
+    .log-line {
+        padding: 2px 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .log-line:hover {
+        background-color: #2d2d2d;
+    }
+    .log-level-DEBUG { color: #808080; }
+    .log-level-INFO { color: #4ec9b0; }
+    .log-level-WARNING { color: #dcdcaa; }
+    .log-level-ERROR { color: #f48771; }
+    .log-level-CRITICAL { color: #c586c0; }
+    .log-level-UNKNOWN { color: #858585; }
+    .log-controls {
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .log-controls form {
+        display: inline-block;
+        margin-right: 15px;
+    }
+    .log-controls input[type="text"],
+    .log-controls select {
+        padding: 5px 10px;
+        margin: 0 5px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+    .log-controls button {
+        padding: 5px 15px;
+        margin: 0 5px;
+    }
+    .log-stats {
+        color: #666;
+        font-size: 12px;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:mgmt_log_file_list' %}">{% trans 'Log Files' %}</a>
+&rsaquo; {{ file_name }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if error %}
+<div class="errornote">
+    {{ error }}
+</div>
+{% else %}
+
+<div class="log-controls">
+    <form method="get" action="{% url 'admin:mgmt_log_file_viewer' file_key %}">
+        <label>{% trans 'Search' %}:</label>
+        <input type="text" name="search" value="{{ search }}" placeholder="{% trans 'Search in logs...' %}">
+        
+        <label>{% trans 'Level' %}:</label>
+        <select name="level">
+            <option value="">{% trans 'All Levels' %}</option>
+            <option value="DEBUG" {% if level_filter == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+            <option value="INFO" {% if level_filter == 'INFO' %}selected{% endif %}>INFO</option>
+            <option value="WARNING" {% if level_filter == 'WARNING' %}selected{% endif %}>WARNING</option>
+            <option value="ERROR" {% if level_filter == 'ERROR' %}selected{% endif %}>ERROR</option>
+            <option value="CRITICAL" {% if level_filter == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+        </select>
+        
+        <label>{% trans 'Lines per page' %}:</label>
+        <select name="lines">
+            <option value="50" {% if lines_per_page == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if lines_per_page == 100 %}selected{% endif %}>100</option>
+            <option value="200" {% if lines_per_page == 200 %}selected{% endif %}>200</option>
+            <option value="500" {% if lines_per_page == 500 %}selected{% endif %}>500</option>
+        </select>
+        
+        <button type="submit" class="button">{% trans 'Filter' %}</button>
+        <a href="{% url 'admin:mgmt_log_file_viewer' file_key %}?tail=true&lines={{ lines_per_page }}" class="button">
+            {% trans 'Show Tail' %}
+        </a>
+        <a href="{% url 'admin:mgmt_log_file_viewer' file_key %}?auto_refresh=true&tail=true&lines={{ lines_per_page }}" class="button" id="auto-refresh-btn">
+            {% if auto_refresh %}{% trans 'Stop Auto-Refresh' %}{% else %}{% trans 'Auto-Refresh' %}{% endif %}
+        </a>
+    </form>
+    
+    <div class="log-stats">
+        <strong>{% trans 'File' %}:</strong> {{ file_name }} | 
+        <strong>{% trans 'Size' %}:</strong> {{ file_size_mb }} MB | 
+        <strong>{% trans 'Modified' %}:</strong> {{ file_modified|date:"Y-m-d H:i:s" }} | 
+        <strong>{% trans 'Total Lines' %}:</strong> {{ total_lines }} | 
+        <strong>{% trans 'Page' %}:</strong> {{ page }} / {{ total_pages }}
+    </div>
+</div>
+
+{% if rotated_files %}
+<div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+    <strong>{% trans 'Rotated Files' %}:</strong>
+    {% for rotated in rotated_files %}
+        <a href="{% url 'admin:mgmt_log_file_viewer_rotated' file_key rotated.index %}" style="margin-left: 10px;">
+            {{ rotated.name }} ({{ rotated.size_mb }} MB)
+        </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="log-viewer" id="log-viewer">
+    {% for line in parsed_lines %}
+    <div class="log-line log-level-{{ line.level }}">
+        <span style="color: #858585;">[{{ line.line_number }}]</span>
+        {% if line.timestamp %}<span style="color: #569cd6;">{{ line.timestamp }}</span>{% endif %}
+        <span class="log-level-{{ line.level }}">[{{ line.level }}]</span>
+        {% if line.module %}<span style="color: #4ec9b0;">{{ line.module }}</span>{% endif %}
+        <span>{{ line.message }}</span>
+    </div>
+    {% empty %}
+    <div style="color: #858585; text-align: center; padding: 20px;">
+        {% trans 'No log entries found matching your filters.' %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if not tail and total_pages > 1 %}
+<div class="pagination" style="margin-top: 20px;">
+    {% if page > 1 %}
+        <a href="?page={{ page|add:'-1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Previous' %}</a>
+    {% endif %}
+    
+    <span style="margin: 0 15px;">
+        {% trans 'Page' %} {{ page }} {% trans 'of' %} {{ total_pages }}
+    </span>
+    
+    {% if page < total_pages %}
+        <a href="?page={{ page|add:'1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Next' %}</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if auto_refresh %}
+<script>
+(function() {
+    var refreshInterval = setInterval(function() {
+        fetch('{% url "admin:mgmt_log_file_api" file_key %}?lines={{ lines_per_page }}')
+            .then(response => response.json())
+            .then(data => {
+                var viewer = document.getElementById('log-viewer');
+                viewer.innerHTML = '';
+                data.lines.forEach(function(line) {
+                    var div = document.createElement('div');
+                    div.className = 'log-line log-level-' + line.level;
+                    var html = '<span style="color: #858585;">[' + (line.line_number || '') + ']</span> ';
+                    if (line.timestamp) html += '<span style="color: #569cd6;">' + line.timestamp + '</span> ';
+                    html += '<span class="log-level-' + line.level + '">[' + line.level + ']</span> ';
+                    if (line.module) html += '<span style="color: #4ec9b0;">' + line.module + '</span> ';
+                    html += '<span>' + line.message + '</span>';
+                    div.innerHTML = html;
+                    viewer.appendChild(div);
+                });
+                viewer.scrollTop = viewer.scrollHeight;
+            })
+            .catch(function(error) {
+                console.error('Error refreshing logs:', error);
+            });
+    }, 5000); // Refresh every 5 seconds
+    
+    // Stop on page unload
+    window.addEventListener('beforeunload', function() {
+        clearInterval(refreshInterval);
+    });
+})();
+</script>
+{% endif %}
+
+{% endif %}
+{% endblock %}

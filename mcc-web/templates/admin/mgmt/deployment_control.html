@@ -1,0 +1,125 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    deployment_control.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div id="content-main">
+    <div class="module">
+        <h2>{% trans "Deployment Actions" %}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>{% trans "Action" %}</th>
+                    <th>{% trans "Description" %}</th>
+                    <th>{% trans "Action" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>{% trans "Git Pull" %}</strong></td>
+                    <td>{% trans "Pull latest changes from Git repository" %}</td>
+                    <td>
+                        <button type="button" class="button" onclick="executeAction('git_pull')">
+                            {% trans "Execute" %}
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>{% trans "Run Migrations" %}</strong></td>
+                    <td>{% trans "Apply database migrations" %}</td>
+                    <td>
+                        <button type="button" class="button" onclick="executeAction('migrate')">
+                            {% trans "Execute" %}
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>{% trans "Collect Static Files" %}</strong></td>
+                    <td>{% trans "Collect static files for production" %}</td>
+                    <td>
+                        <button type="button" class="button" onclick="executeAction('collectstatic')">
+                            {% trans "Execute" %}
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>{% trans "Restart Server" %}</strong></td>
+                    <td>{% trans "Restart Gunicorn server" %}</td>
+                    <td>
+                        <button type="button" class="button" onclick="executeAction('restart')">
+                            {% trans "Execute" %}
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="action-result" style="margin-top: 20px; display: none;">
+        <div class="module">
+            <h2>{% trans "Action Result" %}</h2>
+            <pre id="result-output" style="background: #f5f5f5; padding: 10px; border: 1px solid #ddd; max-height: 400px; overflow-y: auto;"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+function executeAction(action) {
+    const resultDiv = document.getElementById('action-result');
+    const outputPre = document.getElementById('result-output');
+    
+    // Show loading
+    resultDiv.style.display = 'block';
+    outputPre.textContent = '{% trans "Executing..." %}';
+    
+    // Disable all buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    const url = '{% url "admin:mgmt_deployment_action" "ACTION" %}'.replace('ACTION', action);
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            outputPre.textContent = data.message + '\n\n' + (data.output || '');
+            outputPre.style.color = 'green';
+        } else {
+            outputPre.textContent = 'ERROR: ' + (data.error || 'Unknown error') + '\n\n' + (data.output || '');
+            outputPre.style.color = 'red';
+        }
+    })
+    .catch(error => {
+        outputPre.textContent = 'ERROR: ' + error.message;
+        outputPre.style.color = 'red';
+    })
+    .finally(() => {
+        // Re-enable buttons
+        buttons.forEach(btn => btn.disabled = false);
+    });
+}
+</script>
+{% endblock %}

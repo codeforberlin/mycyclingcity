@@ -1,0 +1,270 @@
+#!/bin/bash
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    mcc-web.sh
+# @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
+#
+# Management script for MCC-Web Gunicorn server
+# Usage: ./mcc-web.sh {start|stop|restart|status|reload}
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
+GUNICORN_BIN="$VENV_DIR/bin/gunicorn"
+GUNICORN_CONFIG="$PROJECT_DIR/gunicorn_config.py"
+PIDFILE="$PROJECT_DIR/mcc-web.pid"
+LOG_DIR="$PROJECT_DIR/logs"
+USER="${MCC_USER:-mcc}"
+GROUP="${MCC_GROUP:-mcc}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Check if running as correct user
+check_user() {
+    if [ "$(whoami)" != "$USER" ]; then
+        echo -e "${RED}Error: This script must be run as user '$USER'${NC}"
+        echo -e "${YELLOW}Usage: sudo -u $USER $0 $1${NC}"
+        exit 1
+    fi
+}
+
+# Check if gunicorn is installed
+check_gunicorn() {
+    if [ ! -f "$GUNICORN_BIN" ]; then
+        echo -e "${RED}Error: Gunicorn not found at $GUNICORN_BIN${NC}"
+        echo -e "${YELLOW}Please ensure the virtual environment is set up correctly.${NC}"
+        exit 1
+    fi
+}
+
+# Check if config file exists
+check_config() {
+    if [ ! -f "$GUNICORN_CONFIG" ]; then
+        echo -e "${RED}Error: Gunicorn config not found at $GUNICORN_CONFIG${NC}"
+        exit 1
+    fi
+}
+
+# Get PID from PID file
+get_pid() {
+    if [ -f "$PIDFILE" ]; then
+        cat "$PIDFILE"
+    fi
+}
+
+# Check if process is running
+is_running() {
+    PID=$(get_pid)
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Start the server
+start() {
+    check_user start
+    check_gunicorn
+    check_config
+    
+    if is_running; then
+        PID=$(get_pid)
+        echo -e "${YELLOW}Server is already running (PID: $PID)${NC}"
+        return 1
+    fi
+    
+    echo -e "${BLUE}Starting MCC-Web server...${NC}"
+    
+    cd "$PROJECT_DIR" || exit 1
+    
+    # Get Gunicorn log level from database (if available)
+    # This requires Django to be set up, so we try to get it via management command
+    GUNICORN_LOG_LEVEL="info"  # Default
+    if [ -f "$PROJECT_DIR/manage.py" ]; then
+        # Try to get config from database
+        PYTHON_BIN="$VENV_DIR/bin/python"
+        if [ -f "$PYTHON_BIN" ]; then
+            # Set Django settings module
+            export DJANGO_SETTINGS_MODULE=config.settings
+            export PYTHONPATH="$PROJECT_DIR"
+            
+            LOG_LEVEL_OUTPUT=$("$PYTHON_BIN" "$PROJECT_DIR/manage.py" get_gunicorn_config 2>/dev/null)
+            if [ $? -eq 0 ] && [ -n "$LOG_LEVEL_OUTPUT" ]; then
+                # Extract log level from output (format: GUNICORN_LOG_LEVEL=info)
+                # Try different methods to extract the value
+                if echo "$LOG_LEVEL_OUTPUT" | grep -q "GUNICORN_LOG_LEVEL="; then
+                    # Extract value after = sign
+                    EXTRACTED=$(echo "$LOG_LEVEL_OUTPUT" | grep "GUNICORN_LOG_LEVEL=" | head -1 | cut -d'=' -f2 | tr -d '[:space:]')
+                    if [ -n "$EXTRACTED" ]; then
+                        GUNICORN_LOG_LEVEL="$EXTRACTED"
+                        echo -e "${BLUE}Using log level from database: $GUNICORN_LOG_LEVEL${NC}"
+                    fi
+                fi
+            fi
+        fi
+    fi
+    
+    # Export log level as environment variable
+    export GUNICORN_LOG_LEVEL
+    
+    # Start gunicorn in background
+    nohup "$GUNICORN_BIN" \
+        --config "$GUNICORN_CONFIG" \
+        --pid "$PIDFILE" \
+        --daemon \
+        config.wsgi:application > "$LOG_DIR/gunicorn_startup.log" 2>&1
+    
+    # Wait a moment for startup
+    sleep 2
+    
+    if is_running; then
+        PID=$(get_pid)
+        echo -e "${GREEN}✓ Server started successfully (PID: $PID)${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to start server${NC}"
+        echo -e "${YELLOW}Check logs: $LOG_DIR/gunicorn_startup.log${NC}"
+        return 1
+    fi
+}
+
+# Stop the server
+stop() {
+    check_user stop
+    
+    if ! is_running; then
+        echo -e "${YELLOW}Server is not running${NC}"
+        # Clean up stale PID file
+        if [ -f "$PIDFILE" ]; then
+            rm -f "$PIDFILE"
+            echo -e "${BLUE}Removed stale PID file${NC}"
+        fi
+        return 0
+    fi
+    
+    PID=$(get_pid)
+    echo -e "${BLUE}Stopping MCC-Web server (PID: $PID)...${NC}"
+    
+    # Try graceful shutdown first
+    kill -TERM "$PID" 2>/dev/null
+    
+    # Wait for process to stop
+    for i in {1..30}; do
+        if ! kill -0 "$PID" 2>/dev/null; then
+            rm -f "$PIDFILE"
+            echo -e "${GREEN}✓ Server stopped successfully${NC}"
+            return 0
+        fi
+        sleep 1
+    done
+    
+    # Force kill if still running
+    if kill -0 "$PID" 2>/dev/null; then
+        echo -e "${YELLOW}Graceful shutdown failed, forcing stop...${NC}"
+        kill -KILL "$PID" 2>/dev/null
+        sleep 1
+        rm -f "$PIDFILE"
+        echo -e "${GREEN}✓ Server force-stopped${NC}"
+    fi
+    
+    return 0
+}
+
+# Restart the server
+restart() {
+    check_user restart
+    stop
+    sleep 2
+    start
+}
+
+# Reload the server (HUP signal)
+reload() {
+    check_user reload
+    
+    if ! is_running; then
+        echo -e "${YELLOW}Server is not running, starting instead...${NC}"
+        start
+        return $?
+    fi
+    
+    PID=$(get_pid)
+    echo -e "${BLUE}Reloading MCC-Web server (PID: $PID)...${NC}"
+    
+    kill -HUP "$PID" 2>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Reload signal sent${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to send reload signal${NC}"
+        return 1
+    fi
+}
+
+# Show server status
+status() {
+    if is_running; then
+        PID=$(get_pid)
+        echo -e "${GREEN}✓ Server is running (PID: $PID)${NC}"
+        
+        # Show process info
+        if command -v ps >/dev/null 2>&1; then
+            echo ""
+            ps -p "$PID" -o pid,ppid,user,start,time,cmd 2>/dev/null || true
+        fi
+        return 0
+    else
+        echo -e "${RED}✗ Server is not running${NC}"
+        return 1
+    fi
+}
+
+# Main
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    reload)
+        reload
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|status}"
+        echo ""
+        echo "Commands:"
+        echo "  start   - Start the MCC-Web server"
+        echo "  stop    - Stop the MCC-Web server"
+        echo "  restart - Restart the MCC-Web server"
+        echo "  reload  - Reload configuration (HUP signal)"
+        echo "  status  - Show server status"
+        echo ""
+        echo "Environment variables:"
+        echo "  MCC_USER     - User to run as (default: mcc)"
+        echo "  MCC_GROUP    - Group to run as (default: mcc)"
+        echo "  VENV_DIR     - Virtual environment directory (default: \$PROJECT_DIR/venv)"
+        exit 1
+        ;;
+esac
+
+exit $?

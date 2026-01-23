@@ -1046,7 +1046,8 @@ def update_group_hierarchy_progress(group, delta_km):
         else:
             logger.debug(f"[update_group_hierarchy_progress] Track '{track.name}' is not currently active - will skip travel_status update for group '{group.name}', but still update distance_total")
     except GroupTravelStatus.DoesNotExist:
-        logger.warning(f"[update_group_hierarchy_progress] Group '{group.name}' has no travel_status - will only update distance_total. Group should be assigned to a travel track in the admin to track progress on active trips.")
+        # Group has no travel_status - this is normal, not all groups need to be assigned to a track
+        logger.debug(f"[update_group_hierarchy_progress] Group '{group.name}' has no travel_status - will only update distance_total")
 
     # 1. Update GroupTravelStatus (for avatars on the map) - only if travel_status exists and track is active
     # IMPORTANT: Each group is checked individually - if THIS group has reached the goal,

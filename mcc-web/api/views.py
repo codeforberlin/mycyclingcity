@@ -33,9 +33,10 @@ from django.db.models.functions import TruncDate, TruncHour
 from decimal import Decimal
 from datetime import timedelta, datetime
 from functools import wraps
+from config.logger_utils import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # --- Helper Functions ---
 

@@ -7,6 +7,7 @@
 
 #
 import os
+import sys
 from pathlib import Path
 from django.utils.translation import gettext_lazy as _
 from decouple import config, Csv
@@ -79,6 +80,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    # Request logging for performance analysis
+    'mgmt.middleware_request_logging.RequestLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'  # Or your main URL configuration path
@@ -320,6 +324,21 @@ MCC_LOGO_LEFT = 'game/images/MCC-Button-v3-300x300.png'
 MCC_LOGO_RIGHT = 'game/images/MCC-Button-v2-300x300.png'
 MCC_WINNER_PHOTO = 'game/images/MCC-Button-v3-300x300.png'
 
+# Logging configuration
+# Enable DEBUG/INFO logging to database (default: False, only WARNING/ERROR stored)
+LOG_DB_DEBUG = config('LOG_DB_DEBUG', default=False, cast=bool)
+
+# Ensure logs directory exists
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+# Health Check API Configuration
+# API keys for external monitoring systems (Nagios, etc.)
+# Can be a single key or comma-separated list
+# Set in .env file: HEALTH_CHECK_API_KEYS=key1,key2,key3
+# Or as single key: HEALTH_CHECK_API_KEYS=your-secret-api-key
+HEALTH_CHECK_API_KEYS = config('HEALTH_CHECK_API_KEYS', default='', cast=Csv())
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -335,29 +354,108 @@ LOGGING = {
         },
     },
     'handlers': {
-        # Defines that logs are sent to the console
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        # App-specific file handlers - each app writes to its own log file
+        # Using DynamicLevelFileHandler to respect LoggingConfig settings dynamically
+        'api_file': {
+            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'filename': str(LOGS_DIR / 'api.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+        },
+        'mgmt_file': {
+            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'filename': str(LOGS_DIR / 'mgmt.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+        },
+        'iot_file': {
+            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'filename': str(LOGS_DIR / 'iot.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+        },
+        'kiosk_file': {
+            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'filename': str(LOGS_DIR / 'kiosk.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+        },
+        'game_file': {
+            'class': 'mgmt.logging_handler.DynamicLevelFileHandler',
+            'filename': str(LOGS_DIR / 'game.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',  # Handler level is always DEBUG, filtering happens in emit()
+        },
+        # Django framework logs (only WARNING and above)
+        'django_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'django.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'level': 'WARNING',
+        },
+        # Database handler for critical logs (WARNING, ERROR, CRITICAL)
+        # DEBUG and INFO can be enabled via LoggingConfig in Admin GUI
+        'database': {
+            'class': 'mgmt.logging_handler.DatabaseLogHandler',
+            'level': 'DEBUG',  # Receive all logs, filtering happens in handler
+            'batch_size': 10,  # Number of logs to batch before inserting
+            'flush_interval': 5.0,  # Maximum seconds to wait before flushing batch
         },
     },
     'root': {
-        'handlers': ['console'],
-        'level': 'INFO',  # <-- IMPORTANT: Here you set the global minimum level
+        # Root logger only handles Django framework logs and critical errors
+        # NOT application logs - they go to their own files
+        'handlers': ['django_file'],
+        'level': 'WARNING',  # Only WARNING and above reach root logger (not DEBUG/INFO)
     },
     'loggers': {
-        # 'django' is the built-in logger for Django internal messages
+        # Django framework logger - only WARNING and above
         'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
+            'handlers': ['django_file'],
+            'level': 'WARNING',
+            'propagate': False,  # Don't propagate to root - handled separately
         },
-        # Configures the logger for your API app to also log DEBUG messages
+        # API application logger - writes to api.log
         'api': {
-            'handlers': ['console'],
-            # Set this to 'DEBUG' to see your detailed views.py messages
-            'level': 'INFO',
-            'propagate': False,
+            'handlers': ['api_file', 'database'],
+            'level': 'INFO',  # Can be changed to INFO for production
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Management application logger - writes to mgmt.log
+        'mgmt': {
+            'handlers': ['mgmt_file', 'database'],
+            'level': 'INFO',  # Can be changed to INFO for production
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # IoT application logger - writes to iot.log
+        'iot': {
+            'handlers': ['iot_file', 'database'],
+            'level': 'INFO',  # Can be changed to INFO for production
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Kiosk application logger - writes to kiosk.log
+        'kiosk': {
+            'handlers': ['kiosk_file', 'database'],
+            'level': 'INFO',  # Can be changed to INFO for production
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Game application logger - writes to game.log
+        'game': {
+            'handlers': ['game_file', 'database'],
+            'level': 'INFO',  # Can be changed to INFO for production
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
     }
 }
