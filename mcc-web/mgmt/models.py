@@ -74,18 +74,18 @@ class GunicornConfig(models.Model):
     Controls Gunicorn server settings like log level, workers, timeouts, etc.
     """
     LOG_LEVEL_CHOICES = [
-        ('debug', 'DEBUG - Sehr detaillierte Ausgaben'),
-        ('info', 'INFO - Informative Meldungen (Standard)'),
-        ('warning', 'WARNING - Nur Warnungen'),
-        ('error', 'ERROR - Nur Fehler'),
-        ('critical', 'CRITICAL - Nur kritische Fehler'),
+        ('debug', _('DEBUG - Very detailed output')),
+        ('info', _('INFO - Informative messages (default)')),
+        ('warning', _('WARNING - Warnings only')),
+        ('error', _('ERROR - Errors only')),
+        ('critical', _('CRITICAL - Critical errors only')),
     ]
     
     WORKER_CLASS_CHOICES = [
-        ('sync', 'sync - Synchronous workers (Standard)'),
-        ('gthread', 'gthread - Threaded workers (empfohlen für I/O-intensive Anwendungen)'),
-        ('gevent', 'gevent - Async workers (benötigt gevent)'),
-        ('eventlet', 'eventlet - Async workers (benötigt eventlet)'),
+        ('sync', _('sync - Synchronous workers (default)')),
+        ('gthread', _('gthread - Threaded workers (recommended for I/O-intensive applications)')),
+        ('gevent', _('gevent - Async workers (requires gevent)')),
+        ('eventlet', _('eventlet - Async workers (requires eventlet)')),
     ]
     
     log_level = models.CharField(
@@ -93,7 +93,7 @@ class GunicornConfig(models.Model):
         choices=LOG_LEVEL_CHOICES,
         default='info',
         verbose_name=_("Log Level"),
-        help_text=_("Gunicorn Log-Level. Änderungen erfordern einen Server-Neustart.")
+        help_text=_("Gunicorn log level. Changes require a server restart.")
     )
     
     workers = models.IntegerField(

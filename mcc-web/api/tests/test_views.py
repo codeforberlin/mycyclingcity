@@ -170,17 +170,17 @@ class TestUpdateDataView:
 @pytest.mark.unit
 @pytest.mark.django_db
 class TestGetPlayerCoinsView:
-    """Tests for get_cyclist_coins API endpoint."""
+    """Tests for get_player_coins API endpoint."""
     
-    def test_get_cyclist_coins_success(self, api_key, cyclist_with_group):
-        """Test successful cyclist coins retrieval."""
+    def test_get_player_coins_success(self, api_key, cyclist_with_group):
+        """Test successful player coins retrieval."""
         cyclist = cyclist_with_group['cyclist']
         cyclist.coins_total = 100
         cyclist.coins_spendable = 50
         cyclist.save()
         
         client = Client()
-        url = reverse('get_cyclist_coins', args=[cyclist.user_id])
+        url = reverse('get_player_coins', args=[cyclist.user_id])
         
         response = client.get(
             url,
@@ -193,12 +193,12 @@ class TestGetPlayerCoinsView:
         assert data['coins_spendable'] == 50
         assert data['mc_username'] == cyclist.mc_username
     
-    def test_get_cyclist_coins_invalid_api_key(self, cyclist_with_group):
-        """Test get_cyclist_coins with invalid API key."""
+    def test_get_player_coins_invalid_api_key(self, cyclist_with_group):
+        """Test get_player_coins with invalid API key."""
         cyclist = cyclist_with_group['cyclist']
         
         client = Client()
-        url = reverse('get_cyclist_coins', args=[cyclist.user_id])
+        url = reverse('get_player_coins', args=[cyclist.user_id])
         
         response = client.get(
             url,
@@ -207,10 +207,10 @@ class TestGetPlayerCoinsView:
         
         assert response.status_code == 403
     
-    def test_get_cyclist_coins_cyclist_not_found(self, api_key):
-        """Test get_cyclist_coins with non-existent cyclist."""
+    def test_get_player_coins_player_not_found(self, api_key):
+        """Test get_player_coins with non-existent player."""
         client = Client()
-        url = reverse('get_cyclist_coins', args=['NON-EXISTENT'])
+        url = reverse('get_player_coins', args=['NON-EXISTENT'])
         
         response = client.get(
             url,
@@ -321,17 +321,17 @@ class TestGetUserIdView:
 
 @pytest.mark.unit
 @pytest.mark.django_db
-class TestGetMappedMinecraftCyclistsView:
-    """Tests for get_mapped_minecraft_cyclists API endpoint."""
+class TestGetMappedMinecraftPlayersView:
+    """Tests for get_mapped_minecraft_players API endpoint."""
     
-    def test_get_mapped_minecraft_cyclists_success(self, api_key, cyclist_with_group):
-        """Test successful Minecraft cyclists mapping retrieval."""
+    def test_get_mapped_minecraft_players_success(self, api_key, cyclist_with_group):
+        """Test successful Minecraft players mapping retrieval."""
         cyclist = cyclist_with_group['cyclist']
         cyclist.mc_username = 'test_mc_cyclist'
         cyclist.save()
         
         client = Client()
-        url = reverse('get_mapped_minecraft_cyclists')
+        url = reverse('get_mapped_minecraft_players')
         
         response = client.get(
             url,

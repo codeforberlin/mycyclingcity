@@ -83,7 +83,7 @@ git status
 # Backups are stored in migration_backups/
 
 # 3. Backup database (if important)
-cp db.sqlite3 db.sqlite3.backup
+cp data/db.sqlite3 data/db.sqlite3.backup
 ```
 
 ### 2. Perform Reset
@@ -159,7 +159,7 @@ Then add the code to the new migration.
 
 ```bash
 # 1. Delete and recreate database
-rm db.sqlite3*
+rm data/db.sqlite3*
 python manage.py migrate
 
 # 2. Check if data migration works
@@ -210,7 +210,7 @@ If problems occur after the reset:
 
 2. **Restore database:**
    ```bash
-   cp db.sqlite3.backup db.sqlite3
+   cp data/db.sqlite3.backup data/db.sqlite3
    ```
 
 3. **Use Git (if committed):**

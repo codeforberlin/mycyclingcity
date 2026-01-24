@@ -30,42 +30,47 @@ LOG_FILES = {
     'api': {
         'name': 'api.log',
         'display_name': _('API Application Logs'),
-        'description': _('Alle Logs der API-Anwendung'),
+        'description': _('All logs from the API application'),
     },
     'mgmt': {
         'name': 'mgmt.log',
         'display_name': _('Management Application Logs'),
-        'description': _('Alle Logs der Management-Anwendung'),
+        'description': _('All logs from the Management application'),
     },
     'iot': {
         'name': 'iot.log',
         'display_name': _('IoT Application Logs'),
-        'description': _('Alle Logs der IoT-Anwendung'),
+        'description': _('All logs from the IoT application'),
     },
     'kiosk': {
         'name': 'kiosk.log',
         'display_name': _('Kiosk Application Logs'),
-        'description': _('Alle Logs der Kiosk-Anwendung'),
+        'description': _('All logs from the Kiosk application'),
     },
     'game': {
         'name': 'game.log',
         'display_name': _('Game Application Logs'),
-        'description': _('Alle Logs der Game-Anwendung'),
+        'description': _('All logs from the Game application'),
     },
     'map': {
         'name': 'map.log',
         'display_name': _('Map Application Logs'),
-        'description': _('Alle Logs der Map-Anwendung'),
+        'description': _('All logs from the Map application'),
     },
     'leaderboard': {
         'name': 'leaderboard.log',
         'display_name': _('Leaderboard Application Logs'),
-        'description': _('Alle Logs der Leaderboard-Anwendung'),
+        'description': _('All logs from the Leaderboard application'),
+    },
+    'minecraft': {
+        'name': 'minecraft.log',
+        'display_name': _('Minecraft Application Logs'),
+        'description': _('All logs from the Minecraft application'),
     },
     'django': {
         'name': 'django.log',
         'display_name': _('Django Framework Logs'),
-        'description': _('Nur WARNING, ERROR und CRITICAL Logs vom Django-Framework'),
+        'description': _('Only WARNING, ERROR and CRITICAL logs from the Django framework'),
     },
 }
 

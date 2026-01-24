@@ -11,6 +11,7 @@ mcc-web/db.sqlite3
 mcc-web/db.sqlite3-journal
 mcc-web/*.sqlite3
 mcc-web/*.sqlite3-journal
+mcc-web/data/
 
 # Python
 mcc-web/__pycache__/

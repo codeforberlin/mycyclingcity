@@ -179,12 +179,37 @@ def check_migrations(project_dir: Path) -> Tuple[bool, str]:
         return False, f"Error checking migrations: {e}"
 
 
+def get_database_path(project_dir: Path) -> Path:
+    """
+    Get the database path from Django settings.
+    
+    Args:
+        project_dir: Project root directory
+    
+    Returns:
+        Path to database file
+    """
+    try:
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+        sys.path.insert(0, str(project_dir))
+        
+        import django
+        django.setup()
+        
+        from django.conf import settings
+        db_path = Path(settings.DATABASES['default']['NAME'])
+        return db_path
+    except Exception:
+        # Fallback to default location if Django setup fails
+        return project_dir / 'data' / 'db.sqlite3'
+
+
 def check_file_permissions(project_dir: Path) -> Tuple[bool, List[str]]:
     """Check file permissions."""
     issues = []
     
-    # Check database file permissions
-    db_file = project_dir / 'db.sqlite3'
+    # Check database file permissions (get path from Django settings)
+    db_file = get_database_path(project_dir)
     if db_file.exists():
         if not os.access(db_file, os.R_OK | os.W_OK):
             issues.append(f"Database file not readable/writable: {db_file}")

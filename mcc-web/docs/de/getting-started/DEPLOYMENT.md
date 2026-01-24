@@ -45,7 +45,7 @@ The archive automatically excludes:
 - `__pycache__/` directories
 - `staticfiles/` (generated on server)
 - `media/` (user-generated content)
-- Database files (`db.sqlite3*`)
+- Database files (`data/db.sqlite3*`)
 - Compiled translation files (`.mo` - will be generated)
 - Virtual environments
 - IDE files
@@ -253,7 +253,7 @@ If deployment fails or issues are discovered:
 1. **Stop the application server**
 2. **Restore database from backup**:
    ```bash
-   cp backups/db_backup_YYYYMMDD_HHMMSS.sqlite3 db.sqlite3
+   cp backups/db_backup_YYYYMMDD_HHMMSS.sqlite3 data/db.sqlite3
    ```
 3. **Restore previous code version** (if needed)
 4. **Restart application server**

@@ -49,7 +49,7 @@ mkdir -p /tmp/mcc-db
 chmod 755 /tmp/mcc-db
 
 # 3. Kopieren Sie Datenbank
-cp /nas/public/dev/mycyclingcity/mcc-web/db.sqlite3 /tmp/mcc-db/db.sqlite3
+cp /nas/public/dev/mycyclingcity/mcc-web/data/db.sqlite3 /tmp/mcc-db/db.sqlite3
 
 # 4. Ändern Sie settings.py
 # DATABASES = {
@@ -86,10 +86,10 @@ mkdir -p /var/lib/mcc-db
 chmod 755 /var/lib/mcc-db
 
 # 3. Verschieben Sie Datenbank
-mv /nas/public/dev/mycyclingcity/mcc-web/db.sqlite3 /var/lib/mcc-db/db.sqlite3
+mv /nas/public/dev/mycyclingcity/mcc-web/data/db.sqlite3 /var/lib/mcc-db/db.sqlite3
 
 # 4. Erstellen Sie Symlink
-ln -s /var/lib/mcc-db/db.sqlite3 /nas/public/dev/mycyclingcity/mcc-web/db.sqlite3
+ln -s /var/lib/mcc-db/db.sqlite3 /nas/public/dev/mycyclingcity/mcc-web/data/db.sqlite3
 
 # 5. Ändern Sie settings.py NICHT (Symlink wird automatisch verwendet)
 ```
@@ -144,13 +144,13 @@ DATABASES = {
 
 ```bash
 # Prüfen Sie, ob Datenbank auf NFS liegt
-df -h /nas/public/dev/mycyclingcity/mcc-web/db.sqlite3
+df -h /nas/public/dev/mycyclingcity/mcc-web/data/db.sqlite3
 
 # Prüfen Sie Gunicorn-Konfiguration
 ps aux | grep gunicorn
 
 # Prüfen Sie offene Datei-Handles
-lsof db.sqlite3
+lsof data/db.sqlite3
 ```
 
 ## Weitere SQLite-Optimierungen (wenn auf lokalem FS)

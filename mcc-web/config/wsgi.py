@@ -7,6 +7,30 @@
 
 #
 import os
+import sys
+from pathlib import Path
+
+# Get the correct project directory (where this wsgi.py file is located)
+project_dir = str(Path(__file__).parent.parent)
+
+# Remove any duplicate paths that might cause conflicts
+# Keep only the correct project directory in sys.path
+paths_to_remove = []
+for path in sys.path:
+    if path and path != project_dir:
+        # Check if this path contains an 'api' directory that might conflict
+        api_path = os.path.join(path, 'api')
+        if os.path.isdir(api_path) and path != project_dir:
+            paths_to_remove.append(path)
+
+for path in paths_to_remove:
+    if path in sys.path:
+        sys.path.remove(path)
+
+# Add the project directory to the path if not already present
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
+
 from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')

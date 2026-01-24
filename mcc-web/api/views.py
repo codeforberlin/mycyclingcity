@@ -30,7 +30,7 @@ from kiosk.models import KioskDevice
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum
 from django.db.models.functions import TruncDate, TruncHour
-from decimal import Decimal
+from decimal import Decimal, ROUND_FLOOR
 from datetime import timedelta, datetime
 from functools import wraps
 from config.logger_utils import get_logger
@@ -91,22 +91,41 @@ def retry_on_db_lock(max_retries=10, base_delay=0.05, max_delay=5.0):
             return None
         return wrapper
     return decorator
-def push_to_minecraft_bridge(username, coins, action):
-    """Sends an HTTP POST request to the Minecraft bridge."""
-    url = settings.MCC_MINECRAFT_URL
-    api_key = settings.MCC_MINECRAFT_API_KEY
-    if not url or not api_key:
-       logger.error(_(" Konfiguration für Minecraft-Bridge ist unvollständig."))
-       return False
+def push_to_minecraft_bridge(
+    username,
+    coins_total,
+    coins_spendable,
+    action,
+    spendable_action="set",
+    spendable_delta=None,
+):
+    """Queue a Minecraft outbox event for player score updates."""
+    from minecraft.services.outbox import queue_player_coins_update
+
+    if not username:
+        logger.error(_(" Konfiguration für Minecraft-Bridge ist unvollständig."))
+        return False
+
     try:
-        payload = {"username": username, "coins": int(coins), "action": action}
-        headers = {"X-Api-Key": api_key, "Content-Type": "application/json"}
-        response = requests.post(url, json=payload, headers=headers, timeout=5)
-        response.raise_for_status() 
-        logger.info(_(f" Coins für Spieler {username} erfolgreich an Minecraft-Bridge gesendet."))
+        if action not in ["set", "add"]:
+            logger.error(_(f" Ungültige Action für Minecraft-Bridge: {action}"))
+            return False
+
+        if action == "add":
+            logger.warning(_(f" Add-Action für Minecraft wird ignoriert. Führe set aus: {username}"))
+
+        queue_player_coins_update(
+            player=username,
+            coins_total=int(coins_total),
+            coins_spendable=int(coins_spendable),
+            reason="db_update",
+            spendable_action=spendable_action,
+            spendable_delta=spendable_delta,
+        )
+        logger.info(_(f" Coins für Spieler {username} in Outbox eingereiht."))
         return True
-    except requests.exceptions.RequestException as e:
-        logger.error(_(f" Fehler beim Senden der Coins an die Minecraft-Bridge: {e}"))
+    except Exception as e:
+        logger.error(_(f" Fehler beim Einreihen der Coins an die Minecraft-Outbox: {e}"))
         return False
 
 def validate_api_key(api_key):
@@ -822,9 +841,30 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
         # Use Decimal arithmetic - no rounding needed as DecimalField handles precision
         old_cyclist_distance = cyclist_obj.distance_total
         cyclist_obj.distance_total = cyclist_obj.distance_total + distance_delta
+        coins_added = 0
+        if distance_delta > 0 and cyclist_obj.mc_username:
+            conversion_factor = cyclist_obj.coin_conversion_factor or settings.DEFAULT_COIN_CONVERSION_FACTOR
+            try:
+                delta_coins = (distance_delta * Decimal(str(conversion_factor))).to_integral_value(rounding=ROUND_FLOOR)
+            except Exception:
+                delta_coins = Decimal('0')
+            coins_added = int(delta_coins) if delta_coins > 0 else 0
+            if coins_added > 0:
+                cyclist_obj.coins_total += coins_added
+                cyclist_obj.coins_spendable += coins_added
         cyclist_obj.last_active = now
         cyclist_obj.save()
         logger.debug(f"[update_data] Cyclist '{cyclist_obj.id_tag}' - old_distance: {old_cyclist_distance}, new_distance: {cyclist_obj.distance_total}")
+        if coins_added > 0:
+            logger.info(f"[update_data] Coins added for {cyclist_obj.id_tag}: +{coins_added}")
+            push_to_minecraft_bridge(
+                cyclist_obj.mc_username,
+                cyclist_obj.coins_total,
+                cyclist_obj.coins_spendable,
+                "set",
+                spendable_action="add",
+                spendable_delta=coins_added,
+            )
         
         old_device_distance = device_obj.distance_total
         device_obj.distance_total = device_obj.distance_total + distance_delta
@@ -835,8 +875,8 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
     logger.info(f"[update_data] Successfully processed update - id_tag: {id_tag}, device_id: {device_id}, distance: {distance_delta}")
     return JsonResponse({"success": True})
 
-def get_cyclist_coins(request, username):
-    """Returns the current coins of a cyclist."""
+def get_player_coins(request, username):
+    """Returns the current coins of a player."""
     api_key_header = request.headers.get('X-Api-Key')
     is_valid, _device = validate_api_key(api_key_header)
     if not is_valid:
@@ -855,6 +895,11 @@ def get_cyclist_coins(request, username):
         "last_active": cyclist_obj.last_active.isoformat() if cyclist_obj.last_active else None
     }
     return JsonResponse(response_data)
+
+
+def get_cyclist_coins(request, username):
+    """Backward-compatible alias for get_player_coins."""
+    return get_player_coins(request, username)
 
 @csrf_exempt
 def spend_cyclist_coins(request):
@@ -883,11 +928,17 @@ def spend_cyclist_coins(request):
         cyclist_obj.coins_spendable -= coins_spent
         cyclist_obj.save()
     
-    push_to_minecraft_bridge(username, cyclist_obj.coins_spendable, "set")
+    push_to_minecraft_bridge(
+        username,
+        cyclist_obj.coins_total,
+        cyclist_obj.coins_spendable,
+        "set",
+        spendable_action="set",
+    )
     return JsonResponse({"success": True, "message": _("Coins abgezogen.")})
 
-def get_mapped_minecraft_cyclists(request):
-    """Returns the complete cyclist mapping structure."""
+def get_mapped_minecraft_players(request):
+    """Returns the complete player mapping structure."""
     api_key_header = request.headers.get('X-Api-Key')
     is_valid, _device = validate_api_key(api_key_header)
     if not is_valid:
@@ -906,6 +957,11 @@ def get_mapped_minecraft_cyclists(request):
         } for c in filtered_cyclists
     }
     return JsonResponse(response_data)
+
+
+def get_mapped_minecraft_cyclists(request):
+    """Backward-compatible alias for get_mapped_minecraft_players."""
+    return get_mapped_minecraft_players(request)
 
 @csrf_exempt
 def get_user_id(request):

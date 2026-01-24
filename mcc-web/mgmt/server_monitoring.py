@@ -25,7 +25,7 @@ import time
 
 def get_gunicorn_master_pid():
     """Get the PID of the Gunicorn master process."""
-    pidfile = Path(settings.BASE_DIR) / 'mcc-web.pid'
+    pidfile = Path(settings.BASE_DIR) / 'tmp' / 'mcc-web.pid'
     if pidfile.exists():
         try:
             with open(pidfile, 'r') as f:

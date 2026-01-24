@@ -123,7 +123,7 @@ To verify the installation:
 ### Database Errors
 
 - Ensure SQLite is available (included with Python)
-- Check file permissions for `db.sqlite3`
+- Check file permissions for `data/db.sqlite3`
 - Run migrations: `python manage.py migrate`
 
 ### Static Files Not Loading

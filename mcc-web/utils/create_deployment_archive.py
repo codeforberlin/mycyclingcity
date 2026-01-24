@@ -58,6 +58,79 @@ def get_project_version() -> str:
     return 'dev'
 
 
+def get_database_path(project_dir: Path) -> Path:
+    """
+    Get the database path from Django settings.
+    
+    Args:
+        project_dir: Project root directory
+    
+    Returns:
+        Path to database file
+    """
+    try:
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+        sys.path.insert(0, str(project_dir))
+        
+        import django
+        django.setup()
+        
+        from django.conf import settings
+        db_path = Path(settings.DATABASES['default']['NAME'])
+        return db_path
+    except Exception:
+        # Fallback to default location if Django setup fails
+        return project_dir / 'data' / 'db.sqlite3'
+
+
+def get_database_exclude_patterns(base_dir: Path) -> List[str]:
+    """
+    Get database file patterns to exclude based on Django settings.
+    
+    Args:
+        base_dir: The base directory of the project
+        
+    Returns:
+        List of exclude patterns for database files
+    """
+    try:
+        db_path = get_database_path(base_dir)
+        # Get relative path from base_dir
+        try:
+            rel_db_path = db_path.relative_to(base_dir)
+            db_dir = rel_db_path.parent
+            db_name = rel_db_path.name
+            
+            # Generate patterns for all SQLite files
+            patterns = [
+                str(rel_db_path),  # Main database file
+                f"{db_dir}/{db_name}-journal",
+                f"{db_dir}/{db_name}-shm",
+                f"{db_dir}/{db_name}-wal",
+                f"{db_dir}/{db_name}.old",
+            ]
+            return patterns
+        except ValueError:
+            # Database path is outside base_dir, use fallback patterns
+            pass
+    except Exception:
+        pass
+    
+    # Fallback patterns (for backwards compatibility and if Django setup fails)
+    return [
+        'db.sqlite3',
+        'db.sqlite3-journal',
+        'db.sqlite3-shm',
+        'db.sqlite3-wal',
+        'db.sqlite3.old',
+        'data/db.sqlite3',
+        'data/db.sqlite3-journal',
+        'data/db.sqlite3-shm',
+        'data/db.sqlite3-wal',
+        'data/db.sqlite3.old',
+    ]
+
+
 def should_exclude(path: Path, base_dir: Path) -> bool:
     """
     Check if a path should be excluded from the archive.
@@ -78,6 +151,9 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
     path_str = str(rel_path)
     path_parts = path_str.split(os.sep)
     
+    # Get database exclude patterns dynamically
+    db_exclude_patterns = get_database_exclude_patterns(base_dir)
+    
     # Exclude patterns (based on .gitignore and deployment needs)
     exclude_patterns = [
         # Python cache and compiled files
@@ -94,11 +170,6 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         # Django specific
         '*.log',
         'local_settings.py',
-        'db.sqlite3',
-        'db.sqlite3-journal',
-        'db.sqlite3-shm',
-        'db.sqlite3-wal',
-        'db.sqlite3.old',
         'staticfiles',
         'media',
         'messages.mo',  # Compiled translation files (will be generated)
@@ -179,6 +250,9 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         # Project specific
         'firmware_*.bin',  # Firmware files should be managed separately
     ]
+    
+    # Add database exclude patterns dynamically
+    exclude_patterns.extend(db_exclude_patterns)
     
     # Check if any part of the path matches an exclude pattern
     for part in path_parts:

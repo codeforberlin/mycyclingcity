@@ -305,13 +305,13 @@ class GameSessionAdmin(admin.ModelAdmin):
     )
     
     fieldsets = (
-        (_('Basis-Informationen'), {
+        (_('Basic Information'), {
             'fields': ('session_key', 'expire_date', 'room_code_display', 'cyclist_display', 'is_master_display')
         }),
-        (_('Session-Daten'), {
+        (_('Session Data'), {
             'fields': ('session_data_display', 'game_data_display', 'assignments_display')
         }),
-        (_('Statistiken'), {
+        (_('Statistics'), {
             'fields': ('statistics_display',)
         }),
     )
@@ -365,12 +365,12 @@ class GameSessionAdmin(admin.ModelAdmin):
                         room_url, room_code
                     )
                 except GameRoom.DoesNotExist:
-                    return format_html('<span style="color: #dc3545;">{} (Raum nicht gefunden)</span>', room_code)
+                    return format_html('<span style="color: #dc3545;">{} ({})</span>', room_code, _('Room not found'))
             return "-"
         except Exception as e:
             logger.error(f"Error getting room code: {e}")
             return "-"
-    room_code_display.short_description = _('Raum')
+    room_code_display.short_description = _('Room')
     
     def cyclist_display(self, obj):
         """Display assigned cyclist(s)."""
@@ -385,7 +385,7 @@ class GameSessionAdmin(admin.ModelAdmin):
         except Exception as e:
             logger.error(f"Error getting cyclist: {e}")
             return "-"
-    cyclist_display.short_description = _('Radler')
+    cyclist_display.short_description = _('Cyclist')
     
     def is_master_display(self, obj):
         """Display master status."""
@@ -417,7 +417,7 @@ class GameSessionAdmin(admin.ModelAdmin):
         # Django sessions expire after SESSION_COOKIE_AGE (default 2 weeks)
         # This is an approximation
         return obj.expire_date.strftime('%Y-%m-%d %H:%M')
-    last_activity_display.short_description = _('Ablauf')
+    last_activity_display.short_description = _('Expiry')
     last_activity_display.admin_order_field = 'expire_date'
     
     def age_display(self, obj):
@@ -426,16 +426,16 @@ class GameSessionAdmin(admin.ModelAdmin):
         # Sessions expire after SESSION_COOKIE_AGE, so we can estimate creation time
         age = timezone.now() - (obj.expire_date - timedelta(weeks=2))
         if age.days > 0:
-            return f"{age.days} Tag(e)"
+            return _("{count} day(s)").format(count=age.days)
         elif age.seconds >= 3600:
             hours = age.seconds // 3600
-            return f"{hours} Stunde(n)"
+            return _("{count} hour(s)").format(count=hours)
         elif age.seconds >= 60:
             minutes = age.seconds // 60
-            return f"{minutes} Minute(n)"
+            return _("{count} minute(s)").format(count=minutes)
         else:
-            return "< 1 Minute"
-    age_display.short_description = _('Alter')
+            return _("< 1 minute")
+    age_display.short_description = _('Age')
     
     def actions_display(self, obj):
         """Display action buttons."""
@@ -448,8 +448,8 @@ class GameSessionAdmin(admin.ModelAdmin):
             # View details link
             detail_url = reverse('admin:game_session_change', args=[obj.pk])
             html += format_html(
-                '<a href="{}" class="button" style="padding: 4px 8px; background: #417690; color: white; text-decoration: none; border-radius: 3px; font-size: 0.85em;">Details</a>',
-                detail_url
+                '<a href="{}" class="button" style="padding: 4px 8px; background: #417690; color: white; text-decoration: none; border-radius: 3px; font-size: 0.85em;">{}</a>',
+                detail_url, _('Details')
             )
             
             # Enter room link (if in room)
@@ -458,8 +458,8 @@ class GameSessionAdmin(admin.ModelAdmin):
                     room = GameRoom.objects.get(room_code=room_code, is_active=True)
                     room_url = reverse('game:room_page', args=[room_code])
                     html += format_html(
-                        '<a href="{}" target="_blank" class="button" style="padding: 4px 8px; background: #28a745; color: white; text-decoration: none; border-radius: 3px; font-size: 0.85em;">Raum betreten</a>',
-                        room_url
+                        '<a href="{}" target="_blank" class="button" style="padding: 4px 8px; background: #28a745; color: white; text-decoration: none; border-radius: 3px; font-size: 0.85em;">{}</a>',
+                        room_url, _('Enter Room')
                     )
                 except GameRoom.DoesNotExist:
                     pass
@@ -469,7 +469,7 @@ class GameSessionAdmin(admin.ModelAdmin):
         except Exception as e:
             logger.error(f"Error generating actions: {e}")
             return "-"
-    actions_display.short_description = _('Aktionen')
+    actions_display.short_description = _('Actions')
     
     def session_data_display(self, obj):
         """Display formatted session data."""
@@ -480,8 +480,8 @@ class GameSessionAdmin(admin.ModelAdmin):
             return format_html('<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">{}</pre>', formatted)
         except Exception as e:
             logger.error(f"Error displaying session data: {e}")
-            return format_html('<span style="color: #dc3545;">Fehler beim Dekodieren: {}</span>', str(e))
-    session_data_display.short_description = _('Session-Daten (vollständig)')
+            return format_html('<span style="color: #dc3545;">{}: {}</span>', _('Decoding error'), str(e))
+    session_data_display.short_description = _('Session Data (complete)')
     
     def game_data_display(self, obj):
         """Display only game-related session data."""
@@ -498,8 +498,8 @@ class GameSessionAdmin(admin.ModelAdmin):
             return format_html('<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">{}</pre>', formatted)
         except Exception as e:
             logger.error(f"Error displaying game data: {e}")
-            return format_html('<span style="color: #dc3545;">Fehler: {}</span>', str(e))
-    game_data_display.short_description = _('Game-Daten')
+            return format_html('<span style="color: #dc3545;">{}: {}</span>', _('Error'), str(e))
+    game_data_display.short_description = _('Game Data')
     
     def assignments_display(self, obj):
         """Display device assignments as formatted table."""
@@ -511,7 +511,10 @@ class GameSessionAdmin(admin.ModelAdmin):
                 return "-"
             
             html = '<table style="width: 100%; border-collapse: collapse;">'
-            html += '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Gerät</th><th style="padding: 8px; border: 1px solid #dee2e6;">Radler</th></tr></thead>'
+            html += format_html(
+                '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">{}</th><th style="padding: 8px; border: 1px solid #dee2e6;">{}</th></tr></thead>',
+                _('Device'), _('Cyclist')
+            )
             html += '<tbody>'
             
             for device, cyclist in device_assignments.items():
@@ -521,8 +524,8 @@ class GameSessionAdmin(admin.ModelAdmin):
             return mark_safe(html)
         except Exception as e:
             logger.error(f"Error displaying assignments: {e}")
-            return format_html('<span style="color: #dc3545;">Fehler: {}</span>', str(e))
-    assignments_display.short_description = _('Geräte-Zuweisungen')
+            return format_html('<span style="color: #dc3545;">{}: {}</span>', _('Error'), str(e))
+    assignments_display.short_description = _('Device Assignments')
     
     def statistics_display(self, obj):
         """Display session statistics."""
@@ -533,27 +536,27 @@ class GameSessionAdmin(admin.ModelAdmin):
             # Room info
             room_code = session_dict.get('room_code')
             if room_code:
-                stats.append(f"<strong>Raum:</strong> {room_code}")
+                stats.append(format_html("<strong>{}:</strong> {}", _('Room'), room_code))
             
             # Master status
             is_master = session_dict.get('is_master', False)
-            stats.append(f"<strong>Master:</strong> {'Ja' if is_master else 'Nein'}")
+            stats.append(format_html("<strong>{}:</strong> {}", _('Master'), _('Yes') if is_master else _('No')))
             
             # Assignments
             device_assignments = session_dict.get('device_assignments', {})
-            stats.append(f"<strong>Zuweisungen:</strong> {len(device_assignments)}")
+            stats.append(format_html("<strong>{}:</strong> {}", _('Assignments'), len(device_assignments)))
             
             # Target KM
             target_km = session_dict.get('current_target_km', 0)
             if target_km:
-                stats.append(f"<strong>Ziel (km):</strong> {target_km:.1f}")
+                stats.append(format_html("<strong>{}:</strong> {:.1f}", _('Target (km)'), target_km))
             
             # Game status
             is_stopped = session_dict.get('is_game_stopped', False)
             if is_stopped:
-                stats.append(f"<strong>Spiel-Status:</strong> Gestoppt")
+                stats.append(format_html("<strong>{}:</strong> {}", _('Game Status'), _('Stopped')))
             elif session_dict.get('start_distances'):
-                stats.append(f"<strong>Spiel-Status:</strong> Läuft")
+                stats.append(format_html("<strong>{}:</strong> {}", _('Game Status'), _('Running')))
             
             html = '<div style="padding: 10px; background-color: #f8f9fa; border-radius: 4px;">'
             html += '<br>'.join(stats)
@@ -561,8 +564,8 @@ class GameSessionAdmin(admin.ModelAdmin):
             return mark_safe(html)
         except Exception as e:
             logger.error(f"Error displaying statistics: {e}")
-            return format_html('<span style="color: #dc3545;">Fehler: {}</span>', str(e))
-    statistics_display.short_description = _('Statistiken')
+            return format_html('<span style="color: #dc3545;">{}: {}</span>', _('Error'), str(e))
+    statistics_display.short_description = _('Statistics')
     
     # --- Bulk Actions ---
     
@@ -578,15 +581,15 @@ class GameSessionAdmin(admin.ModelAdmin):
             queryset.delete()
             self.message_user(
                 request,
-                _("{} Session(s) wurden gelöscht. Die Benutzer wurden ausgeloggt.").format(count)
+                _("{} session(s) deleted. Users have been logged out.").format(count)
             )
         else:
             self.message_user(
                 request,
-                _("Keine Sessions gelöscht. Ihre eigene Session kann nicht gelöscht werden."),
+                _("No sessions deleted. Your own session cannot be deleted."),
                 level='warning'
             )
-    delete_sessions.short_description = _("Ausgewählte Sessions löschen")
+    delete_sessions.short_description = _("Delete selected sessions")
     
     def remove_from_rooms(self, request, queryset):
         """Remove sessions from their rooms (clear room_code from session)."""
@@ -610,19 +613,19 @@ class GameSessionAdmin(admin.ModelAdmin):
         
         messages = []
         if count > 0:
-            messages.append(_("{} Session(s) wurden aus Räumen entfernt (Sessions gelöscht).").format(count))
+            messages.append(_("{} session(s) removed from rooms (sessions deleted).").format(count))
         if skipped_own > 0:
-            messages.append(_("Ihre eigene Session wurde übersprungen."))
+            messages.append(_("Your own session was skipped."))
         
         if messages:
             self.message_user(request, " ".join(messages))
         else:
             self.message_user(
                 request,
-                _("Keine Sessions entfernt. Ihre eigene Session kann nicht entfernt werden."),
+                _("No sessions removed. Your own session cannot be removed."),
                 level='warning'
             )
-    remove_from_rooms.short_description = _("Aus Räumen entfernen")
+    remove_from_rooms.short_description = _("Remove from rooms")
     
     def cleanup_expired_sessions(self, request, queryset):
         """Delete expired sessions."""
@@ -638,15 +641,15 @@ class GameSessionAdmin(admin.ModelAdmin):
             expired.delete()
             self.message_user(
                 request,
-                _("{} abgelaufene Session(s) wurden gelöscht.").format(count)
+                _("{} expired session(s) deleted.").format(count)
             )
         else:
             self.message_user(
                 request,
-                _("Keine abgelaufenen Sessions gefunden."),
+                _("No expired sessions found."),
                 level='info'
             )
-    cleanup_expired_sessions.short_description = _("Abgelaufene Sessions löschen")
+    cleanup_expired_sessions.short_description = _("Delete expired sessions")
     
     def export_sessions(self, request, queryset):
         """Export session data as JSON."""
@@ -670,7 +673,7 @@ class GameSessionAdmin(admin.ModelAdmin):
         )
         response['Content-Disposition'] = f'attachment; filename="game_sessions_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
         return response
-    export_sessions.short_description = _("Sessions als JSON exportieren")
+    export_sessions.short_description = _("Export sessions as JSON")
     
     def get_urls(self):
         """Add custom URLs for session management."""

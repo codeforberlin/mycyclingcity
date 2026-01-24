@@ -81,7 +81,7 @@ export VENV_DIR=/path/to/venv  # Virtual Environment (Standard: $PROJECT_DIR/ven
 
 Das Script erstellt ein PID-File unter:
 ```
-mcc-web/mcc-web.pid
+mcc-web/tmp/mcc-web.pid
 ```
 
 Dieses File wird automatisch verwaltet und gelöscht, wenn der Server gestoppt wird.
@@ -150,7 +150,7 @@ Wenn das PID-File nach einem Crash bestehen bleibt:
 ps aux | grep gunicorn
 
 # Falls nicht, PID-File löschen
-rm /path/to/mcc-web/mcc-web.pid
+rm /path/to/mcc-web/tmp/mcc-web.pid
 ```
 
 ## Best Practices

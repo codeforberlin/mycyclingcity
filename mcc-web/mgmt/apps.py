@@ -15,6 +15,7 @@ import time
 class MgmtConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'mgmt'
+    verbose_name = 'Mgmt'
     
     # Instance variable to track the background thread per process
     # IMPORTANT: With preload_app=True, ready() is called in master process,
@@ -47,20 +48,15 @@ class MgmtConfig(AppConfig):
         # but after forking, each worker process needs its own thread
         self._start_level_check_thread()
         
-        # Also connect to post_migrate to set levels after migrations
-        # This ensures logger levels are set after database is ready
-        def update_levels_after_migrate(**kwargs):
-            try:
-                from .models import LoggingConfig
-                config = LoggingConfig.get_config()
-                self._update_logger_levels(config.min_log_level)
-                # Background thread should already be running, but ensure it is
-                self._start_level_check_thread()
-            except Exception:
-                # Database not ready yet, background thread will retry
-                pass
+        # Also connect to post_migrate to ensure background thread is running after migrations
+        # The background thread will handle loading the config from the database
+        # This avoids database access during app initialization (prevents RuntimeWarning)
+        def ensure_thread_after_migrate(**kwargs):
+            # Only ensure thread is running, don't access database here
+            # The background thread will load the config when database is ready
+            self._start_level_check_thread()
         
-        post_migrate.connect(update_levels_after_migrate, sender=self, weak=False)
+        post_migrate.connect(ensure_thread_after_migrate, sender=self, weak=False)
     
     def _start_level_check_thread(self):
         """Start a background thread that periodically checks LoggingConfig and updates logger levels."""
@@ -134,7 +130,7 @@ class MgmtConfig(AppConfig):
         target_logger_level = level_map.get(min_log_level, logging.WARNING)
         
         # Update logger levels for all application loggers
-        app_loggers = ['api', 'mgmt', 'iot', 'kiosk', 'game', 'map', 'leaderboard']
+        app_loggers = ['api', 'mgmt', 'iot', 'kiosk', 'game', 'map', 'leaderboard', 'minecraft']
         
         for logger_name in app_loggers:
             logger = logging.getLogger(logger_name)

@@ -110,7 +110,7 @@ Access the application:
 
 ## API Endpoints
 
-The web application provides various API endpoints for device communication and data access. For a complete overview, see `URLS_OVERVIEW.md`.
+The web application provides various API endpoints for device communication and data access. For a complete overview, see `docs/de/api/URLS_OVERVIEW.md`.
 
 ### Main API Endpoints (under `/api/`)
 

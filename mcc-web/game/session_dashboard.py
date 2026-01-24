@@ -91,13 +91,13 @@ def session_dashboard(request):
             # Calculate age (approximate)
             age = now - (session.expire_date - timedelta(weeks=2))
             if age.days > 0:
-                age_display = f"{age.days} Tag(e)"
+                age_display = _("{count} day(s)").format(count=age.days)
             elif age.seconds >= 3600:
                 hours = age.seconds // 3600
-                age_display = f"{hours} Stunde(n)"
+                age_display = _("{count} hour(s)").format(count=hours)
             else:
                 minutes = age.seconds // 60
-                age_display = f"{minutes} Minute(n)"
+                age_display = _("{count} minute(s)").format(count=minutes)
             
             current_sessions.append({
                 'id': session.pk,

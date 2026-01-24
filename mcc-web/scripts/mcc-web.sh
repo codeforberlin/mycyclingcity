@@ -15,9 +15,11 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
 GUNICORN_BIN="$VENV_DIR/bin/gunicorn"
 GUNICORN_CONFIG="$PROJECT_DIR/config/gunicorn_config.py"
-PIDFILE="$PROJECT_DIR/mcc-web.pid"
+TMP_DIR="$PROJECT_DIR/tmp"
+PIDFILE="$TMP_DIR/mcc-web.pid"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/mcc-web-script.log"
+MINECRAFT_SCRIPT="$PROJECT_DIR/scripts/minecraft.sh"
 
 # Colors for output
 RED='\033[0;31m'
@@ -26,8 +28,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Ensure log directory exists
+# Ensure directories exist
 mkdir -p "$LOG_DIR"
+mkdir -p "$TMP_DIR"
 
 # Log helper (append to file, keep console output unchanged)
 log_line() {
@@ -180,6 +183,11 @@ start() {
         PID=$(get_pid)
         echo -e "${GREEN}✓ Server started successfully (PID: $PID)${NC}"
         log_line "INFO" "Server started successfully (PID: $PID)"
+        if [ -x "$MINECRAFT_SCRIPT" ]; then
+            "$MINECRAFT_SCRIPT" start >/dev/null 2>&1 || true
+            "$MINECRAFT_SCRIPT" snapshot-start >/dev/null 2>&1 || true
+            log_line "INFO" "Started Minecraft workers after server start"
+        fi
         return 0
     else
         echo -e "${RED}✗ Failed to start server${NC}"
@@ -201,6 +209,17 @@ stop() {
             rm -f "$PIDFILE"
             echo -e "${BLUE}Removed stale PID file${NC}"
             log_line "INFO" "Removed stale PID file: $PIDFILE"
+        fi
+        # Still stop Minecraft workers to avoid orphan processes
+        if [ -x "$MINECRAFT_SCRIPT" ]; then
+            if "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
+                log_line "INFO" "Stopped all Minecraft workers during stop (server already stopped)"
+            else
+                # Fallback to individual stop commands if stop-all doesn't exist
+                "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
+                "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
+                log_line "INFO" "Stopped Minecraft workers during stop (server already stopped)"
+            fi
         fi
         return 0
     fi
@@ -240,6 +259,17 @@ stop() {
         log_line "INFO" "Server force-stopped"
     else
         log_line "INFO" "Stop completed without force kill (PID: $PID)"
+    fi
+
+    if [ -x "$MINECRAFT_SCRIPT" ]; then
+        if "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
+            log_line "INFO" "Stopped all Minecraft workers during server stop"
+        else
+            # Fallback to individual stop commands if stop-all doesn't exist
+            "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
+            "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
+            log_line "INFO" "Stopped Minecraft workers during server stop"
+        fi
     fi
     
     return 0

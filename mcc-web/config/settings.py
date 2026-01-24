@@ -62,11 +62,20 @@ INSTALLED_APPS = [
     'kiosk',
     'iot',
     'mgmt',
+    'minecraft',
     'game',
     'map',
     'ranking',
     'leaderboard',
 ]
+
+ASGI_APPLICATION = 'config.asgi.application'
+try:
+    import channels  # noqa: F401
+    if 'channels' not in INSTALLED_APPS:
+        INSTALLED_APPS.append('channels')
+except Exception:
+    pass
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -119,7 +128,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
         'OPTIONS': {
             'timeout': 30,  # Increase timeout to 30 seconds for high concurrency
         },
@@ -317,8 +326,21 @@ MCC_KIOSK_BANNER_UPDATE_INTERVAL = config('MCC_KIOSK_BANNER_UPDATE_INTERVAL', de
 MCC_KIOSK_CONTENT_UPDATE_INTERVAL = config('MCC_KIOSK_CONTENT_UPDATE_INTERVAL', default=60, cast=int)  # Content (tiles) updates every 60 seconds (synchronized with cronjob)
 MCC_KIOSK_FOOTER_UPDATE_INTERVAL = config('MCC_KIOSK_FOOTER_UPDATE_INTERVAL', default=60, cast=int)  # Footer updates every 60 seconds (synchronized with cronjob)
 
-MCC_MINECRAFT_URL = config('MCC_MINECRAFT_URL', default='http://127.0.0.1:5003/update-cyclist-coins')
-MCC_MINECRAFT_API_KEY = config('MCC_MINECRAFT_API_KEY', default='SECRET')
+MCC_MINECRAFT_RCON_HOST = config('MCC_MINECRAFT_RCON_HOST', default='127.0.0.1')
+MCC_MINECRAFT_RCON_PORT = config('MCC_MINECRAFT_RCON_PORT', default=25575, cast=int)
+MCC_MINECRAFT_RCON_PASSWORD = config('MCC_MINECRAFT_RCON_PASSWORD', default='SECRET')
+MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL', default='player_coins_total')
+MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE = config('MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE', default='player_coins_spendable')
+MCC_MINECRAFT_WORKER_POLL_INTERVAL = config('MCC_MINECRAFT_WORKER_POLL_INTERVAL', default=1, cast=int)
+MCC_MINECRAFT_RCON_HEALTH_INTERVAL = config('MCC_MINECRAFT_RCON_HEALTH_INTERVAL', default=30, cast=int)
+MCC_MINECRAFT_SNAPSHOT_INTERVAL = config('MCC_MINECRAFT_SNAPSHOT_INTERVAL', default=60, cast=int)
+MCC_MINECRAFT_SNAPSHOT_UPDATE_DB_SPENDABLE = config('MCC_MINECRAFT_SNAPSHOT_UPDATE_DB_SPENDABLE', default=True, cast=bool)
+MCC_MINECRAFT_OUTBOX_DONE_TTL_DAYS = config('MCC_MINECRAFT_OUTBOX_DONE_TTL_DAYS', default=7, cast=int)
+MCC_MINECRAFT_OUTBOX_FAILED_TTL_DAYS = config('MCC_MINECRAFT_OUTBOX_FAILED_TTL_DAYS', default=30, cast=int)
+MCC_MINECRAFT_OUTBOX_MAX_EVENTS = config('MCC_MINECRAFT_OUTBOX_MAX_EVENTS', default=50000, cast=int)
+MCC_MINECRAFT_WS_ENABLED = config('MCC_MINECRAFT_WS_ENABLED', default=False, cast=bool)
+MCC_MINECRAFT_WS_SHARED_SECRET = config('MCC_MINECRAFT_WS_SHARED_SECRET', default='SECRET')
+MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS = config('MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS', default='', cast=Csv())
 DEFAULT_COIN_CONVERSION_FACTOR = config('DEFAULT_COIN_CONVERSION_FACTOR', default=100, cast=int)
 MCC_APP_API_KEY = config('MCC_APP_API_KEY', default='MCC-APP-API-KEY-SECRET')
 # Must point to the location where the file actually exists (e.g., static/game/sound/)
@@ -385,6 +407,14 @@ LOGGING = {
             'backupCount': 10,
             'formatter': 'verbose',
             'level': 'DEBUG',  # Handler level is DEBUG to receive all logs that pass logger level
+        },
+        'minecraft_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'minecraft.log'),
+            'maxBytes': 50 * 1024 * 1024,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',
         },
         'game_file': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -456,6 +486,11 @@ LOGGING = {
             'handlers': ['kiosk_file'],
             'level': 'INFO',  # Log INFO and above
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        'minecraft': {
+            'handlers': ['minecraft_file'],
+            'level': 'INFO',
+            'propagate': False,
         },
         # Game application logger - writes to game.log
         'game': {

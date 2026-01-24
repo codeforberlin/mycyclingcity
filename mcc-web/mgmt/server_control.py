@@ -209,7 +209,7 @@ def get_server_status(script_path):
         
         # Try to extract PID
         pid = None
-        pidfile = Path(settings.BASE_DIR) / 'mcc-web.pid'
+        pidfile = Path(settings.BASE_DIR) / 'tmp' / 'mcc-web.pid'
         if pidfile.exists():
             try:
                 with open(pidfile, 'r') as f:

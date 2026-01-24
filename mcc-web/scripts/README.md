@@ -39,7 +39,7 @@ Environment-Variablen:
 
 ### Dateien
 
-- **PID-File**: `mcc-web.pid` (im Projekt-Verzeichnis)
+- **PID-File**: `tmp/mcc-web.pid` (im tmp-Verzeichnis)
 - **Startup-Log**: `logs/gunicorn_startup.log`
 
 ### Beispiel

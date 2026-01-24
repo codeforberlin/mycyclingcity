@@ -1,0 +1,11 @@
+[Unit]
+Description=MCC Minecraft Bridge
+After=network.target
+
+[Service]
+User=mcc
+Group=mcc
+WorkingDirectory=/data/games/mcc/minecraft
+ExecStart=/data/games/mcc/venv/bin/python /data/games/mcc/minecraft/mcc_minecraft.py --enable-http 
+Restart=always
+Environment=PYTHONUNBUFFERED=1

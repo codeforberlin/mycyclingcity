@@ -11,3 +11,4 @@ pytest-django==4.8.0
 factory-boy==3.3.0
 qrcode[pil]==7.4.2
 psutil==6.1.1
+mcrcon==0.7.0

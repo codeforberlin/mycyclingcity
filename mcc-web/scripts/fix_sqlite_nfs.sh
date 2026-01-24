@@ -19,10 +19,25 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DB_FILE="$PROJECT_DIR/db.sqlite3"
-LOCAL_DB_DIR="/var/lib/mcc-db"
-LOCAL_DB_FILE="$LOCAL_DB_DIR/db.sqlite3"
 BACKUP_DIR="${BACKUP_DIR:-$PROJECT_DIR/backups}"
+
+# Get database path from Django settings dynamically
+get_db_path() {
+    python3 -c "
+import os
+import sys
+sys.path.insert(0, '$PROJECT_DIR')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
+from django.conf import settings
+print(settings.DATABASES['default']['NAME'])
+" 2>/dev/null || echo "$PROJECT_DIR/data/db.sqlite3"
+}
+
+DB_FILE="$(get_db_path)"
+LOCAL_DB_DIR="/var/lib/mcc-db"
+LOCAL_DB_FILE="$LOCAL_DB_DIR/$(basename "$DB_FILE")"
 
 echo "=========================================="
 echo "SQLite NFS Fix Script"
@@ -41,7 +56,7 @@ if [ "$EUID" -ne 0 ]; then
     fi
     # Use user's home directory instead
     LOCAL_DB_DIR="$HOME/.mcc-db"
-    LOCAL_DB_FILE="$LOCAL_DB_DIR/db.sqlite3"
+    LOCAL_DB_FILE="$LOCAL_DB_DIR/$(basename "$DB_FILE")"
 fi
 
 # Check if database exists

@@ -123,7 +123,7 @@ Um die Installation zu überprüfen:
 ### Datenbank-Fehler
 
 - Stellen Sie sicher, dass SQLite verfügbar ist (in Python enthalten)
-- Prüfen Sie die Dateiberechtigungen für `db.sqlite3`
+- Prüfen Sie die Dateiberechtigungen für `data/db.sqlite3`
 - Migrationen ausführen: `python manage.py migrate`
 
 ### Statische Dateien werden nicht geladen

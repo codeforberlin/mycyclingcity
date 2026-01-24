@@ -26,7 +26,7 @@ python manage.py migrate sessions
 Wenn Sie SQLite verwenden, können Sie die Tabelle direkt erstellen:
 
 ```bash
-sqlite3 db.sqlite3 <<EOF
+sqlite3 data/db.sqlite3 <<EOF
 CREATE TABLE IF NOT EXISTS django_session (
     session_key VARCHAR(40) PRIMARY KEY,
     session_data TEXT NOT NULL,

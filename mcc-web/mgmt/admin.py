@@ -3402,21 +3402,21 @@ class LoggingConfigAdmin(admin.ModelAdmin):
         (_('Log Level Configuration'), {
             'fields': ('min_log_level',),
             'description': _(
-                'Wählen Sie das minimale Log-Level, das in den Log-Dateien geschrieben werden soll. '
-                'Nur Logs mit diesem Level oder höher werden in die Log-Dateien geschrieben. '
-                'Änderungen gelten sofort für neue Log-Einträge. '
-                'Die Log-Dateien können im Admin-Tool unter "Log File Viewer" eingesehen werden.'
+                'Select the minimum log level that will be written to log files. '
+                'Only logs with this level or higher will be written to log files. '
+                'Changes apply immediately to new log entries. '
+                'Log files can be viewed in the Admin tool under "Log File Viewer".'
             ),
         }),
         (_('Request Logging'), {
             'fields': ('enable_request_logging',),
             'description': _(
-                'Aktivieren Sie Request Logging, um alle HTTP-Requests in der Datenbank zu speichern (RequestLog). '
-                'Deaktivieren Sie dies, um die Datenbank nicht zu überladen. '
-                'Änderungen gelten sofort für neue Requests.'
+                'Enable Request Logging to store all HTTP requests in the database (RequestLog). '
+                'Disable this to avoid overloading the database. '
+                'Changes apply immediately to new requests.'
             ),
         }),
-        (_('Informationen'), {
+        (_('Information'), {
             'fields': ('updated_at', 'updated_by'),
             'classes': ('collapse',)
         }),
@@ -3443,11 +3443,11 @@ class LoggingConfigAdmin(admin.ModelAdmin):
         """Display request logging status with color."""
         if obj.enable_request_logging:
             return mark_safe(
-                '<span style="color: #00AA00; font-weight: bold;">✓ Aktiviert</span>'
+                '<span style="color: #00AA00; font-weight: bold;">✓ Enabled</span>'
             )
         else:
             return mark_safe(
-                '<span style="color: #CC0000; font-weight: bold;">✗ Deaktiviert</span>'
+                '<span style="color: #CC0000; font-weight: bold;">✗ Disabled</span>'
             )
     enable_request_logging_display.short_description = _('Request Logging')
     
@@ -3483,25 +3483,25 @@ class GunicornConfigAdmin(admin.ModelAdmin):
         (_('Gunicorn Log Level Configuration'), {
             'fields': ('log_level',),
             'description': _(
-                'Wählen Sie das Log-Level für den Gunicorn-Server. '
-                'Änderungen erfordern einen Server-Neustart, um wirksam zu werden.'
+                'Select the log level for the Gunicorn server. '
+                'Changes require a server restart to take effect.'
             ),
         }),
         (_('Worker Configuration'), {
             'fields': ('workers', 'threads', 'worker_class'),
             'description': _(
-                'Konfigurieren Sie die Anzahl der Worker und Threads. '
-                '<strong>Empfohlene Kombinationen:</strong><br>'
+                'Configure the number of workers and threads. '
+                '<strong>Recommended combinations:</strong><br>'
                 '<ul>'
-                '<li><strong>Kleine Server (1-2 CPU):</strong> 2-3 Workers, 2-4 Threads</li>'
-                '<li><strong>Mittlere Server (4 CPU):</strong> 5-7 Workers, 2-4 Threads</li>'
-                '<li><strong>Große Server (8+ CPU):</strong> 9-17 Workers, 2-4 Threads</li>'
+                '<li><strong>Small servers (1-2 CPU):</strong> 2-3 Workers, 2-4 Threads</li>'
+                '<li><strong>Medium servers (4 CPU):</strong> 5-7 Workers, 2-4 Threads</li>'
+                '<li><strong>Large servers (8+ CPU):</strong> 9-17 Workers, 2-4 Threads</li>'
                 '</ul>'
-                '<strong>Formel:</strong> Workers = (CPU * 2) + 1, Threads = 2-4 (je nach I/O-Intensität)<br>'
-                '<strong>Hinweis:</strong> Threads werden nur bei worker_class="gthread" verwendet.'
+                '<strong>Formula:</strong> Workers = (CPU * 2) + 1, Threads = 2-4 (depending on I/O intensity)<br>'
+                '<strong>Note:</strong> Threads are only used when worker_class="gthread".'
             ),
         }),
-        (_('Informationen'), {
+        (_('Information'), {
             'fields': ('updated_at', 'updated_by'),
             'classes': ('collapse',)
         }),
@@ -3527,10 +3527,10 @@ class GunicornConfigAdmin(admin.ModelAdmin):
     def workers_display(self, obj):
         """Display worker count with auto-calculation info."""
         if obj.workers > 0:
-            return f"{obj.workers} (manuell)"
+            return f"{obj.workers} ({_('manual')})"
         import multiprocessing
         auto_count = multiprocessing.cpu_count() * 2 + 1
-        return f"{auto_count} (automatisch)"
+        return f"{auto_count} ({_('automatic')})"
     workers_display.short_description = _('Workers')
     
     def threads_display(self, obj):
@@ -3634,17 +3634,96 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         # Insert Server Management models at the beginning of the models list
         app_dict['mgmt']['models'] = server_management_models + app_dict['mgmt']['models']
     
-    app_list = sorted(app_dict.values(), key=lambda x: x['name'].lower())
+    if 'minecraft' in app_dict and request.user.is_superuser:
+        minecraft_management_models = [
+            {
+                'name': _('Minecraft Control'),
+                'object_name': 'Minecraft Control',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:minecraft_control'),
+                'add_url': None,
+                'view_only': True,
+            },
+        ]
+        app_dict['minecraft']['models'] = minecraft_management_models + app_dict['minecraft']['models']
+    
+    app_list = list(app_dict.values())
+    
+    # Add custom menu items for "Historische Berichte & Analysen" and "Session Management"
+    # These appear as separate apps in the admin menu, positioned above Mgmt
+    try:
+        analytics_app = {
+            'name': _('Historical Reports & Analytics'),
+            'app_label': 'analytics',
+            'app_url': reverse('admin:api_analytics_dashboard'),
+            'has_module_perms': request.user.is_staff,
+            'models': [
+                {
+                    'name': _('Analytics Dashboard'),
+                    'object_name': 'Analytics Dashboard',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
+                    'admin_url': reverse('admin:api_analytics_dashboard'),
+                    'add_url': None,
+                    'view_only': True,
+                },
+                {
+                    'name': _('Hierarchy Breakdown'),
+                    'object_name': 'Hierarchy Breakdown',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
+                    'admin_url': reverse('admin:api_analytics_hierarchy'),
+                    'add_url': None,
+                    'view_only': True,
+                },
+            ],
+        }
+        
+        session_app = {
+            'name': _('Session Management'),
+            'app_label': 'session_management',
+            'app_url': reverse('admin:game_session_dashboard'),
+            'has_module_perms': request.user.is_staff,
+            'models': [
+                {
+                    'name': _('Session Dashboard'),
+                    'object_name': 'Session Dashboard',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
+                    'admin_url': reverse('admin:game_session_dashboard'),
+                    'add_url': None,
+                    'view_only': True,
+                },
+            ],
+        }
+        
+        app_list.append(analytics_app)
+        app_list.append(session_app)
+    except Exception:
+        # Silently fail if URLs are not available
+        pass
     
     # Define custom ordering
+    # Apps with lower numbers appear first, higher numbers appear last
     app_ordering = {
         'MCC Core API & Models': 1,
-        'Kiosk Management': 2,
-        'IOT Management': 3,
+        'Historical Reports & Analytics': 2,
+        'Historische Berichte & Analysen': 2,  # German translation
+        'Session Management': 3,
+        'MCC Game Interface': 4,
+        'IOT Management': 5,
+        'Kiosk Management': 6,
+        'MCC Live Map': 7,
+        'Leaderboard': 8,
+        'Ranking': 9,
+        # Minecraft Verwaltung and Mgmt at the end
+        'Minecraft Verwaltung': 98,
+        'Mgmt': 99,
+        # Authentication and Authorization at the very end (under Mgmt)
+        'Authentication and Authorization': 100,
+        'Authentifizierung und Autorisierung': 100,
     }
     
     # Sort apps by custom ordering, then alphabetically for others
-    app_list.sort(key=lambda x: (app_ordering.get(x['name'], 999), x['name'].lower()))
+    # Convert lazy translation strings to actual strings for comparison
+    app_list.sort(key=lambda x: (app_ordering.get(str(x['name']), 50), str(x['name']).lower()))
     
     return app_list
 
@@ -3657,6 +3736,7 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
 from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
 from mgmt.views_deployment import backup_control, create_backup, download_backup
+from minecraft.admin_views import minecraft_control, minecraft_action
 
 _original_get_urls = admin.site.get_urls
 def get_urls_with_custom_views():
@@ -3682,6 +3762,9 @@ def get_urls_with_custom_views():
         path('backup/', admin.site.admin_view(backup_control), name='mgmt_backup_control'),
         path('backup/create/', admin.site.admin_view(create_backup), name='mgmt_backup_create'),
         path('backup/download/<str:filename>/', admin.site.admin_view(download_backup), name='mgmt_backup_download'),
+        # Minecraft control URLs
+        path('minecraft/', admin.site.admin_view(minecraft_control), name='minecraft_control'),
+        path('minecraft/action/<str:action>/', admin.site.admin_view(minecraft_action), name='minecraft_action'),
     ]
     return custom_urls + urls
 

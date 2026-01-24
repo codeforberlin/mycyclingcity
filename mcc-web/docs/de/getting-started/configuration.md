@@ -42,7 +42,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1,mycyclingcity.net
 
 ### SQLite (Standard - Entwicklung)
 
-Keine zusätzliche Konfiguration erforderlich. Datenbankdatei: `db.sqlite3`
+Keine zusätzliche Konfiguration erforderlich. Datenbankdatei: `data/db.sqlite3`
 
 ### PostgreSQL (Produktion)
 
@@ -179,4 +179,4 @@ python manage.py check --deploy
 - [Installations-Anleitung](installation.md) - Zurück zur Installation
 - [Admin GUI Handbuch](../admin/index.md) - Über Admin-Interface konfigurieren
 
-Für Produktions-Deployment siehe die `DEPLOYMENT.md` Datei im Projekt-Root.
+Für Produktions-Deployment siehe die `DEPLOYMENT.md` Datei in diesem Verzeichnis.

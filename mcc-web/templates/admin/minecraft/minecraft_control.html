@@ -1,0 +1,314 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .minecraft-control {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .status-box {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .status-box.running {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .status-box.stopped {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .action-buttons button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .action-buttons button.danger {
+        background: #dc3545;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.success {
+        background: #28a745;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.warning {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+    }
+    .action-buttons button.info {
+        background: #17a2b8;
+        color: white;
+        border: none;
+    }
+    .output-box {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        max-height: 250px;
+        overflow-y: auto;
+        margin-top: 15px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    table.minecraft-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin-top: 15px;
+    }
+    table.minecraft-table th, table.minecraft-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 13px;
+    }
+</style>
+<script>
+function performMinecraftAction(action, buttonElement) {
+    var confirmMessage = '';
+    if (action === 'stop') {
+        confirmMessage = '{% trans "Worker wirklich stoppen?" %}';
+    } else if (action === 'restart') {
+        confirmMessage = '{% trans "Worker wirklich neu starten?" %}';
+    } else if (action === 'sync') {
+        confirmMessage = '{% trans "Scoreboards jetzt manuell aus der Datenbank befüllen?" %}';
+    }
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+
+    var button = buttonElement || (window.event ? window.event.target : null);
+    if (!button) {
+        console.error('Could not find button element');
+        return;
+    }
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Bitte warten..." %}';
+
+    var outputBox = document.getElementById('minecraft-output');
+    if (outputBox) {
+        outputBox.style.display = 'block';
+        outputBox.textContent = '{% trans "Aktion wird ausgeführt..." %}';
+    }
+
+    fetch('{% url "admin:minecraft_action" "ACTION_PLACEHOLDER" %}'.replace('ACTION_PLACEHOLDER', action), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            outputBox.textContent = data.output || data.message || '{% trans "Aktion abgeschlossen" %}';
+            outputBox.style.color = data.success ? '#4ec9b0' : '#f48771';
+        }
+        setTimeout(function() { location.reload(); }, 1500);
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            outputBox.textContent = '{% trans "Fehler" %}: ' + error.message;
+            outputBox.style.color = '#f48771';
+        }
+    });
+}
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_control' %}">{% trans 'Minecraft Steuerung' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-control">
+    <div class="status-box {% if worker_status.running %}running{% else %}stopped{% endif %}">
+        {% if worker_status.running %}
+            <strong>✓ {% trans 'Worker läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Worker gestoppt' %}</strong>
+        {% endif %}
+        {% if worker_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ worker_status.error }}</small>
+        {% endif %}
+    </div>
+
+    <div class="status-box {% if snapshot_status.running %}running{% else %}stopped{% endif %}">
+        {% if snapshot_status.running %}
+            <strong>✓ {% trans 'Snapshot Worker läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Snapshot Worker gestoppt' %}</strong>
+        {% endif %}
+        {% if snapshot_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ snapshot_status.error }}</small>
+        {% endif %}
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <strong>{% trans 'Websocket aktiv' %}:</strong>
+        {{ ws_enabled|yesno:_("Yes,No") }}
+        &nbsp;|&nbsp;
+        <strong>{% trans 'Ausstehende Events' %}:</strong>
+        {{ outbox_counts.pending }}
+        &nbsp;|&nbsp;
+        <strong>{% trans 'Fehlerhafte Events' %}:</strong>
+        {{ outbox_counts.failed }}
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <strong>{% trans 'RCON Verbindung' %}:</strong>
+        {% if rcon_ok %}
+            <span style="color: #155724;">{% trans 'Verbunden' %}</span>
+            {% if rcon_mode != 'auth' %}
+                <br><small>{% trans 'Authentifizierung nicht geprüft (Thread-Modus)' %}</small>
+            {% endif %}
+        {% else %}
+            <span style="color: #721c24;">{% trans 'Nicht erreichbar' %}</span>
+            {% if rcon_error %}
+                <br><small>{% trans 'Fehler' %}: {{ rcon_error }}</small>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <strong>{% trans 'Worker-PID' %}:</strong>
+        {{ worker_state.pid|default:"-" }}
+        &nbsp;|&nbsp;
+        <strong>{% trans 'Letzter Heartbeat' %}:</strong>
+        {{ worker_state.last_heartbeat|default:"-" }}
+        &nbsp;|&nbsp;
+        <strong>{% trans 'Letzter Fehler' %}:</strong>
+        {{ worker_state.last_error|default:"-" }}
+    </div>
+
+    <div style="margin-bottom: 10px;">
+        <small>{% trans 'Hinweis: Die Scoreboards werden nur manuell befüllt (kein Auto-Sync beim Start).' %}</small>
+    </div>
+
+    <div class="action-buttons">
+        <button class="button success" onclick="performMinecraftAction('start', this)">{% trans 'Worker starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('stop', this)">{% trans 'Worker stoppen' %}</button>
+        <button class="button success" onclick="performMinecraftAction('snapshot-start', this)">{% trans 'Snapshot Worker starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('snapshot-stop', this)">{% trans 'Snapshot Worker stoppen' %}</button>
+        <button class="button info" onclick="performMinecraftAction('sync', this)">{% trans 'Scoreboards befüllen (manuell)' %}</button>
+        <button class="button" onclick="performMinecraftAction('snapshot', this)">{% trans 'Snapshot aktualisieren' %}</button>
+        <button class="button" onclick="performMinecraftAction('rcon-test', this)">{% trans 'RCON Test' %}</button>
+        <button class="button" onclick="performMinecraftAction('cleanup', this)">{% trans 'Outbox Cleanup' %}</button>
+        {% if show_outbox %}
+        <a class="button" href="{% url 'admin:minecraft_control' %}">{% trans 'Outbox ausblenden' %}</a>
+        {% else %}
+        <a class="button" href="{% url 'admin:minecraft_control' %}?show_outbox=1">{% trans 'Outbox anzeigen' %}</a>
+        {% endif %}
+    </div>
+
+    <div id="minecraft-output" class="output-box" style="display:none;"></div>
+</div>
+
+<h2>{% trans 'Minecraft Player Überblick' %}</h2>
+<table class="minecraft-table">
+    <thead>
+        <tr>
+            <th>{% trans 'Player' %}</th>
+            <th>{% trans 'DB Coins Gesamt' %}</th>
+            <th>{% trans 'DB Coins Ausgebbar' %}</th>
+            <th>{% trans 'Scoreboard Gesamt' %}</th>
+            <th>{% trans 'Scoreboard Ausgebbar' %}</th>
+            <th>{% trans 'Snapshot Zeit' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in players %}
+        <tr>
+            <td>{{ item.player }}</td>
+            <td>{{ item.coins_total }}</td>
+            <td>{{ item.coins_spendable }}</td>
+            <td>{{ item.snapshot_total|default:"-" }}</td>
+            <td>{{ item.snapshot_spendable|default:"-" }}</td>
+            <td>{{ item.snapshot_time|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">{% trans 'Keine Minecraft Player gefunden.' %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if show_outbox %}
+<h2>{% trans 'Outbox Übersicht' %}</h2>
+
+<h3>{% trans 'Letzte Fehler' %}</h3>
+<table class="minecraft-table">
+    <thead>
+        <tr>
+            <th>{% trans 'Zeit' %}</th>
+            <th>{% trans 'Typ' %}</th>
+            <th>{% trans 'Fehler' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in outbox_failed %}
+        <tr>
+            <td>{{ event.created_at }}</td>
+            <td>{{ event.event_type }}</td>
+            <td>{{ event.last_error|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">{% trans 'Keine Fehler vorhanden.' %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>{% trans 'Ausstehende Events (max. 50)' %}</h3>
+<table class="minecraft-table">
+    <thead>
+        <tr>
+            <th>{% trans 'Zeit' %}</th>
+            <th>{% trans 'Status' %}</th>
+            <th>{% trans 'Typ' %}</th>
+            <th>{% trans 'Player' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in outbox_active %}
+        <tr>
+            <td>{{ event.created_at }}</td>
+            <td>{{ event.status }}</td>
+            <td>{{ event.event_type }}</td>
+            <td>{{ event.payload.player|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">{% trans 'Keine ausstehenden Events.' %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

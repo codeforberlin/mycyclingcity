@@ -5801,3 +5801,493 @@ msgstr ""
 #~ "Tipp: Klicken Sie auf 👑 neben einem Radlernamen, um die Spielleiter-"
 #~ "Rolle zu übertragen"
 #~ msgstr "Tip: Click on 👑 next to a cyclist name to transfer the master role"
+
+# Minecraft Admin Translations
+#: minecraft/admin_views.py:35
+msgid "Script not found"
+msgstr "Script not found"
+
+#: minecraft/admin_views.py:38
+msgid "Script not executable"
+msgstr "Script not executable"
+
+#: minecraft/admin_views.py:129
+msgid "Minecraft Control"
+msgstr "Minecraft Control"
+
+#: minecraft/admin_views.py:151
+msgid "Only POST allowed"
+msgstr "Only POST allowed"
+
+#: minecraft/admin_views.py:165
+msgid "Invalid action"
+msgstr "Invalid action"
+
+#: minecraft/admin_views.py:170
+msgid "Sync queued"
+msgstr "Sync queued"
+
+#: minecraft/admin_views.py:173
+msgid "Sync failed: %(error)s"
+msgstr "Sync failed: %(error)s"
+
+#: minecraft/admin_views.py:179
+msgid "Snapshot updated: %(count)s players updated"
+msgstr "Snapshot updated: %(count)s players updated"
+
+#: minecraft/admin_views.py:184
+msgid "Snapshot failed: %(error)s"
+msgstr "Snapshot failed: %(error)s"
+
+#: minecraft/admin_views.py:189
+msgid "RCON connection OK"
+msgstr "RCON connection OK"
+
+#: minecraft/admin_views.py:191
+msgid "RCON port reachable (Auth not checked)"
+msgstr "RCON port reachable (Auth not checked)"
+
+#: minecraft/admin_views.py:192
+msgid "RCON error: %(error)s"
+msgstr "RCON error: %(error)s"
+
+#: minecraft/admin_views.py:195
+msgid "RCON test failed: %(error)s"
+msgstr "RCON test failed: %(error)s"
+
+#: minecraft/admin_views.py:212
+msgid "Script not found: %(path)s"
+msgstr "Script not found: %(path)s"
+
+#: minecraft/admin_views.py:235
+msgid "Action '%(action)s' started in background"
+msgstr "Action '%(action)s' started in background"
+
+#: minecraft/admin_views.py:236
+msgid "Background execution. Details in %(log)s"
+msgstr "Background execution. Details in %(log)s"
+
+#: minecraft/admin_views.py:253
+msgid "Action '%(action)s' executed"
+msgstr "Action '%(action)s' executed"
+
+#: minecraft/models.py:15
+msgid "Update Player Coins"
+msgstr "Update Player Coins"
+
+#: minecraft/models.py:16
+msgid "Sync All Players"
+msgstr "Sync All Players"
+
+#: minecraft/models.py:20
+msgid "Pending"
+msgstr "Pending"
+
+#: minecraft/models.py:21
+msgid "Processing"
+msgstr "Processing"
+
+#: minecraft/models.py:22
+msgid "Done"
+msgstr "Done"
+
+#: minecraft/models.py:23
+msgid "Failed"
+msgstr "Failed"
+
+#: minecraft/models.py:36
+msgid "Minecraft Outbox Event"
+msgstr "Minecraft Outbox Event"
+
+#: minecraft/models.py:37
+msgid "Minecraft Outbox Events"
+msgstr "Minecraft Outbox Events"
+
+#: minecraft/models.py:74
+msgid "Minecraft Scoreboard Snapshot"
+msgstr "Minecraft Scoreboard Snapshot"
+
+#: minecraft/models.py:75
+msgid "Minecraft Scoreboard Snapshots"
+msgstr "Minecraft Scoreboard Snapshots"
+
+#: minecraft/models.py:89
+msgid "Minecraft Worker State"
+msgstr "Minecraft Worker State"
+
+#: minecraft/models.py:90
+msgid "Minecraft Worker States"
+msgstr "Minecraft Worker States"
+
+#: templates/admin/minecraft/minecraft_control.html:86
+msgid "Worker wirklich stoppen?"
+msgstr "Really stop worker?"
+
+#: templates/admin/minecraft/minecraft_control.html:88
+msgid "Worker wirklich neu starten?"
+msgstr "Really restart worker?"
+
+#: templates/admin/minecraft/minecraft_control.html:90
+msgid "Scoreboards jetzt manuell aus der Datenbank befüllen?"
+msgstr "Fill scoreboards manually from database now?"
+
+#: templates/admin/minecraft/minecraft_control.html:99
+msgid "Bitte warten..."
+msgstr "Please wait..."
+
+#: templates/admin/minecraft/minecraft_control.html:104
+msgid "Aktion wird ausgeführt..."
+msgstr "Action is being executed..."
+
+#: templates/admin/minecraft/minecraft_control.html:119
+msgid "Aktion abgeschlossen"
+msgstr "Action completed"
+
+#: templates/admin/minecraft/minecraft_control.html:139
+msgid "Minecraft Steuerung"
+msgstr "Minecraft Control"
+
+#: templates/admin/minecraft/minecraft_control.html:147
+msgid "Worker läuft"
+msgstr "Worker running"
+
+#: templates/admin/minecraft/minecraft_control.html:149
+msgid "Worker gestoppt"
+msgstr "Worker stopped"
+
+#: templates/admin/minecraft/minecraft_control.html:158
+msgid "Snapshot Worker läuft"
+msgstr "Snapshot Worker running"
+
+#: templates/admin/minecraft/minecraft_control.html:160
+msgid "Snapshot Worker gestoppt"
+msgstr "Snapshot Worker stopped"
+
+#: templates/admin/minecraft/minecraft_control.html:168
+msgid "Websocket aktiv"
+msgstr "Websocket active"
+
+#: templates/admin/minecraft/minecraft_control.html:171
+msgid "Ausstehende Events"
+msgstr "Pending Events"
+
+#: templates/admin/minecraft/minecraft_control.html:174
+msgid "Fehlerhafte Events"
+msgstr "Failed Events"
+
+#: templates/admin/minecraft/minecraft_control.html:179
+msgid "RCON Verbindung"
+msgstr "RCON Connection"
+
+#: templates/admin/minecraft/minecraft_control.html:181
+msgid "Verbunden"
+msgstr "Connected"
+
+#: templates/admin/minecraft/minecraft_control.html:183
+msgid "Authentifizierung nicht geprüft (Thread-Modus)"
+msgstr "Authentication not checked (Thread mode)"
+
+#: templates/admin/minecraft/minecraft_control.html:186
+msgid "Nicht erreichbar"
+msgstr "Not reachable"
+
+#: templates/admin/minecraft/minecraft_control.html:194
+msgid "Worker-PID"
+msgstr "Worker PID"
+
+#: templates/admin/minecraft/minecraft_control.html:200
+msgid "Letzter Fehler"
+msgstr "Last Error"
+
+#: templates/admin/minecraft/minecraft_control.html:205
+msgid "Hinweis: Die Scoreboards werden nur manuell befüllt (kein Auto-Sync beim Start)."
+msgstr "Note: Scoreboards are only filled manually (no auto-sync on start)."
+
+#: templates/admin/minecraft/minecraft_control.html:209
+msgid "Worker starten"
+msgstr "Start Worker"
+
+#: templates/admin/minecraft/minecraft_control.html:210
+msgid "Worker stoppen"
+msgstr "Stop Worker"
+
+#: templates/admin/minecraft/minecraft_control.html:211
+msgid "Snapshot Worker starten"
+msgstr "Start Snapshot Worker"
+
+#: templates/admin/minecraft/minecraft_control.html:212
+msgid "Snapshot Worker stoppen"
+msgstr "Stop Snapshot Worker"
+
+#: templates/admin/minecraft/minecraft_control.html:213
+msgid "Scoreboards befüllen (manuell)"
+msgstr "Fill Scoreboards (manual)"
+
+#: templates/admin/minecraft/minecraft_control.html:214
+msgid "Snapshot aktualisieren"
+msgstr "Update Snapshot"
+
+#: templates/admin/minecraft/minecraft_control.html:215
+msgid "RCON Test"
+msgstr "RCON Test"
+
+#: templates/admin/minecraft/minecraft_control.html:216
+msgid "Outbox Cleanup"
+msgstr "Outbox Cleanup"
+
+#: templates/admin/minecraft/minecraft_control.html:218
+msgid "Outbox ausblenden"
+msgstr "Hide Outbox"
+
+#: templates/admin/minecraft/minecraft_control.html:220
+msgid "Outbox anzeigen"
+msgstr "Show Outbox"
+
+#: templates/admin/minecraft/minecraft_control.html:227
+msgid "Minecraft Player Überblick"
+msgstr "Minecraft Player Overview"
+
+#: templates/admin/minecraft/minecraft_control.html:231
+msgid "Player"
+msgstr "Player"
+
+#: templates/admin/minecraft/minecraft_control.html:232
+msgid "DB Coins Gesamt"
+msgstr "DB Coins Total"
+
+#: templates/admin/minecraft/minecraft_control.html:233
+msgid "DB Coins Ausgebbar"
+msgstr "DB Coins Spendable"
+
+#: templates/admin/minecraft/minecraft_control.html:234
+msgid "Scoreboard Gesamt"
+msgstr "Scoreboard Total"
+
+#: templates/admin/minecraft/minecraft_control.html:235
+msgid "Scoreboard Ausgebbar"
+msgstr "Scoreboard Spendable"
+
+#: templates/admin/minecraft/minecraft_control.html:236
+msgid "Snapshot Zeit"
+msgstr "Snapshot Time"
+
+#: templates/admin/minecraft/minecraft_control.html:251
+msgid "Keine Minecraft Player gefunden."
+msgstr "No Minecraft players found."
+
+#: templates/admin/minecraft/minecraft_control.html:258
+msgid "Outbox Übersicht"
+msgstr "Outbox Overview"
+
+#: templates/admin/minecraft/minecraft_control.html:260
+msgid "Letzte Fehler"
+msgstr "Recent Errors"
+
+#: templates/admin/minecraft/minecraft_control.html:264
+msgid "Zeit"
+msgstr "Time"
+
+#: templates/admin/minecraft/minecraft_control.html:265
+msgid "Typ"
+msgstr "Type"
+
+#: templates/admin/minecraft/minecraft_control.html:278
+msgid "Keine Fehler vorhanden."
+msgstr "No errors found."
+
+#: templates/admin/minecraft/minecraft_control.html:284
+msgid "Ausstehende Events (max. 50)"
+msgstr "Pending Events (max. 50)"
+
+#: templates/admin/minecraft/minecraft_control.html:304
+msgid "Keine ausstehenden Events."
+msgstr "No pending events."
+
+# Additional translations for admin interface (non-duplicates only)
+#: minecraft/apps.py:7
+
+# GameRoom Model translations
+#: game/models.py:22
+msgid "Room Code"
+msgstr "Room Code"
+
+#: game/models.py:23
+msgid "Unique code for this game room"
+msgstr "Unique code for this game room"
+
+#: game/models.py:31
+msgid "Session key of the game master"
+msgstr "Session key of the game master"
+
+#: game/models.py:37
+msgid "Whether this room is active or has been ended"
+msgstr "Whether this room is active or has been ended"
+
+#: game/models.py:43
+msgid "Device Assignments"
+msgstr "Device Assignments"
+
+#: game/models.py:44
+msgid "Mapping of device names to cyclist user_id (e.g. {'device1': 'cyclist1'})"
+msgstr "Mapping of device names to cyclist user_id (e.g. {'device1': 'cyclist1'})"
+
+#: game/models.py:50
+msgid "Start Distances"
+msgstr "Start Distances"
+
+#: game/models.py:51
+msgid "Distances of cyclists at game start (e.g. {'cyclist1': 100.5})"
+msgstr "Distances of cyclists at game start (e.g. {'cyclist1': 100.5})"
+
+#: game/models.py:57
+msgid "Stop Distances"
+msgstr "Stop Distances"
+
+#: game/models.py:58
+msgid "Distances of cyclists at game stop (e.g. {'cyclist1': 150.2})"
+msgstr "Distances of cyclists at game stop (e.g. {'cyclist1': 150.2})"
+
+#: game/models.py:63
+msgid "Game Stopped"
+msgstr "Game Stopped"
+
+#: game/models.py:64
+msgid "Whether the game has been stopped"
+msgstr "Whether the game has been stopped"
+
+#: game/models.py:70
+msgid "Announced Winners"
+msgstr "Announced Winners"
+
+#: game/models.py:71
+msgid "List of user_ids of cyclists who have already been announced as winners"
+msgstr "List of user_ids of cyclists who have already been announced as winners"
+
+#: game/models.py:76
+msgid "Current Target (km)"
+msgstr "Current Target (km)"
+
+#: game/models.py:77
+msgid "The current target in kilometers for this game"
+msgstr "The current target in kilometers for this game"
+
+#: game/models.py:83
+msgid "List of session keys that have currently joined this room"
+msgstr "List of session keys that have currently joined this room"
+
+#: game/models.py:90
+msgid "Session to Cyclist Mapping"
+msgstr "Session to Cyclist Mapping"
+
+#: game/models.py:91
+msgid "Mapping of session keys to cyclist user_ids (for master transfer)"
+msgstr "Mapping of session keys to cyclist user_ids (for master transfer)"
+
+#: game/models.py:96
+msgid "Last Activity"
+msgstr "Last Activity"
+
+#: game/models.py:97
+msgid "Time of last activity in this room"
+msgstr "Time of last activity in this room"
+
+#: game/models.py:156
+msgid "Room code, if the session is in a room"
+msgstr "Room code, if the session is in a room"
+
+#: game/models.py:163
+msgid "Whether this session is the master session"
+msgstr "Whether this session is the master session"
+
+#: game/models.py:168
+msgid "Has Assignments"
+msgstr "Has Assignments"
+
+#: game/models.py:169
+msgid "Whether this session has device assignments"
+msgstr "Whether this session has device assignments"
+
+#: game/models.py:174
+msgid "Has Target KM"
+msgstr "Has Target KM"
+
+#: game/models.py:175
+msgid "Whether this session has set a target kilometer"
+msgstr "Whether this session has set a target kilometer"
+
+#: game/models.py:185
+msgid "Last Updated"
+msgstr "Last Updated"
+
+# GameRoom Admin translations
+
+#: game/admin.py:76
+msgid "Game Status"
+msgstr "Game Status"
+
+#: game/admin.py:79
+msgid "Participants & Sessions"
+msgstr "Participants & Sessions"
+
+
+#: game/admin.py:85
+msgid "Distances"
+msgstr "Distances"
+
+#: game/admin.py:88
+msgid "Statistics"
+msgstr "Statistics"
+
+#: game/admin.py:106
+msgid "🟢 Active"
+msgstr "🟢 Active"
+
+#: game/admin.py:109
+msgid "⚫ Ended"
+msgstr "⚫ Ended"
+
+#: game/admin.py:121
+msgid "< 1 minute"
+msgstr "< 1 minute"
+
+#: game/admin.py:130
+msgid "Age"
+msgstr "Age"
+
+#: game/admin.py:137
+msgid "Participants"
+msgstr "Participants"
+
+#: game/admin.py:160
+msgid "Participants (Cyclists)"
+msgstr "Participants (Cyclists)"
+
+#: game/admin.py:165
+msgid "Room ended"
+msgstr "Room ended"
+
+#: game/admin.py:171
+msgid "Enter Room"
+msgstr "Enter Room"
+
+#: game/admin.py:180
+msgid "Assignments"
+msgstr "Assignments"
+
+#: game/admin.py:187
+msgid "Target (km)"
+msgstr "Target (km)"
+
+#: game/admin.py:193
+msgid "Stopped"
+msgstr "Stopped"
+
+#: game/admin.py:195
+msgid "Running"
+msgstr "Running"
+
+#: game/admin.py:197
+msgid "Not Started"
+msgstr "Not Started"
+
+

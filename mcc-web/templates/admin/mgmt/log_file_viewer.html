@@ -79,7 +79,7 @@
 <div class="log-controls">
     <form method="get" action="{% url 'admin:mgmt_log_file_viewer' file_key %}">
         {% if available_logs %}
-        <label>{% trans 'Logdatei' %}:</label>
+        <label>{% trans 'Log File' %}:</label>
         <select name="logfile" onchange="if (this.value) { window.location.href = this.value; }">
             {% for item in available_logs %}
             <option value="{% url 'admin:mgmt_log_file_viewer' item.key %}" {% if item.key == file_key %}selected{% endif %}>

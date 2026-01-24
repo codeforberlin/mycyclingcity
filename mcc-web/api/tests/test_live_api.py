@@ -227,9 +227,9 @@ class TestLiveAPIEndpoints:
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running. Start Gunicorn first.")
     
-    def test_get_cyclist_coins_endpoint(self, session, api_key):
-        """Test get_cyclist_coins endpoint."""
-        url = f"{session.base_url}/api/get-cyclist-coins/testplayer"
+    def test_get_player_coins_endpoint(self, session, api_key):
+        """Test get_player_coins endpoint."""
+        url = f"{session.base_url}/api/get-player-coins/testplayer"
         
         headers = {
             'X-Api-Key': api_key
@@ -280,9 +280,9 @@ class TestLiveAPIEndpoints:
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running. Start Gunicorn first.")
     
-    def test_get_mapped_minecraft_cyclists_endpoint(self, session, api_key):
-        """Test get_mapped_minecraft_cyclists endpoint."""
-        url = f"{session.base_url}/api/get-mapped-minecraft-cyclists"
+    def test_get_mapped_minecraft_players_endpoint(self, session, api_key):
+        """Test get_mapped_minecraft_players endpoint."""
+        url = f"{session.base_url}/api/get-mapped-minecraft-players"
         
         headers = {
             'X-Api-Key': api_key

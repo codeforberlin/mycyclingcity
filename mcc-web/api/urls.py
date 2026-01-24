@@ -12,8 +12,10 @@ from . import views
 urlpatterns = [
     path('update-data', views.update_data, name='update_data'),
     path('get-user-id', views.get_user_id, name='get_user_id'),
+    path('get-player-coins/<str:username>', views.get_player_coins, name='get_player_coins'),
     path('get-cyclist-coins/<str:username>', views.get_cyclist_coins, name='get_cyclist_coins'),
     path('spend-cyclist-coins', views.spend_cyclist_coins, name='spend_cyclist_coins'),
+    path('get-mapped-minecraft-players', views.get_mapped_minecraft_players, name='get_mapped_minecraft_players'),
     path('get-mapped-minecraft-cyclists', views.get_mapped_minecraft_cyclists, name='get_mapped_minecraft_cyclists'),
     
     # New endpoints for the map system

@@ -70,22 +70,22 @@ class GameRoomAdmin(admin.ModelAdmin):
     )
     
     fieldsets = (
-        (_('Basis-Informationen'), {
+        (_('Basic Information'), {
             'fields': ('room_code', 'is_active', 'master_session_key', 'created_at', 'last_activity', 'room_link')
         }),
-        (_('Spiel-Status'), {
+        (_('Game Status'), {
             'fields': ('is_game_stopped', 'current_target_km', 'announced_winners_display')
         }),
-        (_('Teilnehmer & Sessions'), {
+        (_('Participants & Sessions'), {
             'fields': ('participants_count', 'participants_display', 'active_sessions_display', 'session_to_cyclist_display')
         }),
-        (_('Geräte-Zuweisungen'), {
+        (_('Device Assignments'), {
             'fields': ('device_assignments_display', 'assignments_count')
         }),
-        (_('Distanzen'), {
+        (_('Distances'), {
             'fields': ('start_distances_display', 'stop_distances_display')
         }),
-        (_('Statistiken'), {
+        (_('Statistics'), {
             'fields': ('statistics_display',)
         }),
     )
@@ -103,10 +103,10 @@ class GameRoomAdmin(admin.ModelAdmin):
         """Display room status with color coding."""
         if obj.is_active:
             color = '#28a745'  # Green
-            text = '🟢 Aktiv'
+            text = _('🟢 Active')
         else:
             color = '#6c757d'  # Gray
-            text = '⚫ Beendet'
+            text = _('⚫ Ended')
         return format_html(
             '<span style="color: {}; font-weight: bold;">{}</span>',
             color, text
@@ -118,23 +118,23 @@ class GameRoomAdmin(admin.ModelAdmin):
         """Display room age in human-readable format."""
         age = timezone.now() - obj.created_at
         if age.days > 0:
-            return f"{age.days} Tag(e)"
+            return _("{count} day(s)").format(count=age.days)
         elif age.seconds >= 3600:
             hours = age.seconds // 3600
-            return f"{hours} Stunde(n)"
+            return _("{count} hour(s)").format(count=hours)
         elif age.seconds >= 60:
             minutes = age.seconds // 60
-            return f"{minutes} Minute(n)"
+            return _("{count} minute(s)").format(count=minutes)
         else:
-            return "< 1 Minute"
-    age_display.short_description = _('Alter')
+            return _("< 1 minute")
+    age_display.short_description = _('Age')
     age_display.admin_order_field = 'created_at'
     
     def participants_count(self, obj):
         """Display number of active participants."""
         count = len(obj.active_sessions) if obj.active_sessions else 0
         return count
-    participants_count.short_description = _('Teilnehmer')
+    participants_count.short_description = _('Participants')
     participants_count.admin_order_field = 'active_sessions'
     
     def participants_display(self, obj):
@@ -157,45 +157,45 @@ class GameRoomAdmin(admin.ModelAdmin):
             html += f'<li>{cyclist}</li>'
         html += '</ul>'
         return mark_safe(html)
-    participants_display.short_description = _('Teilnehmer (Radler)')
+    participants_display.short_description = _('Participants (Cyclists)')
     
     def room_link(self, obj):
         """Display link to enter the room."""
         if not obj.is_active:
-            return format_html('<span style="color: #6c757d;">Raum beendet</span>')
+            return format_html('<span style="color: #6c757d;">{}</span>', _('Room ended'))
         
         room_url = reverse('game:room_page', args=[obj.room_code])
         return format_html(
             '<a href="{}" target="_blank" style="background-color: #28a745; color: white; padding: 6px 12px; '
             'text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">'
-            '🚪 Raum betreten</a>',
-            room_url
+            '🚪 {}</a>',
+            room_url, _('Enter Room')
         )
-    room_link.short_description = _('Raum betreten')
+    room_link.short_description = _('Enter Room')
     
     def assignments_count(self, obj):
         """Display number of device assignments."""
         count = len(obj.device_assignments) if obj.device_assignments else 0
         return count
-    assignments_count.short_description = _('Zuweisungen')
+    assignments_count.short_description = _('Assignments')
     
     def current_target_km_display(self, obj):
         """Display current target kilometers."""
         if obj.current_target_km and obj.current_target_km > 0:
             return f"{obj.current_target_km:.1f} km"
         return "-"
-    current_target_km_display.short_description = _('Ziel (km)')
+    current_target_km_display.short_description = _('Target (km)')
     current_target_km_display.admin_order_field = 'current_target_km'
     
     def game_status_display(self, obj):
         """Display game status."""
         if obj.is_game_stopped:
-            return format_html('<span style="color: #dc3545;">⏸ Gestoppt</span>')
+            return format_html('<span style="color: #dc3545;">⏸ {}</span>', _('Stopped'))
         elif obj.start_distances:
-            return format_html('<span style="color: #28a745;">▶ Läuft</span>')
+            return format_html('<span style="color: #28a745;">▶ {}</span>', _('Running'))
         else:
-            return format_html('<span style="color: #6c757d;">⏹ Nicht gestartet</span>')
-    game_status_display.short_description = _('Spiel-Status')
+            return format_html('<span style="color: #6c757d;">⏹ {}</span>', _('Not Started'))
+    game_status_display.short_description = _('Game Status')
     
     def device_assignments_display(self, obj):
         """Display device assignments as formatted table."""
@@ -203,7 +203,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             return "-"
         
         html = '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Gerät</th><th style="padding: 8px; border: 1px solid #dee2e6;">Radler</th></tr></thead>'
+        html += f'<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Device")}</th><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Cyclist")}</th></tr></thead>'
         html += '<tbody>'
         
         for device, cyclist in obj.device_assignments.items():
@@ -211,7 +211,7 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         html += '</tbody></table>'
         return mark_safe(html)
-    device_assignments_display.short_description = _('Geräte-Zuweisungen')
+    device_assignments_display.short_description = _('Device Assignments')
     
     def start_distances_display(self, obj):
         """Display start distances as formatted table."""
@@ -219,7 +219,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             return "-"
         
         html = '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Radler</th><th style="padding: 8px; border: 1px solid #dee2e6;">Start-Distanz (km)</th></tr></thead>'
+        html += f'<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Cyclist")}</th><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Start Distance (km)")}</th></tr></thead>'
         html += '<tbody>'
         
         for cyclist, distance in obj.start_distances.items():
@@ -227,7 +227,7 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         html += '</tbody></table>'
         return mark_safe(html)
-    start_distances_display.short_description = _('Start-Distanzen')
+    start_distances_display.short_description = _('Start Distances')
     
     def stop_distances_display(self, obj):
         """Display stop distances as formatted table."""
@@ -235,7 +235,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             return "-"
         
         html = '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Radler</th><th style="padding: 8px; border: 1px solid #dee2e6;">Stop-Distanz (km)</th></tr></thead>'
+        html += f'<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Cyclist")}</th><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Stop Distance (km)")}</th></tr></thead>'
         html += '<tbody>'
         
         for cyclist, distance in obj.stop_distances.items():
@@ -243,7 +243,7 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         html += '</tbody></table>'
         return mark_safe(html)
-    stop_distances_display.short_description = _('Stop-Distanzen')
+    stop_distances_display.short_description = _('Stop Distances')
     
     def active_sessions_display(self, obj):
         """Display active sessions as list."""
@@ -255,7 +255,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             html += f'<li>{session[:20]}...</li>'
         html += '</ul>'
         return mark_safe(html)
-    active_sessions_display.short_description = _('Aktive Sessions')
+    active_sessions_display.short_description = _('Active Sessions')
     
     def session_to_cyclist_display(self, obj):
         """Display session to cyclist mapping as formatted table."""
@@ -263,7 +263,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             return "-"
         
         html = '<table style="width: 100%; border-collapse: collapse;">'
-        html += '<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">Session Key</th><th style="padding: 8px; border: 1px solid #dee2e6;">Radler</th></tr></thead>'
+        html += f'<thead><tr style="background-color: #f8f9fa;"><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Session Key")}</th><th style="padding: 8px; border: 1px solid #dee2e6;">{_("Cyclist")}</th></tr></thead>'
         html += '<tbody>'
         
         for session, cyclist in obj.session_to_cyclist.items():
@@ -272,7 +272,7 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         html += '</tbody></table>'
         return mark_safe(html)
-    session_to_cyclist_display.short_description = _('Session → Radler Mapping')
+    session_to_cyclist_display.short_description = _('Session → Cyclist Mapping')
     
     def announced_winners_display(self, obj):
         """Display announced winners as list."""
@@ -284,7 +284,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             html += f'<li>🏆 {winner}</li>'
         html += '</ul>'
         return mark_safe(html)
-    announced_winners_display.short_description = _('Angekündigte Gewinner')
+    announced_winners_display.short_description = _('Announced Winners')
     
     def statistics_display(self, obj):
         """Display room statistics."""
@@ -293,45 +293,45 @@ class GameRoomAdmin(admin.ModelAdmin):
         # Room age
         age = timezone.now() - obj.created_at
         if age.days > 0:
-            stats.append(f"<strong>Alter:</strong> {age.days} Tag(e)")
+            stats.append(f"<strong>{_('Age')}:</strong> {_('{count} day(s)').format(count=age.days)}")
         else:
             hours = age.seconds // 3600
             minutes = (age.seconds % 3600) // 60
-            stats.append(f"<strong>Alter:</strong> {hours}h {minutes}m")
+            stats.append(f"<strong>{_('Age')}:</strong> {hours}h {minutes}m")
         
         # Time since last activity
         if obj.last_activity:
             inactive = timezone.now() - obj.last_activity
             if inactive.days > 0:
-                stats.append(f"<strong>Inaktiv seit:</strong> {inactive.days} Tag(e)")
+                stats.append(f"<strong>{_('Inactive since')}:</strong> {_('{count} day(s)').format(count=inactive.days)}")
             elif inactive.seconds >= 3600:
                 hours = inactive.seconds // 3600
-                stats.append(f"<strong>Inaktiv seit:</strong> {hours} Stunde(n)")
+                stats.append(f"<strong>{_('Inactive since')}:</strong> {_('{count} hour(s)').format(count=hours)}")
             else:
                 minutes = inactive.seconds // 60
-                stats.append(f"<strong>Inaktiv seit:</strong> {minutes} Minute(n)")
+                stats.append(f"<strong>{_('Inactive since')}:</strong> {_('{count} minute(s)').format(count=minutes)}")
         
         # Participants
         participants = len(obj.active_sessions) if obj.active_sessions else 0
-        stats.append(f"<strong>Teilnehmer:</strong> {participants}")
+        stats.append(f"<strong>{_('Participants')}:</strong> {participants}")
         
         # Assignments
         assignments = len(obj.device_assignments) if obj.device_assignments else 0
-        stats.append(f"<strong>Zuweisungen:</strong> {assignments}")
+        stats.append(f"<strong>{_('Assignments')}:</strong> {assignments}")
         
         # Game status
         if obj.is_game_stopped:
-            stats.append(f"<strong>Spiel-Status:</strong> Gestoppt")
+            stats.append(f"<strong>{_('Game Status')}:</strong> {_('Stopped')}")
         elif obj.start_distances:
-            stats.append(f"<strong>Spiel-Status:</strong> Läuft")
+            stats.append(f"<strong>{_('Game Status')}:</strong> {_('Running')}")
         else:
-            stats.append(f"<strong>Spiel-Status:</strong> Nicht gestartet")
+            stats.append(f"<strong>{_('Game Status')}:</strong> {_('Not Started')}")
         
         html = '<div style="padding: 10px; background-color: #f8f9fa; border-radius: 4px;">'
         html += '<br>'.join(stats)
         html += '</div>'
         return mark_safe(html)
-    statistics_display.short_description = _('Statistiken')
+    statistics_display.short_description = _('Statistics')
     
     # --- Bulk Actions ---
     
@@ -346,9 +346,9 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         self.message_user(
             request,
-            _("{} Raum/Räume wurden beendet.").format(count)
+            _("{count} room(s) have been ended.").format(count=count)
         )
-    end_rooms.short_description = _("Ausgewählte Räume beenden")
+    end_rooms.short_description = _("End selected rooms")
     
     def activate_rooms(self, request, queryset):
         """Activate selected rooms (set is_active=True)."""
@@ -361,9 +361,9 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         self.message_user(
             request,
-            _("{} Raum/Räume wurden aktiviert.").format(count)
+            _("{count} room(s) have been activated.").format(count=count)
         )
-    activate_rooms.short_description = _("Ausgewählte Räume aktivieren")
+    activate_rooms.short_description = _("Activate selected rooms")
     
     def delete_old_rooms(self, request, queryset):
         """Delete rooms older than 7 days."""
@@ -374,9 +374,9 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         self.message_user(
             request,
-            _("{} Raum/Räume älter als 7 Tage wurden gelöscht.").format(count)
+            _("{count} room(s) older than 7 days have been deleted.").format(count=count)
         )
-    delete_old_rooms.short_description = _("Räume älter als 7 Tage löschen")
+    delete_old_rooms.short_description = _("Delete rooms older than 7 days")
     
     def cleanup_inactive_rooms(self, request, queryset):
         """Delete rooms inactive for more than 24 hours."""
@@ -390,9 +390,9 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         self.message_user(
             request,
-            _("{} inaktive Räume (keine Aktivität seit 24h) wurden gelöscht.").format(count)
+            _("{count} inactive room(s) (no activity for 24h) have been deleted.").format(count=count)
         )
-    cleanup_inactive_rooms.short_description = _("Inaktive Räume (>24h) löschen")
+    cleanup_inactive_rooms.short_description = _("Delete inactive rooms (>24h)")
     
     def become_master(self, request, queryset):
         """Set the current admin user as master of selected rooms (only if no active master exists).
@@ -429,19 +429,19 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         messages = []
         if count > 0:
-            messages.append(_("Sie werden automatisch als Master gesetzt, wenn Sie {} Raum/Räume über den 'Raum betreten'-Link betreten (nur wenn kein aktiver Master vorhanden ist).").format(count))
+            messages.append(_("You will be automatically set as master when you enter {count} room(s) via the 'Enter Room' link (only if no active master exists).").format(count=count))
         if skipped_with_master > 0:
-            messages.append(_("{} Raum/Räume wurden übersprungen, da bereits ein aktiver Master vorhanden ist.").format(skipped_with_master))
+            messages.append(_("{count} room(s) were skipped because an active master already exists.").format(count=skipped_with_master))
         
         if messages:
             self.message_user(request, " ".join(messages), level='success' if count > 0 else 'info')
         else:
             self.message_user(
                 request,
-                _("Keine aktiven Räume ausgewählt oder alle Räume sind bereits beendet."),
+                _("No active rooms selected or all rooms are already ended."),
                 level='warning'
             )
-    become_master.short_description = _("Als Master setzen (Admin, nur wenn kein Master vorhanden)")
+    become_master.short_description = _("Set as Master (Admin, only if no master exists)")
     
     def force_become_master(self, request, queryset):
         """Force set the current admin user as master of selected rooms, even if a master already exists.
@@ -477,19 +477,19 @@ class GameRoomAdmin(admin.ModelAdmin):
         
         messages = []
         if count > 0:
-            messages.append(_("Sie werden als Master gesetzt, wenn Sie {} Raum/Räume über den 'Raum betreten'-Link betreten.").format(count))
+            messages.append(_("You will be set as master when you enter {count} room(s) via the 'Enter Room' link.").format(count=count))
         if replaced_masters > 0:
-            messages.append(_("⚠️ {} Raum/Räume hatten bereits einen aktiven Master, der ersetzt wird.").format(replaced_masters))
+            messages.append(_("⚠️ {count} room(s) already had an active master, which will be replaced.").format(count=replaced_masters))
         
         if messages:
             self.message_user(request, " ".join(messages), level='warning' if replaced_masters > 0 else 'success')
         else:
             self.message_user(
                 request,
-                _("Keine aktiven Räume ausgewählt oder alle Räume sind bereits beendet."),
+                _("No active rooms selected or all rooms are already ended."),
                 level='warning'
             )
-    force_become_master.short_description = _("Master-Rolle erzwingen (ersetzt aktuellen Master)")
+    force_become_master.short_description = _("Force Master Role (replaces current master)")
     
     def get_queryset(self, request):
         """Optimize queryset."""
