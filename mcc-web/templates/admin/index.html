@@ -10,67 +10,68 @@
 {% load i18n static %}
 
 {% block content %}
-{{ block.super }}
+<div id="content-main">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 
-<div class="module">
-    <table>
-        <caption>
-            <a href="{% url 'admin:api_analytics_dashboard' %}" class="section" title="{% trans 'Historical Reports & Analytics' %}">
-                {% trans "Historical Reports & Analytics" %}
-            </a>
-        </caption>
-        <tr>
-            <th scope="row">
-                <a href="{% url 'admin:api_analytics_dashboard' %}">{% trans "Analytics Dashboard" %}</a>
-            </th>
-            <td>
-                <a href="{% url 'admin:api_analytics_dashboard' %}" class="addlink">
-                    {% trans "View Reports" %}
+    <div class="module">
+        <table>
+            <caption>
+                <a href="{% url 'admin:api_analytics_dashboard' %}" class="section" title="{% trans 'Historical Reports & Analytics' %}">
+                    {% trans "Historical Reports & Analytics" %}
                 </a>
-            </td>
-        </tr>
-        <tr>
-            <th scope="row">
-                <a href="{% url 'admin:api_analytics_hierarchy' %}">{% trans "Hierarchy Breakdown" %}</a>
-            </th>
-            <td>
-                <a href="{% url 'admin:api_analytics_hierarchy' %}" class="addlink">
-                    {% trans "View Breakdown" %}
+            </caption>
+            <tr>
+                <th scope="row">
+                    <a href="{% url 'admin:api_analytics_dashboard' %}">{% trans "Analytics Dashboard" %}</a>
+                </th>
+                <td>
+                    <a href="{% url 'admin:api_analytics_dashboard' %}" class="addlink">
+                        {% trans "View Reports" %}
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <a href="{% url 'admin:api_analytics_hierarchy' %}">{% trans "Hierarchy Breakdown" %}</a>
+                </th>
+                <td>
+                    <a href="{% url 'admin:api_analytics_hierarchy' %}" class="addlink">
+                        {% trans "View Breakdown" %}
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">
+                    <a href="{% url 'admin:game_gameroom_dashboard' %}">{% trans "Game Dashboard" %}</a>
+                </th>
+                <td>
+                    <a href="{% url 'admin:game_gameroom_dashboard' %}" class="addlink">
+                        {% trans "View Dashboard" %}
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="module">
+        <table>
+            <caption>
+                <a href="{% url 'admin:game_session_dashboard' %}" class="section" title="{% trans 'Session Management' %}">
+                    {% trans "Session Management" %}
                 </a>
-            </td>
-        </tr>
-        <tr>
-            <th scope="row">
-                <a href="{% url 'admin:game_gameroom_dashboard' %}">{% trans "Game Dashboard" %}</a>
-            </th>
-            <td>
-                <a href="{% url 'admin:game_gameroom_dashboard' %}" class="addlink">
-                    {% trans "View Dashboard" %}
-                </a>
-            </td>
-        </tr>
-    </table>
+            </caption>
+            <tr>
+                <th scope="row">
+                    <a href="{% url 'admin:game_session_dashboard' %}">{% trans "Session Dashboard" %}</a>
+                </th>
+                <td>
+                    <a href="{% url 'admin:game_session_dashboard' %}" class="addlink">
+                        {% trans "View Dashboard" %}
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
 </div>
-
-<div class="module">
-    <table>
-        <caption>
-            <a href="{% url 'admin:game_session_dashboard' %}" class="section" title="{% trans 'Session Management' %}">
-                {% trans "Session Management" %}
-            </a>
-        </caption>
-        <tr>
-            <th scope="row">
-                <a href="{% url 'admin:game_session_dashboard' %}">{% trans "Session Dashboard" %}</a>
-            </th>
-            <td>
-                <a href="{% url 'admin:game_session_dashboard' %}" class="addlink">
-                    {% trans "View Dashboard" %}
-                </a>
-            </td>
-        </tr>
-    </table>
-</div>
-
 {% endblock %}
 
