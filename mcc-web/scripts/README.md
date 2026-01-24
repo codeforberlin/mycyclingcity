@@ -13,9 +13,11 @@ chmod +x scripts/mcc-web.sh
 ### Verwendung
 
 ```bash
-# Als mcc Benutzer ausführen
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh {start|stop|restart|reload|status}
+/path/to/mcc-web/scripts/mcc-web.sh {start|stop|restart|reload|status}
 ```
+
+Hinweis: In der aktuellen Produktion läuft die Anwendung als Benutzer `mcc`
+unter `/data/games/mcc/mcc-web`. Passen Sie Pfade und Benutzer an Ihre Umgebung an.
 
 ### Befehle
 
@@ -30,11 +32,9 @@ sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh {start|stop|restart|reload|statu
 Das Script erkennt automatisch:
 - Projekt-Verzeichnis (aus Script-Pfad)
 - Virtual Environment (Standard: `$PROJECT_DIR/venv`)
-- Gunicorn-Config (Standard: `$PROJECT_DIR/gunicorn_config.py`)
+- Gunicorn-Config (Standard: `$PROJECT_DIR/config/gunicorn_config.py`)
 
 Environment-Variablen:
-- `MCC_USER` - Benutzer (Standard: mcc)
-- `MCC_GROUP` - Gruppe (Standard: mcc)
 - `VENV_DIR` - Virtual Environment Pfad
 
 ### Dateien
@@ -46,11 +46,11 @@ Environment-Variablen:
 
 ```bash
 # Server starten
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh start
+/data/games/mcc/mcc-web/scripts/mcc-web.sh start
 
 # Status prüfen
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh status
+/data/games/mcc/mcc-web/scripts/mcc-web.sh status
 
 # Server neu starten
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh restart
+/data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```

@@ -43,11 +43,8 @@ This checklist ensures that all important aspects for a professional production 
 - [ ] Pre-deployment checks on production server: `python utils/pre_deployment_check.py`
 
 ### 6. Application Server
-- [ ] Gunicorn configured (`gunicorn_config.py`)
-- [ ] Systemd service created (`systemd/mcc-web.service`)
-- [ ] Service enabled: `sudo systemctl enable mcc-web`
-- [ ] Service started: `sudo systemctl start mcc-web`
-- [ ] Service status checked: `sudo systemctl status mcc-web`
+- [ ] Gunicorn configured (`config/gunicorn_config.py`)
+- [ ] Start/stop handled via script: `scripts/mcc-web.sh`
 
 ### 7. Web Server (Apache/Nginx)
 - [ ] Reverse proxy configured
@@ -102,7 +99,6 @@ This checklist ensures that all important aspects for a professional production 
 ### 13. Automated Tasks
 - [ ] Cron job for database backups: `utils/backup_database.py`
 - [ ] Log rotation configured
-- [ ] Automatic service restarts on errors (systemd)
 
 ## Documentation
 
@@ -123,11 +119,10 @@ This checklist ensures that all important aspects for a professional production 
 
 The following files were created for the professional setup:
 
-1. **`gunicorn_config.py`** - Gunicorn configuration
-2. **`systemd/mcc-web.service`** - Systemd service file
-3. **`utils/backup_database.py`** - Automatic backup script
-4. **`utils/pre_deployment_check.py`** - Pre-deployment validation
-5. **Health Check Endpoint** - `/health/` in `config/views.py`
+1. **`config/gunicorn_config.py`** - Gunicorn configuration
+2. **`utils/backup_database.py`** - Automatic backup script
+3. **`utils/pre_deployment_check.py`** - Pre-deployment validation
+4. **Health Check Endpoint** - `/health/` in `config/views.py`
 
 ## Quick Commands
 
@@ -144,9 +139,9 @@ python utils/deploy_production.py
 # Check Health
 curl http://your-domain/health/
 
-# Systemd Service
-sudo systemctl status mcc-web
-sudo systemctl restart mcc-web
+# Server Control (Script)
+/data/games/mcc/mcc-web/scripts/mcc-web.sh status
+/data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
 ## Cron Job Example
@@ -173,7 +168,7 @@ Create `/etc/logrotate.d/mcc-web`:
     create 0640 www-data www-data
     sharedscripts
     postrotate
-        systemctl reload mcc-web > /dev/null 2>&1 || true
+        /data/games/mcc/mcc-web/scripts/mcc-web.sh reload > /dev/null 2>&1 || true
     endscript
 }
 ```

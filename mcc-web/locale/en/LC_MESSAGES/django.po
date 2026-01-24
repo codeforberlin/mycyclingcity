@@ -4869,10 +4869,6 @@ msgstr ""
 msgid "Server Control"
 msgstr ""
 
-#: mgmt/views_deployment.py:36
-msgid "Deployment Control"
-msgstr ""
-
 #: mgmt/views_deployment.py:60
 msgid "Backup Management"
 msgstr ""

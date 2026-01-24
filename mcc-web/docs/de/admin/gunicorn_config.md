@@ -65,8 +65,11 @@ python manage.py migrate mgmt
 Das Startup-Script liest die Konfiguration automatisch aus der Datenbank beim Start:
 
 ```bash
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh start
+/path/to/mcc-web/scripts/mcc-web.sh start
 ```
+
+Hinweis: In der aktuellen Produktion läuft die Anwendung als Benutzer `mcc`
+unter `/data/games/mcc/mcc-web`. Passen Sie Pfade und Benutzer an Ihre Umgebung an.
 
 Das Script verwendet das Management-Command `get_gunicorn_config`, um die Konfiguration aus der Datenbank zu lesen.
 
@@ -117,7 +120,7 @@ Nach einem Neustart gilt die neue Konfiguration **sofort** für alle neuen Log-E
 
 3. Prüfen Sie, ob der Server neu gestartet wurde:
    ```bash
-   sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh status
+   /path/to/mcc-web/scripts/mcc-web.sh status
    ```
 
 4. Prüfen Sie die Environment-Variable beim Start:

@@ -12,7 +12,6 @@ Views for deployment and backup management.
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -29,16 +28,6 @@ logger = logging.getLogger(__name__)
 def is_superuser(user):
     """Check if user is superuser."""
     return user.is_superuser
-
-
-@user_passes_test(is_superuser)
-@staff_member_required
-def deployment_control(request):
-    """Main deployment control page."""
-    context = {
-        'title': _('Deployment Control'),
-    }
-    return render(request, 'admin/mgmt/deployment_control.html', context)
 
 
 @user_passes_test(is_superuser)
@@ -171,94 +160,3 @@ def download_backup(request, filename):
         raise Http404(f"Backup file could not be opened: {e}")
 
 
-@user_passes_test(is_superuser)
-@staff_member_required
-def deployment_action(request, action):
-    """Perform deployment action (git pull, migrate, collectstatic, etc.)."""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Only POST requests allowed'}, status=405)
-    
-    project_dir = Path(settings.BASE_DIR)
-    
-    actions = {
-        'git_pull': {
-            'cmd': [
-                'bash',
-                '-lc',
-                (
-                    'if [ ! -d "{project_dir}/.git" ]; then '
-                    '  echo "ERROR: Kein Git-Repository in {project_dir}. '
-                    'Bitte zuerst initialisieren (git init, remote add)." >&2; '
-                    '  exit 2; '
-                    'fi && '
-                    'git -C "{project_dir}" remote set-url origin '
-                    'https://github.com/codeforberlin/mycyclingcity.git && '
-                    'if ! git -C "{project_dir}" config --bool core.sparseCheckout | grep -q true; then '
-                    '  git -C "{project_dir}" sparse-checkout init --cone; '
-                    'fi && '
-                    'git -C "{project_dir}" sparse-checkout set mcc-web && '
-                    'git -C "{project_dir}" pull origin main'
-                ).format(project_dir=str(project_dir)),
-            ],
-            'cwd': None,
-        },
-        'migrate': {
-            'cmd': ['python', 'manage.py', 'migrate'],
-            'cwd': project_dir,
-        },
-        'collectstatic': {
-            'cmd': ['python', 'manage.py', 'collectstatic', '--noinput'],
-            'cwd': project_dir,
-        },
-    }
-    
-    if action not in actions:
-        return JsonResponse({'error': 'Invalid action'}, status=400)
-    
-    try:
-        logger.info('Deployment action requested: %s', action)
-        action_config = actions[action]
-        result = subprocess.run(
-            action_config['cmd'],
-            cwd=action_config.get('cwd'),
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        
-        if result.returncode == 0:
-            logger.info(
-                'Deployment action succeeded: %s (returncode=%s)',
-                action,
-                result.returncode
-            )
-            return JsonResponse({
-                'success': True,
-                'message': f'Action "{action}" completed successfully',
-                'output': result.stdout,
-            })
-        else:
-            logger.error(
-                'Deployment action failed: %s (returncode=%s, output=%s)',
-                action,
-                result.returncode,
-                (result.stdout + result.stderr).strip()
-            )
-            return JsonResponse({
-                'success': False,
-                'error': f'Action "{action}" failed',
-                'output': result.stdout + result.stderr,
-                'returncode': result.returncode
-            }, status=500)
-    except subprocess.TimeoutExpired:
-        logger.error('Deployment action timed out: %s', action)
-        return JsonResponse({
-            'success': False,
-            'error': 'Action timed out'
-        }, status=504)
-    except Exception as e:
-        logger.exception('Deployment action error: %s', action)
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)

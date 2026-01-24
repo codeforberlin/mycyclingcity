@@ -2,7 +2,8 @@
 
 ## Übersicht
 
-Die MCC-Web Anwendung kann jetzt über ein Script als `mcc` Benutzer gestartet, gestoppt und neu gestartet werden. Zusätzlich kann der Server direkt aus dem Admin GUI heraus gesteuert werden.
+Die MCC-Web Anwendung kann über ein Script gestartet, gestoppt und neu gestartet werden. Zusätzlich kann der Server direkt aus dem Admin GUI heraus gesteuert werden.
+Hinweis: In der aktuellen Produktion läuft die Anwendung als Benutzer `mcc` unter `/data/games/mcc/mcc-web`. Passen Sie Pfade und Benutzer an Ihre Umgebung an.
 
 ## Script-Verwendung
 
@@ -16,12 +17,11 @@ mcc-web/scripts/mcc-web.sh
 ### Verfügbare Befehle
 
 ```bash
-# Als mcc Benutzer ausführen
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh start
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh stop
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh restart
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh reload
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh status
+/path/to/mcc-web/scripts/mcc-web.sh start
+/path/to/mcc-web/scripts/mcc-web.sh stop
+/path/to/mcc-web/scripts/mcc-web.sh restart
+/path/to/mcc-web/scripts/mcc-web.sh reload
+/path/to/mcc-web/scripts/mcc-web.sh status
 ```
 
 ### Befehle im Detail
@@ -36,13 +36,13 @@ sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh status
 
 ```bash
 # Server starten
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh start
+/data/games/mcc/mcc-web/scripts/mcc-web.sh start
 
 # Status prüfen
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh status
+/data/games/mcc/mcc-web/scripts/mcc-web.sh status
 
 # Server neu starten
-sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh restart
+/data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
 ## Admin GUI Steuerung
@@ -74,8 +74,6 @@ sudo -u mcc /data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 Das Script unterstützt folgende Environment-Variablen:
 
 ```bash
-export MCC_USER=mcc          # Benutzer (Standard: mcc)
-export MCC_GROUP=mcc        # Gruppe (Standard: mcc)
 export VENV_DIR=/path/to/venv  # Virtual Environment (Standard: $PROJECT_DIR/venv)
 ```
 
@@ -95,36 +93,14 @@ Startup-Logs werden gespeichert unter:
 mcc-web/logs/gunicorn_startup.log
 ```
 
-## Migration von systemd
-
-### Vorher (systemd)
+## Start/Stop über Script
 
 ```bash
-sudo systemctl start mcc-web
-sudo systemctl stop mcc-web
-sudo systemctl restart mcc-web
-sudo systemctl status mcc-web
+/path/to/mcc-web/scripts/mcc-web.sh start
+/path/to/mcc-web/scripts/mcc-web.sh stop
+/path/to/mcc-web/scripts/mcc-web.sh restart
+/path/to/mcc-web/scripts/mcc-web.sh status
 ```
-
-### Nachher (Script)
-
-```bash
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh start
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh stop
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh restart
-sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh status
-```
-
-### systemd Service deaktivieren
-
-Falls der systemd Service noch aktiv ist:
-
-```bash
-sudo systemctl stop mcc-web
-sudo systemctl disable mcc-web
-```
-
-**Wichtig**: Der systemd Service sollte deaktiviert werden, um Konflikte zu vermeiden.
 
 ## Auto-Start bei System-Boot
 
@@ -132,10 +108,10 @@ Falls Sie möchten, dass der Server automatisch beim Boot startet, können Sie:
 
 ### Option 1: Cron @reboot
 
-Fügen Sie in die crontab des mcc Benutzers ein:
+Fügen Sie in die crontab des gewünschten Benutzers ein:
 
 ```bash
-sudo -u mcc crontab -e
+crontab -e
 ```
 
 Dann hinzufügen:
@@ -143,16 +119,6 @@ Dann hinzufügen:
 @reboot /path/to/mcc-web/scripts/mcc-web.sh start
 ```
 
-### Option 2: systemd Service (nur für Start)
-
-Sie können den systemd Service so anpassen, dass er nur beim Boot startet, aber nicht verwaltet wird:
-
-```ini
-[Service]
-Type=oneshot
-ExecStart=/path/to/mcc-web/scripts/mcc-web.sh start
-RemainAfterExit=yes
-```
 
 ## Troubleshooting
 
@@ -173,7 +139,7 @@ Stellen Sie sicher, dass:
 
 1. Prüfen Sie die Logs: `logs/gunicorn_startup.log`
 2. Prüfen Sie, ob der Port bereits belegt ist: `netstat -tuln | grep 8001`
-3. Prüfen Sie die Gunicorn-Konfiguration: `gunicorn_config.py`
+3. Prüfen Sie die Gunicorn-Konfiguration: `config/gunicorn_config.py`
 
 ### PID-File bleibt bestehen
 
@@ -200,10 +166,10 @@ Das Script kann in Monitoring-Tools integriert werden:
 
 ```bash
 # Health Check
-if sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh status; then
+if /path/to/mcc-web/scripts/mcc-web.sh status; then
     echo "Server is running"
 else
     echo "Server is down, restarting..."
-    sudo -u mcc /path/to/mcc-web/scripts/mcc-web.sh restart
+    /path/to/mcc-web/scripts/mcc-web.sh restart
 fi
 ```

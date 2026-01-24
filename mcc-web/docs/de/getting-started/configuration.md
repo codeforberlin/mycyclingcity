@@ -140,7 +140,7 @@ CSRF_COOKIE_SECURE=True
 
 ### Gunicorn-Konfiguration
 
-Siehe `gunicorn_config.py` für Produktions-Server-Einstellungen.
+Siehe `config/gunicorn_config.py` für Produktions-Server-Einstellungen.
 
 ## Umgebungs-spezifische Konfiguration
 
@@ -163,7 +163,7 @@ SECRET_KEY=<starker-geheimer-schlüssel>
 
 - `.env` - Umgebungsvariablen (nicht in Versionskontrolle)
 - `config/settings.py` - Django-Einstellungen
-- `gunicorn_config.py` - Gunicorn-Server-Konfiguration
+- `config/gunicorn_config.py` - Gunicorn-Server-Konfiguration
 - `mkdocs.yml` - Dokumentations-Konfiguration
 
 ## Validierung

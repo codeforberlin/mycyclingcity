@@ -14,12 +14,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
 GUNICORN_BIN="$VENV_DIR/bin/gunicorn"
-GUNICORN_CONFIG="$PROJECT_DIR/gunicorn_config.py"
+GUNICORN_CONFIG="$PROJECT_DIR/config/gunicorn_config.py"
 PIDFILE="$PROJECT_DIR/mcc-web.pid"
 LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/mcc-web-script.log"
-USER="${MCC_USER:-mcc}"
-GROUP="${MCC_GROUP:-mcc}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -42,12 +40,7 @@ log_line() {
 
 # Check if running as correct user
 check_user() {
-    if [ "$(whoami)" != "$USER" ]; then
-        echo -e "${RED}Error: This script must be run as user '$USER'${NC}"
-        echo -e "${YELLOW}Usage: sudo -u $USER $0 $1${NC}"
-        log_line "ERROR" "User check failed: running as $(whoami), expected $USER (action=$1)"
-        exit 1
-    fi
+    return 0
 }
 
 # Check if gunicorn is installed
@@ -88,7 +81,6 @@ is_running() {
 
 # Start the server
 start() {
-    check_user start
     check_gunicorn
     check_config
     

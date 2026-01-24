@@ -27,8 +27,11 @@ python manage.py runserver
 Oder wenn Sie Gunicorn verwenden:
 
 ```bash
-sudo systemctl restart mcc-web
+/path/to/mcc-web/scripts/mcc-web.sh restart
 ```
+
+Hinweis: In der aktuellen Produktion läuft die Anwendung als Benutzer `mcc`
+unter `/data/games/mcc/mcc-web`. Passen Sie Pfade und Benutzer an Ihre Umgebung an.
 
 ## Was passiert nach der Aktivierung?
 

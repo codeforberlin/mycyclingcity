@@ -264,7 +264,7 @@ apt install xserver-xorg x11-xserver-utils xinit openbox chromium unclutter labw
 
 - Start script for kiosk user `mccadm`: `/home/mccadm/start-kiosk.sh` (TODO)
 - Make script executable and set owner/group (TODO)
-- Systemd service configuration: `/etc/systemd/system/mcc-kiosk.service` (TODO)
+- Service start via script: `scripts/mcc-web.sh` (user `mcc`)
 
 ## Administrative Scripts
 

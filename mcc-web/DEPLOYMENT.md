@@ -184,9 +184,8 @@ pip install -r requirements.txt
 # 5. Run deployment script
 python utils/deploy_production.py
 
-# 6. Restart application server (if using systemd/service)
-sudo systemctl restart mcc-web
-# Or restart Gunicorn manually
+# 6. Restart application server (script)
+/data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
 ## Important Notes

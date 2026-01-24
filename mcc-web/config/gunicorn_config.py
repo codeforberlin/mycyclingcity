@@ -10,11 +10,12 @@
 Gunicorn configuration file for MCC-Web production deployment.
 
 Usage:
-    gunicorn -c gunicorn_config.py config.wsgi:application
+    gunicorn -c config/gunicorn_config.py config.wsgi:application
 """
 
 import multiprocessing
 import os
+from pathlib import Path
 
 # Server socket
 # Can be overridden by environment variable from database config
@@ -41,11 +42,12 @@ keepalive = 2
 
 # Logging
 # Log to files when running as daemon, stdout/stderr when running in foreground
-LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+LOG_DIR = PROJECT_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-accesslog = os.path.join(LOG_DIR, "gunicorn_access.log")
-errorlog = os.path.join(LOG_DIR, "gunicorn_error.log")
+accesslog = str(LOG_DIR / "gunicorn_access.log")
+errorlog = str(LOG_DIR / "gunicorn_error.log")
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -54,10 +56,10 @@ proc_name = "mcc-web"
 
 # Server mechanics
 daemon = False  # Set to True when using --daemon flag in script
-pidfile = None  # Set via script or systemd
+pidfile = None  # Set via script
 umask = 0
-user = None  # Set via script or systemd
-group = None  # Set via script or systemd
+user = None  # Set via script
+group = None  # Set via script
 tmp_upload_dir = None
 
 # SSL (if needed, uncomment and configure)
@@ -88,7 +90,7 @@ def when_ready(server):
 def post_fork(server, worker):
     """
     Called just after a worker has been forked.
-    
+
     This ensures that each worker process has its own background thread
     for checking LoggingConfig changes, even with preload_app=True.
     """
@@ -104,4 +106,3 @@ def post_fork(server, worker):
     except Exception:
         # Silently ignore errors (app might not be ready yet)
         pass
-

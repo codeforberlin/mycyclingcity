@@ -140,7 +140,8 @@ CSRF_COOKIE_SECURE=True
 
 ### Gunicorn Configuration
 
-See `gunicorn_config.py` for production server settings.
+See `config/gunicorn_config.py` for production server settings.
+The application is started as user `mcc` via the script `scripts/mcc-web.sh`.
 
 ## Environment-Specific Configuration
 
@@ -163,7 +164,7 @@ SECRET_KEY=<strong-secret-key>
 
 - `.env` - Environment variables (not in version control)
 - `config/settings.py` - Django settings
-- `gunicorn_config.py` - Gunicorn server configuration
+- `config/gunicorn_config.py` - Gunicorn server configuration
 - `mkdocs.yml` - Documentation configuration
 
 ## Validation

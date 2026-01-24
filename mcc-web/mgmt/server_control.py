@@ -103,17 +103,9 @@ def server_action(request, action):
         }, status=403)
     
     try:
-        # Try to run as mcc user with sudo, fallback to direct execution
-        # Check if we're already running as mcc user
         current_user = os.getenv('USER') or os.getenv('USERNAME')
         logger.info("Server action executing as user=%s (requested action=%s)", current_user, action)
-        
-        if current_user == 'mcc':
-            # Already running as mcc, execute directly
-            cmd = [str(script_path), action]
-        else:
-            # Try to run with sudo as mcc user
-            cmd = ['sudo', '-u', 'mcc', str(script_path), action]
+        cmd = [str(script_path), action]
         logger.info("Server action command: %s", " ".join(cmd))
 
         # Stop/restart will terminate the current Gunicorn worker; run detached
@@ -199,14 +191,9 @@ def get_server_status(script_path):
         }
     
     try:
-        # Try to run as mcc user with sudo, fallback to direct execution
         current_user = os.getenv('USER') or os.getenv('USERNAME')
         logger.info("Server status executing as user=%s", current_user)
-        
-        if current_user == 'mcc':
-            cmd = [str(script_path), 'status']
-        else:
-            cmd = ['sudo', '-u', 'mcc', str(script_path), 'status']
+        cmd = [str(script_path), 'status']
         logger.info("Server status command: %s", " ".join(cmd))
         
         result = subprocess.run(

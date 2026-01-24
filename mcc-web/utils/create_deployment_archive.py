@@ -102,6 +102,7 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         'staticfiles',
         'media',
         'messages.mo',  # Compiled translation files (will be generated)
+        'backups',  # Database backups should not be deployed
         
         # Virtual environments
         'venv',

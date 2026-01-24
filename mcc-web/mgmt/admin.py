@@ -3623,14 +3623,6 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                 'view_only': True,
             },
             {
-                'name': _('Deployment'),
-                'object_name': 'Deployment',
-                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                'admin_url': reverse('admin:mgmt_deployment_control'),
-                'add_url': None,
-                'view_only': True,
-            },
-            {
                 'name': _('Backup Management'),
                 'object_name': 'Backup Management',
                 'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
@@ -3664,7 +3656,7 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 # Register analytics, log file viewer, server control, and deployment URLs with the admin site
 from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
 from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
-from mgmt.views_deployment import deployment_control, backup_control, create_backup, deployment_action, download_backup
+from mgmt.views_deployment import backup_control, create_backup, download_backup
 
 _original_get_urls = admin.site.get_urls
 def get_urls_with_custom_views():
@@ -3686,12 +3678,10 @@ def get_urls_with_custom_views():
         path('server/action/<str:action>/', admin.site.admin_view(server_action), name='mgmt_server_action'),
         path('server/metrics/', admin.site.admin_view(server_metrics_api), name='mgmt_server_metrics_api'),
         path('server/health/', admin.site.admin_view(server_health_api), name='mgmt_server_health_api'),
-        # Deployment URLs
-        path('deployment/', admin.site.admin_view(deployment_control), name='mgmt_deployment_control'),
+        # Backup URLs
         path('backup/', admin.site.admin_view(backup_control), name='mgmt_backup_control'),
         path('backup/create/', admin.site.admin_view(create_backup), name='mgmt_backup_create'),
         path('backup/download/<str:filename>/', admin.site.admin_view(download_backup), name='mgmt_backup_download'),
-        path('deployment/action/<str:action>/', admin.site.admin_view(deployment_action), name='mgmt_deployment_action'),
     ]
     return custom_urls + urls
 

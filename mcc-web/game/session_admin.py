@@ -730,7 +730,7 @@ class GameSessionAdmin(admin.ModelAdmin):
             return render(request, 'admin/game/edit_session_data.html', context)
         except Session.DoesNotExist:
             messages.error(request, _("Session nicht gefunden."))
-            return redirect('admin:sessions_session_changelist')
+            return redirect('admin:game_session_changelist')
     
     def delete_session_data_key_view(self, request, object_id):
         """Delete a specific key from session data."""
