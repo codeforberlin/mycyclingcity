@@ -21,6 +21,9 @@ import subprocess
 import os
 import json
 from datetime import datetime
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 def is_superuser(user):
@@ -179,8 +182,25 @@ def deployment_action(request, action):
     
     actions = {
         'git_pull': {
-            'cmd': ['git', 'pull'],
-            'cwd': project_dir,
+            'cmd': [
+                'bash',
+                '-lc',
+                (
+                    'if [ ! -d "{project_dir}/.git" ]; then '
+                    '  echo "ERROR: Kein Git-Repository in {project_dir}. '
+                    'Bitte zuerst initialisieren (git init, remote add)." >&2; '
+                    '  exit 2; '
+                    'fi && '
+                    'git -C "{project_dir}" remote set-url origin '
+                    'https://github.com/codeforberlin/mycyclingcity.git && '
+                    'if ! git -C "{project_dir}" config --bool core.sparseCheckout | grep -q true; then '
+                    '  git -C "{project_dir}" sparse-checkout init --cone; '
+                    'fi && '
+                    'git -C "{project_dir}" sparse-checkout set mcc-web && '
+                    'git -C "{project_dir}" pull origin main'
+                ).format(project_dir=str(project_dir)),
+            ],
+            'cwd': None,
         },
         'migrate': {
             'cmd': ['python', 'manage.py', 'migrate'],
@@ -190,16 +210,13 @@ def deployment_action(request, action):
             'cmd': ['python', 'manage.py', 'collectstatic', '--noinput'],
             'cwd': project_dir,
         },
-        'restart': {
-            'cmd': ['sudo', '-u', 'mcc', str(project_dir / 'scripts' / 'mcc-web.sh'), 'restart'],
-            'cwd': None,
-        },
     }
     
     if action not in actions:
         return JsonResponse({'error': 'Invalid action'}, status=400)
     
     try:
+        logger.info('Deployment action requested: %s', action)
         action_config = actions[action]
         result = subprocess.run(
             action_config['cmd'],
@@ -210,12 +227,23 @@ def deployment_action(request, action):
         )
         
         if result.returncode == 0:
+            logger.info(
+                'Deployment action succeeded: %s (returncode=%s)',
+                action,
+                result.returncode
+            )
             return JsonResponse({
                 'success': True,
                 'message': f'Action "{action}" completed successfully',
                 'output': result.stdout,
             })
         else:
+            logger.error(
+                'Deployment action failed: %s (returncode=%s, output=%s)',
+                action,
+                result.returncode,
+                (result.stdout + result.stderr).strip()
+            )
             return JsonResponse({
                 'success': False,
                 'error': f'Action "{action}" failed',
@@ -223,11 +251,13 @@ def deployment_action(request, action):
                 'returncode': result.returncode
             }, status=500)
     except subprocess.TimeoutExpired:
+        logger.error('Deployment action timed out: %s', action)
         return JsonResponse({
             'success': False,
             'error': 'Action timed out'
         }, status=504)
     except Exception as e:
+        logger.exception('Deployment action error: %s', action)
         return JsonResponse({
             'success': False,
             'error': str(e)
