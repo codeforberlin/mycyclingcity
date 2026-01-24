@@ -23,7 +23,10 @@ from pathlib import Path
 import subprocess
 import os
 import json
+import logging
 from mgmt.server_monitoring import get_server_metrics, get_health_checks
+
+logger = logging.getLogger(__name__)
 
 
 def is_superuser(user):
@@ -72,15 +75,20 @@ def server_control(request):
 @staff_member_required
 def server_action(request, action):
     """Perform server action (start, stop, restart, reload, status)."""
+    logger.info("Server action requested: action=%s user=%s method=%s", action, request.user, request.method)
     if request.method != 'POST':
+        logger.info("Server action rejected: non-POST method=%s", request.method)
         return JsonResponse({'error': 'Only POST requests allowed'}, status=405)
     
     if action not in ['start', 'stop', 'restart', 'reload', 'status']:
+        logger.info("Server action rejected: invalid action=%s", action)
         return JsonResponse({'error': 'Invalid action'}, status=400)
     
     script_path = Path(settings.BASE_DIR) / 'scripts' / 'mcc-web.sh'
+    logger.info("Server action script path resolved: %s", script_path)
     
     if not script_path.exists():
+        logger.info("Server action failed: script not found at %s", script_path)
         return JsonResponse({
             'error': f'Script not found: {script_path}',
             'success': False
@@ -88,6 +96,7 @@ def server_action(request, action):
     
     # Check if script is executable
     if not os.access(script_path, os.X_OK):
+        logger.info("Server action failed: script not executable at %s", script_path)
         return JsonResponse({
             'error': 'Script is not executable',
             'success': False
@@ -97,6 +106,7 @@ def server_action(request, action):
         # Try to run as mcc user with sudo, fallback to direct execution
         # Check if we're already running as mcc user
         current_user = os.getenv('USER') or os.getenv('USERNAME')
+        logger.info("Server action executing as user=%s (requested action=%s)", current_user, action)
         
         if current_user == 'mcc':
             # Already running as mcc, execute directly
@@ -104,19 +114,50 @@ def server_action(request, action):
         else:
             # Try to run with sudo as mcc user
             cmd = ['sudo', '-u', 'mcc', str(script_path), action]
+        logger.info("Server action command: %s", " ".join(cmd))
+
+        # Stop/restart will terminate the current Gunicorn worker; run detached
+        if action in ['stop', 'restart']:
+            logs_dir = Path(settings.BASE_DIR) / 'logs'
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            action_log = logs_dir / 'server_action.log'
+            with open(action_log, 'a') as log_handle:
+                log_handle.write(f"\n--- {action} started by {request.user} ---\n")
+                log_handle.flush()
+                subprocess.Popen(
+                    cmd,
+                    stdout=log_handle,
+                    stderr=log_handle,
+                    start_new_session=True,
+                    close_fds=True,
+                )
+            logger.info("Server action started in background: action=%s log=%s", action, action_log)
+            return JsonResponse({
+                'success': True,
+                'message': f'Action "{action}" started in background',
+                'output': f'Background execution. Details in {action_log}',
+            }, status=202)
         
+        timeout_seconds = 30
+        if action == 'restart':
+            # restart includes stop + start; stop can wait up to 30s
+            timeout_seconds = 120
+        logger.info("Server action timeout configured: action=%s timeout=%ss", action, timeout_seconds)
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=timeout_seconds
         )
         
         output = result.stdout + result.stderr
+        logger.info("Server action completed: action=%s returncode=%s", action, result.returncode)
         
         if result.returncode == 0:
             # Get updated status
             status_info = get_server_status(script_path)
+            logger.info("Server action success: action=%s status_running=%s pid=%s", action, status_info.get('running'), status_info.get('pid'))
             
             return JsonResponse({
                 'success': True,
@@ -125,6 +166,7 @@ def server_action(request, action):
                 'status': status_info
             })
         else:
+            logger.info("Server action failed: action=%s returncode=%s output=%s", action, result.returncode, output.strip())
             return JsonResponse({
                 'success': False,
                 'error': f'Action "{action}" failed',
@@ -133,11 +175,13 @@ def server_action(request, action):
             }, status=500)
             
     except subprocess.TimeoutExpired:
+        logger.info("Server action timeout: action=%s", action)
         return JsonResponse({
             'success': False,
             'error': 'Action timed out'
         }, status=504)
     except Exception as e:
+        logger.info("Server action error: action=%s error=%s", action, str(e))
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -146,7 +190,9 @@ def server_action(request, action):
 
 def get_server_status(script_path):
     """Get current server status."""
+    logger.info("Server status requested with script path: %s", script_path)
     if not script_path.exists():
+        logger.info("Server status failed: script not found at %s", script_path)
         return {
             'running': False,
             'error': 'Script not found'
@@ -155,11 +201,13 @@ def get_server_status(script_path):
     try:
         # Try to run as mcc user with sudo, fallback to direct execution
         current_user = os.getenv('USER') or os.getenv('USERNAME')
+        logger.info("Server status executing as user=%s", current_user)
         
         if current_user == 'mcc':
             cmd = [str(script_path), 'status']
         else:
             cmd = ['sudo', '-u', 'mcc', str(script_path), 'status']
+        logger.info("Server status command: %s", " ".join(cmd))
         
         result = subprocess.run(
             cmd,
@@ -170,6 +218,7 @@ def get_server_status(script_path):
         
         running = result.returncode == 0
         output = result.stdout + result.stderr
+        logger.info("Server status completed: running=%s returncode=%s", running, result.returncode)
         
         # Try to extract PID
         pid = None
@@ -180,6 +229,7 @@ def get_server_status(script_path):
                     pid = f.read().strip()
             except Exception:
                 pass
+        logger.info("Server status pid resolved: %s", pid or "N/A")
         
         return {
             'running': running,
@@ -187,6 +237,7 @@ def get_server_status(script_path):
             'output': output,
         }
     except Exception as e:
+        logger.info("Server status error: %s", str(e))
         return {
             'running': False,
             'error': str(e)

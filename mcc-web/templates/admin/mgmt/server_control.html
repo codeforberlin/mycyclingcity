@@ -185,8 +185,6 @@ function updateStatus(status) {
 {% endblock %}
 
 {% block content %}
-<h1>{% trans 'Server Control' %}</h1>
-
 <div class="server-control">
     <div id="server-status" class="server-status {% if status.running %}running{% else %}stopped{% endif %}">
         {% if status.running %}
@@ -210,9 +208,6 @@ function updateStatus(status) {
     {% endif %}
     
     <div class="action-buttons">
-        <button class="button success" onclick="performAction('start')">
-            {% trans 'Start Server' %}
-        </button>
         <button class="button danger" onclick="performAction('stop')">
             {% trans 'Stop Server' %}
         </button>

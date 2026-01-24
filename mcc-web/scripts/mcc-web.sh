@@ -17,6 +17,7 @@ GUNICORN_BIN="$VENV_DIR/bin/gunicorn"
 GUNICORN_CONFIG="$PROJECT_DIR/gunicorn_config.py"
 PIDFILE="$PROJECT_DIR/mcc-web.pid"
 LOG_DIR="$PROJECT_DIR/logs"
+LOG_FILE="$LOG_DIR/mcc-web-script.log"
 USER="${MCC_USER:-mcc}"
 GROUP="${MCC_GROUP:-mcc}"
 
@@ -30,11 +31,21 @@ NC='\033[0m' # No Color
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
+# Log helper (append to file, keep console output unchanged)
+log_line() {
+    local level="$1"
+    local message="$2"
+    local timestamp
+    timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "${timestamp} [${level}] ${message}" >> "$LOG_FILE"
+}
+
 # Check if running as correct user
 check_user() {
     if [ "$(whoami)" != "$USER" ]; then
         echo -e "${RED}Error: This script must be run as user '$USER'${NC}"
         echo -e "${YELLOW}Usage: sudo -u $USER $0 $1${NC}"
+        log_line "ERROR" "User check failed: running as $(whoami), expected $USER (action=$1)"
         exit 1
     fi
 }
@@ -44,6 +55,7 @@ check_gunicorn() {
     if [ ! -f "$GUNICORN_BIN" ]; then
         echo -e "${RED}Error: Gunicorn not found at $GUNICORN_BIN${NC}"
         echo -e "${YELLOW}Please ensure the virtual environment is set up correctly.${NC}"
+        log_line "ERROR" "Gunicorn not found at $GUNICORN_BIN"
         exit 1
     fi
 }
@@ -52,6 +64,7 @@ check_gunicorn() {
 check_config() {
     if [ ! -f "$GUNICORN_CONFIG" ]; then
         echo -e "${RED}Error: Gunicorn config not found at $GUNICORN_CONFIG${NC}"
+        log_line "ERROR" "Gunicorn config not found at $GUNICORN_CONFIG"
         exit 1
     fi
 }
@@ -82,10 +95,12 @@ start() {
     if is_running; then
         PID=$(get_pid)
         echo -e "${YELLOW}Server is already running (PID: $PID)${NC}"
+        log_line "WARN" "Start requested but already running (PID: $PID)"
         return 1
     fi
     
     echo -e "${BLUE}Starting MCC-Web server...${NC}"
+    log_line "INFO" "Starting server: project_dir=$PROJECT_DIR venv_dir=$VENV_DIR gunicorn_bin=$GUNICORN_BIN"
     
     cd "$PROJECT_DIR" || exit 1
     
@@ -142,7 +157,12 @@ start() {
                 echo -e "${BLUE}  Threads: $GUNICORN_THREADS${NC}"
                 echo -e "${BLUE}  Worker Class: $GUNICORN_WORKER_CLASS${NC}"
                 echo -e "${BLUE}  Log Level: $GUNICORN_LOG_LEVEL${NC}"
+                log_line "INFO" "Using DB config: bind=$GUNICORN_BIND workers=$GUNICORN_WORKERS threads=$GUNICORN_THREADS class=$GUNICORN_WORKER_CLASS level=$GUNICORN_LOG_LEVEL"
+            else
+                log_line "WARN" "DB config not available; using defaults"
             fi
+        else
+            log_line "WARN" "Python not found at $PYTHON_BIN; skipping DB config"
         fi
     fi
     
@@ -159,6 +179,7 @@ start() {
         --pid "$PIDFILE" \
         --daemon \
         config.wsgi:application > "$LOG_DIR/gunicorn_startup.log" 2>&1
+    log_line "INFO" "Gunicorn start command executed; output redirected to $LOG_DIR/gunicorn_startup.log"
     
     # Wait a moment for startup
     sleep 2
@@ -166,10 +187,12 @@ start() {
     if is_running; then
         PID=$(get_pid)
         echo -e "${GREEN}✓ Server started successfully (PID: $PID)${NC}"
+        log_line "INFO" "Server started successfully (PID: $PID)"
         return 0
     else
         echo -e "${RED}✗ Failed to start server${NC}"
         echo -e "${YELLOW}Check logs: $LOG_DIR/gunicorn_startup.log${NC}"
+        log_line "ERROR" "Server failed to start; check $LOG_DIR/gunicorn_startup.log"
         return 1
     fi
 }
@@ -180,37 +203,51 @@ stop() {
     
     if ! is_running; then
         echo -e "${YELLOW}Server is not running${NC}"
+        log_line "WARN" "Stop requested but server is not running"
         # Clean up stale PID file
         if [ -f "$PIDFILE" ]; then
             rm -f "$PIDFILE"
             echo -e "${BLUE}Removed stale PID file${NC}"
+            log_line "INFO" "Removed stale PID file: $PIDFILE"
         fi
         return 0
     fi
     
     PID=$(get_pid)
     echo -e "${BLUE}Stopping MCC-Web server (PID: $PID)...${NC}"
+    log_line "INFO" "Stopping server (PID: $PID)"
     
     # Try graceful shutdown first
     kill -TERM "$PID" 2>/dev/null
     
     # Wait for process to stop
     for i in {1..30}; do
+        if [ "$i" -eq 1 ] || [ "$i" -eq 10 ] || [ "$i" -eq 20 ] || [ "$i" -eq 30 ]; then
+            log_line "INFO" "Stop wait loop: second=$i pid=$PID"
+        fi
         if ! kill -0 "$PID" 2>/dev/null; then
             rm -f "$PIDFILE"
             echo -e "${GREEN}✓ Server stopped successfully${NC}"
+            log_line "INFO" "Server stopped successfully"
             return 0
         fi
         sleep 1
     done
+
+    log_line "INFO" "Stop wait loop completed; checking if PID still alive: $PID"
     
     # Force kill if still running
     if kill -0 "$PID" 2>/dev/null; then
         echo -e "${YELLOW}Graceful shutdown failed, forcing stop...${NC}"
+        log_line "WARN" "Graceful shutdown failed; forcing stop (PID: $PID)"
         kill -KILL "$PID" 2>/dev/null
+        log_line "INFO" "Force kill sent (PID: $PID) exit_code=$?"
         sleep 1
         rm -f "$PIDFILE"
         echo -e "${GREEN}✓ Server force-stopped${NC}"
+        log_line "INFO" "Server force-stopped"
+    else
+        log_line "INFO" "Stop completed without force kill (PID: $PID)"
     fi
     
     return 0
@@ -219,9 +256,12 @@ stop() {
 # Restart the server
 restart() {
     check_user restart
+    log_line "INFO" "Restart requested"
     stop
+    log_line "INFO" "Restart: stop completed with exit code $?"
     sleep 2
     start
+    log_line "INFO" "Restart: start completed with exit code $?"
 }
 
 # Reload the server (HUP signal)
@@ -230,20 +270,24 @@ reload() {
     
     if ! is_running; then
         echo -e "${YELLOW}Server is not running, starting instead...${NC}"
+        log_line "WARN" "Reload requested but server is not running; starting instead"
         start
         return $?
     fi
     
     PID=$(get_pid)
     echo -e "${BLUE}Reloading MCC-Web server (PID: $PID)...${NC}"
+    log_line "INFO" "Reloading server (PID: $PID)"
     
     kill -HUP "$PID" 2>/dev/null
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Reload signal sent${NC}"
+        log_line "INFO" "Reload signal sent"
         return 0
     else
         echo -e "${RED}✗ Failed to send reload signal${NC}"
+        log_line "ERROR" "Failed to send reload signal"
         return 1
     fi
 }
@@ -253,6 +297,7 @@ status() {
     if is_running; then
         PID=$(get_pid)
         echo -e "${GREEN}✓ Server is running (PID: $PID)${NC}"
+        log_line "INFO" "Status: running (PID: $PID)"
         
         # Show process info
         if command -v ps >/dev/null 2>&1; then
@@ -262,6 +307,7 @@ status() {
         return 0
     else
         echo -e "${RED}✗ Server is not running${NC}"
+        log_line "INFO" "Status: not running"
         return 1
     fi
 }
