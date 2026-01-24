@@ -78,6 +78,17 @@
 
 <div class="log-controls">
     <form method="get" action="{% url 'admin:mgmt_log_file_viewer' file_key %}">
+        {% if available_logs %}
+        <label>{% trans 'Logdatei' %}:</label>
+        <select name="logfile" onchange="if (this.value) { window.location.href = this.value; }">
+            {% for item in available_logs %}
+            <option value="{% url 'admin:mgmt_log_file_viewer' item.key %}" {% if item.key == file_key %}selected{% endif %}>
+                {{ item.label }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
         <label>{% trans 'Search' %}:</label>
         <input type="text" name="search" value="{{ search }}" placeholder="{% trans 'Search in logs...' %}">
         
@@ -107,7 +118,7 @@
             {% if auto_refresh %}{% trans 'Stop Auto-Refresh' %}{% else %}{% trans 'Auto-Refresh' %}{% endif %}
         </a>
     </form>
-    
+
     <div class="log-stats">
         <strong>{% trans 'File' %}:</strong> {{ file_name }} | 
         <strong>{% trans 'Size' %}:</strong> {{ file_size_mb }} MB | 

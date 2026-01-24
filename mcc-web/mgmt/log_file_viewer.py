@@ -70,11 +70,41 @@ LOG_FILES = {
 }
 
 
+def _is_safe_log_filename(filename):
+    """Check if a filename is safe (no path traversal)."""
+    if not filename or filename in {'.', '..'}:
+        return False
+    if '/' in filename or '\\' in filename:
+        return False
+    return Path(filename).name == filename
+
+
+def list_available_log_files(logs_dir):
+    """List log files in logs_dir excluding rotated files."""
+    logs_dir.mkdir(exist_ok=True)
+    predefined_names = {info['name'] for info in LOG_FILES.values()}
+    available = []
+    for entry in logs_dir.iterdir():
+        if not entry.is_file():
+            continue
+        name = entry.name
+        if name in predefined_names:
+            continue
+        if re.search(r'\.\d+$', name):
+            continue
+        available.append(name)
+    return sorted(available)
+
+
 def get_log_file_path(file_key):
     """Get the full path to a log file."""
     logs_dir = Path(settings.BASE_DIR) / 'logs'
     if file_key in LOG_FILES:
         return logs_dir / LOG_FILES[file_key]['name']
+    if _is_safe_log_filename(file_key):
+        candidate = logs_dir / file_key
+        if candidate.exists():
+            return candidate
     return None
 
 
@@ -166,9 +196,23 @@ def log_file_list(request):
 @staff_member_required
 def log_file_viewer(request, file_key, rotated_index=None):
     """View a log file with scrolling, filtering, and search."""
-    if file_key not in LOG_FILES:
+    logs_dir = Path(settings.BASE_DIR) / 'logs'
+    available_files = list_available_log_files(logs_dir)
+    if file_key not in LOG_FILES and file_key not in available_files:
         return redirect('admin:mgmt_log_file_list')
     
+    available_logs = []
+    for key, info in LOG_FILES.items():
+        available_logs.append({
+            'key': key,
+            'label': info['display_name'],
+        })
+    for name in available_files:
+        available_logs.append({
+            'key': name,
+            'label': name,
+        })
+
     file_path = get_log_file_path(file_key)
     if rotated_index is not None:
         # View rotated file
@@ -195,6 +239,8 @@ def log_file_viewer(request, file_key, rotated_index=None):
         return render(request, 'admin/mgmt/log_file_viewer.html', {
             'title': _('Error Reading Log File'),
             'error': str(e),
+            'file_key': file_key,
+            'available_logs': available_logs,
         })
     
     # Parse and filter lines
@@ -241,10 +287,15 @@ def log_file_viewer(request, file_key, rotated_index=None):
                 'size_mb': round(rotated.stat().st_size / (1024 * 1024), 2),
             })
     
+    if file_key in LOG_FILES:
+        display_name = LOG_FILES[file_key]["display_name"]
+    else:
+        display_name = file_path.name
     context = {
-        'title': _('Log File Viewer') + f' - {LOG_FILES[file_key]["display_name"]}',
+        'title': _('Log File Viewer') + f' - {display_name}',
         'file_key': file_key,
         'file_name': file_path.name,
+        'available_logs': available_logs,
         'file_size_mb': file_size_mb,
         'file_modified': file_modified,
         'total_lines': total_lines,
