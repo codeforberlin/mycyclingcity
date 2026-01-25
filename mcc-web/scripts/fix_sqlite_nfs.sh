@@ -32,7 +32,13 @@ import django
 django.setup()
 from django.conf import settings
 print(settings.DATABASES['default']['NAME'])
-" 2>/dev/null || echo "$PROJECT_DIR/data/db.sqlite3"
+" 2>/dev/null || {
+    # Fallback: Try to determine path based on environment
+    if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]] || [[ "$MCC_ENV" == "production" ]]; then
+        echo "/data/var/mcc/db/db.sqlite3"
+    else
+        echo "$PROJECT_DIR/data/db/db.sqlite3"
+    fi
 }
 
 DB_FILE="$(get_db_path)"

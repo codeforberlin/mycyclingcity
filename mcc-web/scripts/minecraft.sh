@@ -11,12 +11,22 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
+
+# Prüfe ob wir in Produktion sind (Pfad enthält /data/appl/mcc)
+if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]]; then
+    VENV_DIR="/data/appl/mcc/venv"
+    TMP_DIR="/data/var/mcc/tmp"
+    LOG_DIR="/data/var/mcc/logs"
+else
+    # Entwicklung: lokale Verzeichnisse
+    VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
+    TMP_DIR="$PROJECT_DIR/tmp"
+    LOG_DIR="$PROJECT_DIR/logs"
+fi
+
 PYTHON_BIN="$VENV_DIR/bin/python"
-TMP_DIR="$PROJECT_DIR/tmp"
 PIDFILE="$TMP_DIR/minecraft.pid"
 SNAPSHOT_PIDFILE="$TMP_DIR/minecraft-snapshot.pid"
-LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/minecraft-worker.log"
 SNAPSHOT_LOG_FILE="$LOG_DIR/minecraft-snapshot.log"
 

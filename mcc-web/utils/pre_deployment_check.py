@@ -200,8 +200,13 @@ def get_database_path(project_dir: Path) -> Path:
         db_path = Path(settings.DATABASES['default']['NAME'])
         return db_path
     except Exception:
-        # Fallback to default location if Django setup fails
-        return project_dir / 'data' / 'db.sqlite3'
+        # Fallback: Try to determine path based on environment
+        # In production: /data/var/mcc/db/db.sqlite3
+        # In development: project_dir/data/db/db.sqlite3
+        if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
+            return Path('/data/var/mcc/db/db.sqlite3')
+        else:
+            return project_dir / 'data' / 'db' / 'db.sqlite3'
 
 
 def check_file_permissions(project_dir: Path) -> Tuple[bool, List[str]]:

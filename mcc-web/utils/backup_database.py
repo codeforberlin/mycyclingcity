@@ -192,7 +192,17 @@ def main() -> int:
         project_dir = Path(__file__).parent.parent.resolve()
     else:
         project_dir = Path(args.project_dir).resolve()
-    backup_dir = Path(args.backup_dir) if args.backup_dir else project_dir / 'backups'
+    
+    # Bestimme Standard-Backup-Verzeichnis
+    if args.backup_dir:
+        backup_dir = Path(args.backup_dir)
+    else:
+        # Prüfe ob wir in Produktion sind (Pfad enthält /data/appl/mcc)
+        if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
+            backup_dir = Path('/data/var/mcc/backups')
+        else:
+            # Entwicklung: lokales Verzeichnis
+            backup_dir = project_dir / 'backups'
     
     print("MCC-Web Database Backup")
     print("=" * 50)

@@ -19,7 +19,7 @@ import tarfile
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set, Optional
 
 
 def get_project_version() -> str:
@@ -58,34 +58,17 @@ def get_project_version() -> str:
     return 'dev'
 
 
-def get_database_path(project_dir: Path) -> Path:
-    """
-    Get the database path from Django settings.
-    
-    Args:
-        project_dir: Project root directory
-    
-    Returns:
-        Path to database file
-    """
-    try:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        sys.path.insert(0, str(project_dir))
-        
-        import django
-        django.setup()
-        
-        from django.conf import settings
-        db_path = Path(settings.DATABASES['default']['NAME'])
-        return db_path
-    except Exception:
-        # Fallback to default location if Django setup fails
-        return project_dir / 'data' / 'db.sqlite3'
+# Note: get_database_path() function removed - database is now in /data/var/mcc/db/
+# and not in the project directory, so it doesn't need to be excluded from archives
 
 
 def get_database_exclude_patterns(base_dir: Path) -> List[str]:
     """
-    Get database file patterns to exclude based on Django settings.
+    Get database file patterns to exclude.
+    
+    Since the database is now in /data/var/mcc/db/, it's not in the project directory.
+    However, we still exclude common database patterns for backwards compatibility
+    and in case someone has old database files in the project directory.
     
     Args:
         base_dir: The base directory of the project
@@ -93,30 +76,8 @@ def get_database_exclude_patterns(base_dir: Path) -> List[str]:
     Returns:
         List of exclude patterns for database files
     """
-    try:
-        db_path = get_database_path(base_dir)
-        # Get relative path from base_dir
-        try:
-            rel_db_path = db_path.relative_to(base_dir)
-            db_dir = rel_db_path.parent
-            db_name = rel_db_path.name
-            
-            # Generate patterns for all SQLite files
-            patterns = [
-                str(rel_db_path),  # Main database file
-                f"{db_dir}/{db_name}-journal",
-                f"{db_dir}/{db_name}-shm",
-                f"{db_dir}/{db_name}-wal",
-                f"{db_dir}/{db_name}.old",
-            ]
-            return patterns
-        except ValueError:
-            # Database path is outside base_dir, use fallback patterns
-            pass
-    except Exception:
-        pass
-    
-    # Fallback patterns (for backwards compatibility and if Django setup fails)
+    # Database is now in /data/var/mcc/db/, but exclude common patterns
+    # for backwards compatibility and old installations
     return [
         'db.sqlite3',
         'db.sqlite3-journal',
@@ -128,6 +89,9 @@ def get_database_exclude_patterns(base_dir: Path) -> List[str]:
         'data/db.sqlite3-shm',
         'data/db.sqlite3-wal',
         'data/db.sqlite3.old',
+        '*.db',
+        '*.sqlite',
+        '*.sqlite3',
     ]
 
 
@@ -261,8 +225,12 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
             if part not in ['.gitignore']:  # We might want to keep .gitignore for reference
                 return True
         
-        # Check exact matches
+        # Check exact matches (including venv directories)
         if part in exclude_patterns:
+            return True
+        
+        # Special check for venv directories (case-insensitive)
+        if part.lower() in ['venv', 'env', 'virtualenv', '.venv']:
             return True
         
         # Check pattern matches (simple glob-like matching)
@@ -307,7 +275,12 @@ def collect_files(base_dir: Path) -> List[Path]:
         root_path = Path(root)
         
         # Filter out excluded directories before descending
-        dirs[:] = [d for d in dirs if not should_exclude(root_path / d, base_dir)]
+        # Also explicitly exclude venv directories (case-insensitive)
+        dirs[:] = [
+            d for d in dirs 
+            if not should_exclude(root_path / d, base_dir)
+            and d.lower() not in ['venv', 'env', 'virtualenv', '.venv']
+        ]
         
         for filename in filenames:
             file_path = root_path / filename
@@ -323,13 +296,246 @@ def collect_files(base_dir: Path) -> List[Path]:
     return sorted(files_to_include)
 
 
-def create_deployment_archive(output_dir: Path | None = None) -> Path:
+def check_translations(base_dir: Path) -> bool:
+    """
+    Check if translation files can be compiled successfully.
+    
+    Args:
+        base_dir: Project root directory
+    
+    Returns:
+        True if compilation succeeds, False otherwise
+    """
+    print("Checking translation files...")
+    
+    # Find Python executable
+    python_exe = None
+    
+    # Check for venv in project directory
+    venv_dir = base_dir / 'venv'
+    if venv_dir.exists() and venv_dir.is_dir():
+        venv_python = venv_dir / 'bin' / 'python'
+        if venv_python.exists():
+            python_exe = str(venv_python)
+        else:
+            venv_python3 = venv_dir / 'bin' / 'python3'
+            if venv_python3.exists():
+                python_exe = str(venv_python3)
+    
+    # Check for venv in home directory
+    if not python_exe:
+        home_venv = Path.home() / 'venv_mcc' / 'bin' / 'python'
+        if home_venv.exists():
+            python_exe = str(home_venv)
+        else:
+            home_venv3 = Path.home() / 'venv_mcc' / 'bin' / 'python3'
+            if home_venv3.exists():
+                python_exe = str(home_venv3)
+    
+    # Check for VIRTUAL_ENV environment variable
+    if not python_exe and 'VIRTUAL_ENV' in os.environ:
+        venv_path = Path(os.environ['VIRTUAL_ENV'])
+        venv_python = venv_path / 'bin' / 'python'
+        if venv_python.exists():
+            python_exe = str(venv_python)
+        else:
+            venv_python3 = venv_path / 'bin' / 'python3'
+            if venv_python3.exists():
+                python_exe = str(venv_python3)
+    
+    # Fallback to system python
+    if not python_exe:
+        python_exe = 'python3'
+    
+    # Verify that Django is available in the selected Python
+    django_available = False
+    if python_exe:
+        try:
+            result = subprocess.run(
+                [python_exe, '-c', 'import django; print(django.__version__)'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                django_available = True
+                print(f"  Using Python: {python_exe} (Django {result.stdout.strip()})")
+            else:
+                print(f"  Warning: Django not found in {python_exe}")
+        except Exception as e:
+            print(f"  Warning: Could not verify Django in {python_exe}: {e}")
+    
+    # If Django not available, warn but continue (will be caught during compilemessages)
+    if not django_available and python_exe:
+        print(f"  Warning: Django might not be available in {python_exe}")
+        print(f"  The check will fail if Django is required but not installed")
+    
+    # Check if manage.py exists
+    manage_py = base_dir / 'manage.py'
+    if not manage_py.exists():
+        print("  Warning: manage.py not found, skipping translation check")
+        return True  # Not critical if manage.py doesn't exist
+    
+    # Check if locale directory exists
+    locale_dir = base_dir / 'locale'
+    if not locale_dir.exists():
+        print("  Info: No locale directory found, skipping translation check")
+        return True  # Not critical if no translations
+    
+    # Find available locales in project locale directory
+    available_locales = []
+    po_files = []
+    if locale_dir.exists():
+        for locale_path in locale_dir.iterdir():
+            if locale_path.is_dir() and (locale_path / 'LC_MESSAGES').exists():
+                locale_name = locale_path.name
+                po_file = locale_path / 'LC_MESSAGES' / 'django.po'
+                if po_file.exists():
+                    available_locales.append(locale_name)
+                    po_files.append(po_file)
+    
+    if not available_locales:
+        print("  Info: No translation files found in locale directory, skipping translation check")
+        return True  # Not critical if no translations
+    
+    print(f"  Checking translation files for locales: {', '.join(available_locales)}")
+    
+    # Check translations directly using msgfmt (gettext tools)
+    # This avoids Django's compilemessages which also processes venv translations
+    msgfmt_exe = None
+    for possible_msgfmt in ['msgfmt', 'msgfmt.py', '/usr/bin/msgfmt']:
+        try:
+            result = subprocess.run(
+                [possible_msgfmt, '--version'],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if result.returncode == 0:
+                msgfmt_exe = possible_msgfmt
+                break
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    
+    if not msgfmt_exe:
+        print("  Warning: msgfmt not found, trying Django compilemessages instead...")
+        # Fallback to Django compilemessages
+        env = os.environ.copy()
+        env['DJANGO_SETTINGS_MODULE'] = 'config.settings'
+        env['PYTHONPATH'] = str(base_dir)
+        
+        compile_cmd = [python_exe, 'manage.py', 'compilemessages']
+        for locale in available_locales:
+            compile_cmd.extend(['--locale', locale])
+        
+        try:
+            result = subprocess.run(
+                compile_cmd,
+                cwd=base_dir,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env=env
+            )
+            
+            if result.returncode == 0:
+                print("  ✓ Translation files compiled successfully")
+                return True
+            else:
+                # Check if it's just "no files found" (which is OK)
+                if "no django translation files found" in result.stderr.lower():
+                    print("  Info: No translation files found (this is OK)")
+                    return True
+                
+                # Check if it's a Django import error
+                if "ModuleNotFoundError" in result.stderr or "No module named 'django'" in result.stderr:
+                    print("  ✗ Django not found in Python environment")
+                    print(f"    Python: {python_exe}")
+                    print("    Please activate virtual environment or install Django")
+                    print("    Use --skip-translation-check to skip this check")
+                    return False
+                
+                # Real error - print details
+                print("  ✗ Translation compilation failed:")
+                if result.stdout:
+                    stdout_lines = result.stdout.strip().split('\n')
+                    if len(stdout_lines) > 10:
+                        print(f"    stdout (last 10 lines):")
+                        for line in stdout_lines[-10:]:
+                            print(f"      {line}")
+                    else:
+                        print(f"    stdout: {result.stdout[:500]}")
+                if result.stderr:
+                    stderr_lines = result.stderr.strip().split('\n')
+                    if len(stderr_lines) > 10:
+                        print(f"    stderr (last 10 lines):")
+                        for line in stderr_lines[-10:]:
+                            print(f"      {line}")
+                    else:
+                        print(f"    stderr: {result.stderr[:500]}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            print("  ✗ Translation check timed out")
+            return False
+        except Exception as e:
+            print(f"  ✗ Error checking translations: {e}")
+            return False
+    else:
+        # Use msgfmt directly on project .po files only
+        errors_found = False
+        error_messages = []
+        
+        for po_file in po_files:
+            try:
+                result = subprocess.run(
+                    [msgfmt_exe, '--check', '--statistics', '-o', '/dev/null', str(po_file)],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                if result.returncode == 0:
+                    # Extract statistics if available
+                    stats = result.stderr.strip() if result.stderr else ""
+                    if stats:
+                        print(f"    ✓ {po_file.relative_to(base_dir)}: {stats}")
+                    else:
+                        print(f"    ✓ {po_file.relative_to(base_dir)}: OK")
+                else:
+                    errors_found = True
+                    error_msg = result.stderr.strip() if result.stderr else result.stdout.strip()
+                    error_messages.append(f"{po_file.relative_to(base_dir)}: {error_msg}")
+                    print(f"    ✗ {po_file.relative_to(base_dir)}: {error_msg[:200]}")
+                    
+            except subprocess.TimeoutExpired:
+                errors_found = True
+                error_messages.append(f"{po_file.relative_to(base_dir)}: Timeout during check")
+                print(f"    ✗ {po_file.relative_to(base_dir)}: Timeout")
+            except Exception as e:
+                errors_found = True
+                error_messages.append(f"{po_file.relative_to(base_dir)}: {str(e)}")
+                print(f"    ✗ {po_file.relative_to(base_dir)}: {e}")
+        
+        if errors_found:
+            print("  ✗ Translation check failed:")
+            for msg in error_messages[:5]:  # Show first 5 errors
+                print(f"    {msg}")
+            if len(error_messages) > 5:
+                print(f"    ... and {len(error_messages) - 5} more error(s)")
+            return False
+        
+        print("  ✓ All translation files are valid")
+        return True
+
+
+def create_deployment_archive(output_dir: Path | None = None, skip_translation_check: bool = False) -> Path:
     """
     Create a deployment archive (tar.gz) for the MCC-Web application.
     
     Args:
         output_dir: Directory where the archive should be saved.
-                   If None, saves to the project root.
+                   If None, saves to /tmp.
     
     Returns:
         Path to the created archive file.
@@ -338,27 +544,42 @@ def create_deployment_archive(output_dir: Path | None = None) -> Path:
     base_dir = Path(__file__).parent.parent.resolve()
     
     if output_dir is None:
-        output_dir = base_dir
+        output_dir = Path('/tmp')
     else:
         output_dir = Path(output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get version for archive name
+    # Get version for archive name and directory structure
     version = get_project_version()
+    # Normalize version for directory name (remove 'v' prefix, replace special chars)
+    version_dir = f"mcc-web-{version.replace('v', '').replace('/', '-').replace('\\', '-')}"
+    
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     archive_name = f'mcc-web-deployment-{version}-{timestamp}.tar.gz'
     archive_path = output_dir / archive_name
+    
+    # Check translations before creating archive
+    if not skip_translation_check:
+        if not check_translations(base_dir):
+            print("\n✗ Translation check failed!")
+            print("  Please fix translation errors before creating deployment archive.")
+            print("  Use --skip-translation-check to skip this check (not recommended).")
+            sys.exit(1)
+        print("")  # Empty line after check
     
     print(f"Collecting files from {base_dir}...")
     files_to_include = collect_files(base_dir)
     print(f"Found {len(files_to_include)} files to include.")
     
     print(f"Creating archive: {archive_path}")
+    print(f"Archive root directory: {version_dir}/")
     
     with tarfile.open(archive_path, 'w:gz') as tar:
         for file_path in files_to_include:
             # Get relative path for archive
-            arcname = file_path.relative_to(base_dir)
+            rel_path = file_path.relative_to(base_dir)
+            # Prepend version-specific directory
+            arcname = f"{version_dir}/{rel_path}"
             print(f"  Adding: {arcname}")
             tar.add(file_path, arcname=arcname, recursive=False)
     
@@ -367,6 +588,7 @@ def create_deployment_archive(output_dir: Path | None = None) -> Path:
     print(f"  File: {archive_path}")
     print(f"  Size: {archive_size / (1024 * 1024):.2f} MB")
     print(f"  Files: {len(files_to_include)}")
+    print(f"  Archive root: {version_dir}/")
     
     return archive_path
 
@@ -382,14 +604,20 @@ def main() -> int:
         '-o', '--output',
         type=str,
         default=None,
-        help='Output directory for the archive (default: project root)'
+        help='Output directory for the archive (default: /tmp)'
+    )
+    parser.add_argument(
+        '--skip-translation-check',
+        action='store_true',
+        help='Skip translation compilation check (not recommended)'
     )
     
     args = parser.parse_args()
     
     try:
         archive_path = create_deployment_archive(
-            output_dir=Path(args.output) if args.output else None
+            output_dir=Path(args.output) if args.output else None,
+            skip_translation_check=args.skip_translation_check
         )
         print(f"\n✓ Deployment archive ready: {archive_path}")
         return 0

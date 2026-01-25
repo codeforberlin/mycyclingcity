@@ -23,8 +23,8 @@ class Migration(migrations.Migration):
                 ('last_updated', models.DateTimeField(auto_now=True, verbose_name='Zuletzt aktualisiert')),
             ],
             options={
-                'verbose_name': 'Game Session',
-                'verbose_name_plural': 'Game Sessions',
+                'verbose_name': 'Game Session Tracking',
+                'verbose_name_plural': 'Game Session Tracking',
                 'ordering': ['-last_updated'],
                 'indexes': [
                     models.Index(fields=['room_code', 'is_master'], name='game_gamese_room_co_528e39_idx'),

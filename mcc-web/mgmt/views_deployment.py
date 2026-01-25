@@ -34,8 +34,13 @@ def is_superuser(user):
 @staff_member_required
 def backup_control(request):
     """Backup management page."""
-    backups_dir = Path(settings.BASE_DIR) / 'backups'
-    backups_dir.mkdir(exist_ok=True)
+    # Prüfe ob wir in Produktion sind
+    if '/data/appl/mcc' in str(settings.BASE_DIR) or os.environ.get('MCC_ENV') == 'production':
+        backups_dir = Path('/data/var/mcc/backups')
+    else:
+        # Entwicklung: lokales Verzeichnis
+        backups_dir = Path(settings.BASE_DIR) / 'backups'
+    backups_dir.mkdir(parents=True, exist_ok=True)
     
     # List backup files (exclude WAL and SHM files)
     backups = []
@@ -90,8 +95,13 @@ def create_backup(request):
             }, status=500)
         
         # Get backup directory
-        backup_dir = project_dir / 'backups'
-        backup_dir.mkdir(exist_ok=True)
+        # Prüfe ob wir in Produktion sind
+        if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
+            backup_dir = Path('/data/var/mcc/backups')
+        else:
+            # Entwicklung: lokales Verzeichnis
+            backup_dir = project_dir / 'backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
         
         # Create backup
         backup_path = backup_func(db_path, backup_dir, compress=False)

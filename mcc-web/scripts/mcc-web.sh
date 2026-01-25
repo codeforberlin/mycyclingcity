@@ -12,12 +12,22 @@
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
+
+# Prüfe ob wir in Produktion sind (Pfad enthält /data/appl/mcc)
+if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]]; then
+    VENV_DIR="/data/appl/mcc/venv"
+    TMP_DIR="/data/var/mcc/tmp"
+    LOG_DIR="/data/var/mcc/logs"
+else
+    # Entwicklung: lokale Verzeichnisse
+    VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
+    TMP_DIR="$PROJECT_DIR/tmp"
+    LOG_DIR="$PROJECT_DIR/logs"
+fi
+
 GUNICORN_BIN="$VENV_DIR/bin/gunicorn"
 GUNICORN_CONFIG="$PROJECT_DIR/config/gunicorn_config.py"
-TMP_DIR="$PROJECT_DIR/tmp"
 PIDFILE="$TMP_DIR/mcc-web.pid"
-LOG_DIR="$PROJECT_DIR/logs"
 LOG_FILE="$LOG_DIR/mcc-web-script.log"
 MINECRAFT_SCRIPT="$PROJECT_DIR/scripts/minecraft.sh"
 

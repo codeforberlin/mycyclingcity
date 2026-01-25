@@ -4733,6 +4733,7 @@ msgstr ""
 #, fuzzy
 #| msgid "Station"
 msgid "Actions"
+msgstr ""
 
 msgid "Available"
 msgstr ""
@@ -5435,7 +5436,6 @@ msgstr "Spiel-Räume"
 # New translations for session_admin.py (German)
 msgid "Room not found"
 msgstr "Raum nicht gefunden"
-msgstr "Details"
 
 msgid "Enter Room"
 msgstr "Raum betreten"
@@ -5471,9 +5471,14 @@ msgstr "Gestoppt"
 
 msgid "Running"
 msgstr "Läuft"
+
 msgid "{count} day(s)"
 msgstr "{count} Tag(e)"
+
+msgid "{count} hour(s)"
 msgstr "{count} Stunde(n)"
+
+msgid "{count} minute(s)"
 msgstr "{count} Minute(n)"
 msgid "{} session(s) deleted. Users have been logged out."
 msgstr "{} Session(s) wurden gelöscht. Die Benutzer wurden ausgeloggt."

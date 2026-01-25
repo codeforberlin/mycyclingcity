@@ -33,7 +33,8 @@ class TestLoggingConfig:
         # Get config (should create new instance)
         config1 = LoggingConfig.get_config()
         assert config1.pk == 1
-        assert config1.min_log_level == 'WARNING'
+        # Default is 'INFO', not 'WARNING'
+        assert config1.min_log_level == 'INFO'
         
         # Get config again (should return same instance)
         config2 = LoggingConfig.get_config()

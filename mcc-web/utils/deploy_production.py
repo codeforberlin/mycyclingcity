@@ -67,9 +67,10 @@ def find_python_executable(project_dir: Path, verbose: bool = False) -> Optional
     Find the Python executable from virtual environment.
     
     Checks for virtual environment in:
-    1. project_dir/venv/bin/python
-    2. ~/venv_mcc/bin/python
-    3. Falls back to system 'python' if no venv found
+    1. /data/appl/mcc/venv/bin/python (Produktion)
+    2. project_dir/venv/bin/python (Entwicklung)
+    3. ~/venv_mcc/bin/python (Entwicklung)
+    4. Falls back to system 'python' if no venv found
     
     Args:
         project_dir: Project root directory
@@ -78,6 +79,21 @@ def find_python_executable(project_dir: Path, verbose: bool = False) -> Optional
     Returns:
         Path to Python executable, or None if not found
     """
+    # Prüfe ob wir in Produktion sind
+    if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
+        venv_dir = Path('/data/appl/mcc/venv')
+        if venv_dir.exists() and venv_dir.is_dir():
+            venv_python = venv_dir / 'bin' / 'python'
+            if venv_python.exists():
+                if verbose:
+                    print_info(f"Found production venv Python: {venv_python}")
+                return str(venv_python)
+            venv_python3 = venv_dir / 'bin' / 'python3'
+            if venv_python3.exists():
+                if verbose:
+                    print_info(f"Found production venv Python3: {venv_python3}")
+                return str(venv_python3)
+    
     # Check for venv in project directory
     venv_dir = project_dir / 'venv'
     if venv_dir.exists() and venv_dir.is_dir():
@@ -331,7 +347,12 @@ def backup_database(project_dir: Path, db_path: Path, backup_dir: Optional[Path]
         return None
     
     if backup_dir is None:
-        backup_dir = project_dir / 'backups'
+        # Prüfe ob wir in Produktion sind
+        if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
+            backup_dir = Path('/data/var/mcc/backups')
+        else:
+            # Entwicklung: lokales Verzeichnis
+            backup_dir = project_dir / 'backups'
     
     backup_dir.mkdir(parents=True, exist_ok=True)
     

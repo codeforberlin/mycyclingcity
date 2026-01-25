@@ -12,7 +12,39 @@ from pathlib import Path
 from django.utils.translation import gettext_lazy as _
 from decouple import config, Csv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Basis-Verzeichnisse
+# CODE_DIR zeigt auf das aktuelle Verzeichnis (über Symlink auf aktuelle Version)
+CODE_DIR = Path(__file__).resolve().parent.parent
+
+# BASE_DIR bleibt für relative Pfade im Code
+BASE_DIR = CODE_DIR
+
+# Prüfe ob wir in Produktion sind (Pfad enthält /data/appl/mcc)
+# Oder über Umgebungsvariable
+if os.environ.get('MCC_ENV') == 'production' or '/data/appl/mcc' in str(CODE_DIR):
+    DATA_DIR = Path('/data/var/mcc')                   # Daten-Verzeichnis
+    APP_DIR = Path('/data/appl/mcc')                    # App-Verzeichnis (für .env und venv)
+else:
+    # Entwicklung: relative Pfade oder lokale Verzeichnisse
+    DATA_DIR = BASE_DIR / 'data'  # Fallback zu altem Verhalten
+    APP_DIR = BASE_DIR  # .env im Projektverzeichnis
+
+# .env Datei explizit aus /data/appl/mcc/.env laden
+ENV_FILE = APP_DIR / '.env'
+if not ENV_FILE.exists():
+    # Fallback für Entwicklung: Suche .env im Projektverzeichnis
+    ENV_FILE = BASE_DIR / '.env'
+
+# Lade .env Datei manuell in os.environ (vor allen config()-Aufrufen)
+if ENV_FILE.exists():
+    with open(ENV_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                # Entferne Anführungszeichen falls vorhanden
+                value = value.strip('"\'')
+                os.environ[key.strip()] = value.strip()
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-YOUR_SECRET_KEY_HERE')
@@ -102,7 +134,7 @@ ROOT_URLCONF = 'config.urls'  # Or your main URL configuration path
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [CODE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -128,7 +160,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
+        'NAME': DATA_DIR / 'db' / 'db.sqlite3',
         'OPTIONS': {
             'timeout': 30,  # Increase timeout to 30 seconds for high concurrency
         },
@@ -250,7 +282,8 @@ LANGUAGES = [
 
 # IMPORTANT: Defines where Django looks for translation files
 LOCALE_PATHS = [
-    BASE_DIR / 'locale',
+    DATA_DIR / 'locale_compiled',  # Kompilierte Übersetzungen
+    CODE_DIR / 'locale',           # Quell-Übersetzungen (.po)
 ]
 
 
@@ -260,15 +293,15 @@ LOCALE_PATHS = [
 STATIC_URL = 'static/'
 
 # STATIC_ROOT MUST BE AN ABSOLUTE PATH!
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = DATA_DIR / 'staticfiles'  # Für Apache
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'project_static',
+    CODE_DIR / 'project_static',  # Quell-Verzeichnis bleibt im Code
 ]
 
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = DATA_DIR / 'media'
 
 
 # Default primary key field type
@@ -350,8 +383,8 @@ MCC_LOGO_RIGHT = 'game/images/MCC-Button-v2-300x300.png'
 MCC_WINNER_PHOTO = 'game/images/MCC-Button-v3-300x300.png'
 
 # Ensure logs directory exists
-LOGS_DIR = BASE_DIR / 'logs'
-LOGS_DIR.mkdir(exist_ok=True)
+LOGS_DIR = DATA_DIR / 'logs'
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Health Check API Configuration
 # API keys for external monitoring systems (Nagios, etc.)

@@ -49,3 +49,8 @@ version-clean:
 	@echo "Removing version.txt..."
 	python utils/generate_version.py --clean
 
+compilemessages:
+	@echo "Compiling translation messages (project only, excluding venv libraries)..."
+	python manage.py compilemessages --locale de --locale encompilemessages-all:
+	@echo "Compiling all translation messages (including venv libraries)..."
+	python manage.py compilemessages

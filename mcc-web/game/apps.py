@@ -34,9 +34,12 @@ class GameConfig(AppConfig):  # <-- This is the expected name
         from .session_admin import GameSessionAdmin
         admin.site.register(Session, GameSessionAdmin)
         
-        # Set app_label on Session model to make it appear under "MCC Game Interface"
-        # This is a bit of a hack, but it works
-        Session._meta.app_label = 'game'
+        # NOTE: We don't change app_label here anymore because it causes issues
+        # during migrations when Django tries to validate models.
+        # The Session model will still appear under 'game' app in admin
+        # because we register it with GameSessionAdmin, but the app_label
+        # remains 'sessions' to avoid migration issues.
+        # Session._meta.app_label = 'game'  # Disabled to fix migration issues
         Session._meta.verbose_name = _('Game Session')
         Session._meta.verbose_name_plural = _('Game Sessions')
 

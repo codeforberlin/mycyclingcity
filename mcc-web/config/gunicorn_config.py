@@ -43,8 +43,19 @@ keepalive = 2
 # Logging
 # Log to files when running as daemon, stdout/stderr when running in foreground
 PROJECT_DIR = Path(__file__).resolve().parent.parent
-LOG_DIR = PROJECT_DIR / "logs"
+VENV_DIR = Path('/data/appl/mcc/venv')  # Geteiltes venv
+
+# Prüfe ob wir in Produktion sind
+if os.environ.get('MCC_ENV') == 'production' or '/data/appl/mcc' in str(PROJECT_DIR):
+    LOG_DIR = Path('/data/var/mcc/logs')
+    PIDFILE = '/data/var/mcc/tmp/mcc-web.pid'
+else:
+    # Entwicklung: lokale Verzeichnisse
+    LOG_DIR = PROJECT_DIR / "logs"
+    PIDFILE = str(PROJECT_DIR / "tmp" / "mcc-web.pid")
+
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+Path(PIDFILE).parent.mkdir(parents=True, exist_ok=True)
 
 accesslog = str(LOG_DIR / "gunicorn_access.log")
 errorlog = str(LOG_DIR / "gunicorn_error.log")
@@ -56,10 +67,10 @@ proc_name = "mcc-web"
 
 # Server mechanics
 daemon = False  # Set to True when using --daemon flag in script
-pidfile = None  # Set via script
+pidfile = PIDFILE  # PID-Datei in /data/var/mcc/tmp/
 umask = 0
-user = None  # Set via script
-group = None  # Set via script
+user = os.environ.get('GUNICORN_USER', None)  # Optional, vom Admin gesetzt
+group = os.environ.get('GUNICORN_GROUP', None)  # Optional, vom Admin gesetzt
 tmp_upload_dir = None
 
 # SSL (if needed, uncomment and configure)

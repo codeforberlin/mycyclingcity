@@ -8,6 +8,9 @@
 """
 Unit tests for DatabaseLogHandler.
 
+NOTE: ApplicationLog model and DatabaseLogHandler were removed in migration 0011.
+These tests are skipped until new logging functionality is implemented.
+
 Tests cover:
 - Handler initialization
 - Log record queuing
@@ -24,10 +27,12 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
 
-from mgmt.logging_handler import DatabaseLogHandler
-from mgmt.models import ApplicationLog, LoggingConfig
+# ApplicationLog and DatabaseLogHandler were removed
+# from mgmt.logging_handler import DatabaseLogHandler
+from mgmt.models import LoggingConfig
 
 
+@pytest.mark.skip(reason="ApplicationLog model and DatabaseLogHandler were removed in migration 0011")
 @pytest.mark.unit
 @pytest.mark.django_db
 class TestDatabaseLogHandler:

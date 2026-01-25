@@ -64,6 +64,29 @@ class LoggingConfig(models.Model):
         """Get or create the singleton configuration instance."""
         config, _ = cls.objects.get_or_create(pk=1, defaults={'min_log_level': 'INFO', 'enable_request_logging': False})
         return config
+    
+    def should_store_level(self, level: str) -> bool:
+        """
+        Check if a log level should be stored based on min_log_level.
+        
+        Args:
+            level: Log level to check (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            
+        Returns:
+            True if the level should be stored, False otherwise
+        """
+        level_order = {
+            'DEBUG': 0,
+            'INFO': 1,
+            'WARNING': 2,
+            'ERROR': 3,
+            'CRITICAL': 4,
+        }
+        
+        min_level = level_order.get(self.min_log_level, 1)  # Default to INFO
+        check_level = level_order.get(level, 99)  # Unknown levels default to storing
+        
+        return check_level >= min_level
 
 
 class GunicornConfig(models.Model):

@@ -28,10 +28,16 @@ from datetime import datetime
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    # Load .env from project root (parent of test/)
+    # Load .env from /data/appl/mcc/.env (production) or project root (development)
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    env_path = project_root / '.env'
+    
+    # Try production path first
+    env_path = Path('/data/appl/mcc/.env')
+    if not env_path.exists():
+        # Fallback to project directory (development)
+        env_path = project_root / '.env'
+    
     if env_path.exists():
         load_dotenv(env_path)
 except ImportError:
