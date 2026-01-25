@@ -64,7 +64,7 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
 <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
-&rsaquo; <a href="{% url 'admin:mgmt_log_file_list' %}">{% trans 'Log Files' %}</a>
+&rsaquo; <a href="{% url 'admin:mgmt_log_file_list' %}">{% trans 'Log-Dateien' %}</a>
 &rsaquo; {{ file_name }}
 </div>
 {% endblock %}
@@ -79,7 +79,7 @@
 <div class="log-controls">
     <form method="get" action="{% url 'admin:mgmt_log_file_viewer' file_key %}">
         {% if available_logs %}
-        <label>{% trans 'Log File' %}:</label>
+        <label>{% trans 'Log-Datei' %}:</label>
         <select name="logfile" onchange="if (this.value) { window.location.href = this.value; }">
             {% for item in available_logs %}
             <option value="{% url 'admin:mgmt_log_file_viewer' item.key %}" {% if item.key == file_key %}selected{% endif %}>
@@ -89,12 +89,12 @@
         </select>
         {% endif %}
 
-        <label>{% trans 'Search' %}:</label>
-        <input type="text" name="search" value="{{ search }}" placeholder="{% trans 'Search in logs...' %}">
+        <label>{% trans 'Suche' %}:</label>
+        <input type="text" name="search" value="{{ search }}" placeholder="{% trans 'In Logs suchen...' %}">
         
-        <label>{% trans 'Level' %}:</label>
+        <label>{% trans 'Ebene' %}:</label>
         <select name="level">
-            <option value="">{% trans 'All Levels' %}</option>
+            <option value="">{% trans 'Alle Ebenen' %}</option>
             <option value="DEBUG" {% if level_filter == 'DEBUG' %}selected{% endif %}>DEBUG</option>
             <option value="INFO" {% if level_filter == 'INFO' %}selected{% endif %}>INFO</option>
             <option value="WARNING" {% if level_filter == 'WARNING' %}selected{% endif %}>WARNING</option>
@@ -102,7 +102,7 @@
             <option value="CRITICAL" {% if level_filter == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
         </select>
         
-        <label>{% trans 'Lines per page' %}:</label>
+        <label>{% trans 'Zeilen pro Seite' %}:</label>
         <select name="lines">
             <option value="50" {% if lines_per_page == 50 %}selected{% endif %}>50</option>
             <option value="100" {% if lines_per_page == 100 %}selected{% endif %}>100</option>
@@ -110,27 +110,27 @@
             <option value="500" {% if lines_per_page == 500 %}selected{% endif %}>500</option>
         </select>
         
-        <button type="submit" class="button">{% trans 'Filter' %}</button>
+        <button type="submit" class="button">{% trans 'Filtern' %}</button>
         <a href="{% url 'admin:mgmt_log_file_viewer' file_key %}?tail=true&lines={{ lines_per_page }}" class="button">
-            {% trans 'Show Tail' %}
+            {% trans 'Ende anzeigen' %}
         </a>
         <a href="{% url 'admin:mgmt_log_file_viewer' file_key %}?auto_refresh=true&tail=true&lines={{ lines_per_page }}" class="button" id="auto-refresh-btn">
-            {% if auto_refresh %}{% trans 'Stop Auto-Refresh' %}{% else %}{% trans 'Auto-Refresh' %}{% endif %}
+            {% if auto_refresh %}{% trans 'Auto-Aktualisierung stoppen' %}{% else %}{% trans 'Auto-Aktualisierung' %}{% endif %}
         </a>
     </form>
 
     <div class="log-stats">
-        <strong>{% trans 'File' %}:</strong> {{ file_name }} | 
-        <strong>{% trans 'Size' %}:</strong> {{ file_size_mb }} MB | 
-        <strong>{% trans 'Modified' %}:</strong> {{ file_modified|date:"Y-m-d H:i:s" }} | 
-        <strong>{% trans 'Total Lines' %}:</strong> {{ total_lines }} | 
-        <strong>{% trans 'Page' %}:</strong> {{ page }} / {{ total_pages }}
+        <strong>{% trans 'Datei' %}:</strong> {{ file_name }} | 
+        <strong>{% trans 'Größe' %}:</strong> {{ file_size_mb }} MB | 
+        <strong>{% trans 'Geändert' %}:</strong> {{ file_modified|date:"Y-m-d H:i:s" }} | 
+        <strong>{% trans 'Gesamtzeilen' %}:</strong> {{ total_lines }} | 
+        <strong>{% trans 'Seite' %}:</strong> {{ page }} / {{ total_pages }}
     </div>
 </div>
 
 {% if rotated_files %}
 <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
-    <strong>{% trans 'Rotated Files' %}:</strong>
+    <strong>{% trans 'Rotierte Dateien' %}:</strong>
     {% for rotated in rotated_files %}
         <a href="{% url 'admin:mgmt_log_file_viewer_rotated' file_key rotated.index %}" style="margin-left: 10px;">
             {{ rotated.name }} ({{ rotated.size_mb }} MB)
@@ -150,7 +150,7 @@
     </div>
     {% empty %}
     <div style="color: #858585; text-align: center; padding: 20px;">
-        {% trans 'No log entries found matching your filters.' %}
+        {% trans 'Keine Log-Einträge gefunden, die Ihren Filtern entsprechen.' %}
     </div>
     {% endfor %}
 </div>
@@ -158,15 +158,15 @@
 {% if not tail and total_pages > 1 %}
 <div class="pagination" style="margin-top: 20px;">
     {% if page > 1 %}
-        <a href="?page={{ page|add:'-1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Previous' %}</a>
+        <a href="?page={{ page|add:'-1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Zurück' %}</a>
     {% endif %}
     
     <span style="margin: 0 15px;">
-        {% trans 'Page' %} {{ page }} {% trans 'of' %} {{ total_pages }}
+        {% trans 'Seite' %} {{ page }} {% trans 'von' %} {{ total_pages }}
     </span>
     
     {% if page < total_pages %}
-        <a href="?page={{ page|add:'1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Next' %}</a>
+        <a href="?page={{ page|add:'1' }}&lines={{ lines_per_page }}{% if search %}&search={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}" class="button">{% trans 'Weiter' %}</a>
     {% endif %}
 </div>
 {% endif %}

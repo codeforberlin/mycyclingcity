@@ -242,7 +242,7 @@ def log_file_viewer(request, file_key, rotated_index=None):
             all_lines = f.readlines()
     except Exception as e:
         return render(request, 'admin/mgmt/log_file_viewer.html', {
-            'title': _('Error Reading Log File'),
+            'title': _('Fehler beim Lesen der Log-Datei'),
             'error': str(e),
             'file_key': file_key,
             'available_logs': available_logs,

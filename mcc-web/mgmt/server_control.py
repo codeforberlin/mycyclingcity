@@ -49,7 +49,7 @@ def server_control(request):
         gunicorn_config = GunicornConfig.get_config()
         gunicorn_log_level = gunicorn_config.get_log_level_display()
     except Exception:
-        gunicorn_log_level = _('Not available')
+        gunicorn_log_level = _('Nicht verfügbar')
         gunicorn_config = None
     
     # Get server metrics

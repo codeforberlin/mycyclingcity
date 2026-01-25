@@ -36,38 +36,38 @@
         <!-- Middle Part: FAQ Section -->
         <div class="info-hub-body">
             <div class="info-hub-section">
-                <h3 class="info-hub-section-title">{% trans "Frequently Asked Questions" %}</h3>
+                <h3 class="info-hub-section-title">{% trans "Häufig gestellte Fragen" %}</h3>
                 <div class="info-hub-faq">
                     <div class="info-hub-accordion-item">
                         <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
-                            <div class="info-hub-accordion-question">{% trans "How does the live map work?" %}</div>
+                            <div class="info-hub-accordion-question">{% trans "Wie funktioniert die Live-Karte?" %}</div>
                             <div class="info-hub-accordion-icon">▼</div>
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "The live map shows the current positions of all active cyclists in real-time. You can filter between different routes and groups to customize the view." %}
+                                {% trans "Die Live-Karte zeigt die aktuellen Positionen aller aktiven Radfahrer in Echtzeit. Sie können zwischen verschiedenen Routen und Gruppen filtern, um die Ansicht anzupassen." %}
                             </div>
                         </div>
                     </div>
                     <div class="info-hub-accordion-item">
                         <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
-                            <div class="info-hub-accordion-question">{% trans "What does the ranking show?" %}</div>
+                            <div class="info-hub-accordion-question">{% trans "Was zeigt das Ranking?" %}</div>
                             <div class="info-hub-accordion-icon">▼</div>
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "The ranking shows the current mileage of all groups and cyclists, sorted by distance traveled. You can filter by specific groups." %}
+                                {% trans "Das Ranking zeigt die aktuelle Kilometerleistung aller Gruppen und Radfahrer, sortiert nach zurückgelegter Strecke. Sie können nach bestimmten Gruppen filtern." %}
                             </div>
                         </div>
                     </div>
                     <div class="info-hub-accordion-item">
                         <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
-                            <div class="info-hub-accordion-question">{% trans "How does the map update?" %}</div>
+                            <div class="info-hub-accordion-question">{% trans "Wie aktualisiert sich die Karte?" %}</div>
                             <div class="info-hub-accordion-icon">▼</div>
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "The map updates automatically every 20 seconds. Positions and mileage are updated in real-time as soon as new data is available." %}
+                                {% trans "Die Karte aktualisiert sich automatisch alle 20 Sekunden. Positionen und Kilometerleistung werden in Echtzeit aktualisiert, sobald neue Daten verfügbar sind." %}
                             </div>
                         </div>
                     </div>
@@ -78,13 +78,13 @@
                 {% else %}
                     <a href="https://codeforberlin.github.io/mycyclingcity/guides/map/" target="_blank" class="info-hub-wiki-link">
                 {% endif %}
-                    📚 {% trans "Open Full Documentation" %}
+                    📚 {% trans "Vollständige Dokumentation öffnen" %}
                 </a>
             </div>
 
             <!-- Language Switcher -->
             <div class="info-hub-section">
-                <h3 class="info-hub-section-title">{% trans "Language" %}</h3>
+                <h3 class="info-hub-section-title">{% trans "Sprache" %}</h3>
                 <form method="post" action="{% url 'set_language' %}" class="info-hub-language-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -103,16 +103,16 @@
         <!-- Footer: Legal Links -->
         <div class="info-hub-footer">
             <div class="info-hub-footer-content">
-                <a href="https://sai-lab.de/index.php/de/impressum" target="_blank" class="info-hub-footer-link">{% trans "Legal Notice" %}</a>
+                <a href="https://sai-lab.de/index.php/de/impressum" target="_blank" class="info-hub-footer-link">{% trans "Impressum" %}</a>
                 <span class="info-hub-footer-separator">|</span>
-                <a href="{% url 'privacy_policy' %}" class="info-hub-footer-link">{% trans "Privacy Policy" %}</a>
+                <a href="{% url 'privacy_policy' %}" class="info-hub-footer-link">{% trans "Datenschutzerklärung" %}</a>
                 <span class="info-hub-footer-separator">|</span>
                 <span class="info-hub-footer-copyright">&copy; 2026 <a href="https://sai-lab.de" target="_blank">SAI-LAB Berlin</a></span>
             </div>
         </div>
 
         <!-- Close Button -->
-        <button class="info-hub-close" onclick="closeInfoHubModal()" title="{% trans 'Close' %}">&times;</button>
+        <button class="info-hub-close" onclick="closeInfoHubModal()" title="{% trans 'Schließen' %}">&times;</button>
     </div>
 </div>
 

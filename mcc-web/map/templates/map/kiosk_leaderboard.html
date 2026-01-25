@@ -13,7 +13,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% trans "Kiosk Leaderboard" %}</title>
+    <title>{% trans "Kiosk-Rangliste" %}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -577,9 +577,9 @@
                     });
                     const endMarker = L.marker([endPoint[0], endPoint[1]], {
                         icon: endIcon,
-                        title: 'Ziel: ' + t.name
+                        title: '{% trans "Ziel" %}: ' + t.name
                     }).addTo(trackStartEndMarkers);
-                    endMarker.bindPopup('<strong>Ziel</strong><br>' + t.name);
+                    endMarker.bindPopup('<strong>{% trans "Ziel" %}</strong><br>' + t.name);
                 }
             });
             if (tracks.length > 0) mapInstance.fitBounds(trackLayers.getBounds());

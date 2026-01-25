@@ -16,7 +16,7 @@ class GameConfig(AppConfig):  # <-- This is the expected name
     # Standard label
     name = 'game'
     
-    verbose_name = _('MCC Game Interface')
+    verbose_name = _('MCC Spiel-Interface')
     
     def ready(self):
         """Import admin modules when app is ready."""
@@ -40,6 +40,6 @@ class GameConfig(AppConfig):  # <-- This is the expected name
         # because we register it with GameSessionAdmin, but the app_label
         # remains 'sessions' to avoid migration issues.
         # Session._meta.app_label = 'game'  # Disabled to fix migration issues
-        Session._meta.verbose_name = _('Game Session')
-        Session._meta.verbose_name_plural = _('Game Sessions')
+        Session._meta.verbose_name = _('Spielsitzung')
+        Session._meta.verbose_name_plural = _('Spielsitzungen')
 

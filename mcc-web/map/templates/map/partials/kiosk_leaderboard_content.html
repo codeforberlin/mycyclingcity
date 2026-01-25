@@ -59,7 +59,7 @@
                 {% elif forloop.counter == 2 %}text-gray-200
                 {% elif forloop.counter == 3 %}text-amber-200
                 {% else %}text-gray-300{% endif %}">
-                {% trans "Total" %}: {% format_km_de_tag group.distance_total 3 %} km
+                {% trans "Gesamt" %}: {% format_km_de_tag group.distance_total 3 %} km
             </div>
         </div>
     </div>
@@ -70,13 +70,13 @@
         <div class="text-center">
             <div class="text-2xl font-bold text-gray-400 mb-2">
                 {% if current_filter %}
-                    {% trans "No groups found for" %} "{{ current_filter }}"
+                    {% trans "Keine Gruppen gefunden für" %} "{{ current_filter }}"
                 {% else %}
-                    {% trans "No groups found" %}
+                    {% trans "Keine Gruppen gefunden" %}
                 {% endif %}
             </div>
             <div class="text-sm text-gray-500">
-                {% trans "No leaf-groups with members found." %}
+                {% trans "Keine Endgruppen mit Mitgliedern gefunden." %}
             </div>
         </div>
     </div>

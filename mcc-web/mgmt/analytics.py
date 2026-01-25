@@ -441,7 +441,7 @@ def analytics_data_api(request):
                 primary_group = cyclist.groups.filter(is_visible=True).first()
                 if not primary_group:
                     primary_group = cyclist.groups.first()
-                cyclists_with_groups[cyclist.id] = primary_group.name if primary_group else _('No Group')
+                cyclists_with_groups[cyclist.id] = primary_group.name if primary_group else _('Keine Gruppe')
         
         top_cyclists = list(top_cyclists_qs)
         top_cyclists = [
@@ -479,7 +479,7 @@ def analytics_data_api(request):
                     top_cyclists.append({
                         'user_id': c.user_id,
                         'id_tag': c.id_tag,
-                        'group': primary_group.name if primary_group else _('No Group'),
+                        'group': primary_group.name if primary_group else _('Keine Gruppe'),
                         'distance': float(c.distance_total or 0)
                     })
         

@@ -35,7 +35,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.datetime, use_cache: bool = True) -> Dict[int, Dict[str, float]]:
+def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.datetime, use_cache: bool = True, include_descendants: bool = False) -> Dict[int, Dict[str, float]]:
     """
     Calculate all aggregated values (total, daily, weekly, monthly, yearly) for groups from HourlyMetric.
     
@@ -46,13 +46,52 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
         groups: List of Group objects to calculate totals for
         now: Current datetime for time-based calculations
         use_cache: Whether to use cache (default: True)
+        include_descendants: If True, recursively collect all descendant groups and include
+                           their metrics in the calculation. This is useful for top-level groups
+                           that don't have direct HourlyMetric entries but their children do.
     
     Returns:
         Dictionary mapping group_id to dict with keys: 'total', 'daily', 'weekly', 'monthly', 'yearly'
+        If include_descendants=True, the returned dict includes all descendant groups, but the
+        result dict keys are still only the original groups (for backward compatibility).
     """
     group_ids = [g.id for g in groups]
     if not group_ids:
         return {}
+    
+    # If include_descendants is True, recursively collect all descendant groups
+    if include_descendants:
+        def get_all_descendant_ids(ancestor_id: int, visited: set = None) -> set:
+            """Recursively get all descendant group IDs (only visible groups)."""
+            if visited is None:
+                visited = set()
+            
+            # Prevent infinite loops
+            if ancestor_id in visited:
+                return set()
+            visited.add(ancestor_id)
+            
+            descendant_ids = {ancestor_id}  # Include the ancestor group itself
+            
+            # Get direct children (only visible ones)
+            direct_children = Group.objects.filter(
+                parent_id=ancestor_id,
+                is_visible=True
+            ).values_list('id', flat=True)
+            descendant_ids.update(direct_children)
+            
+            # Recursively get children of children (prevent infinite loops)
+            for child_id in direct_children:
+                if child_id not in visited:
+                    descendant_ids.update(get_all_descendant_ids(child_id, visited))
+            
+            return descendant_ids
+        
+        # Collect all descendant IDs for all groups
+        all_group_ids = set(group_ids)
+        for group_id in group_ids:
+            all_group_ids.update(get_all_descendant_ids(group_id))
+        group_ids = list(all_group_ids)
     
     # Sanitize group IDs for cache key: Convert list to URL-safe string format
     # This prevents CacheKeyWarning from cache backends (Memcached/Redis) that don't accept
@@ -61,8 +100,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
         group_ids = list(group_ids) if hasattr(group_ids, '__iter__') else [group_ids]
     group_ids_str = "-".join(map(str, sorted(group_ids)))
     
-    # Try to get from cache first (cache key includes group IDs to ensure consistency)
-    cache_key = f'leaderboard_group_totals_{group_ids_str}_{now.strftime("%Y%m%d%H")}'
+    # Try to get from cache first (cache key includes group IDs and include_descendants flag to ensure consistency)
+    cache_key = f'leaderboard_group_totals_{group_ids_str}_{now.strftime("%Y%m%d%H")}_desc{int(include_descendants)}'
     if use_cache:
         cached_result = cache.get(cache_key)
         if cached_result is not None:
@@ -87,7 +126,13 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     year_end = now.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
     
     # Initialize result dictionary
-    result: Dict[int, Dict[str, float]] = {gid: {'total': 0.0, 'daily': 0.0, 'weekly': 0.0, 'monthly': 0.0, 'yearly': 0.0} for gid in group_ids}
+    # If include_descendants=True, we calculate for all descendant groups but only return
+    # results for the original groups (for backward compatibility)
+    original_group_ids = [g.id for g in groups]
+    result: Dict[int, Dict[str, float]] = {gid: {'total': 0.0, 'daily': 0.0, 'weekly': 0.0, 'monthly': 0.0, 'yearly': 0.0} for gid in original_group_ids}
+    
+    # Also initialize for all group_ids (including descendants) for calculation
+    calculation_result: Dict[int, Dict[str, float]] = {gid: {'total': 0.0, 'daily': 0.0, 'weekly': 0.0, 'monthly': 0.0, 'yearly': 0.0} for gid in group_ids}
     
     # Calculate TOTAL: Sum of ALL HourlyMetric entries for each group
     total_metrics = HourlyMetric.objects.filter(
@@ -97,8 +142,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     )
     for metric in total_metrics:
         group_id = metric['group_at_time_id']
-        if group_id in result:
-            result[group_id]['total'] = float(metric['total'] or 0.0)
+        if group_id in calculation_result:
+            calculation_result[group_id]['total'] = float(metric['total'] or 0.0)
     
     # Calculate DAILY: Sum of HourlyMetric entries for today
     daily_metrics = HourlyMetric.objects.filter(
@@ -109,8 +154,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     )
     for metric in daily_metrics:
         group_id = metric['group_at_time_id']
-        if group_id in result:
-            result[group_id]['daily'] = float(metric['daily_total'] or 0.0)
+        if group_id in calculation_result:
+            calculation_result[group_id]['daily'] = float(metric['daily_total'] or 0.0)
     
     # Calculate WEEKLY: Sum of HourlyMetric entries for this week
     weekly_metrics = HourlyMetric.objects.filter(
@@ -122,8 +167,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     )
     for metric in weekly_metrics:
         group_id = metric['group_at_time_id']
-        if group_id in result:
-            result[group_id]['weekly'] = float(metric['weekly_total'] or 0.0)
+        if group_id in calculation_result:
+            calculation_result[group_id]['weekly'] = float(metric['weekly_total'] or 0.0)
     
     # Calculate MONTHLY: Sum of HourlyMetric entries for this month
     monthly_metrics = HourlyMetric.objects.filter(
@@ -135,8 +180,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     )
     for metric in monthly_metrics:
         group_id = metric['group_at_time_id']
-        if group_id in result:
-            result[group_id]['monthly'] = float(metric['monthly_total'] or 0.0)
+        if group_id in calculation_result:
+            calculation_result[group_id]['monthly'] = float(metric['monthly_total'] or 0.0)
     
     # Calculate YEARLY: Sum of HourlyMetric entries for this year
     yearly_metrics = HourlyMetric.objects.filter(
@@ -148,49 +193,96 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     )
     for metric in yearly_metrics:
         group_id = metric['group_at_time_id']
-        if group_id in result:
-            result[group_id]['yearly'] = float(metric['yearly_total'] or 0.0)
+        if group_id in calculation_result:
+            calculation_result[group_id]['yearly'] = float(metric['yearly_total'] or 0.0)
+    
+    # If include_descendants=True, aggregate all descendant values into the original groups
+    if include_descendants:
+        # For each original group, sum up all its descendants' values
+        for original_group in groups:
+            original_id = original_group.id
+            
+            def get_all_descendant_ids_for_aggregation(ancestor_id: int, visited: set = None) -> set:
+                """Recursively get all descendant group IDs for aggregation."""
+                if visited is None:
+                    visited = set()
+                if ancestor_id in visited:
+                    return set()
+                visited.add(ancestor_id)
+                
+                descendant_ids = {ancestor_id}  # Include the ancestor itself
+                direct_children = Group.objects.filter(
+                    parent_id=ancestor_id,
+                    is_visible=True
+                ).values_list('id', flat=True)
+                descendant_ids.update(direct_children)
+                
+                for child_id in direct_children:
+                    if child_id not in visited:
+                        descendant_ids.update(get_all_descendant_ids_for_aggregation(child_id, visited))
+                
+                return descendant_ids
+            
+            # Get all descendant IDs for this original group
+            all_descendant_ids = get_all_descendant_ids_for_aggregation(original_id)
+            
+            # Aggregate all descendant values into the original group
+            for desc_id in all_descendant_ids:
+                if desc_id in calculation_result:
+                    result[original_id]['total'] += calculation_result[desc_id]['total']
+                    result[original_id]['daily'] += calculation_result[desc_id]['daily']
+                    result[original_id]['weekly'] += calculation_result[desc_id]['weekly']
+                    result[original_id]['monthly'] += calculation_result[desc_id]['monthly']
+                    result[original_id]['yearly'] += calculation_result[desc_id]['yearly']
+    else:
+        # Normal mode: just copy from calculation_result to result
+        for group_id in original_group_ids:
+            if group_id in calculation_result:
+                result[group_id] = calculation_result[group_id]
     
     # Propagate values to parent groups (hierarchical aggregation)
-    # Process from leaf groups upward to ensure correct aggregation
-    # First, collect all parent-child relationships
-    parent_child_map: Dict[int, List[int]] = {}
-    for group in groups:
-        if group.parent and group.parent.id in result:
-            parent_id = group.parent.id
-            group_id = group.id
-            if group_id in result:
-                if parent_id not in parent_child_map:
-                    parent_child_map[parent_id] = []
-                parent_child_map[parent_id].append(group_id)
-    
-    # Recursively propagate values upward through the hierarchy
-    def propagate_to_parents(group_id: int, visited: set = None):
-        """Recursively propagate group values to all parent groups."""
-        if visited is None:
-            visited = set()
-        if group_id in visited:
-            return  # Prevent infinite loops
-        visited.add(group_id)
-        
-        # Find parent of this group
+    # This is only needed if include_descendants=False, because if include_descendants=True,
+    # we've already aggregated all descendants into the original groups above
+    if not include_descendants:
+        # Process from leaf groups upward to ensure correct aggregation
+        # First, collect all parent-child relationships
+        parent_child_map: Dict[int, List[int]] = {}
         for group in groups:
-            if group.id == group_id and group.parent and group.parent.id in result:
+            if group.parent and group.parent.id in result:
                 parent_id = group.parent.id
-                if group_id in result and parent_id in result:
-                    # Add this group's values to parent
-                    result[parent_id]['total'] += result[group_id]['total']
-                    result[parent_id]['daily'] += result[group_id]['daily']
-                    result[parent_id]['weekly'] += result[group_id]['weekly']
-                    result[parent_id]['monthly'] += result[group_id]['monthly']
-                    result[parent_id]['yearly'] += result[group_id]['yearly']
-                    # Recursively propagate to parent's parent
-                    propagate_to_parents(parent_id, visited)
-    
-    # Propagate for all groups
-    for group in groups:
-        if group.id in result:
-            propagate_to_parents(group.id)
+                group_id = group.id
+                if group_id in result:
+                    if parent_id not in parent_child_map:
+                        parent_child_map[parent_id] = []
+                    parent_child_map[parent_id].append(group_id)
+        
+        # Recursively propagate values upward through the hierarchy
+        def propagate_to_parents(group_id: int, visited: set = None):
+            """Recursively propagate group values to all parent groups."""
+            if visited is None:
+                visited = set()
+            if group_id in visited:
+                return  # Prevent infinite loops
+            visited.add(group_id)
+            
+            # Find parent of this group
+            for group in groups:
+                if group.id == group_id and group.parent and group.parent.id in result:
+                    parent_id = group.parent.id
+                    if group_id in result and parent_id in result:
+                        # Add this group's values to parent
+                        result[parent_id]['total'] += result[group_id]['total']
+                        result[parent_id]['daily'] += result[group_id]['daily']
+                        result[parent_id]['weekly'] += result[group_id]['weekly']
+                        result[parent_id]['monthly'] += result[group_id]['monthly']
+                        result[parent_id]['yearly'] += result[group_id]['yearly']
+                        # Recursively propagate to parent's parent
+                        propagate_to_parents(parent_id, visited)
+        
+        # Propagate for all groups
+        for group in groups:
+            if group.id in result:
+                propagate_to_parents(group.id)
     
     # Cache the result for 55 seconds (just under cronjob interval of 60s)
     # This ensures cache is invalidated when new HourlyMetric data arrives
@@ -1080,9 +1172,18 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             total_km = sum(g['distance_total'] for g in groups_data)
     else:
         # Unfiltered view: count only top-level groups (no parent) to avoid double-counting
-        # Top-level groups already contain the aggregated sum of all their descendants
+        # Top-level groups need to include aggregated sum of all their descendants
         all_visible_top_groups = Group.objects.filter(is_visible=True, parent__isnull=True)
-        total_km = sum(total_km_by_group.get(g.id, 0.0) for g in all_visible_top_groups)
+        
+        # Recalculate totals with include_descendants=True to get aggregated values
+        # This ensures top-level groups include all their descendants' kilometers
+        top_group_totals = _calculate_group_totals_from_metrics(
+            list(all_visible_top_groups),
+            now,
+            use_cache=True,
+            include_descendants=True
+        )
+        total_km = sum(top_group_totals.get(g.id, {}).get('total', 0.0) for g in all_visible_top_groups)
     
     # Generate consistent colors for top parent groups
     # Use a palette of distinct, vibrant colors

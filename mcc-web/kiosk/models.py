@@ -32,7 +32,7 @@ class KioskDevice(models.Model):
     )
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_("Active"),
+        verbose_name=_("Aktiv"),
         help_text=_("Whether this device is currently active and should display content")
     )
     command_queue = models.JSONField(
@@ -132,7 +132,7 @@ class KioskPlaylistEntry(models.Model):
     )
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_("Active"),
+        verbose_name=_("Aktiv"),
         help_text=_("Whether this entry is active in the playlist")
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))

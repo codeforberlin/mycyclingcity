@@ -316,13 +316,13 @@ class AlertRuleAdmin(admin.ModelAdmin):
     list_filter = ('alert_type', 'is_active', 'email_enabled')
     search_fields = ('name',)
     fieldsets = (
-        (_('Basic Information'), {
+        (_('Grundinformationen'), {
             'fields': ('name', 'alert_type', 'is_active')
         }),
-        (_('Alert Conditions'), {
+        (_('Warnbedingungen'), {
             'fields': ('threshold', 'comparison')
         }),
-        (_('Notifications'), {
+        (_('Benachrichtigungen'), {
             'fields': ('email_enabled', 'email_recipients', 'cooldown_minutes')
         }),
         (_('Status'), {
@@ -342,4 +342,4 @@ class AlertRuleAdmin(admin.ModelAdmin):
         }
         symbol = comparison_symbols.get(obj.comparison, '>')
         return f"{symbol} {obj.threshold}"
-    threshold_display.short_description = _('Threshold')
+    threshold_display.short_description = _('Schwellenwert')

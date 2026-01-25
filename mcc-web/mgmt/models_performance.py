@@ -50,7 +50,7 @@ class RequestLog(models.Model):
     
     status_code = models.IntegerField(
         db_index=True,
-        verbose_name=_("Status Code")
+        verbose_name=_("Status-Code")
     )
     
     response_time_ms = models.FloatField(
@@ -142,7 +142,7 @@ class PerformanceMetric(models.Model):
     
     error_count = models.IntegerField(
         default=0,
-        verbose_name=_("Error Count")
+        verbose_name=_("Fehleranzahl")
     )
     
     avg_response_time_ms = models.FloatField(
@@ -190,7 +190,7 @@ class AlertRule(models.Model):
     Defines conditions that trigger alerts when met.
     """
     ALERT_TYPE_CHOICES = [
-        ('error_rate', _('Error Rate')),
+        ('error_rate', _('Fehlerrate')),
         ('response_time', _('Response Time')),
         ('memory_usage', _('Memory Usage')),
         ('cpu_usage', _('CPU Usage')),
@@ -229,7 +229,7 @@ class AlertRule(models.Model):
     
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_("Active"),
+        verbose_name=_("Aktiv"),
         help_text=_("Whether this alert rule is active")
     )
     

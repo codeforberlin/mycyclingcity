@@ -19,97 +19,97 @@ class GameRoom(models.Model):
         max_length=8,
         unique=True,
         editable=False,
-        verbose_name=_("Room Code"),
-        help_text=_("Unique code for this game room")
+        verbose_name=_("Raum-Code"),
+        help_text=_("Eindeutiger Code für diesen Spielraum")
     )
     
     master_session_key = models.CharField(
         max_length=40,
         null=True,
         blank=True,
-        verbose_name=_("Master Session Key"),
-        help_text=_("Session key of the game master")
+        verbose_name=_("Spielleiter-Sitzungsschlüssel"),
+        help_text=_("Sitzungsschlüssel des Spielleiters")
     )
     
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_("Active"),
-        help_text=_("Whether this room is active or has been ended")
+        verbose_name=_("Aktiv"),
+        help_text=_("Ob dieser Raum aktiv ist oder beendet wurde")
     )
     
     device_assignments = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name=_("Device Assignments"),
-        help_text=_("Mapping of device names to cyclist user_id (e.g. {'device1': 'cyclist1'})")
+        verbose_name=_("Gerätezuweisungen"),
+        help_text=_("Zuordnung von Gerätenamen zu Radfahrer-User-IDs (z.B. {'device1': 'cyclist1'})")
     )
     
     start_distances = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name=_("Start Distances"),
-        help_text=_("Distances of cyclists at game start (e.g. {'cyclist1': 100.5})")
+        verbose_name=_("Startentfernungen"),
+        help_text=_("Entfernungen der Radfahrer beim Spielstart (z.B. {'cyclist1': 100.5})")
     )
     
     stop_distances = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name=_("Stop Distances"),
-        help_text=_("Distances of cyclists at game stop (e.g. {'cyclist1': 150.2})")
+        verbose_name=_("Stoppentfernungen"),
+        help_text=_("Entfernungen der Radfahrer beim Spielstopp (z.B. {'cyclist1': 150.2})")
     )
     
     is_game_stopped = models.BooleanField(
         default=False,
-        verbose_name=_("Game Stopped"),
-        help_text=_("Whether the game has been stopped")
+        verbose_name=_("Spiel gestoppt"),
+        help_text=_("Ob das Spiel gestoppt wurde")
     )
     
     announced_winners = models.JSONField(
         default=list,
         blank=True,
-        verbose_name=_("Announced Winners"),
-        help_text=_("List of user_ids of cyclists who have already been announced as winners")
+        verbose_name=_("Bekanntgegebene Gewinner"),
+        help_text=_("Liste von User-IDs der Radfahrer, die bereits als Gewinner bekanntgegeben wurden")
     )
     
     current_target_km = models.FloatField(
         default=0.0,
-        verbose_name=_("Current Target (km)"),
-        help_text=_("The current target in kilometers for this game")
+        verbose_name=_("Aktuelles Ziel (km)"),
+        help_text=_("Das aktuelle Ziel in Kilometern für dieses Spiel")
     )
     
     active_sessions = models.JSONField(
         default=list,
         blank=True,
-        verbose_name=_("Active Sessions"),
-        help_text=_("List of session keys that have currently joined this room")
+        verbose_name=_("Aktive Sitzungen"),
+        help_text=_("Liste von Sitzungsschlüsseln, die diesem Raum aktuell beigetreten sind")
     )
     
     session_to_cyclist = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name=_("Session to Cyclist Mapping"),
-        help_text=_("Mapping of session keys to cyclist user_ids (for master transfer)")
+        verbose_name=_("Sitzung zu Radfahrer Zuordnung"),
+        help_text=_("Zuordnung von Sitzungsschlüsseln zu Radfahrer-User-IDs (für Spielleiter-Übertragung)")
     )
     
     last_activity = models.DateTimeField(
         auto_now=True,
-        verbose_name=_("Last Activity"),
-        help_text=_("Time of last activity in this room")
+        verbose_name=_("Letzte Aktivität"),
+        help_text=_("Zeitpunkt der letzten Aktivität in diesem Raum")
     )
     
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name=_("Created at")
+        verbose_name=_("Erstellt am")
     )
     
     class Meta:
-        verbose_name = _("Game Room")
-        verbose_name_plural = _("Game Rooms")
+        verbose_name = _("Spielraum")
+        verbose_name_plural = _("Spielräume")
         ordering = ['-created_at']
     
     def __str__(self):
         from django.utils.translation import gettext_lazy as _
-        return f"Room {self.room_code} ({_('Active') if self.is_active else _('Ended')})"
+        return f"Raum {self.room_code} ({_('Aktiv') if self.is_active else _('Beendet')})"
     
     def save(self, *args, **kwargs):
         """Override save to generate unique room_code if not set."""
@@ -144,8 +144,8 @@ class GameSession(models.Model):
         max_length=40,
         unique=True,
         db_index=True,
-        verbose_name=_("Session Key"),
-        help_text=_("Django Session Key")
+        verbose_name=_("Sitzungsschlüssel"),
+        help_text=_("Django Sitzungsschlüssel")
     )
     
     room_code = models.CharField(
@@ -153,36 +153,36 @@ class GameSession(models.Model):
         null=True,
         blank=True,
         db_index=True,
-        verbose_name=_("Room Code"),
-        help_text=_("Room code, if the session is in a room")
+        verbose_name=_("Raum-Code"),
+        help_text=_("Raum-Code, falls die Sitzung in einem Raum ist")
     )
     
     is_master = models.BooleanField(
         default=False,
-        verbose_name=_("Master"),
-        help_text=_("Whether this session is the master session")
+        verbose_name=_("Spielleiter"),
+        help_text=_("Ob diese Sitzung die Spielleiter-Sitzung ist")
     )
     
     has_assignments = models.BooleanField(
         default=False,
-        verbose_name=_("Has Assignments"),
-        help_text=_("Whether this session has device assignments")
+        verbose_name=_("Hat Zuweisungen"),
+        help_text=_("Ob diese Sitzung Gerätezuweisungen hat")
     )
     
     has_target_km = models.BooleanField(
         default=False,
-        verbose_name=_("Has Target KM"),
-        help_text=_("Whether this session has set a target kilometer")
+        verbose_name=_("Hat Ziel-KM"),
+        help_text=_("Ob diese Sitzung ein Zielkilometer gesetzt hat")
     )
     
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name=_("Created at")
+        verbose_name=_("Erstellt am")
     )
     
     last_updated = models.DateTimeField(
         auto_now=True,
-        verbose_name=_("Last Updated")
+        verbose_name=_("Zuletzt aktualisiert")
     )
     
     class Meta:

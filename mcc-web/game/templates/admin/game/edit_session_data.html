@@ -21,7 +21,7 @@
     
     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <h2>{% trans "Session-Informationen" %}</h2>
-        <p><strong>{% trans "Session Key" %}:</strong> <code>{{ session.session_key }}</code></p>
+        <p><strong>{% trans "Sitzungsschlüssel" %}:</strong> <code>{{ session.session_key }}</code></p>
         <p><strong>{% trans "Ablauf" %}:</strong> {{ session.expire_date|date:"Y-m-d H:i:s" }}</p>
     </div>
     
@@ -46,7 +46,7 @@
                 <button type="submit" style="padding: 10px 20px; background: #417690; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                     {% trans "Speichern" %}
                 </button>
-                <a href="{% url 'admin:game_session_change' session.pk %}" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+                <a href="{% url 'admin:sessions_session_change' session.pk %}" style="padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
                     {% trans "Abbrechen" %}
                 </a>
             </div>

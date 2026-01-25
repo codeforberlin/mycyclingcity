@@ -9,18 +9,18 @@
 {% load i18n leaderboard_filters %}
 <div class="flex items-center justify-between px-6">
     <div class="flex items-center gap-2">
-        <span class="text-sm">{% trans "Total Kilometers" %}:</span>
+        <span class="text-sm">{% trans "Gesamtkilometer" %}:</span>
         <span class="text-lg font-bold">{% format_km_de_tag total_km 2 %} km</span>
     </div>
     <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 bg-red-500 rounded-full pulse-ring"></span>
-            <span class="text-sm">{% trans "[X] Groups currently pedaling" %}</span>
+            <span class="text-sm">{% trans "[X] Gruppen fahren aktuell" %}</span>
             <span class="text-lg font-bold">{{ active_count }}</span>
         </div>
         <!-- Manual Mode / Paused Badge -->
         <div id="lb-manual-mode-badge" class="hidden bg-yellow-600 px-3 py-1 rounded-lg">
-            <span class="text-xs font-bold">⏸ {% trans "Manual Mode" %}</span>
+            <span class="text-xs font-bold">⏸ {% trans "Manueller Modus" %}</span>
         </div>
     </div>
 </div>

@@ -804,7 +804,7 @@ class WebhookConfiguration(models.Model):
     
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_("Active"),
+        verbose_name=_("Aktiv"),
         help_text=_("Whether this webhook is active")
     )
     

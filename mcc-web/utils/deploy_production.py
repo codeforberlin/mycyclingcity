@@ -396,15 +396,19 @@ def check_database_exists(project_dir: Path, python_exe: Optional[str] = None) -
             python_exe = get_python_executable(project_dir)
         
         # Use Python to check database existence
+        # Clear sys.path to avoid conflicts with old installations
         check_script = f"""
 import os
 import sys
+from pathlib import Path
+# Clear sys.path and only keep the current project directory
+# This prevents conflicts with old installations at /data/games/mcc/mcc-web
+project_dir = Path('{project_dir}').resolve()
+sys.path = [str(project_dir)] + [p for p in sys.path if '/data/games/mcc' not in p and str(project_dir) not in p]
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, '{project_dir}')
 import django
 django.setup()
 from django.conf import settings
-from pathlib import Path
 db_path = Path(settings.DATABASES['default']['NAME'])
 print('EXISTS' if db_path.exists() else 'NOT_EXISTS')
 """
@@ -647,12 +651,16 @@ def ensure_media_directories(project_dir: Path, python_exe: Optional[str] = None
             python_exe = get_python_executable(project_dir)
         
         # Use Python to ensure media directories
+        # Clear sys.path to avoid conflicts with old installations
         ensure_script = f"""
 import os
 import sys
 from pathlib import Path
+# Clear sys.path and only keep the current project directory
+# This prevents conflicts with old installations at /data/games/mcc/mcc-web
+project_dir = Path('{project_dir}').resolve()
+sys.path = [str(project_dir)] + [p for p in sys.path if '/data/games/mcc' not in p and str(project_dir) not in p]
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, '{project_dir}')
 import django
 django.setup()
 from django.conf import settings
@@ -709,12 +717,16 @@ def validate_deployment(project_dir: Path, python_exe: Optional[str] = None) -> 
             python_exe = get_python_executable(project_dir)
         
         # Use Python to validate deployment
+        # Clear sys.path to avoid conflicts with old installations
         validate_script = f"""
 import os
 import sys
 from pathlib import Path
+# Clear sys.path and only keep the current project directory
+# This prevents conflicts with old installations at /data/games/mcc/mcc-web
+project_dir = Path('{project_dir}').resolve()
+sys.path = [str(project_dir)] + [p for p in sys.path if '/data/games/mcc' not in p and str(project_dir) not in p]
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, '{project_dir}')
 import django
 django.setup()
 from django.conf import settings
@@ -832,11 +844,16 @@ def deploy(
     if db_exists and not skip_backup:
         try:
             # Get database path using Python
+            # Clear sys.path to avoid conflicts with old installations
             get_db_path_script = f"""
 import os
 import sys
+from pathlib import Path
+# Clear sys.path and only keep the current project directory
+# This prevents conflicts with old installations at /data/games/mcc/mcc-web
+project_dir = Path('{project_dir}').resolve()
+sys.path = [str(project_dir)] + [p for p in sys.path if '/data/games/mcc' not in p and str(project_dir) not in p]
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, '{project_dir}')
 import django
 django.setup()
 from django.conf import settings

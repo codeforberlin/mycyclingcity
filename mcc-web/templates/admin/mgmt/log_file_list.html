@@ -6,7 +6,7 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
 <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
-&rsaquo; <a href="{% url 'admin:mgmt_log_file_list' %}">{% trans 'Log Files' %}</a>
+&rsaquo; <a href="{% url 'admin:mgmt_log_file_list' %}">{% trans 'Log-Dateien' %}</a>
 </div>
 {% endblock %}
 
@@ -15,11 +15,11 @@
     <table id="result_list" class="table table-striped">
         <thead>
             <tr>
-                <th>{% trans 'Log File' %}</th>
-                <th>{% trans 'Description' %}</th>
-                <th>{% trans 'Size' %}</th>
+                <th>{% trans 'Log-Datei' %}</th>
+                <th>{% trans 'Beschreibung' %}</th>
+                <th>{% trans 'Größe' %}</th>
                 <th>{% trans 'Status' %}</th>
-                <th>{% trans 'Actions' %}</th>
+                <th>{% trans 'Aktionen' %}</th>
             </tr>
         </thead>
         <tbody>
@@ -39,15 +39,15 @@
                 </td>
                 <td>
                     {% if log_file.exists %}
-                        <span style="color: green;">✓ {% trans 'Available' %}</span>
+                        <span style="color: green;">✓ {% trans 'Verfügbar' %}</span>
                     {% else %}
-                        <span style="color: #999;">{% trans 'Not created yet' %}</span>
+                        <span style="color: #999;">{% trans 'Noch nicht erstellt' %}</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if log_file.exists %}
                         <a href="{% url 'admin:mgmt_log_file_viewer' log_file.key %}" class="button">
-                            {% trans 'View Logs' %}
+                            {% trans 'Logs anzeigen' %}
                         </a>
                     {% else %}
                         <span style="color: #999;">-</span>
@@ -57,7 +57,7 @@
             {% if log_file.rotated_files %}
             <tr style="background-color: #f9f9f9;">
                 <td colspan="5" style="padding-left: 40px;">
-                    <small><strong>{% trans 'Rotated Files' %}:</strong>
+                    <small><strong>{% trans 'Rotierte Dateien' %}:</strong>
                     {% for rotated in log_file.rotated_files %}
                         <a href="{% url 'admin:mgmt_log_file_viewer_rotated' log_file.key rotated.index %}" style="margin-left: 10px;">
                             {{ rotated.name }} ({{ rotated.size_mb }} MB)
@@ -75,10 +75,10 @@
 <div class="module" style="margin-top: 20px;">
     <h2>{% trans 'Information' %}</h2>
     <p>
-        {% trans 'Log files are stored in the logs/ directory. You can view and search through log entries directly in the Admin GUI.' %}
+        {% trans 'Log-Dateien werden im logs/ Verzeichnis gespeichert. Sie können Log-Einträge direkt im Admin-GUI anzeigen und durchsuchen.' %}
     </p>
     <p>
-        <strong>{% trans 'Note' %}:</strong> {% trans 'Large log files may take a moment to load. Use the search and filter options to find specific entries.' %}
+        <strong>{% trans 'Hinweis' %}:</strong> {% trans 'Große Log-Dateien können einen Moment zum Laden benötigen. Verwenden Sie die Such- und Filteroptionen, um spezifische Einträge zu finden.' %}
     </p>
 </div>
 {% endblock %}

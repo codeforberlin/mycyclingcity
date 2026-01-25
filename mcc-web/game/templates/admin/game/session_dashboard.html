@@ -156,12 +156,12 @@
     <!-- Statistics Cards -->
     <div class="stats-grid">
         <div class="stat-card primary">
-            <h4>{% trans "Aktive Game-Sessions" %}</h4>
+            <h4>{% trans "Aktive Spielsitzungen" %}</h4>
             <div class="value">{{ total_game_sessions }}</div>
         </div>
         
         <div class="stat-card success">
-            <h4>{% trans "Sessions in Räumen" %}</h4>
+            <h4>{% trans "Sitzungen in Räumen" %}</h4>
             <div class="value">{{ sessions_in_rooms }}</div>
         </div>
         
@@ -171,7 +171,7 @@
         </div>
         
         <div class="stat-card warning">
-            <h4>{% trans "Master-Sessions" %}</h4>
+            <h4>{% trans "Spielleiter-Sitzungen" %}</h4>
             <div class="value">{{ master_sessions }}</div>
         </div>
         
@@ -188,16 +188,16 @@
     
     <!-- Current Sessions -->
     <div class="sessions-section">
-        <h2>{% trans "Aktuelle Sessions" %}</h2>
+        <h2>{% trans "Aktuelle Sitzungen" %}</h2>
         
         {% if current_sessions %}
         <table class="sessions-table">
             <thead>
                 <tr>
-                    <th>{% trans "Session Key" %}</th>
+                    <th>{% trans "Sitzungsschlüssel" %}</th>
                     <th>{% trans "Raum" %}</th>
                     <th>{% trans "Radler" %}</th>
-                    <th>{% trans "Master" %}</th>
+                    <th>{% trans "Spielleiter" %}</th>
                     <th>{% trans "Zuweisungen" %}</th>
                     <th>{% trans "Alter" %}</th>
                     <th>{% trans "Ablauf" %}</th>
@@ -230,7 +230,7 @@
                     </td>
                     <td>
                         {% if session.is_master %}
-                            <span class="status-badge status-master">👑 Master</span>
+                            <span class="status-badge status-master">👑 {% trans "Spielleiter" %}</span>
                         {% else %}
                             -
                         {% endif %}
@@ -239,7 +239,7 @@
                     <td>{{ session.age_display }}</td>
                     <td>{{ session.expire_date|date:"Y-m-d H:i" }}</td>
                     <td>
-                        <a href="{% url 'admin:game_session_change' session.id %}" class="btn btn-primary" style="margin-right: 5px;">
+                        <a href="{% url 'admin:sessions_session_change' session.id %}" class="btn btn-primary" style="margin-right: 5px;">
                             {% trans "Details" %}
                         </a>
                         {% if session.room_info and session.room_info.is_active %}
@@ -254,15 +254,15 @@
         </table>
         {% else %}
         <div class="no-sessions">
-            <p>{% trans "Keine aktiven Game-Sessions vorhanden." %}</p>
+            <p>{% trans "Keine aktiven Spielsitzungen vorhanden." %}</p>
         </div>
         {% endif %}
     </div>
     
     <!-- Quick Actions -->
     <div style="text-align: center; margin-top: 30px;">
-        <a href="{% url 'admin:game_session_changelist' %}" class="btn btn-primary">
-            {% trans "Alle Sessions anzeigen" %}
+        <a href="{% url 'admin:sessions_session_changelist' %}" class="btn btn-primary">
+            {% trans "Alle Sitzungen anzeigen" %}
         </a>
     </div>
 </div>

@@ -217,7 +217,7 @@ function performMinecraftAction(action, buttonElement) {
         <button class="button info" onclick="performMinecraftAction('sync', this)">{% trans 'Scoreboards befüllen (manuell)' %}</button>
         <button class="button" onclick="performMinecraftAction('snapshot', this)">{% trans 'Snapshot aktualisieren' %}</button>
         <button class="button" onclick="performMinecraftAction('rcon-test', this)">{% trans 'RCON Test' %}</button>
-        <button class="button" onclick="performMinecraftAction('cleanup', this)">{% trans 'Outbox Cleanup' %}</button>
+        <button class="button" onclick="performMinecraftAction('cleanup', this)">{% trans 'Postausgang bereinigen' %}</button>
         {% if show_outbox %}
         <a class="button" href="{% url 'admin:minecraft_control' %}">{% trans 'Outbox ausblenden' %}</a>
         {% else %}

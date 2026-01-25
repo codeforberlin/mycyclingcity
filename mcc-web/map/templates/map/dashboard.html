@@ -2461,6 +2461,9 @@
         // Champions Overlay (Winners Podium) - Define early
         // ============================================
         
+        // Translation for "Platz" (Position/Rank)
+        var TRANSLATION_PLATZ = '{% trans "Platz" %}';
+        
         var championsOverlayExpanded = false;
         var championsOverlayVisible = true;
         
@@ -2549,7 +2552,7 @@
                     
                     var heroRank = document.createElement('div');
                     heroRank.className = 'hero-card-rank';
-                    heroRank.textContent = medal + ' Platz ' + rank;
+                    heroRank.textContent = medal + ' ' + TRANSLATION_PLATZ + ' ' + rank;
                     
                     var heroName = document.createElement('div');
                     heroName.className = 'hero-card-name';
