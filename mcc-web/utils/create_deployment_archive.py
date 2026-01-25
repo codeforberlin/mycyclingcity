@@ -136,7 +136,8 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         'local_settings.py',
         'staticfiles',
         'media',
-        'messages.mo',  # Compiled translation files (will be generated)
+        # Note: .mo files in locale/ are INCLUDED (compiled in dev, deployed to production)
+        # They will be copied to /data/var/mcc/locale_compiled during deployment
         'backups',  # Database backups should not be deployed
         
         # Virtual environments
@@ -251,8 +252,15 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         elif pattern == filename:
             return True
     
-    # Special case: exclude .mo files (compiled translations) but keep .po files
+    # Special case: INCLUDE .mo files in locale/ directory (compiled translations from dev)
+    # These will be deployed and copied to /data/var/mcc/locale_compiled
+    # Only exclude .mo files outside locale/ (e.g., in venv)
     if filename.endswith('.mo'):
+        # Include .mo files in locale/ directory (project translations)
+        path_str_lower = path_str.lower()
+        if 'locale' in path_str_lower and 'venv' not in path_str_lower:
+            return False  # Include this .mo file
+        # Exclude .mo files in venv or other locations
         return True
     
     return False

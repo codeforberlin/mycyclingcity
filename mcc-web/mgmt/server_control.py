@@ -110,7 +110,7 @@ def server_action(request, action):
 
         # Stop/restart will terminate the current Gunicorn worker; run detached
         if action in ['stop', 'restart']:
-            logs_dir = Path(settings.BASE_DIR) / 'logs'
+            logs_dir = settings.LOGS_DIR
             logs_dir.mkdir(parents=True, exist_ok=True)
             action_log = logs_dir / 'server_action.log'
             with open(action_log, 'a') as log_handle:
@@ -209,7 +209,11 @@ def get_server_status(script_path):
         
         # Try to extract PID
         pid = None
-        pidfile = Path(settings.BASE_DIR) / 'tmp' / 'mcc-web.pid'
+        # Use production PID file location if in production, otherwise fallback to old location
+        if '/data/appl/mcc' in str(settings.BASE_DIR) or os.environ.get('MCC_ENV') == 'production':
+            pidfile = Path('/data/var/mcc/tmp/mcc-web.pid')
+        else:
+            pidfile = Path(settings.BASE_DIR) / 'tmp' / 'mcc-web.pid'
         if pidfile.exists():
             try:
                 with open(pidfile, 'r') as f:

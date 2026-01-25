@@ -281,9 +281,9 @@ LANGUAGES = [
 ]
 
 # IMPORTANT: Defines where Django looks for translation files
+# Both .po (source) and .mo (compiled) files are in the same directory
 LOCALE_PATHS = [
-    DATA_DIR / 'locale_compiled',  # Kompilierte Übersetzungen
-    CODE_DIR / 'locale',           # Quell-Übersetzungen (.po)
+    CODE_DIR / 'locale',  # Quell-Übersetzungen (.po) und kompilierte Übersetzungen (.mo)
 ]
 
 

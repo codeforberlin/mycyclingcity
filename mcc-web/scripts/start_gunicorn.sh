@@ -45,6 +45,11 @@ fi
 export DJANGO_SETTINGS_MODULE=config.settings
 export PYTHONPATH="$PROJECT_DIR"
 
+# Ensure GUNICORN_USER is not set, so Gunicorn uses the current user
+# (the user who calls this script)
+unset GUNICORN_USER
+unset GUNICORN_GROUP
+
 # Prüfe ob venv existiert
 if [ ! -f "$VENV_DIR/bin/gunicorn" ]; then
     echo "Fehler: Gunicorn nicht gefunden in $VENV_DIR/bin/gunicorn"

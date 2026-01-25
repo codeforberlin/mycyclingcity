@@ -598,40 +598,65 @@ def collect_static_files(project_dir: Path, clear: bool = False, python_exe: Opt
 
 def compile_messages(project_dir: Path, python_exe: Optional[str] = None) -> bool:
     """
-    Compile translation messages.
+    Verify that pre-compiled translation messages from archive are present.
+    If .mo files are missing, compile them as fallback.
+    
+    Note: .mo files are part of the software and remain in CODE_DIR/locale/,
+    they are NOT copied to DATA_DIR. This ensures consistency between dev and production.
     
     Args:
         project_dir: Project root directory
         python_exe: Python executable to use
     
     Returns:
-        True if compilation succeeded, False otherwise
+        True if messages are available, False otherwise
     """
-    print_info("Compiling translation messages...")
+    print_info("Verifying translation messages...")
     
     try:
         if python_exe is None:
             python_exe = get_python_executable(project_dir)
         
-        exit_code, stdout, stderr = run_command(
-            [python_exe, 'manage.py', 'compilemessages'],
-            cwd=project_dir,
-            check=False,
-            capture_output=True
-        )
+        # Locale directory is in the code directory (part of software)
+        locale_dir = project_dir / 'locale'
         
-        if exit_code == 0:
-            print_success("Translation messages compiled successfully")
-            return True
-        else:
-            # compilemessages may return non-zero if no .po files exist, which is OK
-            if "no Django translation files found" in stderr.lower():
-                print_warning("No translation files found (this is OK if not using i18n)")
-                return True
-            print_warning(f"Translation compilation had issues: {stderr}")
-            return True  # Not critical, continue anyway
+        # Check if pre-compiled .mo files exist in archive
+        mo_files_found = 0
+        needs_compilation = False
+        
+        for locale_name in ['de', 'en']:
+            mo_file = locale_dir / locale_name / 'LC_MESSAGES' / 'django.mo'
+            if mo_file.exists():
+                mo_files_found += 1
+                print_info(f"Pre-compiled .mo file found: {mo_file}")
+            else:
+                needs_compilation = True
+                print_warning(f"Pre-compiled .mo file not found: {mo_file}, will compile as fallback")
+        
+        if mo_files_found > 0:
+            print_success(f"Translation messages verified ({mo_files_found} files from archive)")
+        
+        # Fallback: Compile if .mo files are missing
+        if needs_compilation:
+            print_info("Compiling missing translation messages (fallback)...")
+            exit_code, stdout, stderr = run_command(
+                [python_exe, 'manage.py', 'compilemessages', '--locale', 'de', '--locale', 'en'],
+                cwd=project_dir,
+                check=False,
+                capture_output=True
+            )
+            
+            if exit_code == 0:
+                print_success("Missing translation messages compiled successfully")
+            else:
+                if "no Django translation files found" in stderr.lower():
+                    print_warning("No translation files found (this is OK if not using i18n)")
+                else:
+                    print_warning(f"Translation compilation had issues: {stderr}")
+        
+        return True  # Not critical, continue anyway
     except Exception as e:
-        print_warning(f"Error compiling messages (non-critical): {e}")
+        print_warning(f"Error verifying messages (non-critical): {e}")
         return True  # Not critical, continue anyway
 
 

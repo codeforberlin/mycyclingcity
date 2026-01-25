@@ -298,6 +298,11 @@ start() {
     export GUNICORN_WORKER_CLASS
     export GUNICORN_BIND
     
+    # Ensure GUNICORN_USER is not set, so Gunicorn uses the current user
+    # (the user who calls this script)
+    unset GUNICORN_USER
+    unset GUNICORN_GROUP
+
     # Start gunicorn in background
     nohup "$GUNICORN_BIN" \
         --config "$GUNICORN_CONFIG" \

@@ -103,7 +103,7 @@ def list_available_log_files(logs_dir):
 
 def get_log_file_path(file_key):
     """Get the full path to a log file."""
-    logs_dir = Path(settings.BASE_DIR) / 'logs'
+    logs_dir = settings.LOGS_DIR
     if file_key in LOG_FILES:
         return logs_dir / LOG_FILES[file_key]['name']
     if _is_safe_log_filename(file_key):
@@ -156,8 +156,8 @@ def parse_log_line(line):
 @staff_member_required
 def log_file_list(request):
     """List available log files."""
-    logs_dir = Path(settings.BASE_DIR) / 'logs'
-    logs_dir.mkdir(exist_ok=True)
+    logs_dir = settings.LOGS_DIR
+    logs_dir.mkdir(exist_ok=True, parents=True)
     
     log_files_info = []
     for key, info in LOG_FILES.items():
@@ -201,7 +201,7 @@ def log_file_list(request):
 @staff_member_required
 def log_file_viewer(request, file_key, rotated_index=None):
     """View a log file with scrolling, filtering, and search."""
-    logs_dir = Path(settings.BASE_DIR) / 'logs'
+    logs_dir = settings.LOGS_DIR
     available_files = list_available_log_files(logs_dir)
     if file_key not in LOG_FILES and file_key not in available_files:
         return redirect('admin:mgmt_log_file_list')
