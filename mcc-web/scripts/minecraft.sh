@@ -109,17 +109,24 @@ stop() {
         if [ -f "$PIDFILE" ]; then
             rm -f "$PIDFILE"
         fi
-        # Also check for orphaned processes
-        ORPHANED=$(pgrep -f "minecraft_bridge_worker" | grep -v "^$$")
+        # Also check for orphaned processes (more robust method)
+        ORPHANED=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
         if [ -n "$ORPHANED" ]; then
             echo "Found orphaned worker process(es): $ORPHANED"
-            kill -TERM $ORPHANED 2>/dev/null
+            for pid in $ORPHANED; do
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    kill -TERM "$pid" 2>/dev/null || true
+                fi
+            done
             sleep 2
             # Force kill if still running
-            STILL_RUNNING=$(pgrep -f "minecraft_bridge_worker" | grep -v "^$$")
+            STILL_RUNNING=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
             if [ -n "$STILL_RUNNING" ]; then
-                kill -KILL $STILL_RUNNING 2>/dev/null
-                echo "Force killed orphaned worker process(es)"
+                for pid in $STILL_RUNNING; do
+                    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                        kill -KILL "$pid" 2>/dev/null && echo "Force killed orphaned worker PID: $pid"
+                    fi
+                done
             fi
         fi
         exit 0
@@ -159,18 +166,35 @@ stop() {
         exit 0
     fi
     
-    # Last resort: try to find and kill by process name
+    # Last resort: try to find and kill by process name (more robust method)
     echo "Attempting to find and kill by process name..."
-    ORPHANED=$(pgrep -f "minecraft_bridge_worker" | grep -v "^$$")
+    ORPHANED=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
     if [ -n "$ORPHANED" ]; then
         echo "Found process(es) by name: $ORPHANED"
-        kill -KILL $ORPHANED 2>/dev/null
-        sleep 1
-        STILL_RUNNING=$(pgrep -f "minecraft_bridge_worker" | grep -v "^$$")
+        for pid in $ORPHANED; do
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                kill -KILL "$pid" 2>/dev/null && echo "Killed bridge worker PID: $pid"
+            fi
+        done
+        sleep 2
+        STILL_RUNNING=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
         if [ -z "$STILL_RUNNING" ]; then
             rm -f "$PIDFILE"
             echo "Worker killed by process name"
             exit 0
+        else
+            echo "Warning: Some processes still running after kill: $STILL_RUNNING"
+            # Try pkill as last resort
+            if command -v pkill >/dev/null 2>&1; then
+                pkill -9 -f "minecraft_bridge_worker" 2>/dev/null
+                sleep 1
+                FINAL_CHECK=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
+                if [ -z "$FINAL_CHECK" ]; then
+                    rm -f "$PIDFILE"
+                    echo "Worker killed via pkill"
+                    exit 0
+                fi
+            fi
         fi
     fi
     
@@ -184,17 +208,24 @@ stop_snapshot() {
         if [ -f "$SNAPSHOT_PIDFILE" ]; then
             rm -f "$SNAPSHOT_PIDFILE"
         fi
-        # Also check for orphaned processes
-        ORPHANED=$(pgrep -f "minecraft_snapshot_worker" | grep -v "^$$")
+        # Also check for orphaned processes (more robust method)
+        ORPHANED=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
         if [ -n "$ORPHANED" ]; then
             echo "Found orphaned snapshot worker process(es): $ORPHANED"
-            kill -TERM $ORPHANED 2>/dev/null
+            for pid in $ORPHANED; do
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    kill -TERM "$pid" 2>/dev/null || true
+                fi
+            done
             sleep 2
             # Force kill if still running
-            STILL_RUNNING=$(pgrep -f "minecraft_snapshot_worker" | grep -v "^$$")
+            STILL_RUNNING=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
             if [ -n "$STILL_RUNNING" ]; then
-                kill -KILL $STILL_RUNNING 2>/dev/null
-                echo "Force killed orphaned snapshot worker process(es)"
+                for pid in $STILL_RUNNING; do
+                    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                        kill -KILL "$pid" 2>/dev/null && echo "Force killed orphaned snapshot worker PID: $pid"
+                    fi
+                done
             fi
         fi
         exit 0
@@ -234,18 +265,35 @@ stop_snapshot() {
         exit 0
     fi
     
-    # Last resort: try to find and kill by process name
+    # Last resort: try to find and kill by process name (more robust method)
     echo "Attempting to find and kill by process name..."
-    ORPHANED=$(pgrep -f "minecraft_snapshot_worker" | grep -v "^$$")
+    ORPHANED=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
     if [ -n "$ORPHANED" ]; then
         echo "Found process(es) by name: $ORPHANED"
-        kill -KILL $ORPHANED 2>/dev/null
-        sleep 1
-        STILL_RUNNING=$(pgrep -f "minecraft_snapshot_worker" | grep -v "^$$")
+        for pid in $ORPHANED; do
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                kill -KILL "$pid" 2>/dev/null && echo "Killed snapshot worker PID: $pid"
+            fi
+        done
+        sleep 2
+        STILL_RUNNING=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
         if [ -z "$STILL_RUNNING" ]; then
             rm -f "$SNAPSHOT_PIDFILE"
             echo "Snapshot worker killed by process name"
             exit 0
+        else
+            echo "Warning: Some processes still running after kill: $STILL_RUNNING"
+            # Try pkill as last resort
+            if command -v pkill >/dev/null 2>&1; then
+                pkill -9 -f "minecraft_snapshot_worker" 2>/dev/null
+                sleep 1
+                FINAL_CHECK=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
+                if [ -z "$FINAL_CHECK" ]; then
+                    rm -f "$SNAPSHOT_PIDFILE"
+                    echo "Snapshot worker killed via pkill"
+                    exit 0
+                fi
+            fi
         fi
     fi
     
@@ -271,24 +319,70 @@ status_snapshot() {
     exit 1
 }
 
+# Kill all worker processes by name (robust method)
+kill_all_worker_processes_by_name() {
+    # Method 1: Try pkill if available (most reliable)
+    if command -v pkill >/dev/null 2>&1; then
+        pkill -9 -f "minecraft_bridge_worker" 2>/dev/null && echo "Killed bridge workers via pkill"
+        pkill -9 -f "minecraft_snapshot_worker" 2>/dev/null && echo "Killed snapshot workers via pkill"
+        sleep 1
+    fi
+    
+    # Method 2: Find and kill by process name (fallback)
+    ORPHANED_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
+    ORPHANED_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
+    
+    if [ -n "$ORPHANED_BRIDGE" ] || [ -n "$ORPHANED_SNAPSHOT" ]; then
+        echo "Found remaining orphaned processes, force killing..."
+        
+        # Kill bridge workers
+        if [ -n "$ORPHANED_BRIDGE" ]; then
+            for pid in $ORPHANED_BRIDGE; do
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    kill -KILL "$pid" 2>/dev/null && echo "Killed bridge worker PID: $pid"
+                fi
+            done
+        fi
+        
+        # Kill snapshot workers
+        if [ -n "$ORPHANED_SNAPSHOT" ]; then
+            for pid in $ORPHANED_SNAPSHOT; do
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    kill -KILL "$pid" 2>/dev/null && echo "Killed snapshot worker PID: $pid"
+                fi
+            done
+        fi
+        
+        sleep 2
+        
+        # Verify they are really gone
+        REMAINING_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | awk '{print $2}' | tr '\n' ' ')
+        REMAINING_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | awk '{print $2}' | tr '\n' ' ')
+        
+        if [ -z "$REMAINING_BRIDGE" ] && [ -z "$REMAINING_SNAPSHOT" ]; then
+            rm -f "$PIDFILE" "$SNAPSHOT_PIDFILE"
+            echo "All orphaned processes killed"
+        else
+            echo "Warning: Some processes may still be running"
+            [ -n "$REMAINING_BRIDGE" ] && echo "  Bridge workers: $REMAINING_BRIDGE"
+            [ -n "$REMAINING_SNAPSHOT" ] && echo "  Snapshot workers: $REMAINING_SNAPSHOT"
+        fi
+    else
+        rm -f "$PIDFILE" "$SNAPSHOT_PIDFILE"
+        echo "No orphaned processes found"
+    fi
+}
+
 stop_all() {
     echo "Stopping all Minecraft workers..."
     stop
     stop_snapshot
     echo "All workers stopped"
     
-    # Final check: kill any remaining orphaned processes
-    ORPHANED_BRIDGE=$(pgrep -f "minecraft_bridge_worker" | grep -v "^$$")
-    ORPHANED_SNAPSHOT=$(pgrep -f "minecraft_snapshot_worker" | grep -v "^$$")
-    
-    if [ -n "$ORPHANED_BRIDGE" ] || [ -n "$ORPHANED_SNAPSHOT" ]; then
-        echo "Found remaining orphaned processes, force killing..."
-        [ -n "$ORPHANED_BRIDGE" ] && kill -KILL $ORPHANED_BRIDGE 2>/dev/null
-        [ -n "$ORPHANED_SNAPSHOT" ] && kill -KILL $ORPHANED_SNAPSHOT 2>/dev/null
-        sleep 1
-        rm -f "$PIDFILE" "$SNAPSHOT_PIDFILE"
-        echo "All orphaned processes killed"
-    fi
+    # Final check: kill any remaining orphaned processes by process name
+    # This ensures all processes are killed, even if PID files are stale
+    echo "Checking for remaining worker processes..."
+    kill_all_worker_processes_by_name
 }
 
 restart() {

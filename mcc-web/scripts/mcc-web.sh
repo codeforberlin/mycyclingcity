@@ -51,6 +51,126 @@ log_line() {
     echo "${timestamp} [${level}] ${message}" >> "$LOG_FILE"
 }
 
+# Kill all Minecraft worker processes by name (robust method)
+kill_all_worker_processes() {
+    echo -e "${BLUE}Checking for remaining worker processes...${NC}" >&2
+    log_line "INFO" "kill_all_worker_processes() called"
+    
+    # Method 1: Try pkill if available (most reliable) - kill immediately
+    if command -v pkill >/dev/null 2>&1; then
+        echo -e "${BLUE}Using pkill -9 to kill workers...${NC}" >&2
+        log_line "INFO" "Using pkill to kill workers"
+        # Always try to kill, even if no processes found (pkill returns 1 if no match)
+        pkill -9 -f "minecraft_bridge_worker" 2>/dev/null
+        pkill_result_bridge=$?
+        if [ $pkill_result_bridge -eq 0 ]; then
+            echo -e "${GREEN}✓ Killed bridge workers via pkill${NC}" >&2
+            log_line "INFO" "Killed bridge workers via pkill"
+        fi
+        
+        pkill -9 -f "minecraft_snapshot_worker" 2>/dev/null
+        pkill_result_snapshot=$?
+        if [ $pkill_result_snapshot -eq 0 ]; then
+            echo -e "${GREEN}✓ Killed snapshot workers via pkill${NC}" >&2
+            log_line "INFO" "Killed snapshot workers via pkill"
+        fi
+        sleep 2
+    fi
+    
+    # Method 2: Find and kill by process name (fallback and verification)
+    ORPHANED_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+    ORPHANED_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+    
+    if [ -n "$ORPHANED_BRIDGE" ] || [ -n "$ORPHANED_SNAPSHOT" ]; then
+        echo -e "${YELLOW}Found remaining worker processes, force killing...${NC}" >&2
+        [ -n "$ORPHANED_BRIDGE" ] && echo -e "${YELLOW}  Bridge workers: $ORPHANED_BRIDGE${NC}" >&2
+        [ -n "$ORPHANED_SNAPSHOT" ] && echo -e "${YELLOW}  Snapshot workers: $ORPHANED_SNAPSHOT${NC}" >&2
+        log_line "WARN" "Found remaining worker processes, force killing: bridge='$ORPHANED_BRIDGE' snapshot='$ORPHANED_SNAPSHOT'"
+        
+        # Kill bridge workers - try multiple times if needed
+        if [ -n "$ORPHANED_BRIDGE" ]; then
+            for pid in $ORPHANED_BRIDGE; do
+                if [ -n "$pid" ] && [ "$pid" != "" ]; then
+                    # Check if process exists
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo -e "${YELLOW}Killing bridge worker PID: $pid${NC}" >&2
+                        # Try multiple times
+                        for attempt in 1 2 3; do
+                            kill -KILL "$pid" 2>/dev/null
+                            sleep 0.5
+                            if ! kill -0 "$pid" 2>/dev/null; then
+                                echo -e "${GREEN}✓ Killed bridge worker PID: $pid (attempt $attempt)${NC}" >&2
+                                log_line "INFO" "Killed bridge worker PID: $pid (attempt $attempt)"
+                                break
+                            fi
+                        done
+                        # Final check
+                        if kill -0 "$pid" 2>/dev/null; then
+                            echo -e "${RED}✗ Failed to kill bridge worker PID: $pid after 3 attempts${NC}" >&2
+                            log_line "ERROR" "Failed to kill bridge worker PID: $pid after 3 attempts"
+                        fi
+                    fi
+                fi
+            done
+        fi
+        
+        # Kill snapshot workers - try multiple times if needed
+        if [ -n "$ORPHANED_SNAPSHOT" ]; then
+            for pid in $ORPHANED_SNAPSHOT; do
+                if [ -n "$pid" ] && [ "$pid" != "" ]; then
+                    # Check if process exists
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo -e "${YELLOW}Killing snapshot worker PID: $pid${NC}" >&2
+                        # Try multiple times
+                        for attempt in 1 2 3; do
+                            kill -KILL "$pid" 2>/dev/null
+                            sleep 0.5
+                            if ! kill -0 "$pid" 2>/dev/null; then
+                                echo -e "${GREEN}✓ Killed snapshot worker PID: $pid (attempt $attempt)${NC}" >&2
+                                log_line "INFO" "Killed snapshot worker PID: $pid (attempt $attempt)"
+                                break
+                            fi
+                        done
+                        # Final check
+                        if kill -0 "$pid" 2>/dev/null; then
+                            echo -e "${RED}✗ Failed to kill snapshot worker PID: $pid after 3 attempts${NC}" >&2
+                            log_line "ERROR" "Failed to kill snapshot worker PID: $pid after 3 attempts"
+                        fi
+                    fi
+                fi
+            done
+        fi
+        
+        sleep 2
+        
+        # Verify they are really gone
+        REMAINING_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+        REMAINING_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+        
+        if [ -z "$REMAINING_BRIDGE" ] && [ -z "$REMAINING_SNAPSHOT" ]; then
+            echo -e "${GREEN}✓ All worker processes terminated${NC}" >&2
+            log_line "INFO" "All worker processes successfully terminated"
+        else
+            echo -e "${RED}✗ Warning: Some worker processes may still be running${NC}" >&2
+            [ -n "$REMAINING_BRIDGE" ] && echo -e "${RED}  Bridge workers: $REMAINING_BRIDGE${NC}" >&2
+            [ -n "$REMAINING_SNAPSHOT" ] && echo -e "${RED}  Snapshot workers: $REMAINING_SNAPSHOT${NC}" >&2
+            log_line "ERROR" "Some worker processes still running after force kill: bridge='$REMAINING_BRIDGE' snapshot='$REMAINING_SNAPSHOT'"
+            
+            # Last resort: try killall if available (but be careful - this kills ALL python processes!)
+            if command -v killall >/dev/null 2>&1; then
+                echo -e "${YELLOW}Last resort: killing all python processes matching worker pattern...${NC}"
+                # Only kill python processes that match our pattern
+                ps aux | grep -E "[p]ython.*minecraft_(bridge|snapshot)_worker" | awk '{print $2}' | xargs -r kill -KILL 2>/dev/null || true
+                log_line "WARN" "Used killall as last resort"
+                sleep 1
+            fi
+        fi
+    else
+        echo -e "${GREEN}✓ No remaining worker processes found${NC}" >&2
+        log_line "INFO" "No remaining worker processes found"
+    fi
+}
+
 # Check if running as correct user
 check_user() {
     return 0
@@ -222,15 +342,19 @@ stop() {
         fi
         # Still stop Minecraft workers to avoid orphan processes
         if [ -x "$MINECRAFT_SCRIPT" ]; then
-            if "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
-                log_line "INFO" "Stopped all Minecraft workers during stop (server already stopped)"
-            else
-                # Fallback to individual stop commands if stop-all doesn't exist
+            # Call stop-all but don't redirect output, so we can see if it fails
+            "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1 || {
+                # Fallback to individual stop commands if stop-all doesn't exist or fails
                 "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
                 "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
-                log_line "INFO" "Stopped Minecraft workers during stop (server already stopped)"
-            fi
+            }
+            log_line "INFO" "Called minecraft.sh stop-all (workers may still be running)"
         fi
+        
+        # ALWAYS kill by name - this is the most reliable method
+        # This ensures all workers are terminated even if minecraft.sh fails
+        kill_all_worker_processes
+        
         return 0
     fi
     
@@ -238,6 +362,7 @@ stop() {
     echo -e "${BLUE}Stopping MCC-Web server (PID: $PID)...${NC}"
     log_line "INFO" "Stopping server (PID: $PID)"
     
+    # IMPORTANT: Stop Gunicorn FIRST to prevent it from restarting workers
     # Try graceful shutdown first
     kill -TERM "$PID" 2>/dev/null
     
@@ -250,6 +375,16 @@ stop() {
             rm -f "$PIDFILE"
             echo -e "${GREEN}✓ Server stopped successfully${NC}"
             log_line "INFO" "Server stopped successfully"
+            # Verify Gunicorn is really stopped before stopping workers
+            if is_running; then
+                echo -e "${RED}✗ Warning: Gunicorn PID file removed but process still running!${NC}"
+                log_line "ERROR" "Gunicorn PID file removed but process still running"
+                return 1
+            fi
+            # Gunicorn is stopped, now stop workers (it won't restart them)
+            echo -e "${BLUE}Gunicorn is stopped, now stopping Minecraft workers...${NC}"
+            log_line "INFO" "Gunicorn confirmed stopped, stopping workers"
+            kill_all_worker_processes
             return 0
         fi
         sleep 1
@@ -271,6 +406,19 @@ stop() {
         log_line "INFO" "Stop completed without force kill (PID: $PID)"
     fi
 
+    # Verify Gunicorn is really stopped before stopping workers
+    # This prevents Gunicorn from restarting workers after we kill them
+    if is_running; then
+        echo -e "${RED}✗ Warning: Gunicorn is still running! Cannot safely stop workers.${NC}"
+        log_line "ERROR" "Gunicorn still running, cannot safely stop workers"
+        return 1
+    fi
+    
+    echo -e "${BLUE}Gunicorn is stopped, now stopping Minecraft workers...${NC}"
+    log_line "INFO" "Gunicorn confirmed stopped, stopping workers"
+    
+    # NOW stop Minecraft workers - Gunicorn is stopped, so it won't restart them
+    # Stop Minecraft workers - but ALWAYS kill by name afterwards
     if [ -x "$MINECRAFT_SCRIPT" ]; then
         if "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
             log_line "INFO" "Stopped all Minecraft workers during server stop"
@@ -281,6 +429,10 @@ stop() {
             log_line "INFO" "Stopped Minecraft workers during server stop"
         fi
     fi
+    
+    # ALWAYS kill by name - this is the most reliable method
+    # This ensures all workers are terminated even if scripts fail or processes restart
+    kill_all_worker_processes
     
     return 0
 }
