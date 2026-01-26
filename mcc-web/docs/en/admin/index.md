@@ -181,6 +181,142 @@ Kiosk device and playlist management.
   - `is_active`: Active status
 - **Usage**: Configure kiosk displays
 
+### Management (Mgmt)
+
+System administration and monitoring functions.
+
+#### Server Control
+
+- **Purpose**: Control Gunicorn server (Start, Stop, Restart, Reload)
+- **Access**: `/admin/server/`
+- **Features**:
+  - Display server status
+  - Start/stop/restart server
+  - Reload configuration (without restart)
+  - Display server metrics
+  - Perform health checks
+- **Usage**: Only available for superusers
+
+#### Log File Viewer
+
+- **Purpose**: View application log files directly in Admin GUI
+- **Access**: `/admin/logs/`
+- **Features**:
+  - Browse and filter log files
+  - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - Search in logs
+  - View rotated log files
+  - Auto-refresh for live view
+  - Select any log file from `logs/` directory
+- **Available Logs**:
+  - API Application Logs (`api.log`)
+  - Management Application Logs (`mgmt.log`)
+  - IoT Application Logs (`iot.log`)
+  - Kiosk Application Logs (`kiosk.log`)
+  - Game Application Logs (`game.log`)
+  - Map Application Logs (`map.log`)
+  - Leaderboard Application Logs (`leaderboard.log`)
+  - Django Framework Logs (`django.log`)
+
+#### Backup Management
+
+- **Purpose**: Manage database backups
+- **Access**: `/admin/backup/`
+- **Features**:
+  - Create backups
+  - Display backup list (with size and date)
+  - Download backups
+  - Backup management
+- **Usage**: Backups are stored in `backups/` directory
+
+#### Gunicorn Configuration
+
+- **Purpose**: Configure Gunicorn server via Admin GUI
+- **Access**: `/admin/mgmt/gunicornconfig/`
+- **Key Settings**:
+  - `log_level`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - `workers`: Number of worker processes (0 = automatic)
+  - `threads`: Threads per worker
+  - `worker_class`: Worker class (gthread, sync)
+  - `bind`: Bind address and port
+- **Features**:
+  - Change configuration without environment variables
+  - Server restart required after changes
+  - Link to Server Control for restart
+
+#### Logging Configuration
+
+- **Purpose**: Configure application logging
+- **Access**: `/admin/mgmt/loggingconfig/`
+- **Features**:
+  - Configure log level per logger
+  - Enable/disable logging to database
+  - Enable DEBUG/INFO logs in database
+  - Enable/disable request logging
+
+#### Performance Monitoring
+
+- **Purpose**: Monitor system performance
+- **Models**:
+  - **Request Logs**: HTTP request logs with performance data
+  - **Performance Metrics**: Aggregated performance metrics
+  - **Alert Rules**: Rules for performance alerts
+- **Features**:
+  - Analyze request times
+  - Identify slow requests
+  - Track performance trends
+
+#### Minecraft Control
+
+- **Purpose**: Control Minecraft server and manage coin synchronization
+- **Access**: `/admin/minecraft/`
+- **Features**:
+  - Start/stop bridge worker (coin synchronization)
+  - Start/stop snapshot worker (status capture)
+  - Manual synchronization of all players
+  - Update scoreboard snapshot
+  - Test RCON connection
+  - Manage outbox events
+  - Display player list with coin status
+- **Documentation**: See [Minecraft Integration Documentation](minecraft.md)
+
+### Historical Reports & Analytics
+
+Historical reports and analytics.
+
+#### Analytics Dashboard
+
+- **Purpose**: Analyze historical data and create reports
+- **Access**: `/admin/analytics/`
+- **Features**:
+  - Time series analysis
+  - Group comparisons
+  - Export functions
+  - Hierarchy breakdown
+
+#### Hierarchy Breakdown
+
+- **Purpose**: Detailed hierarchy analysis
+- **Access**: `/admin/analytics/hierarchy/`
+- **Features**:
+  - Visualize group hierarchy
+  - Detailed statistics per level
+
+### Session Management
+
+Game session management and debugging.
+
+#### Session Dashboard
+
+- **Purpose**: Monitor and manage active game sessions
+- **Access**: `/admin/game/session/dashboard/`
+- **Features**:
+  - Display active sessions
+  - Edit session data
+  - Manage sessions in rooms
+  - Manage master sessions
+  - Export session data as JSON
+
 ## Common Tasks
 
 ### Creating a New Cyclist

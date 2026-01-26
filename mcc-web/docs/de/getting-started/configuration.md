@@ -42,7 +42,11 @@ ALLOWED_HOSTS=localhost,127.0.0.1,mycyclingcity.net
 
 ### SQLite (Standard - Entwicklung)
 
-Keine zusätzliche Konfiguration erforderlich. Datenbankdatei: `data/db.sqlite3`
+Keine zusätzliche Konfiguration erforderlich. Die Datenbankdatei wird automatisch erstellt unter:
+- **Entwicklung**: `data/db/db.sqlite3`
+- **Produktion**: `/data/var/mcc/db/db.sqlite3`
+
+Stellen Sie sicher, dass das Verzeichnis `data/db/` existiert, bevor Sie Migrationen ausführen.
 
 ### PostgreSQL (Produktion)
 
@@ -123,8 +127,11 @@ EMAIL_HOST_PASSWORD=ihr-passwort
 
 Logging ist in `config/settings.py` konfiguriert. Logs werden geschrieben nach:
 
-- `logs/mcc_worker.log` - Background-Worker-Logs
+- **Entwicklung**: `data/logs/` (z.B. `data/logs/mcc_worker.log`)
+- **Produktion**: `/data/var/mcc/logs/`
 - Konsolen-Ausgabe (Entwicklung)
+
+Das `data/logs/` Verzeichnis wird automatisch erstellt, wenn die Anwendung startet.
 
 ## Produktions-Einstellungen
 

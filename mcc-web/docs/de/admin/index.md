@@ -181,6 +181,142 @@ Kiosk-Geräte- und Playlist-Verwaltung.
   - `is_active`: Aktiv-Status
 - **Verwendung**: Kiosk-Anzeigen konfigurieren
 
+### Management (Mgmt)
+
+System-Verwaltung und Monitoring-Funktionen.
+
+#### Server Control
+
+- **Zweck**: Gunicorn-Server steuern (Start, Stop, Restart, Reload)
+- **Zugriff**: `/admin/server/`
+- **Features**:
+  - Server-Status anzeigen
+  - Server starten/stoppen/neu starten
+  - Konfiguration neu laden (ohne Neustart)
+  - Server-Metriken anzeigen
+  - Health-Checks durchführen
+- **Verwendung**: Nur für Superuser verfügbar
+
+#### Log File Viewer
+
+- **Zweck**: Anwendungs-Logdateien direkt im Admin GUI anzeigen
+- **Zugriff**: `/admin/logs/`
+- **Features**:
+  - Logdateien durchsuchen und filtern
+  - Nach Log-Level filtern (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - Suche in Logs
+  - Rotierte Logdateien anzeigen
+  - Auto-Refresh für Live-Ansicht
+  - Beliebige Logdateien aus `logs/` Verzeichnis auswählen
+- **Verfügbare Logs**:
+  - API Application Logs (`api.log`)
+  - Management Application Logs (`mgmt.log`)
+  - IoT Application Logs (`iot.log`)
+  - Kiosk Application Logs (`kiosk.log`)
+  - Game Application Logs (`game.log`)
+  - Map Application Logs (`map.log`)
+  - Leaderboard Application Logs (`leaderboard.log`)
+  - Django Framework Logs (`django.log`)
+
+#### Backup Management
+
+- **Zweck**: Datenbank-Backups verwalten
+- **Zugriff**: `/admin/backup/`
+- **Features**:
+  - Backups erstellen
+  - Backup-Liste anzeigen (mit Größe und Datum)
+  - Backups herunterladen
+  - Backup-Verwaltung
+- **Verwendung**: Backups werden in `backups/` Verzeichnis gespeichert
+
+#### Gunicorn Configuration
+
+- **Zweck**: Gunicorn-Server-Konfiguration über Admin GUI
+- **Zugriff**: `/admin/mgmt/gunicornconfig/`
+- **Wichtige Einstellungen**:
+  - `log_level`: Log-Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - `workers`: Anzahl Worker-Prozesse (0 = automatisch)
+  - `threads`: Threads pro Worker
+  - `worker_class`: Worker-Klasse (gthread, sync)
+  - `bind`: Bind-Adresse und Port
+- **Features**:
+  - Konfiguration ohne Environment-Variablen ändern
+  - Server-Neustart erforderlich nach Änderungen
+  - Link zu Server Control für Neustart
+
+#### Logging Configuration
+
+- **Zweck**: Anwendungs-Logging konfigurieren
+- **Zugriff**: `/admin/mgmt/loggingconfig/`
+- **Features**:
+  - Log-Level pro Logger konfigurieren
+  - Logging zu Datenbank aktivieren/deaktivieren
+  - DEBUG/INFO Logs in Datenbank aktivieren
+  - Request-Logging aktivieren/deaktivieren
+
+#### Performance Monitoring
+
+- **Zweck**: System-Performance überwachen
+- **Modelle**:
+  - **Request Logs**: HTTP-Request-Logs mit Performance-Daten
+  - **Performance Metrics**: Aggregierte Performance-Metriken
+  - **Alert Rules**: Regeln für Performance-Alerts
+- **Features**:
+  - Request-Zeiten analysieren
+  - Langsame Requests identifizieren
+  - Performance-Trends verfolgen
+
+#### Minecraft Control
+
+- **Zweck**: Minecraft-Server steuern und Coin-Synchronisation verwalten
+- **Zugriff**: `/admin/minecraft/`
+- **Features**:
+  - Bridge-Worker starten/stoppen (Coin-Synchronisation)
+  - Snapshot-Worker starten/stoppen (Status-Erfassung)
+  - Manuelle Synchronisation aller Spieler
+  - Scoreboard-Snapshot aktualisieren
+  - RCON-Verbindung testen
+  - Outbox-Events verwalten
+  - Player-Liste mit Coin-Status anzeigen
+- **Dokumentation**: Siehe [Minecraft-Integration Dokumentation](minecraft.md)
+
+### Historical Reports & Analytics
+
+Historische Berichte und Analysen.
+
+#### Analytics Dashboard
+
+- **Zweck**: Historische Daten analysieren und Berichte erstellen
+- **Zugriff**: `/admin/analytics/`
+- **Features**:
+  - Zeitreihen-Analysen
+  - Gruppen-Vergleiche
+  - Export-Funktionen
+  - Hierarchie-Breakdown
+
+#### Hierarchy Breakdown
+
+- **Zweck**: Detaillierte Hierarchie-Analysen
+- **Zugriff**: `/admin/analytics/hierarchy/`
+- **Features**:
+  - Gruppen-Hierarchie visualisieren
+  - Detaillierte Statistiken pro Ebene
+
+### Session Management
+
+Spiel-Session-Verwaltung und Debugging.
+
+#### Session Dashboard
+
+- **Zweck**: Aktive Spiel-Sessions überwachen und verwalten
+- **Zugriff**: `/admin/game/session/dashboard/`
+- **Features**:
+  - Aktive Sessions anzeigen
+  - Session-Daten bearbeiten
+  - Sessions in Räumen verwalten
+  - Master-Sessions verwalten
+  - Session-Daten als JSON exportieren
+
 ## Häufige Aufgaben
 
 ### Neuen Radler erstellen

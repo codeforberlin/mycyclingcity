@@ -75,25 +75,37 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
 
-## Schritt 5: Datenbank-Migrationen ausführen
+## Schritt 5: Datenbank-Verzeichnis erstellen
+
+Die Datenbank wird im Verzeichnis `data/db/` gespeichert. Stellen Sie sicher, dass das Verzeichnis existiert:
+
+```bash
+mkdir -p data/db
+```
+
+## Schritt 6: Datenbank-Migrationen ausführen
 
 ```bash
 python manage.py migrate
 ```
 
-## Schritt 6: Superuser erstellen (Optional)
+Dies erstellt die Datenbankdatei `data/db/db.sqlite3` und alle erforderlichen Tabellen.
+
+## Schritt 7: Superuser erstellen (Optional)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-## Schritt 7: Statische Dateien sammeln
+## Schritt 8: Statische Dateien sammeln
 
 ```bash
 python manage.py collectstatic
 ```
 
-## Schritt 8: Entwicklungsserver starten
+Dies sammelt alle statischen Dateien im Verzeichnis `data/staticfiles/`.
+
+## Schritt 9: Entwicklungsserver starten
 
 ```bash
 python manage.py runserver
@@ -104,13 +116,33 @@ Zugriff auf die Anwendung:
 - Spiel: http://127.0.0.1:8000/de/game/
 - Karte: http://127.0.0.1:8000/de/map/
 
+## Verzeichnisstruktur
+
+Nach der Installation sollten folgende Verzeichnisse existieren:
+
+```
+mcc-web/
+├── data/
+│   ├── db/
+│   │   └── db.sqlite3          # SQLite-Datenbank
+│   ├── staticfiles/            # Gesammelte statische Dateien
+│   ├── media/                   # Hochgeladene Dateien
+│   └── logs/                   # Log-Dateien
+├── venv/                       # Virtuelle Umgebung
+├── .env                        # Umgebungsvariablen
+└── ...
+```
+
+**Hinweis**: In der Produktion liegen die Daten unter `/data/var/mcc/` (Datenbank, Media, Logs) und `/data/appl/mcc/` (Code, .env, venv).
+
 ## Überprüfung
 
 Um die Installation zu überprüfen:
 
 1. Prüfen Sie, dass der Server ohne Fehler startet
 2. Zugriff auf das Admin-Interface unter `/admin`
-3. Tests ausführen: `pytest api/tests/`
+3. Prüfen Sie, dass die Datenbankdatei erstellt wurde: `ls -la data/db/db.sqlite3`
+4. Tests ausführen: `pytest api/tests/`
 
 ## Fehlerbehebung
 
@@ -123,7 +155,8 @@ Um die Installation zu überprüfen:
 ### Datenbank-Fehler
 
 - Stellen Sie sicher, dass SQLite verfügbar ist (in Python enthalten)
-- Prüfen Sie die Dateiberechtigungen für `data/db.sqlite3`
+- Prüfen Sie, dass das Verzeichnis `data/db/` existiert: `mkdir -p data/db`
+- Prüfen Sie die Dateiberechtigungen für `data/db/db.sqlite3`
 - Migrationen ausführen: `python manage.py migrate`
 
 ### Statische Dateien werden nicht geladen

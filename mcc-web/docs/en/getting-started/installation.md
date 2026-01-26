@@ -75,25 +75,37 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
 
-## Step 5: Run Database Migrations
+## Step 5: Create Database Directory
+
+The database is stored in the `data/db/` directory. Ensure the directory exists:
+
+```bash
+mkdir -p data/db
+```
+
+## Step 6: Run Database Migrations
 
 ```bash
 python manage.py migrate
 ```
 
-## Step 6: Create Superuser (Optional)
+This creates the database file `data/db/db.sqlite3` and all required tables.
+
+## Step 7: Create Superuser (Optional)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-## Step 7: Collect Static Files
+## Step 8: Collect Static Files
 
 ```bash
 python manage.py collectstatic
 ```
 
-## Step 8: Run Development Server
+This collects all static files in the `data/staticfiles/` directory.
+
+## Step 9: Run Development Server
 
 ```bash
 python manage.py runserver
@@ -104,13 +116,33 @@ Access the application:
 - Game: http://127.0.0.1:8000/de/game/
 - Map: http://127.0.0.1:8000/de/map/
 
+## Directory Structure
+
+After installation, the following directories should exist:
+
+```
+mcc-web/
+├── data/
+│   ├── db/
+│   │   └── db.sqlite3          # SQLite database
+│   ├── staticfiles/            # Collected static files
+│   ├── media/                   # Uploaded files
+│   └── logs/                   # Log files
+├── venv/                       # Virtual environment
+├── .env                        # Environment variables
+└── ...
+```
+
+**Note**: In production, data is stored under `/data/var/mcc/` (database, media, logs) and `/data/appl/mcc/` (code, .env, venv).
+
 ## Verification
 
 To verify the installation:
 
 1. Check that the server starts without errors
 2. Access the admin interface at `/admin`
-3. Run tests: `pytest api/tests/`
+3. Check that the database file was created: `ls -la data/db/db.sqlite3`
+4. Run tests: `pytest api/tests/`
 
 ## Troubleshooting
 
@@ -123,7 +155,8 @@ To verify the installation:
 ### Database Errors
 
 - Ensure SQLite is available (included with Python)
-- Check file permissions for `data/db.sqlite3`
+- Check that the `data/db/` directory exists: `mkdir -p data/db`
+- Check file permissions for `data/db/db.sqlite3`
 - Run migrations: `python manage.py migrate`
 
 ### Static Files Not Loading
