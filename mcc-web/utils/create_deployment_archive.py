@@ -560,7 +560,8 @@ def create_deployment_archive(output_dir: Path | None = None, skip_translation_c
     # Get version for archive name and directory structure
     version = get_project_version()
     # Normalize version for directory name (remove 'v' prefix, replace special chars)
-    version_dir = f"mcc-web-{version.replace('v', '').replace('/', '-').replace('\\', '-')}"
+    normalized_version = version.replace('v', '').replace('/', '-').replace('\\', '-')
+    version_dir = f"mcc-web-{normalized_version}"
     
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     archive_name = f'mcc-web-deployment-{version}-{timestamp}.tar.gz'
