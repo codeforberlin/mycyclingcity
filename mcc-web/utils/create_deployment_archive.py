@@ -29,9 +29,10 @@ def get_project_version() -> str:
     Returns:
         Version string (e.g., "1.0.0" or "v1.0.0-5-gabc1234").
     """
-    # Get project root directory (parent of utils/)
-    base_dir = Path(__file__).parent.parent
-    version_file = base_dir / 'version.txt'
+    # Get repository root directory (parent of mcc-web/)
+    # Script is in mcc-web/utils/, so go up two levels to get repo root
+    repo_root = Path(__file__).parent.parent.parent
+    version_file = repo_root / 'version.txt'
     if version_file.exists():
         try:
             with open(version_file, 'r', encoding='utf-8') as f:
@@ -45,7 +46,7 @@ def get_project_version() -> str:
     try:
         result = subprocess.run(
             ['git', 'describe', '--tags', '--always', '--dirty'],
-            cwd=base_dir,
+            cwd=repo_root,
             capture_output=True,
             text=True,
             timeout=5

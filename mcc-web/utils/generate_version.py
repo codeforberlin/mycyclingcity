@@ -7,9 +7,9 @@
 
 #
 """
-Generate version.txt file for the MCC-Web application.
+Generate version.txt file for the MyCyclingCity repository.
 
-This script creates or updates the version.txt file in the project root.
+This script creates or updates the version.txt file in the repository root.
 The version is determined from:
 1. Git tags (git describe --tags --always --dirty)
 2. Manual version string (if provided via command line)
@@ -193,8 +193,9 @@ Examples:
     
     args = parser.parse_args()
     
-    # Get project root directory (parent of utils/)
-    base_dir = Path(__file__).parent.parent.resolve()
+    # Get repository root directory (parent of mcc-web/)
+    # Script is in mcc-web/utils/, so go up two levels to get repo root
+    base_dir = Path(__file__).parent.parent.parent.resolve()
     
     # Handle clean option
     if args.clean:

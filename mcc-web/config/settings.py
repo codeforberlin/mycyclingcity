@@ -321,7 +321,12 @@ def get_project_version() -> str:
     Returns:
         Version string (e.g., "1.0.0" or "v1.0.0-5-gabc1234").
     """
-    version_file = BASE_DIR / 'version.txt'
+    # Look for version.txt in repository root (parent of mcc-web/)
+    repo_root = BASE_DIR.parent
+    version_file = repo_root / 'version.txt'
+    # Fallback to mcc-web/version.txt for backwards compatibility
+    if not version_file.exists():
+        version_file = BASE_DIR / 'version.txt'
     if version_file.exists():
         try:
             with open(version_file, 'r', encoding='utf-8') as f:
@@ -336,7 +341,7 @@ def get_project_version() -> str:
     try:
         result = subprocess.run(
             ['git', 'describe', '--tags', '--always', '--dirty'],
-            cwd=BASE_DIR,
+            cwd=repo_root,
             capture_output=True,
             text=True,
             timeout=5
