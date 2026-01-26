@@ -29,9 +29,22 @@ def get_project_version() -> str:
     Returns:
         Version string (e.g., "1.0.0" or "v1.0.0-5-gabc1234").
     """
-    # Get repository root directory (parent of mcc-web/)
-    # Script is in mcc-web/utils/, so go up two levels to get repo root
-    repo_root = Path(__file__).parent.parent.parent
+    # Script is in mcc-web/utils/, so mcc-web/ is parent.parent
+    mcc_web_dir = Path(__file__).parent.parent
+    repo_root = mcc_web_dir.parent
+    
+    # First try mcc-web/version.txt (for deployment archive)
+    version_file = mcc_web_dir / 'version.txt'
+    if version_file.exists():
+        try:
+            with open(version_file, 'r', encoding='utf-8') as f:
+                version = f.read().strip()
+                if version:
+                    return version
+        except Exception:
+            pass
+    
+    # Fallback to repository root version.txt (for CI/CD)
     version_file = repo_root / 'version.txt'
     if version_file.exists():
         try:
@@ -140,6 +153,7 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         # Note: .mo files in locale/ are INCLUDED (compiled in dev, deployed to production)
         # They will be copied to /data/var/mcc/locale_compiled during deployment
         'backups',  # Database backups should not be deployed
+        'tmp',  # Temporary files directory
         
         # Virtual environments
         'venv',

@@ -84,35 +84,52 @@ def get_current_git_tag(base_dir: Path) -> str | None:
 
 def write_version_file(base_dir: Path, version: str) -> bool:
     """
-    Write version to version.txt file.
+    Write version to version.txt file in both repository root and mcc-web/.
     
     Args:
-        base_dir: Project root directory
+        base_dir: Project root directory (repository root)
         version: Version string to write
     
     Returns:
         True if successful, False otherwise
     """
-    version_file = base_dir / 'version.txt'
+    # Write to repository root
+    version_file_repo = base_dir / 'version.txt'
+    # Write to mcc-web/ (for deployment archive)
+    version_file_mcc_web = base_dir / 'mcc-web' / 'version.txt'
+    
+    success = True
     try:
-        with open(version_file, 'w', encoding='utf-8') as f:
+        with open(version_file_repo, 'w', encoding='utf-8') as f:
             f.write(version + '\n')
-        return True
     except Exception as e:
-        print(f"Error writing version.txt: {e}", file=sys.stderr)
-        return False
+        print(f"Error writing version.txt to repository root: {e}", file=sys.stderr)
+        success = False
+    
+    try:
+        # Ensure mcc-web directory exists
+        version_file_mcc_web.parent.mkdir(parents=True, exist_ok=True)
+        with open(version_file_mcc_web, 'w', encoding='utf-8') as f:
+            f.write(version + '\n')
+    except Exception as e:
+        print(f"Error writing version.txt to mcc-web/: {e}", file=sys.stderr)
+        success = False
+    
+    return success
 
 
 def read_version_file(base_dir: Path) -> str | None:
     """
     Read version from version.txt file if it exists.
+    Checks both repository root and mcc-web/.
     
     Args:
-        base_dir: Project root directory
+        base_dir: Project root directory (repository root)
     
     Returns:
         Version string if file exists, None otherwise
     """
+    # Try repository root first
     version_file = base_dir / 'version.txt'
     if version_file.exists():
         try:
@@ -122,28 +139,50 @@ def read_version_file(base_dir: Path) -> str | None:
                     return version
         except Exception:
             pass
+    
+    # Fallback to mcc-web/version.txt
+    version_file = base_dir / 'mcc-web' / 'version.txt'
+    if version_file.exists():
+        try:
+            with open(version_file, 'r', encoding='utf-8') as f:
+                version = f.read().strip()
+                if version:
+                    return version
+        except Exception:
+            pass
+    
     return None
 
 
 def remove_version_file(base_dir: Path) -> bool:
     """
-    Remove version.txt file.
+    Remove version.txt file from both repository root and mcc-web/.
     
     Args:
-        base_dir: Project root directory
+        base_dir: Project root directory (repository root)
     
     Returns:
         True if successful, False otherwise
     """
-    version_file = base_dir / 'version.txt'
+    success = True
+    version_file_repo = base_dir / 'version.txt'
+    version_file_mcc_web = base_dir / 'mcc-web' / 'version.txt'
+    
     try:
-        if version_file.exists():
-            version_file.unlink()
-            return True
-        return False
+        if version_file_repo.exists():
+            version_file_repo.unlink()
     except Exception as e:
-        print(f"Error removing version.txt: {e}", file=sys.stderr)
-        return False
+        print(f"Error removing version.txt from repository root: {e}", file=sys.stderr)
+        success = False
+    
+    try:
+        if version_file_mcc_web.exists():
+            version_file_mcc_web.unlink()
+    except Exception as e:
+        print(f"Error removing version.txt from mcc-web/: {e}", file=sys.stderr)
+        success = False
+    
+    return success
 
 
 def main() -> int:
