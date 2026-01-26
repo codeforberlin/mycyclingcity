@@ -1,0 +1,71 @@
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# @file    create-deployment-archive.yml
+# @author  Roland Rutz
+# @note    This code was developed with the assistance of AI (LLMs).
+
+name: Create Deployment Archive
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'mcc-web/**'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (optional)'
+        required: false
+        type: string
+
+jobs:
+  create-archive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git describe
+    
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+    
+      - name: Create deployment archive
+        working-directory: mcc-web
+        run: |
+          python utils/create_deployment_archive.py
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version }}
+    
+      - name: Find archive file
+        id: find-archive
+        working-directory: mcc-web
+        run: |
+          ARCHIVE=$(ls -t mcc-web-deployment-*.tar.gz | head -n 1)
+          echo "archive_name=$ARCHIVE" >> $GITHUB_OUTPUT
+          echo "archive_path=mcc-web/$ARCHIVE" >> $GITHUB_OUTPUT
+          echo "Found archive: $ARCHIVE"
+    
+      - name: Upload deployment archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcc-web-deployment-archive
+          path: ${{ steps.find-archive.outputs.archive_path }}
+          retention-days: 30
+    
+      - name: Get archive info
+        working-directory: mcc-web
+        run: |
+          ARCHIVE=$(ls -t mcc-web-deployment-*.tar.gz | head -n 1)
+          SIZE=$(du -h "$ARCHIVE" | cut -f1)
+          echo "📦 Deployment archive created: $ARCHIVE"
+          echo "📊 Size: $SIZE"
+          echo "🔗 Download from Actions artifacts"
