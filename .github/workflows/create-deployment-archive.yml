@@ -45,7 +45,7 @@ jobs:
         env:
           VERSION_OVERRIDE: ${{ inputs.version }}
     
-      - name: Find archive file
+      - name: Find and prepare archive file
         id: find-archive
         working-directory: mcc-web
         run: |
@@ -53,13 +53,17 @@ jobs:
           echo "archive_name=$ARCHIVE" >> $GITHUB_OUTPUT
           echo "archive_path=mcc-web/$ARCHIVE" >> $GITHUB_OUTPUT
           echo "Found archive: $ARCHIVE"
+          # Verify archive structure
+          echo "Archive structure:"
+          tar -tzf "$ARCHIVE" | head -5
     
-      - name: Upload deployment archive
+      - name: Upload deployment archive as artifact
         uses: actions/upload-artifact@v4
         with:
           name: mcc-web-deployment-archive
           path: ${{ steps.find-archive.outputs.archive_path }}
           retention-days: 30
+          if-no-files-found: error
     
       - name: Get archive info
         working-directory: mcc-web
@@ -69,3 +73,14 @@ jobs:
           echo "📦 Deployment archive created: $ARCHIVE"
           echo "📊 Size: $SIZE"
           echo "🔗 Download from Actions artifacts"
+    
+      - name: Create Release and upload archive (on tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.find-archive.outputs.archive_path }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
