@@ -27,7 +27,31 @@ def is_superuser(user):
 
 
 def _get_script_path() -> Path:
-    return Path(settings.BASE_DIR) / "scripts" / "minecraft.sh"
+    """
+    Get the path to the minecraft.sh script.
+    
+    Tries multiple locations:
+    1. BASE_DIR/scripts/minecraft.sh (standard location)
+    2. Alternative paths for production deployments
+    """
+    # Primary path: BASE_DIR/scripts/minecraft.sh
+    script_path = Path(settings.BASE_DIR) / "scripts" / "minecraft.sh"
+    
+    # If script exists, return resolved absolute path
+    if script_path.exists():
+        return script_path.resolve()
+    
+    # Try alternative: if BASE_DIR is a symlink, try to find the actual script
+    # In production, BASE_DIR might be /data/appl/mcc/mcc-web (symlink)
+    # The script should be in the actual versioned directory
+    base_dir_resolved = Path(settings.BASE_DIR).resolve()
+    if base_dir_resolved != Path(settings.BASE_DIR):
+        alt_path = base_dir_resolved / "scripts" / "minecraft.sh"
+        if alt_path.exists():
+            return alt_path.resolve()
+    
+    # Return the original path (even if it doesn't exist) for error reporting
+    return script_path
 
 
 def _get_worker_status(script_path: Path) -> dict:
@@ -125,11 +149,19 @@ def minecraft_control(request):
 
     rcon_ok, rcon_error, rcon_mode = check_connection()
 
+    # Add script path info for debugging
+    script_path_str = str(script_path)
+    script_exists = script_path.exists()
+    script_executable = script_path.exists() and os.access(script_path, os.X_OK)
+    
     context = {
         "title": _("Minecraft Control"),
         "worker_status": worker_status,
         "snapshot_status": snapshot_status,
         "script_path": script_path,
+        "script_path_str": script_path_str,
+        "script_exists": script_exists,
+        "script_executable": script_executable,
         "outbox_counts": outbox_counts,
         "players": players,
         "ws_enabled": settings.MCC_MINECRAFT_WS_ENABLED,
@@ -210,31 +242,50 @@ def minecraft_action(request, action):
 
     script_path = _get_script_path()
     if not script_path.exists():
-        return JsonResponse({"error": _("Script not found: %(path)s") % {"path": script_path}, "success": False}, status=404)
+        # Return absolute path for better debugging
+        abs_path = str(script_path.resolve() if script_path.exists() else script_path.absolute())
+        return JsonResponse({
+            "error": _("Script not found: %(path)s") % {"path": abs_path},
+            "success": False,
+            "script_path": abs_path,
+            "base_dir": str(settings.BASE_DIR),
+        }, status=404)
 
     if not os.access(script_path, os.X_OK):
         return JsonResponse({"error": _("Script not executable"), "success": False}, status=403)
 
     try:
         if action in ["start", "stop", "snapshot-start", "snapshot-stop"]:
-            logs_dir = Path(settings.BASE_DIR) / "logs"
+            # Use LOGS_DIR from settings (production: /data/var/mcc/logs, dev: BASE_DIR/logs)
+            if hasattr(settings, 'LOGS_DIR'):
+                logs_dir = Path(settings.LOGS_DIR)
+            else:
+                logs_dir = Path(settings.BASE_DIR) / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
             action_log = logs_dir / "minecraft_action.log"
-            with open(action_log, "a") as log_handle:
-                log_handle.write(f"\n--- {action} started by {request.user} ---\n")
-                log_handle.flush()
-                subprocess.Popen(
-                    [str(script_path), action],
-                    stdout=log_handle,
-                    stderr=log_handle,
-                    start_new_session=True,
-                    close_fds=True,
-                )
+            
+            try:
+                with open(action_log, "a") as log_handle:
+                    log_handle.write(f"\n--- {action} started by {request.user} ---\n")
+                    log_handle.flush()
+                    subprocess.Popen(
+                        [str(script_path), action],
+                        stdout=log_handle,
+                        stderr=log_handle,
+                        start_new_session=True,
+                        close_fds=True,
+                    )
+            except Exception as log_exc:
+                logger.error(f"[minecraft_control] Failed to write to log file {action_log}: {log_exc}")
+                # Continue anyway, but log the error
+            
+            # Return message with absolute path for better visibility
+            action_log_str = str(action_log.resolve() if action_log.exists() else action_log)
             return JsonResponse(
                 {
                     "success": True,
                     "message": _("Action '%(action)s' started in background") % {"action": action},
-                    "output": _("Background execution. Details in %(log)s") % {"log": action_log},
+                    "output": _("Background execution. Details in %(log)s") % {"log": action_log_str},
                 },
                 status=202,
             )

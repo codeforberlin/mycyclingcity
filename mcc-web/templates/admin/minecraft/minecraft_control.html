@@ -115,15 +115,26 @@ function performMinecraftAction(action, buttonElement) {
             'Content-Type': 'application/json',
         },
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || data.message || 'HTTP ' + response.status);
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         button.disabled = false;
         button.textContent = originalText;
         if (outputBox) {
-            outputBox.textContent = data.output || data.message || '{% trans "Aktion abgeschlossen" %}';
-            outputBox.style.color = data.success ? '#4ec9b0' : '#f48771';
+            // Show output, message, or fallback
+            var displayText = data.output || data.message || '{% trans "Aktion abgeschlossen" %}';
+            outputBox.textContent = displayText;
+            outputBox.style.display = 'block';
+            outputBox.style.color = data.success !== false ? '#4ec9b0' : '#f48771';
         }
-        setTimeout(function() { location.reload(); }, 1500);
+        // Reload after a short delay to show the message
+        setTimeout(function() { location.reload(); }, 2000);
     })
     .catch(error => {
         button.disabled = false;
@@ -203,6 +214,18 @@ function performMinecraftAction(action, buttonElement) {
         &nbsp;|&nbsp;
         <strong>{% trans 'Letzter Fehler' %}:</strong>
         {{ worker_state.last_error|default:"-" }}
+    </div>
+
+    <div style="margin-bottom: 10px; font-size: 11px; color: #666;">
+        <strong>{% trans 'Script-Pfad' %}:</strong>
+        <code>{{ script_path_str }}</code>
+        {% if not script_exists %}
+            <br><span style="color: #dc3545;">⚠ {% trans 'Script nicht gefunden!' %}</span>
+        {% elif not script_executable %}
+            <br><span style="color: #ffc107;">⚠ {% trans 'Script nicht ausführbar!' %}</span>
+        {% else %}
+            <span style="color: #28a745;">✓</span>
+        {% endif %}
     </div>
 
     <div style="margin-bottom: 10px;">
