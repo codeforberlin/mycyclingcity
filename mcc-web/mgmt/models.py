@@ -224,6 +224,65 @@ class GunicornConfig(models.Model):
         return multiprocessing.cpu_count() * 2 + 1
 
 
+class MaintenanceConfig(models.Model):
+    """
+    Configuration for maintenance mode settings.
+    
+    This is a singleton model - only one instance should exist.
+    Controls maintenance mode behavior including IP whitelist.
+    """
+    ip_whitelist = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_("IP Whitelist"),
+        help_text=_("Eine IP-Adresse oder ein CIDR-Block pro Zeile. Beispiel:\n192.168.1.100\n10.0.0.0/8\n172.16.0.0/12\nDiese IPs können während der Wartung auf die Website zugreifen.")
+    )
+    
+    allow_admin_during_maintenance = models.BooleanField(
+        default=True,
+        verbose_name=_("Admin-Zugriff während Wartung erlauben"),
+        help_text=_("Wenn aktiviert, können Superuser auch ohne IP-Whitelist auf /admin/ zugreifen")
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_("Zuletzt aktualisiert")
+    )
+    updated_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("Aktualisiert von"),
+        help_text=_("Benutzer, der diese Einstellung zuletzt geändert hat")
+    )
+    
+    class Meta:
+        verbose_name = _("Maintenance Configuration")
+        verbose_name_plural = _("Maintenance Configuration")
+    
+    def __str__(self):
+        return "Maintenance Configuration"
+    
+    @classmethod
+    def get_config(cls):
+        """Get or create the singleton configuration instance."""
+        config, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'ip_whitelist': '',
+                'allow_admin_during_maintenance': True
+            }
+        )
+        return config
+    
+    def get_ip_list(self):
+        """Get list of IP addresses/CIDR blocks from whitelist."""
+        if not self.ip_whitelist:
+            return []
+        return [ip.strip() for ip in self.ip_whitelist.split('\n') if ip.strip()]
+
+
 # Import performance models
 from mgmt.models_performance import RequestLog, PerformanceMetric, AlertRule
 

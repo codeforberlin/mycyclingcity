@@ -315,6 +315,29 @@ Server management and system monitoring.
   - Set up notifications
 - **Access**: `/admin/mgmt/alertrule/` or via "Mgmt" → "Alert Rules"
 
+#### Maintenance Control
+
+- **Purpose**: Activate/deactivate maintenance mode and configure IP whitelist
+- **Features**:
+  - Activate/deactivate maintenance mode
+  - Configure IP whitelist (single IPs and CIDR blocks)
+  - Allow/deny admin access during maintenance
+  - Display current status
+  - Check IP status (whether current IP is in whitelist)
+- **Access**: `/admin/maintenance/` or via "Mgmt" → "Maintenance Control"
+- **Permission**: Superusers only
+- **Documentation**: See [Maintenance Mode Setup](apache_maintenance_setup.md) for details on configuration, IP whitelist, and Apache integration.
+
+#### Maintenance Configuration
+
+- **Purpose**: Configure IP whitelist and admin access
+- **Key Fields**:
+  - `ip_whitelist`: IP addresses or CIDR blocks (one per line)
+  - `allow_admin_during_maintenance`: Allow admin access for superusers
+- **Access**: `/admin/mgmt/maintenanceconfig/` or via "Mgmt" → "Maintenance Configurations"
+- **Permission**: Superusers only
+- **Documentation**: See [Maintenance Mode Setup](apache_maintenance_setup.md) for details on IP whitelist configuration.
+
 ### Minecraft Management
 
 Minecraft server management (if enabled).
@@ -500,3 +523,4 @@ Some models have custom admin actions:
 - [API Reference](../api/index.md)
 - [Production Deployment Checklist](PRODUCTION_CHECKLIST.md) - Checklist for production deployments
 - [Compile Translations](COMPILE_MESSAGES.md) - Guide for compiling translations without venv libraries
+- [Maintenance Mode Setup](apache_maintenance_setup.md) - Configure maintenance mode with IP whitelist and admin access

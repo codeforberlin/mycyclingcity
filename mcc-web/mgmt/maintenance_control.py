@@ -49,17 +49,73 @@ def get_maintenance_flag_path():
     return apache_dir / '.maintenance_mode'
 
 
+def get_client_ip(request):
+    """Get client IP address from request."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
 @user_passes_test(is_superuser)
 @staff_member_required
 def maintenance_control(request):
     """Main maintenance control page."""
+    from mgmt.models import MaintenanceConfig
+    from ipaddress import ip_address, ip_network
+    from django.db import OperationalError
+    
     flag_path = get_maintenance_flag_path()
     is_active = flag_path.exists()
+    client_ip = get_client_ip(request)
+    
+    # Prüfe ob Tabelle existiert (Migration möglicherweise noch nicht ausgeführt)
+    try:
+        config = MaintenanceConfig.get_config()
+    except OperationalError as e:
+        # Tabelle existiert noch nicht - Fallback: Leere Konfiguration
+        if 'no such table' in str(e).lower() or 'does not exist' in str(e).lower():
+            logger.warning(f"[MaintenanceControl] MaintenanceConfig table does not exist yet (migration not run). Using default config.")
+            # Erstelle ein Dummy-Config-Objekt mit Standardwerten
+            class DummyConfig:
+                ip_whitelist = ''
+                allow_admin_during_maintenance = True
+                def get_ip_list(self):
+                    return []
+            config = DummyConfig()
+        else:
+            raise  # Re-raise if it's a different OperationalError
+    
+    # Prüfe ob aktuelle IP in Whitelist ist
+    is_ip_whitelisted = False
+    if client_ip:
+        ip_list = config.get_ip_list()
+        if ip_list:
+            try:
+                client_ip_obj = ip_address(client_ip)
+                for whitelist_entry in ip_list:
+                    try:
+                        if '/' not in whitelist_entry:
+                            if ip_address(whitelist_entry) == client_ip_obj:
+                                is_ip_whitelisted = True
+                                break
+                        else:
+                            if client_ip_obj in ip_network(whitelist_entry, strict=False):
+                                is_ip_whitelisted = True
+                                break
+                    except ValueError:
+                        continue
+            except ValueError:
+                pass
     
     context = {
         'title': _('Maintenance Mode Control'),
         'is_active': is_active,
         'flag_path': flag_path,
+        'config': config,
+        'client_ip': client_ip,
+        'is_ip_whitelisted': is_ip_whitelisted,
+        'ip_list': config.get_ip_list(),
     }
     
     return render(request, 'admin/mgmt/maintenance_control.html', context)

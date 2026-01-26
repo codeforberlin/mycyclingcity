@@ -1,32 +1,44 @@
-# Apache Maintenance Mode Setup
+# Maintenance Mode Setup
 
 ## Übersicht
 
-Dieses Dokument beschreibt, wie die Maintenance-Seite (`maintenance.html`) in der PROD-Umgebung aktiviert wird, um während Wartungsarbeiten eine professionelle Wartungsseite anzuzeigen.
+Dieses Dokument beschreibt, wie der Maintenance Mode in der PROD-Umgebung funktioniert. Der Maintenance Mode wird durch **Django Middleware** gesteuert und bietet erweiterte Funktionen wie IP-Whitelist und Admin-Zugriff.
+
+## Architektur
+
+### Django Middleware (Hauptsteuerung)
+
+Die **Django Middleware** (`mgmt.middleware_maintenance.MaintenanceModeMiddleware`) übernimmt die vollständige Kontrolle über den Maintenance Mode:
+
+- ✅ Prüft die Maintenance-Flag-Datei
+- ✅ Unterstützt IP-Whitelist (einzelne IPs und CIDR-Blöcke)
+- ✅ Erlaubt Admin-Zugriff für Superuser
+- ✅ Blockiert alle anderen Requests und leitet zur Maintenance-Seite um
+
+### Apache ErrorDocument (Fallback)
+
+Apache zeigt die Maintenance-Seite automatisch an, wenn Gunicorn nicht erreichbar ist (502/503/504 Fehler). Dies ist ein **Fallback-Mechanismus** für unerwartete Ausfälle.
 
 ## Dateien
 
-- **Maintenance HTML**: `project_static/maintenance.html`
-- **Apache Config**: `/etc/apache2/sites-available/mycyclingcity.net-ssl.conf` (oder ähnlich)
+- **Maintenance HTML**: `project_static/maintenance.html` (mit Login-Button)
+- **Flag-Datei**: `/data/var/mcc/apache/.maintenance_mode`
+- **Apache Config**: `/etc/apache2/sites-available/mycyclingcity.net-ssl.conf`
 
-## Vorgehensweise
+## Apache-Konfiguration
 
-### Option 1: Apache ErrorDocument (Empfohlen)
-
-Die einfachste Methode ist, Apache so zu konfigurieren, dass bei einem Fehler (z.B. wenn Gunicorn nicht erreichbar ist) die Maintenance-Seite angezeigt wird.
-
-#### Schritt 1: Maintenance-Datei kopieren
+### Schritt 1: Maintenance-Datei kopieren
 
 ```bash
 # Auf dem PROD-Server
-sudo cp /data/games/mcc/mcc-web/project_static/maintenance.html /var/www/maintenance.html
+sudo cp /data/appl/mcc/mcc-web/project_static/maintenance.html /var/www/maintenance.html
 sudo chown www-data:www-data /var/www/maintenance.html
 sudo chmod 644 /var/www/maintenance.html
 ```
 
-#### Schritt 2: Apache-Konfiguration anpassen
+### Schritt 2: Apache-Konfiguration anpassen
 
-In der Apache VirtualHost-Konfiguration (z.B. `/etc/apache2/sites-available/mycyclingcity.net-ssl.conf`) **VOR** den ProxyPass-Regeln hinzufügen:
+In der Apache VirtualHost-Konfiguration (z.B. `/etc/apache2/sites-available/mycyclingcity.net-ssl.conf`):
 
 ```apache
 <VirtualHost *:443>
@@ -36,7 +48,8 @@ In der Apache VirtualHost-Konfiguration (z.B. `/etc/apache2/sites-available/mycy
 
     # ... (bestehende Konfiguration) ...
 
-    # Maintenance Mode: Wenn Gunicorn nicht erreichbar ist, zeige Maintenance-Seite
+    # Maintenance Mode: Nur für Gunicorn-Ausfälle (Fallback)
+    # Django Middleware übernimmt die Hauptsteuerung
     ErrorDocument 502 /maintenance.html
     ErrorDocument 503 /maintenance.html
     ErrorDocument 504 /maintenance.html
@@ -59,38 +72,16 @@ In der Apache VirtualHost-Konfiguration (z.B. `/etc/apache2/sites-available/mycy
 </VirtualHost>
 ```
 
-#### Schritt 3: Apache neu laden
+### Schritt 3: Apache neu laden
 
 ```bash
 sudo apache2ctl configtest  # Konfiguration prüfen
 sudo systemctl reload apache2
 ```
 
-**Vorteile:**
-- Automatisch aktiv, wenn Gunicorn nicht erreichbar ist
-- Keine manuelle Aktivierung nötig
-- Funktioniert auch bei unerwarteten Ausfällen
+## Verwendung
 
----
-
-### Option 2: Manueller Maintenance-Mode mit RewriteRule
-
-Für geplante Wartungsarbeiten kann ein manueller Maintenance-Mode eingerichtet werden.
-
-#### Schritt 1: Maintenance-Flag-Datei erstellen
-
-**Hinweis:** Die Maintenance-Flag-Datei kann jetzt auch über das Admin GUI gesteuert werden (siehe "Mgmt" → "Maintenance Control").
-
-**Manuell (via Kommandozeile):**
-
-```bash
-# Maintenance aktivieren
-sudo touch /data/var/mcc/apache/.maintenance_mode
-sudo chmod 644 /data/var/mcc/apache/.maintenance_mode
-
-# Maintenance deaktivieren
-sudo rm /data/var/mcc/apache/.maintenance_mode
-```
+### Maintenance Mode aktivieren/deaktivieren
 
 **Über Admin GUI (empfohlen):**
 
@@ -98,134 +89,19 @@ sudo rm /data/var/mcc/apache/.maintenance_mode
 2. Klicken Sie auf **Activate Maintenance Mode** oder **Deactivate Maintenance Mode**
 3. Bestätigen Sie die Aktion
 
-#### Schritt 2: Apache-Konfiguration anpassen
-
-In der Apache VirtualHost-Konfiguration **VOR** den ProxyPass-Regeln:
-
-```apache
-<VirtualHost *:443>
-    ServerName mycyclingcity.net
-    # ... (bestehende Konfiguration) ...
-
-    # Maintenance Mode: Prüfe auf Flag-Datei
-    RewriteEngine On
-    
-    # Wenn Maintenance-Flag existiert UND nicht /maintenance.html oder /static/ angefragt wird
-    RewriteCond /data/var/mcc/apache/.maintenance_mode -f
-    RewriteCond %{REQUEST_URI} !^/maintenance\.html$
-    RewriteCond %{REQUEST_URI} !^/static/
-    RewriteRule ^(.*)$ /maintenance.html [R=503,L]
-
-    # Maintenance-Datei direkt ausliefern
-    Alias /maintenance.html /var/www/maintenance.html
-    <Directory /var/www/>
-        <Files "maintenance.html">
-            Require all granted
-        </Files>
-    </Directory>
-
-    # ... (bestehende ProxyPass-Regeln) ...
-    ProxyPreserveHost On
-    ProxyPass /maintenance.html !
-    ProxyPass /static/ !
-    ProxyPass /robots.txt !
-    ProxyPass / http://127.0.0.1:8001/
-    ProxyPassReverse / http://127.0.0.1:8001/
-</VirtualHost>
-```
-
-**Hinweis:** Für RewriteRule muss das `rewrite`-Modul aktiviert sein:
-```bash
-sudo a2enmod rewrite
-```
-
-#### Schritt 3: Apache neu laden
+**Manuell (via Kommandozeile):**
 
 ```bash
-sudo apache2ctl configtest
-sudo systemctl reload apache2
-```
+# Maintenance aktivieren
+touch /data/var/mcc/apache/.maintenance_mode
+chmod 644 /data/var/mcc/apache/.maintenance_mode
 
-**Vorteile:**
-- Manuelle Kontrolle über Wartungszeiten
-- Kann vor geplanten Wartungsarbeiten aktiviert werden
-- Statische Dateien bleiben erreichbar (optional konfigurierbar)
-
-**Nachteile:**
-- Muss manuell aktiviert/deaktiviert werden
-- Vergessene Deaktivierung blockiert die gesamte Website
-
----
-
-### Option 3: Kombiniert (Automatisch + Manuell)
-
-Kombination beider Methoden für maximale Flexibilität:
-
-```apache
-<VirtualHost *:443>
-    ServerName mycyclingcity.net
-    # ... (bestehende Konfiguration) ...
-
-    RewriteEngine On
-    
-    # Manueller Maintenance-Mode (hat Priorität)
-    RewriteCond /data/var/mcc/apache/.maintenance_mode -f
-    RewriteCond %{REQUEST_URI} !^/maintenance\.html$
-    RewriteCond %{REQUEST_URI} !^/static/
-    RewriteRule ^(.*)$ /maintenance.html [R=503,L]
-
-    # Automatischer Maintenance-Mode bei Proxy-Fehlern
-    ErrorDocument 502 /maintenance.html
-    ErrorDocument 503 /maintenance.html
-    ErrorDocument 504 /maintenance.html
-
-    # Maintenance-Datei direkt ausliefern
-    Alias /maintenance.html /var/www/maintenance.html
-    <Directory /var/www/>
-        <Files "maintenance.html">
-            Require all granted
-        </Files>
-    </Directory>
-
-    # ... (bestehende ProxyPass-Regeln) ...
-</VirtualHost>
-```
-
----
-
-## Verwendung
-
-### Automatischer Mode (Option 1)
-
-- **Aktivierung**: Automatisch, wenn Gunicorn nicht erreichbar ist
-- **Deaktivierung**: Automatisch, wenn Gunicorn wieder erreichbar ist
-
-### Manueller Mode (Option 2)
-
-**Wartung starten (Admin GUI - empfohlen):**
-1. Navigieren Sie zu **Mgmt** → **Maintenance Control**
-2. Klicken Sie auf **Activate Maintenance Mode**
-3. Bestätigen Sie die Aktion
-
-**Wartung starten (Kommandozeile):**
-```bash
-sudo touch /data/var/mcc/apache/.maintenance_mode
-sudo chmod 644 /data/var/mcc/apache/.maintenance_mode
-sudo systemctl reload apache2
-```
-
-**Wartung beenden (Admin GUI - empfohlen):**
-1. Navigieren Sie zu **Mgmt** → **Maintenance Control**
-2. Klicken Sie auf **Deactivate Maintenance Mode**
-3. Bestätigen Sie die Aktion
-
-**Wartung beenden (Kommandozeile):**
-```bash
-sudo rm /data/var/mcc/apache/.maintenance_mode
-sudo systemctl reload apache2
+# Maintenance deaktivieren
+rm /data/var/mcc/apache/.maintenance_mode
 ```
 
 **Status prüfen:**
+
 ```bash
 if [ -f /data/var/mcc/apache/.maintenance_mode ]; then
     echo "Maintenance Mode: AKTIV"
@@ -234,47 +110,106 @@ else
 fi
 ```
 
----
+## IP-Whitelist konfigurieren
 
-## Erweiterte Konfiguration
+### Über Admin GUI
 
-### Statische Dateien während Wartung erlauben
+1. Navigieren Sie zu **Mgmt** → **Maintenance Configurations**
+2. Fügen Sie IP-Adressen oder CIDR-Blöcke hinzu (eine pro Zeile):
+   ```
+   192.168.1.100
+   10.0.0.0/8
+   172.16.0.0/12
+   ```
+3. Aktivieren Sie "Admin-Zugriff während Wartung erlauben" (falls gewünscht)
+4. Speichern Sie die Konfiguration
 
-Wenn CSS/JS/Images auch während der Wartung erreichbar sein sollen:
+### Unterstützte Formate
 
-```apache
-# In der RewriteRule: /static/ bereits ausgeschlossen
-RewriteCond %{REQUEST_URI} !^/static/
+- **Einzelne IP**: `192.168.1.100`
+- **CIDR-Block**: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.1.0/24`
+
+## Verhalten während Maintenance Mode
+
+### Erlaubte Zugriffe
+
+- ✅ **Statische Dateien** (`/static/`) - Immer erreichbar
+- ✅ **Media-Dateien** (`/media/`) - Immer erreichbar
+- ✅ **Maintenance-Seite** (`/maintenance.html`) - Immer erreichbar
+- ✅ **Admin-Bereich** (`/admin/`, `/de/admin/`) - Immer erreichbar (für Login)
+- ✅ **IP-Whitelist** - Alle Seiten erreichbar, wenn IP in Whitelist
+- ✅ **Superuser** - Alle Seiten erreichbar (wenn `allow_admin_during_maintenance=True`)
+
+### Blockierte Zugriffe
+
+- ❌ Alle anderen Seiten (werden zur Maintenance-Seite umgeleitet)
+
+## Logs
+
+### Django Middleware Logs
+
+Die Middleware-Logs werden in `/data/var/mcc/logs/mgmt.log` geschrieben:
+
+```bash
+# Middleware-Logs in Echtzeit anzeigen
+tail -f /data/var/mcc/logs/mgmt.log | grep MaintenanceMode
+
+# Beispiel-Logs:
+# INFO [MaintenanceMode] Redirecting IP 141.15.25.200 to maintenance page (path: /de/map/)
+# DEBUG [MaintenanceMode] Allowing admin access (path: /admin/)
+# DEBUG [MaintenanceMode] Allowing access for superuser admin from IP 84.132.227.73 (path: /de/map/)
 ```
 
-### Admin-Zugriff während Wartung erlauben
+### Log-Level
 
-Für Notfälle kann der Admin-Zugriff während der Wartung erlaubt werden:
-
-```apache
-# IP-basierte Ausnahme (ersetze YOUR_IP mit der Admin-IP)
-RewriteCond %{REMOTE_ADDR} !^YOUR_IP$
-RewriteCond /data/var/mcc/apache/.maintenance_mode -f
-RewriteCond %{REQUEST_URI} !^/maintenance\.html$
-RewriteCond %{REQUEST_URI} !^/static/
-RewriteRule ^(.*)$ /maintenance.html [R=503,L]
-```
-
-### Custom HTTP Status Code
-
-Standardmäßig wird `503 Service Unavailable` verwendet. Dies signalisiert Suchmaschinen, dass die Wartung temporär ist.
-
----
+- **INFO**: Requests werden zur Maintenance-Seite umgeleitet
+- **DEBUG**: Admin-Zugriff oder IP-Whitelist erlaubt Zugriff
+- **WARNING**: Fehler bei der Konfiguration (Fallback-Verhalten)
+- **ERROR**: Kritische Fehler
 
 ## Testing
 
-### Test 1: Automatischer Mode
+### Test 1: Maintenance Mode aktivieren
+
+```bash
+# Maintenance aktivieren (via Admin GUI oder Kommandozeile)
+touch /data/var/mcc/apache/.maintenance_mode
+chmod 644 /data/var/mcc/apache/.maintenance_mode
+
+# Website aufrufen - sollte Maintenance-Seite zeigen
+curl -I https://mycyclingcity.net/de/map/
+# Erwartet: HTTP/1.1 302 Found (Redirect zu /maintenance.html)
+
+# Admin-Zugriff testen
+curl -I https://mycyclingcity.net/admin/
+# Erwartet: HTTP/1.1 200 OK (Login-Seite erreichbar)
+```
+
+### Test 2: IP-Whitelist
+
+```bash
+# IP zur Whitelist hinzufügen (via Admin GUI)
+# Dann von dieser IP aus testen:
+curl -I https://mycyclingcity.net/de/map/
+# Erwartet: HTTP/1.1 200 OK (Zugriff erlaubt)
+```
+
+### Test 3: Superuser-Zugriff
+
+```bash
+# Als Superuser einloggen
+# Dann testen:
+curl -I -H "Cookie: sessionid=..." https://mycyclingcity.net/de/map/
+# Erwartet: HTTP/1.1 200 OK (Zugriff erlaubt)
+```
+
+### Test 4: Gunicorn-Ausfall (Apache Fallback)
 
 ```bash
 # Gunicorn stoppen
 sudo systemctl stop mcc-web  # oder entsprechendes
 
-# Website aufrufen - sollte Maintenance-Seite zeigen
+# Website aufrufen - sollte Maintenance-Seite zeigen (via Apache ErrorDocument)
 curl -I https://mycyclingcity.net/
 # Erwartet: HTTP/1.1 502 Bad Gateway oder 503 Service Unavailable
 
@@ -286,65 +221,96 @@ curl -I https://mycyclingcity.net/
 # Erwartet: HTTP/1.1 200 OK
 ```
 
-### Test 2: Manueller Mode
-
-```bash
-# Maintenance aktivieren (via Admin GUI oder Kommandozeile)
-sudo touch /data/var/mcc/apache/.maintenance_mode
-sudo chmod 644 /data/var/mcc/apache/.maintenance_mode
-sudo systemctl reload apache2
-
-# Website aufrufen
-curl -I https://mycyclingcity.net/
-# Erwartet: HTTP/1.1 503 Service Unavailable
-
-# Maintenance deaktivieren (via Admin GUI oder Kommandozeile)
-sudo rm /data/var/mcc/apache/.maintenance_mode
-sudo systemctl reload apache2
-
-# Website aufrufen
-curl -I https://mycyclingcity.net/
-# Erwartet: HTTP/1.1 200 OK
-```
-
----
-
-## Empfehlung
-
-**Für PROD-Umgebung empfohlen: Option 1 (Automatisch) oder Option 3 (Kombiniert)**
-
-- **Option 1**: Einfach, automatisch, keine manuelle Intervention nötig
-- **Option 3**: Maximale Flexibilität, automatisch bei Ausfällen, manuell bei geplanten Wartungen
-
----
-
-## Wichtige Hinweise
-
-1. **Backup**: Vor Änderungen an der Apache-Konfiguration immer ein Backup erstellen
-2. **Testen**: Änderungen zuerst in einer Test-Umgebung testen
-3. **Monitoring**: Während Wartungsarbeiten die Logs überwachen
-4. **Kommunikation**: Benutzer über geplante Wartungsarbeiten informieren (z.B. per E-Mail, Social Media)
-
----
-
 ## Troubleshooting
 
 ### Maintenance-Seite wird nicht angezeigt
 
-1. Prüfen, ob Maintenance-Flag existiert: `ls -la /data/var/mcc/apache/.maintenance_mode`
-2. Prüfen, ob Apache die Flag-Datei lesen kann: `sudo -u www-data test -f /data/var/mcc/apache/.maintenance_mode && echo "OK" || echo "FEHLER"`
-3. Prüfen, ob Maintenance-HTML existiert: `ls -la /var/www/maintenance.html`
-4. Prüfen, ob Apache die HTML-Datei lesen kann: `sudo -u www-data cat /var/www/maintenance.html`
-5. Prüfen, ob Alias korrekt ist: `apache2ctl -S`
-6. Apache Error-Log prüfen: `sudo tail -f /var/log/apache2/MCC_ssl_error_log.*`
+1. **Prüfen, ob Flag-Datei existiert:**
+   ```bash
+   ls -la /data/var/mcc/apache/.maintenance_mode
+   ```
 
-### Apache startet nicht nach Änderungen
+2. **Prüfen, ob Django Middleware aktiv ist:**
+   ```bash
+   # In settings.py sollte stehen:
+   # 'mgmt.middleware_maintenance.MaintenanceModeMiddleware'
+   grep -r "MaintenanceModeMiddleware" /data/appl/mcc/mcc-web/config/settings.py
+   ```
 
-1. Konfiguration prüfen: `sudo apache2ctl configtest`
-2. Syntax-Fehler beheben
-3. Modul aktiviert? `sudo a2enmod rewrite` (falls RewriteRule verwendet)
+3. **Prüfen, ob Apache RewriteRule die Requests abfängt:**
+   ```bash
+   # Sollte KEINE RewriteRule für .maintenance_mode geben
+   grep -r "maintenance_mode\|RewriteCond.*maintenance" /etc/apache2/sites-available/
+   ```
 
-### Statische Dateien werden blockiert
+4. **Django-Logs prüfen:**
+   ```bash
+   tail -50 /data/var/mcc/logs/mgmt.log | grep MaintenanceMode
+   ```
 
-- In RewriteRule sicherstellen, dass `/static/` ausgeschlossen ist
-- Prüfen, ob `ProxyPass /static/ !` korrekt gesetzt ist
+### Admin-Zugriff funktioniert nicht
+
+1. **Prüfen, ob `/admin/` erreichbar ist:**
+   ```bash
+   curl -I https://mycyclingcity.net/admin/
+   # Sollte: HTTP/1.1 200 OK (nicht 302 Redirect)
+   ```
+
+2. **Prüfen, ob `allow_admin_during_maintenance=True`:**
+   - Admin GUI → **Mgmt** → **Maintenance Configurations**
+   - Prüfen Sie "Admin-Zugriff während Wartung erlauben"
+
+3. **Prüfen, ob Benutzer Superuser ist:**
+   - Admin GUI → **Authentication and Authorization** → **Users**
+   - Prüfen Sie "Superuser status"
+
+### IP-Whitelist funktioniert nicht
+
+1. **Prüfen, ob IP korrekt eingegeben wurde:**
+   - Eine IP pro Zeile
+   - Keine Leerzeichen
+   - Korrektes Format (z.B. `192.168.1.100` oder `10.0.0.0/8`)
+
+2. **Prüfen, ob Client-IP korrekt erkannt wird:**
+   ```bash
+   # In den Logs sollte die Client-IP erscheinen
+   tail -f /data/var/mcc/logs/mgmt.log | grep MaintenanceMode
+   ```
+
+3. **Bei Proxy/Load Balancer:**
+   - Die IP wird aus `X-Forwarded-For` Header gelesen
+   - Prüfen Sie, ob Apache den Header korrekt weiterleitet
+
+### Django-Logs zeigen keine Einträge
+
+1. **Prüfen, ob Requests Django erreichen:**
+   ```bash
+   # Wenn Apache RewriteRule aktiv ist, erreichen Requests Django nicht
+   # Entfernen Sie alle RewriteRule-Konfigurationen für Maintenance
+   ```
+
+2. **Prüfen, ob Log-Level korrekt ist:**
+   - Middleware verwendet `logger.info()` und `logger.debug()`
+   - Log-Level sollte mindestens `INFO` sein
+
+## Wichtige Hinweise
+
+1. **Apache RewriteRule deaktivieren**: Apache sollte **KEINE** RewriteRule für die Maintenance-Flag-Datei verwenden, da dies die Django Middleware blockiert.
+
+2. **IP-Whitelist**: Die IP-Whitelist funktioniert nur, wenn Django die Kontrolle hat. Wenn Apache die Requests abfängt, funktioniert die IP-Whitelist nicht.
+
+3. **Admin-Zugriff**: Superuser können auf alle Seiten zugreifen, wenn `allow_admin_during_maintenance=True` aktiviert ist.
+
+4. **Maintenance-Seite**: Die Maintenance-Seite (`/maintenance.html`) hat einen Login-Button, damit sich Admins einloggen können.
+
+5. **Logs**: Alle Middleware-Aktivitäten werden in `/data/var/mcc/logs/mgmt.log` protokolliert.
+
+## Empfehlung
+
+**Für PROD-Umgebung:**
+
+- ✅ **Django Middleware** für geplante Wartungen (mit IP-Whitelist und Admin-Zugriff)
+- ✅ **Apache ErrorDocument** als Fallback für unerwartete Gunicorn-Ausfälle
+- ❌ **KEINE Apache RewriteRule** für Maintenance-Flag-Datei
+
+Diese Konfiguration bietet maximale Flexibilität und Funktionalität.

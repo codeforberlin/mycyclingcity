@@ -14,7 +14,7 @@ from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 from django.views.generic import RedirectView
 from config import views as config_views
-from config.views import set_language, privacy_policy
+from config.views import set_language, privacy_policy, maintenance_page
 from mgmt.health_check_api import health_check_api
 
 # Language switcher and API endpoints must be outside i18n_patterns
@@ -24,6 +24,8 @@ urlpatterns = [
     path('health/', config_views.health_check, name='health_check'),
     # Health check API endpoint (for external monitoring systems with API key)
     path('api/health/', health_check_api, name='health_check_api'),
+    # Maintenance page (must be outside i18n_patterns to work with middleware redirect)
+    path('maintenance.html', maintenance_page, name='maintenance_page'),
     # API endpoints (no language prefix needed)
     path('api/', include('api.urls')),       # MCC-DB logic
     # cath empty path and redirect to /de/map/

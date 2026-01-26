@@ -158,12 +158,47 @@ function performAction(action) {
     </div>
     
     <div class="info-box">
-        <h3>{% trans 'Information' %}</h3>
+        <h3>{% trans 'IP Whitelist Information' %}</h3>
+        <p><strong>{% trans 'Your current IP address' %}:</strong> <code>{{ client_ip|default:"Unknown" }}</code></p>
+        {% if is_ip_whitelisted %}
+            <p style="color: #28a745;">✓ {% trans 'Your IP is in the whitelist. You can access the website during maintenance.' %}</p>
+        {% else %}
+            <p style="color: #dc3545;">⚠ {% trans 'Your IP is NOT in the whitelist. You will be redirected to the maintenance page if maintenance mode is active.' %}</p>
+            {% if config.allow_admin_during_maintenance %}
+                <p style="color: #856404;">ℹ {% trans 'However, as a superuser, you can still access /admin/ during maintenance.' %}</p>
+            {% endif %}
+        {% endif %}
+        
+        {% if ip_list %}
+            <p><strong>{% trans 'Whitelisted IPs/CIDR blocks' %}:</strong></p>
+            <ul>
+                {% for ip in ip_list %}
+                    <li><code>{{ ip }}</code></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #856404;">⚠ {% trans 'No IPs are whitelisted. Only superusers with admin access enabled can access the site during maintenance.' %}</p>
+        {% endif %}
+        
+        <p>
+            <a href="{% url 'admin:mgmt_maintenanceconfig_change' 1 %}" class="button" style="display: inline-block; margin-top: 10px;">
+                {% trans 'Configure IP Whitelist' %}
+            </a>
+        </p>
+    </div>
+    
+    <div class="info-box">
+        <h3>{% trans 'General Information' %}</h3>
         <ul>
             <li>{% trans 'Flag file path' %}: <code>{{ flag_path }}</code></li>
-            <li>{% trans 'When activated, Apache will redirect all requests to the maintenance page.' %}</li>
+            <li>{% trans 'When activated, all requests (except whitelisted IPs) will be redirected to the maintenance page.' %}</li>
             <li>{% trans 'Static files (/static/) remain accessible during maintenance.' %}</li>
             <li>{% trans 'Only superusers can activate or deactivate maintenance mode.' %}</li>
+            {% if config.allow_admin_during_maintenance %}
+                <li>✓ {% trans 'Admin access is enabled. Superusers can access /admin/ during maintenance.' %}</li>
+            {% else %}
+                <li>✗ {% trans 'Admin access is disabled. Even superusers need to be in the IP whitelist.' %}</li>
+            {% endif %}
         </ul>
     </div>
 </div>

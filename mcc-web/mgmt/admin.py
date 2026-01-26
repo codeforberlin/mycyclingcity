@@ -3386,7 +3386,7 @@ def get_client_ip(request):
 
 
 # --- APPLICATION LOGS ---
-from mgmt.models import LoggingConfig, GunicornConfig, RequestLog, PerformanceMetric, AlertRule
+from mgmt.models import LoggingConfig, GunicornConfig, MaintenanceConfig, RequestLog, PerformanceMetric, AlertRule
 
 
 @admin.register(LoggingConfig)
@@ -3467,6 +3467,68 @@ class LoggingConfigAdmin(admin.ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         """Prevent deletion of the configuration."""
+        return False
+
+
+@admin.register(MaintenanceConfig)
+class MaintenanceConfigAdmin(admin.ModelAdmin):
+    """
+    Admin interface for maintenance configuration.
+    
+    This is a singleton model - only one configuration instance exists.
+    """
+    fieldsets = (
+        (_('IP Whitelist'), {
+            'fields': ('ip_whitelist',),
+            'description': _(
+                'Geben Sie eine IP-Adresse oder einen CIDR-Block pro Zeile ein. '
+                'Beispiele:\n'
+                '192.168.1.100\n'
+                '10.0.0.0/8\n'
+                '172.16.0.0/12\n'
+                'Diese IPs können während der Wartung auf die Website zugreifen.'
+            ),
+        }),
+        (_('Admin Access'), {
+            'fields': ('allow_admin_during_maintenance',),
+            'description': _(
+                'Wenn aktiviert, können Superuser auch ohne IP-Whitelist auf /admin/ zugreifen. '
+                'Dies ist für Notfälle empfohlen.'
+            ),
+        }),
+        (_('Information'), {
+            'fields': ('updated_at', 'updated_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('updated_at', 'updated_by')
+    
+    def changelist_view(self, request, extra_context=None):
+        """Redirect to the single config object if it exists."""
+        from mgmt.models import MaintenanceConfig
+        config_obj = MaintenanceConfig.get_config()
+        return self.change_view(request, str(config_obj.pk), extra_context)
+    
+    def save_model(self, request, obj, form, change):
+        """Set the user who made the change."""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def has_add_permission(self, request):
+        """Only allow one instance (singleton)."""
+        from mgmt.models import MaintenanceConfig
+        from django.db import OperationalError
+        try:
+            return not MaintenanceConfig.objects.exists()
+        except OperationalError as e:
+            # Tabelle existiert noch nicht (Migration nicht ausgeführt)
+            if 'no such table' in str(e).lower() or 'does not exist' in str(e).lower():
+                # Erlaube Erstellung, damit Migration ausgeführt werden kann
+                return True
+            raise  # Re-raise if it's a different OperationalError
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion."""
         return False
 
 

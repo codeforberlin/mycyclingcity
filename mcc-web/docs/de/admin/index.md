@@ -315,6 +315,29 @@ Server-Verwaltung und System-Monitoring.
   - Benachrichtigungen einrichten
 - **Zugriff**: `/admin/mgmt/alertrule/` oder über "Mgmt" → "Alert Rules"
 
+#### Maintenance Control
+
+- **Zweck**: Maintenance Mode aktivieren/deaktivieren und IP-Whitelist konfigurieren
+- **Features**:
+  - Maintenance Mode aktivieren/deaktivieren
+  - IP-Whitelist konfigurieren (einzelne IPs und CIDR-Blöcke)
+  - Admin-Zugriff während Wartung erlauben/verbieten
+  - Aktuellen Status anzeigen
+  - IP-Status prüfen (ob aktuelle IP in Whitelist ist)
+- **Zugriff**: `/admin/maintenance/` oder über "Mgmt" → "Maintenance Control"
+- **Berechtigung**: Nur für Superuser
+- **Dokumentation**: Siehe [Maintenance Mode Setup](apache_maintenance_setup.md) für Details zur Konfiguration, IP-Whitelist und Apache-Integration.
+
+#### Maintenance Configuration
+
+- **Zweck**: IP-Whitelist und Admin-Zugriff konfigurieren
+- **Wichtige Felder**:
+  - `ip_whitelist`: IP-Adressen oder CIDR-Blöcke (eine pro Zeile)
+  - `allow_admin_during_maintenance`: Admin-Zugriff für Superuser erlauben
+- **Zugriff**: `/admin/mgmt/maintenanceconfig/` oder über "Mgmt" → "Maintenance Configurations"
+- **Berechtigung**: Nur für Superuser
+- **Dokumentation**: Siehe [Maintenance Mode Setup](apache_maintenance_setup.md) für Details zur IP-Whitelist-Konfiguration.
+
 #### Minecraft Control
 
 - **Zweck**: Minecraft-Worker-Status und -Steuerung
@@ -496,3 +519,4 @@ Einige Modelle haben benutzerdefinierte Admin-Aktionen:
 - [API Referenz](../api/index.md)
 - [Production Deployment Checklist](PRODUCTION_CHECKLIST.md) - Checkliste für Production-Deployments
 - [Übersetzungen kompilieren](COMPILE_MESSAGES.md) - Anleitung zum Kompilieren von Übersetzungen ohne venv-Bibliotheken
+- [Maintenance Mode Setup](apache_maintenance_setup.md) - Maintenance Mode mit IP-Whitelist und Admin-Zugriff konfigurieren

@@ -115,10 +115,14 @@ MIDDLEWARE = [
 
     # IMPORTANT for i18n/L10n
     'django.middleware.locale.LocaleMiddleware',
-
+    
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    
+    # Maintenance mode middleware (after AuthenticationMiddleware to check user.is_superuser)
+    'mgmt.middleware_maintenance.MaintenanceModeMiddleware',
+    
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
