@@ -233,6 +233,7 @@ Server management and system monitoring.
   - Display Gunicorn configuration
 - **Access**: `/admin/server/` or via "Mgmt" → "Server Control"
 - **Permission**: Superusers only
+- **Documentation**: See [Health Check API](health_check_api.md) for details on external monitoring with monitoring systems
 
 #### View Application Logs (Log File Viewer)
 
@@ -245,6 +246,9 @@ Server management and system monitoring.
   - Auto-refresh function
 - **Access**: `/admin/logs/` or via "Mgmt" → "View Application Logs"
 - **Permission**: Superusers only
+- **Documentation**: 
+  - [Display Log Files in Admin GUI](logging.md) - Overview of log files and using the Log File Viewer
+  - [Production Logging Setup](logging_production_setup.md) - Best practices for logging in production
 
 #### Backup Management
 
@@ -259,26 +263,28 @@ Server management and system monitoring.
 
 #### Gunicorn Configuration
 
-- **Purpose**: Configure Gunicorn log level
+- **Purpose**: Configure Gunicorn log level and worker configuration
 - **Key Fields**:
   - `log_level`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - `worker_class`: Worker class (`sync` or `gthread`)
+  - `workers`: Number of worker processes
+  - `threads`: Number of threads per worker (only with `gthread`)
 - **Features**:
   - Change log level directly in Admin GUI
+  - Adjust worker configuration
   - No environment variables needed
   - Singleton model (only one instance)
 - **Access**: `/admin/mgmt/gunicornconfig/` or via "Mgmt" → "Gunicorn Configuration"
 - **Note**: Server restart required after changes
+- **Documentation**: 
+  - [Gunicorn Configuration in Admin GUI](gunicorn_config.md) - Overview of configuration in Admin Interface
+  - [Gunicorn Worker Configuration](gunicorn_worker_configuration.md) - Details on worker classes, signal handler issues, and performance
 
 #### Application Logs
 
-- **Purpose**: Display application logs stored in database
-- **Features**:
-  - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  - Filter by time period
-  - Search in log messages
-  - Bulk actions to delete old logs
-- **Access**: `/admin/mgmt/applicationlog/` or via "Mgmt" → "Application Logs"
-- **Note**: DEBUG/INFO logs are only stored if `LOG_DB_DEBUG=True` is set
+**Note:** Logs are no longer stored in the database. Use the **Log File Viewer** (see above) instead to display log files.
+
+**Documentation**: See [Display Log Files in Admin GUI](logging.md) and [Production Logging Setup](logging_production_setup.md) for details on the logging system.
 
 #### Request Logs
 
@@ -326,6 +332,7 @@ Minecraft server management (if enabled).
 - **Access**: `/admin/minecraft/` or via "Minecraft Management" → "Minecraft Control"
 - **Permission**: Superusers only
 - **Note**: The worker synchronizes coins between the Django database and the Minecraft server via RCON. It does not control the Minecraft server itself.
+- **Documentation**: See [Minecraft Integration](minecraft.md) for details on coin synchronization, RCON communication, outbox pattern, and configuration.
 
 ## Common Tasks
 
@@ -491,3 +498,5 @@ Some models have custom admin actions:
 - [Installation Guide](../getting-started/installation.md)
 - [Configuration Guide](../getting-started/configuration.md)
 - [API Reference](../api/index.md)
+- [Production Deployment Checklist](PRODUCTION_CHECKLIST.md) - Checklist for production deployments
+- [Compile Translations](COMPILE_MESSAGES.md) - Guide for compiling translations without venv libraries

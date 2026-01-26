@@ -233,6 +233,7 @@ Server-Verwaltung und System-Monitoring.
   - Gunicorn-Konfiguration anzeigen
 - **Zugriff**: `/admin/server/` oder über "Mgmt" → "Server Control"
 - **Berechtigung**: Nur für Superuser
+- **Dokumentation**: Siehe [Health Check API](health_check_api.md) für Details zur externen Überwachung mit Monitoring-Systemen
 
 #### View Application Logs (Log File Viewer)
 
@@ -245,6 +246,9 @@ Server-Verwaltung und System-Monitoring.
   - Auto-Refresh-Funktion
 - **Zugriff**: `/admin/logs/` oder über "Mgmt" → "View Application Logs"
 - **Berechtigung**: Nur für Superuser
+- **Dokumentation**: 
+  - [Log-Dateien im Admin GUI anzeigen](logging.md) - Übersicht über Log-Dateien und Verwendung des Log File Viewers
+  - [Production Logging Setup](logging_production_setup.md) - Best Practices für Logging in der Produktion
 
 #### Backup Management
 
@@ -259,19 +263,28 @@ Server-Verwaltung und System-Monitoring.
 
 #### Gunicorn Configuration
 
-- **Zweck**: Gunicorn-Log-Level konfigurieren
+- **Zweck**: Gunicorn-Log-Level und Worker-Konfiguration
 - **Wichtige Felder**:
   - `log_level`: Log-Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - `worker_class`: Worker-Klasse (`sync` oder `gthread`)
+  - `workers`: Anzahl der Worker-Prozesse
+  - `threads`: Anzahl der Threads pro Worker (nur bei `gthread`)
 - **Features**:
   - Log-Level direkt im Admin GUI ändern
+  - Worker-Konfiguration anpassen
   - Keine Environment-Variablen nötig
   - Singleton-Model (nur eine Instanz)
 - **Zugriff**: `/admin/mgmt/gunicornconfig/` oder über "Mgmt" → "Gunicorn Configuration"
 - **Hinweis**: Nach Änderung ist ein Server-Neustart erforderlich
+- **Dokumentation**: 
+  - [Gunicorn-Konfiguration im Admin GUI](gunicorn_config.md) - Übersicht über die Konfiguration im Admin Interface
+  - [Gunicorn Worker Konfiguration](gunicorn_worker_configuration.md) - Details zu Worker-Klassen, Signal-Handler-Problemen und Performance
 
 #### Application Logs
 
 **Hinweis:** Logs werden nicht mehr in der Datenbank gespeichert. Verwenden Sie stattdessen den **Log File Viewer** (siehe oben), um Log-Dateien anzuzeigen.
+
+**Dokumentation**: Siehe [Log-Dateien im Admin GUI anzeigen](logging.md) und [Production Logging Setup](logging_production_setup.md) für Details zum Logging-System.
 
 #### Request Logs
 
@@ -315,6 +328,7 @@ Server-Verwaltung und System-Monitoring.
 - **Zugriff**: `/admin/minecraft/` oder über "Minecraft Verwaltung" → "Minecraft Control"
 - **Berechtigung**: Nur für Superuser
 - **Hinweis**: Der Worker synchronisiert Coins zwischen der Django-Datenbank und dem Minecraft-Server über RCON. Er steuert nicht den Minecraft-Server selbst.
+- **Dokumentation**: Siehe [Minecraft-Integration](minecraft.md) für Details zur Coin-Synchronisation, RCON-Kommunikation, Outbox-Pattern und Konfiguration.
 
 ## Häufige Aufgaben
 
@@ -480,3 +494,5 @@ Einige Modelle haben benutzerdefinierte Admin-Aktionen:
 - [Installations-Anleitung](../getting-started/installation.md)
 - [Konfigurations-Anleitung](../getting-started/configuration.md)
 - [API Referenz](../api/index.md)
+- [Production Deployment Checklist](PRODUCTION_CHECKLIST.md) - Checkliste für Production-Deployments
+- [Übersetzungen kompilieren](COMPILE_MESSAGES.md) - Anleitung zum Kompilieren von Übersetzungen ohne venv-Bibliotheken
