@@ -1,0 +1,170 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .maintenance-control {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .maintenance-status {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .status-active {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+    .status-inactive {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .action-buttons {
+        margin-top: 20px;
+    }
+    .action-buttons button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+    }
+    .action-buttons button.danger {
+        background: #dc3545;
+        color: white;
+    }
+    .action-buttons button.danger:hover {
+        background: #c82333;
+    }
+    .action-buttons button.button {
+        background: #417690;
+        color: white;
+    }
+    .action-buttons button.button:hover {
+        background: #205067;
+    }
+    .info-box {
+        margin-top: 30px;
+        padding: 15px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .info-box h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    .info-box ul {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+    .info-box code {
+        background: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+    }
+</style>
+<script>
+function performAction(action) {
+    var confirmMessage = '';
+    if (action === 'activate') {
+        confirmMessage = '{% trans "Are you sure you want to activate maintenance mode? All visitors will see the maintenance page." %}';
+    } else {
+        confirmMessage = '{% trans "Are you sure you want to deactivate maintenance mode?" %}';
+    }
+    
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+    
+    var button = event.target;
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Processing..." %}';
+    
+    fetch('{% url "admin:mgmt_maintenance_action" "ACTION_PLACEHOLDER" %}'.replace('ACTION_PLACEHOLDER', action), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        button.disabled = false;
+        button.textContent = originalText;
+        
+        if (data.success) {
+            alert(data.message || '{% trans "Action completed successfully" %}');
+            location.reload();
+        } else {
+            alert('{% trans "Error" %}: ' + (data.error || '{% trans "Unknown error" %}'));
+        }
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        alert('{% trans "Error" %}: ' + error.message);
+    });
+}
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:mgmt_maintenance_control' %}">{% trans 'Maintenance Control' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="maintenance-control">
+    <h1>{% trans 'Maintenance Mode Control' %}</h1>
+    
+    <div class="maintenance-status {% if is_active %}status-active{% else %}status-inactive{% endif %}">
+        {% if is_active %}
+            <strong>⚠️ {% trans 'Maintenance Mode: ACTIVE' %}</strong>
+            <p>{% trans 'The website is currently showing the maintenance page to all visitors.' %}</p>
+        {% else %}
+            <strong>✓ {% trans 'Maintenance Mode: INACTIVE' %}</strong>
+            <p>{% trans 'The website is running normally.' %}</p>
+        {% endif %}
+    </div>
+    
+    <div class="action-buttons">
+        {% if is_active %}
+            <button class="button" onclick="performAction('deactivate')">
+                {% trans 'Deactivate Maintenance Mode' %}
+            </button>
+        {% else %}
+            <button class="button danger" onclick="performAction('activate')">
+                {% trans 'Activate Maintenance Mode' %}
+            </button>
+        {% endif %}
+        <button class="button" onclick="location.reload()">
+            {% trans 'Refresh Status' %}
+        </button>
+    </div>
+    
+    <div class="info-box">
+        <h3>{% trans 'Information' %}</h3>
+        <ul>
+            <li>{% trans 'Flag file path' %}: <code>{{ flag_path }}</code></li>
+            <li>{% trans 'When activated, Apache will redirect all requests to the maintenance page.' %}</li>
+            <li>{% trans 'Static files (/static/) remain accessible during maintenance.' %}</li>
+            <li>{% trans 'Only superusers can activate or deactivate maintenance mode.' %}</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

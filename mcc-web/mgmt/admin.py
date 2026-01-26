@@ -3615,6 +3615,14 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                 'view_only': True,
             },
             {
+                'name': _('Maintenance Control'),
+                'object_name': 'Maintenance Control',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:mgmt_maintenance_control'),
+                'add_url': None,
+                'view_only': True,
+            },
+            {
                 'name': _('View Application Logs'),
                 'object_name': 'View Application Logs',
                 'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
@@ -3736,6 +3744,7 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
 from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
 from mgmt.views_deployment import backup_control, create_backup, download_backup
+from mgmt.maintenance_control import maintenance_control, maintenance_action
 from minecraft.admin_views import minecraft_control, minecraft_action
 
 _original_get_urls = admin.site.get_urls
@@ -3762,6 +3771,9 @@ def get_urls_with_custom_views():
         path('backup/', admin.site.admin_view(backup_control), name='mgmt_backup_control'),
         path('backup/create/', admin.site.admin_view(create_backup), name='mgmt_backup_create'),
         path('backup/download/<str:filename>/', admin.site.admin_view(download_backup), name='mgmt_backup_download'),
+        # Maintenance control URLs
+        path('maintenance/', admin.site.admin_view(maintenance_control), name='mgmt_maintenance_control'),
+        path('maintenance/action/<str:action>/', admin.site.admin_view(maintenance_action), name='mgmt_maintenance_action'),
         # Minecraft control URLs
         path('minecraft/', admin.site.admin_view(minecraft_control), name='minecraft_control'),
         path('minecraft/action/<str:action>/', admin.site.admin_view(minecraft_action), name='minecraft_action'),
