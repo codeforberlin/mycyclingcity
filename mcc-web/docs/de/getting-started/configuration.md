@@ -4,7 +4,12 @@ Diese Anleitung erklärt, wie Sie die MyCyclingCity Anwendung konfigurieren.
 
 ## Umgebungsvariablen
 
-Die Konfiguration erfolgt über Umgebungsvariablen, typischerweise gespeichert in einer `.env` Datei im `mcc-web/` Verzeichnis.
+Die Konfiguration erfolgt über Umgebungsvariablen, typischerweise gespeichert in einer `.env` Datei.
+
+**Wichtig:**
+- **Produktion**: Die `.env` Datei liegt außerhalb der Software in `/data/appl/mcc/.env`
+- **Entwicklung**: Die `.env` Datei kann im Projektverzeichnis (`mcc-web/.env`) oder individuell konfiguriert sein
+- Die Anwendung findet die `.env` Datei automatisch, da sie relativ im Projektverzeichnis sucht
 
 ## Erforderliche Einstellungen
 
@@ -40,24 +45,17 @@ ALLOWED_HOSTS=localhost,127.0.0.1,mycyclingcity.net
 
 ## Datenbank-Konfiguration
 
-### SQLite (Standard - Entwicklung)
+### SQLite (Standard - Entwicklung und Produktion)
 
-Keine zusätzliche Konfiguration erforderlich. Die Datenbankdatei wird automatisch erstellt unter:
-- **Entwicklung**: `data/db/db.sqlite3`
-- **Produktion**: `/data/var/mcc/db/db.sqlite3`
+Die Anwendung verwendet SQLite für alle Umgebungen. Keine zusätzliche Konfiguration erforderlich.
 
-Stellen Sie sicher, dass das Verzeichnis `data/db/` existiert, bevor Sie Migrationen ausführen.
+**Produktion:**
+- Datenbankdatei: `/data/var/mcc/db/db.sqlite3`
+- Die Datenbank wird automatisch erstellt, falls sie nicht existiert
 
-### PostgreSQL (Produktion)
-
-```env
-DATABASE_ENGINE=django.db.backends.postgresql
-DATABASE_NAME=mycyclingcity
-DATABASE_USER=dbuser
-DATABASE_PASSWORD=dbpassword
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-```
+**Entwicklung:**
+- Datenbankdatei: `data/db.sqlite3` (relativ zum Projektverzeichnis)
+- Die Anwendung findet die Datenbank automatisch im Projektverzeichnis
 
 ## Statische und Media-Dateien
 
@@ -65,17 +63,29 @@ DATABASE_PORT=5432
 
 Verzeichnis, in dem statische Dateien gesammelt werden:
 
+**Produktion:**
 ```env
-STATIC_ROOT=/data/games/mcc/mcc-web/staticfiles
+STATIC_ROOT=/data/appl/mcc/mcc-web/staticfiles
 ```
+
+**Entwicklung:**
+- Kann individuell konfiguriert sein (z.B. `mcc-web/staticfiles`)
+- Die Anwendung verwendet relative Pfade im Projektverzeichnis
 
 ### MEDIA_ROOT
 
 Verzeichnis für hochgeladene Dateien:
 
+**Produktion:**
 ```env
-MEDIA_ROOT=/data/games/mcc/mcc-web/media
+MEDIA_ROOT=/data/appl/mcc/mcc-web/media
 ```
+
+**Entwicklung:**
+- Kann individuell konfiguriert sein (z.B. `mcc-web/media`)
+- Die Anwendung verwendet relative Pfade im Projektverzeichnis
+
+**Hinweis:** In Entwicklungsumgebungen können die Pfade individuell sein, da die Anwendung relativ im Projektverzeichnis alle Informationen findet.
 
 ## Internationalisierung
 
@@ -127,11 +137,8 @@ EMAIL_HOST_PASSWORD=ihr-passwort
 
 Logging ist in `config/settings.py` konfiguriert. Logs werden geschrieben nach:
 
-- **Entwicklung**: `data/logs/` (z.B. `data/logs/mcc_worker.log`)
-- **Produktion**: `/data/var/mcc/logs/`
+- `logs/mcc_worker.log` - Background-Worker-Logs
 - Konsolen-Ausgabe (Entwicklung)
-
-Das `data/logs/` Verzeichnis wird automatisch erstellt, wenn die Anwendung startet.
 
 ## Produktions-Einstellungen
 
@@ -169,6 +176,8 @@ SECRET_KEY=<starker-geheimer-schlüssel>
 ## Konfigurationsdateien
 
 - `.env` - Umgebungsvariablen (nicht in Versionskontrolle)
+  - **Produktion**: `/data/appl/mcc/.env` (außerhalb der Software)
+  - **Entwicklung**: `mcc-web/.env` oder individuell konfiguriert
 - `config/settings.py` - Django-Einstellungen
 - `config/gunicorn_config.py` - Gunicorn-Server-Konfiguration
 - `mkdocs.yml` - Dokumentations-Konfiguration

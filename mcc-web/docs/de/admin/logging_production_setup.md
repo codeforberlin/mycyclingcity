@@ -34,8 +34,9 @@ logs/
 - **Level**: `DEBUG` (kann auf `INFO` für Production geändert werden)
 - **Handler**: 
   - App-spezifische Datei (z.B. `api_file` → `api.log`)
-  - `database` (für Admin-GUI)
 - **Propagate**: `False` ⚠️ **KRITISCH**: Verhindert, dass Logs an Root-Logger/Gunicorn weitergegeben werden
+
+**Hinweis:** Logs werden nicht mehr in der Datenbank gespeichert, sondern nur in Dateien.
 
 ### Django-Framework-Logger
 - **Level**: `WARNING`
@@ -65,7 +66,7 @@ Jede Anwendung hat ihre eigene Logdatei, was das Debugging erleichtert:
 ### Für Production (weniger Logs):
 ```python
 'api': {
-    'handlers': ['api_file', 'database'],
+    'handlers': ['api_file'],
     'level': 'INFO',  # Statt DEBUG
     'propagate': False,
 },
@@ -74,7 +75,7 @@ Jede Anwendung hat ihre eigene Logdatei, was das Debugging erleichtert:
 ### Für Development (mehr Logs):
 ```python
 'api': {
-    'handlers': ['api_file', 'database'],
+    'handlers': ['api_file'],
     'level': 'DEBUG',  # Alle Logs
     'propagate': False,
 },
@@ -99,32 +100,21 @@ tail -f logs/*.log
 - Wählen Sie die gewünschte Logdatei aus
 - Filterbar nach Level, Datum, etc.
 
-### In der Datenbank:
-- **Management** → **Application Logs**
-- Nur WARNING/ERROR/CRITICAL (standardmäßig)
-- Konfigurierbar über **Logging Configuration**
-
 ## Best Practices
 
-### 1. Log-Level richtig setzen
+### Log-Level richtig setzen
 - **DEBUG**: Nur für detailliertes Debugging
 - **INFO**: Normale Operationen (empfohlen für Production)
 - **WARNING**: Potenzielle Probleme
 - **ERROR**: Fehler, die behoben werden müssen
 - **CRITICAL**: Kritische Systemfehler
 
-### 2. Regelmäßige Bereinigung
-```bash
-# Logs älter als 30 Tage löschen
-python manage.py cleanup_application_logs --days 30
-```
-
-### 3. Monitoring
+### Monitoring
 - Prüfen Sie regelmäßig `logs/django.log` für Framework-Fehler
 - Prüfen Sie `logs/gunicorn_error.log` für Server-Fehler
 - Verwenden Sie die Admin-GUI für kritische App-Logs
 
-### 4. Log-Rotation
+### Log-Rotation
 - Automatische Rotation bei 50 MB pro Datei
 - 10 Backups pro App-Logdatei
 - 5 Backups für Django-Logs
@@ -143,16 +133,4 @@ python manage.py cleanup_application_logs --days 30
 2. Prüfen Sie, ob die Logger-Level korrekt sind
 3. Prüfen Sie, ob die Handler korrekt konfiguriert sind
 
-## Migration von alter Konfiguration
 
-Die alte Konfiguration verwendete:
-- `app_all.log` (alle Apps zusammen)
-- `app_warning_error.log` (nur WARNING+)
-- Propagation an Root-Logger
-
-**Neue Konfiguration:**
-- Separate Dateien pro App
-- Keine Propagation
-- Root-Logger nur für Django-Framework
-
-**Alte Logdateien bleiben erhalten** und können manuell gelöscht werden, wenn nicht mehr benötigt.

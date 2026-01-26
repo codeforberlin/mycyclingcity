@@ -1,268 +1,320 @@
-# Deployment Guide
+# Deployment-Anleitung
 
-This guide explains how to create a deployment archive and deploy the MCC-Web application to production.
+Diese Anleitung erklärt, wie Sie ein Deployment-Archiv erstellen und die MCC-Web-Anwendung in der Produktion bereitstellen.
 
-## Overview
+## Übersicht
 
-The deployment process consists of two main steps:
+Der Deployment-Prozess besteht aus zwei Hauptschritten:
 
-1. **Create Deployment Archive**: Package all necessary files into a tar.gz archive
-2. **Deploy to Production**: Initialize or update the production system
+1. **Deployment-Archiv erstellen**: Alle notwendigen Dateien in ein tar.gz-Archiv packen
+2. **In Produktion bereitstellen**: Das Produktionssystem initialisieren oder aktualisieren
 
-## Step 1: Create Deployment Archive
+## Schritt 1: Deployment-Archiv erstellen
 
-Use `utils/create_deployment_archive.py` to create a deployment package.
+Verwenden Sie `utils/create_deployment_archive.py`, um ein Deployment-Paket zu erstellen.
 
-### Usage
+### Verwendung
 
 ```bash
-# Basic usage (creates archive in project root)
+# Grundlegende Verwendung (erstellt Archiv im Projektverzeichnis)
 python utils/create_deployment_archive.py
 
-# Specify output directory
-python utils/create_deployment_archive.py -o /path/to/output
+# Ausgabeverzeichnis angeben
+python utils/create_deployment_archive.py -o /pfad/zum/ausgabe
 
-# Or run directly
+# Oder direkt ausführen
 ./utils/create_deployment_archive.py
 ```
 
-### What's Included
+### Was enthalten ist
 
-The archive contains:
-- All Python source files
+Das Archiv enthält:
+- Alle Python-Quelldateien
 - Templates
-- Static file sources (not `staticfiles/` - will be generated on server)
-- Database migrations
-- Translation files (`.po` files)
+- Statische Dateiquellen (nicht `staticfiles/` - wird auf dem Server generiert)
+- Datenbank-Migrationen
+- Übersetzungsdateien (`.po` Dateien)
 - `requirements.txt`
 - `manage.py`
-- Configuration files
-- README and documentation
+- Konfigurationsdateien
+- README und Dokumentation
 
-### What's Excluded
+### Was ausgeschlossen ist
 
-The archive automatically excludes:
-- `__pycache__/` directories
-- `staticfiles/` (generated on server)
-- `media/` (user-generated content)
-- Database files (`data/db/db.sqlite3*`)
-- Compiled translation files (`.mo` - will be generated)
-- Virtual environments
-- IDE files
-- Test files and coverage reports
-- Git repository
+Das Archiv schließt automatisch aus:
+- `__pycache__/` Verzeichnisse
+- `staticfiles/` (wird auf dem Server generiert)
+- `media/` (benutzergenerierte Inhalte)
+- Datenbankdateien (`data/db.sqlite3*`)
+- Virtuelle Umgebungen
+- IDE-Dateien
+- Testdateien und Coverage-Reports
+- Git-Repository
 
-### Archive Naming
+**Hinweis:** Kompilierte Übersetzungsdateien (`.mo`) im `locale/` Verzeichnis werden **eingeschlossen**, da sie in der Entwicklung kompiliert werden und in die Produktion bereitgestellt werden.
 
-Archives are named: `mcc-web-deployment-{version}-{timestamp}.tar.gz`
+### Archiv-Benennung
 
-The version is determined from:
-1. `version.txt` file in repository root (if exists)
-2. Git tag/describe (fallback)
-3. "dev" (if neither available)
+Archive werden benannt: `mcc-web-deployment-{version}-{timestamp}.tar.gz`
 
-### Generating version.txt
+Die Version wird bestimmt aus:
+1. `version.txt` Datei (falls vorhanden)
+2. Git-Tag/describe (Fallback)
+3. "dev" (wenn keines verfügbar ist)
 
-You can generate `version.txt` automatically using (from `mcc-web/` directory):
+### version.txt generieren
+
+Sie können `version.txt` automatisch generieren mit:
 
 ```bash
-# Auto-detect from git
+# Automatisch von Git erkennen
 python utils/generate_version.py
-# Or using make
+# Oder mit make
 make version
 
-# Set specific version
+# Spezifische Version setzen
 python utils/generate_version.py --version 1.2.3
 
-# Use current git tag (if HEAD is on a tag)
+# Aktuellen Git-Tag verwenden (wenn HEAD auf einem Tag ist)
 python utils/generate_version.py --tag
 
-# Remove version.txt (fallback to git describe)
+# version.txt entfernen (Fallback zu git describe)
 python utils/generate_version.py --clean
-# Or using make
+# Oder mit make
 make version-clean
 ```
 
-**Note**: The `version.txt` file is created in the repository root (not in `mcc-web/`) and is shared by all subprojects.
+## Schritt 2: In Produktion bereitstellen
 
-## Step 2: Deploy to Production
+Verwenden Sie `utils/deploy_production.py`, um die Anwendung auf dem Produktionsserver bereitzustellen.
 
-Use `utils/deploy_production.py` to deploy the application on the production server.
+### Voraussetzungen
 
-### Prerequisites
+1. **Datenverzeichnisse in `/data/var/mcc` erstellen:**
+   
+   **Produktion:**
+   Die folgenden Verzeichnisse müssen in `/data/var/mcc` angelegt werden:
+   ```bash
+   # Basisverzeichnis erstellen
+   mkdir -p /data/var/mcc
+   
+   # Unterverzeichnisse erstellen
+   mkdir -p /data/var/mcc/db          # Datenbank
+   mkdir -p /data/var/mcc/logs       # Log-Dateien
+   mkdir -p /data/var/mcc/tmp         # Temporäre Dateien (PID-Dateien)
+   mkdir -p /data/var/mcc/staticfiles # Statische Dateien
+   mkdir -p /data/var/mcc/media       # Media-Dateien (hochgeladene Inhalte)
+   mkdir -p /data/var/mcc/backups    # Datenbank-Backups
+   ```
+   
+   **Hinweis:** Die Verzeichnisse werden mit dem konfigurierten Benutzeraccount erstellt, der die Anwendung startet.
 
-1. Extract the deployment archive on the production server
-2. Set up Python virtual environment:
+2. Das Deployment-Archiv auf dem Produktionsserver extrahieren
+
+3. Python virtuelle Umgebung einrichten:
+   
+   **Produktion:**
+   Das virtuelle Umgebung liegt außerhalb der Software in `/data/appl/mcc/venv`:
+   ```bash
+   # Falls noch nicht vorhanden, erstellen:
+   python3 -m venv /data/appl/mcc/venv
+   
+   # Virtuelle Umgebung aktivieren:
+   source /data/appl/mcc/venv/bin/activate
+   
+   # Pip aktualisieren (empfohlen):
+   pip install --upgrade pip
+   ```
+   
+   **Entwicklung:**
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    ```
-3. Install dependencies:
+4. Abhängigkeiten installieren:
    ```bash
    pip install -r requirements.txt
    ```
 
-### Usage
+### Verwendung
 
 ```bash
-# Full deployment (recommended)
+# Vollständiges Deployment (empfohlen)
 python utils/deploy_production.py
 
-# Skip backup (not recommended for production)
+# Backup überspringen (nicht empfohlen für Produktion)
 python utils/deploy_production.py --skip-backup
 
-# Clear static files before collecting
+# Statische Dateien vor dem Sammeln löschen
 python utils/deploy_production.py --clear-static
 
-# Skip static file collection (if already done)
+# Statische Dateien-Sammlung überspringen (wenn bereits durchgeführt)
 python utils/deploy_production.py --skip-static
 
-# Skip translation compilation
+# Übersetzungskompilierung überspringen
 python utils/deploy_production.py --skip-compilemessages
 ```
 
-### What the Script Does
+### Was das Script macht
 
-The deployment script performs the following steps in order:
+Das Deployment-Script führt die folgenden Schritte in dieser Reihenfolge aus:
 
-1. **Environment Check**: Validates Django environment
-2. **Database Backup**: Creates backup of existing database (if exists)
-   - Backups are stored in `backups/` directory
-   - Includes database file and WAL/SHM files
-   - Timestamped: `db_backup_YYYYMMDD_HHMMSS.sqlite3`
-3. **Database Migration**: Runs Django migrations
-   - Initializes database if it doesn't exist
-   - Updates schema if database exists
-4. **Static Files**: Collects static files using `collectstatic`
-   - Required for production (Apache serves from `staticfiles/`)
-5. **Translations**: Compiles translation messages (`.po` → `.mo`)
-6. **Validation**: Performs basic validation checks
+1. **Umgebungsprüfung**: Validiert die Django-Umgebung
+2. **Datenbank-Backup**: Erstellt ein Backup der vorhandenen Datenbank (falls vorhanden)
+   - Backups werden im `backups/` Verzeichnis gespeichert
+   - Enthält Datenbankdatei und WAL/SHM-Dateien
+   - Mit Zeitstempel: `db_backup_YYYYMMDD_HHMMSS.sqlite3`
+3. **Datenbank-Migration**: Führt Django-Migrationen aus
+   - Initialisiert die Datenbank, falls sie nicht existiert
+   - Aktualisiert das Schema, falls die Datenbank existiert
+4. **Statische Dateien**: Sammelt statische Dateien mit `collectstatic`
+   - Erforderlich für Produktion (Apache bedient aus `staticfiles/`)
+5. **Übersetzungen**: Verwendet bereits kompilierte Übersetzungsdateien (`.mo`) aus dem Archiv. Falls diese fehlen, werden sie als Fallback kompiliert (`.po` → `.mo`)
+6. **Validierung**: Führt grundlegende Validierungsprüfungen durch
 
-### Safety Features
+### Sicherheitsfunktionen
 
-- **Automatic Backup**: Database is backed up before any migration
-- **Error Handling**: Script stops on critical errors
-- **Validation**: Checks are performed after deployment
-- **User Confirmation**: Prompts for confirmation if backup fails
+- **Automatisches Backup**: Datenbank wird vor jeder Migration gesichert
+- **Fehlerbehandlung**: Script stoppt bei kritischen Fehlern
+- **Validierung**: Prüfungen werden nach dem Deployment durchgeführt
+- **Benutzerbestätigung**: Fordert Bestätigung an, wenn Backup fehlschlägt
 
-### Command Line Options
+### Befehlszeilen-Optionen
 
-| Option | Description |
+| Option | Beschreibung |
 |--------|-------------|
-| `--project-dir DIR` | Project root directory (default: current directory) |
-| `--skip-backup` | Skip database backup (not recommended) |
-| `--skip-static` | Skip static file collection |
-| `--skip-compilemessages` | Skip translation compilation |
-| `--clear-static` | Clear existing static files before collecting |
-| `--fake-initial` | Mark initial migrations as applied without running |
+| `--project-dir DIR` | Projektverzeichnis (Standard: aktuelles Verzeichnis) |
+| `--skip-backup` | Datenbank-Backup überspringen (nicht empfohlen) |
+| `--skip-static` | Statische Dateien-Sammlung überspringen |
+| `--skip-compilemessages` | Übersetzungskompilierung überspringen |
+| `--clear-static` | Vorhandene statische Dateien vor dem Sammeln löschen |
+| `--fake-initial` | Initiale Migrationen als angewendet markieren, ohne sie auszuführen |
 
-## Complete Deployment Workflow
+## Vollständiger Deployment-Workflow
 
-### On Development Machine
+### Auf dem Entwicklungsrechner
 
 ```bash
-# 1. Create deployment archive
+# 1. Deployment-Archiv erstellen
 python utils/create_deployment_archive.py
 
-# 2. Transfer archive to production server
-scp mcc-web-deployment-*.tar.gz user@production-server:/tmp/
+# 2. Archiv auf Produktionsserver übertragen
+scp mcc-web-deployment-*.tar.gz benutzer@produktions-server:/tmp/
 ```
 
-### On Production Server
+### Auf dem Produktionsserver
+
+**Wichtig:** Stellen Sie sicher, dass die virtuelle Umgebung bereits eingerichtet ist (siehe Voraussetzungen oben).
 
 ```bash
-# 1. Navigate to application directory
-cd /data/games/mcc/mcc-web
+# 1. In das Basisverzeichnis wechseln
+cd /data/appl/mcc
 
-# 2. Extract archive
+# 2. Archiv extrahieren (erstellt ein Verzeichnis wie mcc-web-1.2.3)
 tar xzf /tmp/mcc-web-deployment-*.tar.gz
 
-# 3. Activate virtual environment
-source venv/bin/activate
+# 3. Symbolischen Link setzen, damit mcc-web auf die aktuelle Version zeigt
+# (Alten Link entfernen, falls vorhanden)
+rm -f mcc-web
+ln -s mcc-web-* mcc-web
 
-# 4. Install/update dependencies (if needed)
+# 4. In das Anwendungsverzeichnis wechseln
+cd mcc-web
+
+# 5. Virtuelle Umgebung aktivieren (liegt außerhalb der Software)
+source /data/appl/mcc/venv/bin/activate
+
+# 6. Abhängigkeiten installieren/aktualisieren (falls nötig)
 pip install -r requirements.txt
 
-# 5. Run deployment script
+# 7. Deployment-Script ausführen
 python utils/deploy_production.py
 
-# 6. Restart application server (script)
-/data/games/mcc/mcc-web/scripts/mcc-web.sh restart
+# 8. Anwendungsserver starten (Script)
+/data/appl/mcc/mcc-web/scripts/mcc-web.sh start
 ```
 
-## Important Notes
+## Wichtige Hinweise
 
-### Database Backups
+### Datenbank-Backups
 
-- Backups are stored in `backups/` directory in the project root
-- Keep multiple backups for rollback capability
-- Consider implementing automated backup rotation
+- Backups werden im `backups/` Verzeichnis im Projektverzeichnis gespeichert
+- Mehrere Backups für Rollback-Fähigkeit behalten
+- Automatische Backup-Rotation implementieren
 
-### Static Files
+### Statische Dateien
 
-- Static files **must** be collected on the production server
-- The `staticfiles/` directory is served by Apache, not Django
-- Use `--clear-static` if you want to remove old static files
+- Statische Dateien **müssen** auf dem Produktionsserver gesammelt werden
+- Das `staticfiles/` Verzeichnis wird von Apache bedient, nicht von Django
+- Verwenden Sie `--clear-static`, wenn Sie alte statische Dateien entfernen möchten
 
-### Media Files
+### Media-Dateien
 
-- The `media/` directory contains user-uploaded content
-- **Never** overwrite `media/` during deployment
-- Ensure proper backup of media files separately
+- Das `media/` Verzeichnis enthält benutzergenerierte Inhalte
+- **Niemals** `media/` während des Deployments überschreiben
+- Sicherstellen, dass Media-Dateien separat gesichert werden
 
-### Environment Variables
+### Umgebungsvariablen
 
-Make sure these environment variables are set (via `.env` file or system):
+**Produktion:**
+Die `.env` Datei liegt außerhalb der Software in `/data/appl/mcc/.env`
 
-- `SECRET_KEY`: Django secret key
-- `DEBUG`: Set to `False` for production
-- `ALLOWED_HOSTS`: Comma-separated list of allowed hosts
-- `CSRF_TRUSTED_ORIGINS`: HTTPS origins for CSRF protection
-- Other application-specific variables (see `config/settings.py`)
+**Entwicklung:**
+Die `.env` Datei kann im Projektverzeichnis (`mcc-web/.env`) oder individuell konfiguriert sein.
 
-### Permissions
+Stellen Sie sicher, dass diese Umgebungsvariablen gesetzt sind (über `.env` Datei oder System):
 
-Ensure proper file permissions:
-- Application files: readable by web server user
-- `media/` directory: writable by web server user
-- Database file: readable/writable by web server user
+- `SECRET_KEY`: Django Secret Key
+- `DEBUG`: Auf `False` für Produktion setzen
+- `ALLOWED_HOSTS`: Komma-separierte Liste erlaubter Hostnamen
+- `CSRF_TRUSTED_ORIGINS`: HTTPS-Origins für CSRF-Schutz
+- Andere anwendungsspezifische Variablen (siehe `config/settings.py`)
 
-## Troubleshooting
+**Hinweis:** In Entwicklungsumgebungen können die Pfade individuell sein, da die Anwendung relativ im Projektverzeichnis alle Informationen findet.
 
-### Migration Fails
+### Berechtigungen
 
-- Check database backup was created
-- Verify database file permissions
-- Check Django logs for specific error messages
-- Consider restoring from backup if needed
+Sicherstellen, dass die Dateiberechtigungen korrekt sind:
+- Anwendungsdateien: lesbar für den konfigurierten Benutzer (der Benutzer, der die Anwendung startet)
+- `media/` Verzeichnis: beschreibbar für den konfigurierten Benutzer
+- Datenbankdatei: lesbar/beschreibbar für den konfigurierten Benutzer
 
-### Static Files Not Updating
+**Hinweis:** Der Benutzer wird vom Admin konfiguriert und startet die Anwendung. Der Benutzer `mcc` ist nicht zwingend erforderlich.
 
-- Use `--clear-static` flag to force refresh
-- Check `STATIC_ROOT` setting in `config/settings.py`
-- Verify Apache configuration points to correct `staticfiles/` directory
+## Fehlerbehebung
 
-### Translation Issues
+### Migration schlägt fehl
 
-- Ensure `.po` files are included in archive
-- Run `compilemessages` manually if needed: `python manage.py compilemessages`
-- Check `LOCALE_PATHS` setting
+- Prüfen, ob Datenbank-Backup erstellt wurde
+- Dateiberechtigungen für Datenbankdatei überprüfen
+- Django-Logs auf spezifische Fehlermeldungen prüfen
+- Bei Bedarf von Backup wiederherstellen
 
-## Rollback Procedure
+### Statische Dateien werden nicht aktualisiert
 
-If deployment fails or issues are discovered:
+- `--clear-static` Flag verwenden, um Aktualisierung zu erzwingen
+- `STATIC_ROOT` Einstellung in `config/settings.py` prüfen
+- Apache-Konfiguration überprüfen, ob sie auf das korrekte `staticfiles/` Verzeichnis zeigt
 
-1. **Stop the application server**
-2. **Restore database from backup**:
+### Übersetzungsprobleme
+
+- Sicherstellen, dass `.po` Dateien im Archiv enthalten sind
+- `compilemessages` bei Bedarf manuell ausführen: `python manage.py compilemessages`
+- `LOCALE_PATHS` Einstellung prüfen
+
+## Rollback-Verfahren
+
+Wenn das Deployment fehlschlägt oder Probleme entdeckt werden:
+
+1. **Anwendungsserver stoppen**
+2. **Datenbank aus Backup wiederherstellen**:
    ```bash
-   mkdir -p data/db
-   cp backups/db_backup_YYYYMMDD_HHMMSS.sqlite3 data/db/db.sqlite3
+   cp backups/db_backup_YYYYMMDD_HHMMSS.sqlite3 data/db.sqlite3
    ```
-3. **Restore previous code version** (if needed)
-4. **Restart application server**
+3. **Vorherige Code-Version wiederherstellen** (falls nötig)
+4. **Anwendungsserver neu starten**
 
-## Additional Resources
+## Zusätzliche Ressourcen
 
 - Django Deployment Checklist: https://docs.djangoproject.com/en/stable/howto/deployment/checklist/
-- Project README: See `README` file for additional setup information
-
+- Projekt README: Siehe `README` Datei für zusätzliche Setup-Informationen

@@ -68,8 +68,10 @@ Das Startup-Script liest die Konfiguration automatisch aus der Datenbank beim St
 /path/to/mcc-web/scripts/mcc-web.sh start
 ```
 
-Hinweis: In der aktuellen Produktion läuft die Anwendung als Benutzer `mcc`
-unter `/data/games/mcc/mcc-web`. Passen Sie Pfade und Benutzer an Ihre Umgebung an.
+**Hinweis:** 
+- **Produktion**: Die Anwendung läuft unter `/data/appl/mcc/mcc-web` als der vom Admin konfigurierte Benutzer (z.B. `mcc`, `www-data`, etc.)
+- **Entwicklung**: Pfade können individuell sein, da die Anwendung relativ im Projektverzeichnis alle Informationen findet
+- **Benutzer**: Der Benutzer `mcc` ist nicht zwingend erforderlich, der Benutzer wird vom Admin konfiguriert
 
 Das Script verwendet das Management-Command `get_gunicorn_config`, um die Konfiguration aus der Datenbank zu lesen.
 

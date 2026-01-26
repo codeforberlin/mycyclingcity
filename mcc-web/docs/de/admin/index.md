@@ -181,141 +181,140 @@ Kiosk-Geräte- und Playlist-Verwaltung.
   - `is_active`: Aktiv-Status
 - **Verwendung**: Kiosk-Anzeigen konfigurieren
 
-### Management (Mgmt)
+### Historische Berichte & Analysen
 
-System-Verwaltung und Monitoring-Funktionen.
-
-#### Server Control
-
-- **Zweck**: Gunicorn-Server steuern (Start, Stop, Restart, Reload)
-- **Zugriff**: `/admin/server/`
-- **Features**:
-  - Server-Status anzeigen
-  - Server starten/stoppen/neu starten
-  - Konfiguration neu laden (ohne Neustart)
-  - Server-Metriken anzeigen
-  - Health-Checks durchführen
-- **Verwendung**: Nur für Superuser verfügbar
-
-#### Log File Viewer
-
-- **Zweck**: Anwendungs-Logdateien direkt im Admin GUI anzeigen
-- **Zugriff**: `/admin/logs/`
-- **Features**:
-  - Logdateien durchsuchen und filtern
-  - Nach Log-Level filtern (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  - Suche in Logs
-  - Rotierte Logdateien anzeigen
-  - Auto-Refresh für Live-Ansicht
-  - Beliebige Logdateien aus `logs/` Verzeichnis auswählen
-- **Verfügbare Logs**:
-  - API Application Logs (`api.log`)
-  - Management Application Logs (`mgmt.log`)
-  - IoT Application Logs (`iot.log`)
-  - Kiosk Application Logs (`kiosk.log`)
-  - Game Application Logs (`game.log`)
-  - Map Application Logs (`map.log`)
-  - Leaderboard Application Logs (`leaderboard.log`)
-  - Django Framework Logs (`django.log`)
-
-#### Backup Management
-
-- **Zweck**: Datenbank-Backups verwalten
-- **Zugriff**: `/admin/backup/`
-- **Features**:
-  - Backups erstellen
-  - Backup-Liste anzeigen (mit Größe und Datum)
-  - Backups herunterladen
-  - Backup-Verwaltung
-- **Verwendung**: Backups werden in `backups/` Verzeichnis gespeichert
-
-#### Gunicorn Configuration
-
-- **Zweck**: Gunicorn-Server-Konfiguration über Admin GUI
-- **Zugriff**: `/admin/mgmt/gunicornconfig/`
-- **Wichtige Einstellungen**:
-  - `log_level`: Log-Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  - `workers`: Anzahl Worker-Prozesse (0 = automatisch)
-  - `threads`: Threads pro Worker
-  - `worker_class`: Worker-Klasse (gthread, sync)
-  - `bind`: Bind-Adresse und Port
-- **Features**:
-  - Konfiguration ohne Environment-Variablen ändern
-  - Server-Neustart erforderlich nach Änderungen
-  - Link zu Server Control für Neustart
-
-#### Logging Configuration
-
-- **Zweck**: Anwendungs-Logging konfigurieren
-- **Zugriff**: `/admin/mgmt/loggingconfig/`
-- **Features**:
-  - Log-Level pro Logger konfigurieren
-  - Logging zu Datenbank aktivieren/deaktivieren
-  - DEBUG/INFO Logs in Datenbank aktivieren
-  - Request-Logging aktivieren/deaktivieren
-
-#### Performance Monitoring
-
-- **Zweck**: System-Performance überwachen
-- **Modelle**:
-  - **Request Logs**: HTTP-Request-Logs mit Performance-Daten
-  - **Performance Metrics**: Aggregierte Performance-Metriken
-  - **Alert Rules**: Regeln für Performance-Alerts
-- **Features**:
-  - Request-Zeiten analysieren
-  - Langsame Requests identifizieren
-  - Performance-Trends verfolgen
-
-#### Minecraft Control
-
-- **Zweck**: Minecraft-Server steuern und Coin-Synchronisation verwalten
-- **Zugriff**: `/admin/minecraft/`
-- **Features**:
-  - Bridge-Worker starten/stoppen (Coin-Synchronisation)
-  - Snapshot-Worker starten/stoppen (Status-Erfassung)
-  - Manuelle Synchronisation aller Spieler
-  - Scoreboard-Snapshot aktualisieren
-  - RCON-Verbindung testen
-  - Outbox-Events verwalten
-  - Player-Liste mit Coin-Status anzeigen
-- **Dokumentation**: Siehe [Minecraft-Integration Dokumentation](minecraft.md)
-
-### Historical Reports & Analytics
-
-Historische Berichte und Analysen.
+Analysen und Berichte für historische Daten.
 
 #### Analytics Dashboard
 
-- **Zweck**: Historische Daten analysieren und Berichte erstellen
-- **Zugriff**: `/admin/analytics/`
+- **Zweck**: Übersichtliche Darstellung von Analysen und Statistiken
 - **Features**:
-  - Zeitreihen-Analysen
-  - Gruppen-Vergleiche
+  - Gruppenstatistiken
+  - Kilometer-Trends
+  - Zeitraum-Analysen
   - Export-Funktionen
-  - Hierarchie-Breakdown
+- **Zugriff**: `/admin/analytics/`
 
 #### Hierarchy Breakdown
 
-- **Zweck**: Detaillierte Hierarchie-Analysen
-- **Zugriff**: `/admin/analytics/hierarchy/`
+- **Zweck**: Detaillierte Aufschlüsselung der Gruppenhierarchie
 - **Features**:
-  - Gruppen-Hierarchie visualisieren
-  - Detaillierte Statistiken pro Ebene
+  - Hierarchische Darstellung von Gruppen
+  - Aggregierte Statistiken pro Ebene
+  - Drill-Down-Funktionalität
+- **Zugriff**: `/admin/analytics/hierarchy/`
 
 ### Session Management
 
-Spiel-Session-Verwaltung und Debugging.
+Spiel-Session-Verwaltung und Monitoring.
 
 #### Session Dashboard
 
-- **Zweck**: Aktive Spiel-Sessions überwachen und verwalten
-- **Zugriff**: `/admin/game/session/dashboard/`
+- **Zweck**: Übersicht über aktive und vergangene Spiel-Sessions
 - **Features**:
   - Aktive Sessions anzeigen
-  - Session-Daten bearbeiten
-  - Sessions in Räumen verwalten
-  - Master-Sessions verwalten
-  - Session-Daten als JSON exportieren
+  - Session-Status überwachen
+  - Session-Details einsehen
+  - Session-Verwaltung
+- **Zugriff**: `/admin/game/session/dashboard/`
+
+### Mgmt (Verwaltung)
+
+Server-Verwaltung und System-Monitoring.
+
+#### Server Control
+
+- **Zweck**: Server-Status und -Steuerung
+- **Features**:
+  - Server-Status anzeigen (laufend/gestoppt)
+  - Server starten, stoppen, neustarten
+  - Server-Metriken anzeigen
+  - Health-Check-Status
+  - Gunicorn-Konfiguration anzeigen
+- **Zugriff**: `/admin/server/` oder über "Mgmt" → "Server Control"
+- **Berechtigung**: Nur für Superuser
+
+#### View Application Logs (Log File Viewer)
+
+- **Zweck**: Log-Dateien im Browser anzeigen
+- **Features**:
+  - Auswahl von Log-Dateien aus dem `logs/` Verzeichnis
+  - Echtzeit-Log-Anzeige
+  - Rotierte Log-Dateien durchsuchen
+  - Filterung und Suche
+  - Auto-Refresh-Funktion
+- **Zugriff**: `/admin/logs/` oder über "Mgmt" → "View Application Logs"
+- **Berechtigung**: Nur für Superuser
+
+#### Backup Management
+
+- **Zweck**: Datenbank-Backups erstellen und verwalten
+- **Features**:
+  - Manuelle Backup-Erstellung
+  - Backup-Liste anzeigen
+  - Backup-Download
+  - Backup-Informationen (Größe, Datum)
+- **Zugriff**: `/admin/backup/` oder über "Mgmt" → "Backup Management"
+- **Berechtigung**: Nur für Superuser
+
+#### Gunicorn Configuration
+
+- **Zweck**: Gunicorn-Log-Level konfigurieren
+- **Wichtige Felder**:
+  - `log_level`: Log-Level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- **Features**:
+  - Log-Level direkt im Admin GUI ändern
+  - Keine Environment-Variablen nötig
+  - Singleton-Model (nur eine Instanz)
+- **Zugriff**: `/admin/mgmt/gunicornconfig/` oder über "Mgmt" → "Gunicorn Configuration"
+- **Hinweis**: Nach Änderung ist ein Server-Neustart erforderlich
+
+#### Application Logs
+
+**Hinweis:** Logs werden nicht mehr in der Datenbank gespeichert. Verwenden Sie stattdessen den **Log File Viewer** (siehe oben), um Log-Dateien anzuzeigen.
+
+#### Request Logs
+
+- **Zweck**: HTTP-Request-Logs für Performance-Analysen
+- **Features**:
+  - Request-Dauer anzeigen
+  - Status-Codes filtern
+  - Endpunkt-Analysen
+  - Performance-Metriken
+- **Zugriff**: `/admin/mgmt/requestlog/` oder über "Mgmt" → "Request Logs"
+
+#### Performance Metrics
+
+- **Zweck**: System-Performance-Metriken überwachen
+- **Features**:
+  - CPU- und Memory-Statistiken
+  - Request-Durchsatz
+  - Response-Zeiten
+  - Trend-Analysen
+- **Zugriff**: `/admin/mgmt/performancemetric/` oder über "Mgmt" → "Performance Metrics"
+
+#### Alert Rules
+
+- **Zweck**: Alert-Regeln für Performance-Überwachung konfigurieren
+- **Features**:
+  - Schwellenwerte definieren
+  - Alert-Bedingungen konfigurieren
+  - Benachrichtigungen einrichten
+- **Zugriff**: `/admin/mgmt/alertrule/` oder über "Mgmt" → "Alert Rules"
+
+#### Minecraft Control
+
+- **Zweck**: Minecraft-Worker-Status und -Steuerung
+- **Features**:
+  - Worker-Status anzeigen (Minecraft-Bridge-Worker und Snapshot-Worker)
+  - Worker starten, stoppen, neustarten
+  - Coin-Synchronisation zwischen MyCyclingCity und Minecraft-Server verwalten
+  - Outbox-Events anzeigen und verwalten
+  - RCON-Verbindung testen
+  - Manuelle Synchronisation auslösen
+- **Zugriff**: `/admin/minecraft/` oder über "Minecraft Verwaltung" → "Minecraft Control"
+- **Berechtigung**: Nur für Superuser
+- **Hinweis**: Der Worker synchronisiert Coins zwischen der Django-Datenbank und dem Minecraft-Server über RCON. Er steuert nicht den Minecraft-Server selbst.
 
 ## Häufige Aufgaben
 
@@ -403,6 +402,50 @@ Einige Modelle haben benutzerdefinierte Admin-Aktionen:
 - **Sessions löschen**: Spiel-Sessions in Bulk löschen
 - **Daten exportieren**: Modelldaten nach CSV/JSON exportieren
 - **Bereinigung**: Abgelaufene oder verwaiste Datensätze entfernen
+
+## Häufige Verwaltungsaufgaben
+
+### Server neu starten
+
+1. Navigieren Sie zu **Mgmt** → **Server Control**
+2. Prüfen Sie den aktuellen Server-Status
+3. Klicken Sie auf **Restart Server**
+4. Warten Sie, bis der Neustart abgeschlossen ist
+
+### Log-Dateien anzeigen
+
+1. Navigieren Sie zu **Mgmt** → **View Application Logs**
+2. Wählen Sie eine Log-Datei aus dem Dropdown-Menü
+3. Die Log-Datei wird automatisch aktualisiert (Auto-Refresh)
+4. Verwenden Sie die Suchfunktion, um nach spezifischen Einträgen zu suchen
+
+### Backup erstellen
+
+1. Navigieren Sie zu **Mgmt** → **Backup Management**
+2. Klicken Sie auf **Create Backup**
+3. Warten Sie, bis das Backup erstellt wurde
+4. Laden Sie das Backup herunter, falls nötig
+
+### Gunicorn Log-Level ändern
+
+1. Navigieren Sie zu **Mgmt** → **Gunicorn Configuration**
+2. Wählen Sie das gewünschte Log-Level aus
+3. Klicken Sie auf **Speichern**
+4. **Wichtig**: Starten Sie den Server neu (siehe "Server neu starten")
+
+### Analytics anzeigen
+
+1. Navigieren Sie zu **Historische Berichte & Analysen** → **Analytics Dashboard**
+2. Wählen Sie den gewünschten Zeitraum
+3. Wählen Sie die zu analysierenden Gruppen
+4. Exportieren Sie die Daten bei Bedarf
+
+### Session-Status überwachen
+
+1. Navigieren Sie zu **Session Management** → **Session Dashboard**
+2. Sehen Sie alle aktiven Sessions
+3. Klicken Sie auf eine Session, um Details anzuzeigen
+4. Beenden Sie Sessions bei Bedarf
 
 ## Best Practices
 

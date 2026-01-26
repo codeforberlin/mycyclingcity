@@ -181,141 +181,151 @@ Kiosk device and playlist management.
   - `is_active`: Active status
 - **Usage**: Configure kiosk displays
 
-### Management (Mgmt)
-
-System administration and monitoring functions.
-
-#### Server Control
-
-- **Purpose**: Control Gunicorn server (Start, Stop, Restart, Reload)
-- **Access**: `/admin/server/`
-- **Features**:
-  - Display server status
-  - Start/stop/restart server
-  - Reload configuration (without restart)
-  - Display server metrics
-  - Perform health checks
-- **Usage**: Only available for superusers
-
-#### Log File Viewer
-
-- **Purpose**: View application log files directly in Admin GUI
-- **Access**: `/admin/logs/`
-- **Features**:
-  - Browse and filter log files
-  - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  - Search in logs
-  - View rotated log files
-  - Auto-refresh for live view
-  - Select any log file from `logs/` directory
-- **Available Logs**:
-  - API Application Logs (`api.log`)
-  - Management Application Logs (`mgmt.log`)
-  - IoT Application Logs (`iot.log`)
-  - Kiosk Application Logs (`kiosk.log`)
-  - Game Application Logs (`game.log`)
-  - Map Application Logs (`map.log`)
-  - Leaderboard Application Logs (`leaderboard.log`)
-  - Django Framework Logs (`django.log`)
-
-#### Backup Management
-
-- **Purpose**: Manage database backups
-- **Access**: `/admin/backup/`
-- **Features**:
-  - Create backups
-  - Display backup list (with size and date)
-  - Download backups
-  - Backup management
-- **Usage**: Backups are stored in `backups/` directory
-
-#### Gunicorn Configuration
-
-- **Purpose**: Configure Gunicorn server via Admin GUI
-- **Access**: `/admin/mgmt/gunicornconfig/`
-- **Key Settings**:
-  - `log_level`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  - `workers`: Number of worker processes (0 = automatic)
-  - `threads`: Threads per worker
-  - `worker_class`: Worker class (gthread, sync)
-  - `bind`: Bind address and port
-- **Features**:
-  - Change configuration without environment variables
-  - Server restart required after changes
-  - Link to Server Control for restart
-
-#### Logging Configuration
-
-- **Purpose**: Configure application logging
-- **Access**: `/admin/mgmt/loggingconfig/`
-- **Features**:
-  - Configure log level per logger
-  - Enable/disable logging to database
-  - Enable DEBUG/INFO logs in database
-  - Enable/disable request logging
-
-#### Performance Monitoring
-
-- **Purpose**: Monitor system performance
-- **Models**:
-  - **Request Logs**: HTTP request logs with performance data
-  - **Performance Metrics**: Aggregated performance metrics
-  - **Alert Rules**: Rules for performance alerts
-- **Features**:
-  - Analyze request times
-  - Identify slow requests
-  - Track performance trends
-
-#### Minecraft Control
-
-- **Purpose**: Control Minecraft server and manage coin synchronization
-- **Access**: `/admin/minecraft/`
-- **Features**:
-  - Start/stop bridge worker (coin synchronization)
-  - Start/stop snapshot worker (status capture)
-  - Manual synchronization of all players
-  - Update scoreboard snapshot
-  - Test RCON connection
-  - Manage outbox events
-  - Display player list with coin status
-- **Documentation**: See [Minecraft Integration Documentation](minecraft.md)
-
 ### Historical Reports & Analytics
 
-Historical reports and analytics.
+Analyses and reports for historical data.
 
 #### Analytics Dashboard
 
-- **Purpose**: Analyze historical data and create reports
-- **Access**: `/admin/analytics/`
+- **Purpose**: Overview of analyses and statistics
 - **Features**:
-  - Time series analysis
-  - Group comparisons
+  - Group statistics
+  - Mileage trends
+  - Time period analyses
   - Export functions
-  - Hierarchy breakdown
+- **Access**: `/admin/analytics/`
 
 #### Hierarchy Breakdown
 
-- **Purpose**: Detailed hierarchy analysis
-- **Access**: `/admin/analytics/hierarchy/`
+- **Purpose**: Detailed breakdown of group hierarchy
 - **Features**:
-  - Visualize group hierarchy
-  - Detailed statistics per level
+  - Hierarchical display of groups
+  - Aggregated statistics per level
+  - Drill-down functionality
+- **Access**: `/admin/analytics/hierarchy/`
 
 ### Session Management
 
-Game session management and debugging.
+Game session management and monitoring.
 
 #### Session Dashboard
 
-- **Purpose**: Monitor and manage active game sessions
-- **Access**: `/admin/game/session/dashboard/`
+- **Purpose**: Overview of active and past game sessions
 - **Features**:
   - Display active sessions
-  - Edit session data
-  - Manage sessions in rooms
-  - Manage master sessions
-  - Export session data as JSON
+  - Monitor session status
+  - View session details
+  - Session management
+- **Access**: `/admin/game/session/dashboard/`
+
+### Mgmt (Management)
+
+Server management and system monitoring.
+
+#### Server Control
+
+- **Purpose**: Server status and control
+- **Features**:
+  - Display server status (running/stopped)
+  - Start, stop, restart server
+  - Display server metrics
+  - Health check status
+  - Display Gunicorn configuration
+- **Access**: `/admin/server/` or via "Mgmt" → "Server Control"
+- **Permission**: Superusers only
+
+#### View Application Logs (Log File Viewer)
+
+- **Purpose**: Display log files in browser
+- **Features**:
+  - Select log files from `logs/` directory
+  - Real-time log display
+  - Browse rotated log files
+  - Filtering and search
+  - Auto-refresh function
+- **Access**: `/admin/logs/` or via "Mgmt" → "View Application Logs"
+- **Permission**: Superusers only
+
+#### Backup Management
+
+- **Purpose**: Create and manage database backups
+- **Features**:
+  - Manual backup creation
+  - Display backup list
+  - Backup download
+  - Backup information (size, date)
+- **Access**: `/admin/backup/` or via "Mgmt" → "Backup Management"
+- **Permission**: Superusers only
+
+#### Gunicorn Configuration
+
+- **Purpose**: Configure Gunicorn log level
+- **Key Fields**:
+  - `log_level`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- **Features**:
+  - Change log level directly in Admin GUI
+  - No environment variables needed
+  - Singleton model (only one instance)
+- **Access**: `/admin/mgmt/gunicornconfig/` or via "Mgmt" → "Gunicorn Configuration"
+- **Note**: Server restart required after changes
+
+#### Application Logs
+
+- **Purpose**: Display application logs stored in database
+- **Features**:
+  - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  - Filter by time period
+  - Search in log messages
+  - Bulk actions to delete old logs
+- **Access**: `/admin/mgmt/applicationlog/` or via "Mgmt" → "Application Logs"
+- **Note**: DEBUG/INFO logs are only stored if `LOG_DB_DEBUG=True` is set
+
+#### Request Logs
+
+- **Purpose**: HTTP request logs for performance analysis
+- **Features**:
+  - Display request duration
+  - Filter by status codes
+  - Endpoint analysis
+  - Performance metrics
+- **Access**: `/admin/mgmt/requestlog/` or via "Mgmt" → "Request Logs"
+
+#### Performance Metrics
+
+- **Purpose**: Monitor system performance metrics
+- **Features**:
+  - CPU and memory statistics
+  - Request throughput
+  - Response times
+  - Trend analysis
+- **Access**: `/admin/mgmt/performancemetric/` or via "Mgmt" → "Performance Metrics"
+
+#### Alert Rules
+
+- **Purpose**: Configure alert rules for performance monitoring
+- **Features**:
+  - Define thresholds
+  - Configure alert conditions
+  - Set up notifications
+- **Access**: `/admin/mgmt/alertrule/` or via "Mgmt" → "Alert Rules"
+
+### Minecraft Management
+
+Minecraft server management (if enabled).
+
+#### Minecraft Control
+
+- **Purpose**: Minecraft worker status and control
+- **Features**:
+  - Display worker status (Minecraft Bridge Worker and Snapshot Worker)
+  - Start, stop, restart workers
+  - Manage coin synchronization between MyCyclingCity and Minecraft server
+  - View and manage outbox events
+  - Test RCON connection
+  - Trigger manual synchronization
+- **Access**: `/admin/minecraft/` or via "Minecraft Management" → "Minecraft Control"
+- **Permission**: Superusers only
+- **Note**: The worker synchronizes coins between the Django database and the Minecraft server via RCON. It does not control the Minecraft server itself.
 
 ## Common Tasks
 
@@ -403,6 +413,50 @@ Some models have custom admin actions:
 - **Delete Sessions**: Bulk delete game sessions
 - **Export Data**: Export model data to CSV/JSON
 - **Cleanup**: Remove expired or orphaned records
+
+## Common Administrative Tasks
+
+### Restart Server
+
+1. Navigate to **Mgmt** → **Server Control**
+2. Check current server status
+3. Click **Restart Server**
+4. Wait until restart is complete
+
+### View Log Files
+
+1. Navigate to **Mgmt** → **View Application Logs**
+2. Select a log file from the dropdown menu
+3. The log file is automatically updated (Auto-Refresh)
+4. Use the search function to find specific entries
+
+### Create Backup
+
+1. Navigate to **Mgmt** → **Backup Management**
+2. Click **Create Backup**
+3. Wait until backup is created
+4. Download the backup if needed
+
+### Change Gunicorn Log Level
+
+1. Navigate to **Mgmt** → **Gunicorn Configuration**
+2. Select the desired log level
+3. Click **Save**
+4. **Important**: Restart the server (see "Restart Server")
+
+### View Analytics
+
+1. Navigate to **Historical Reports & Analytics** → **Analytics Dashboard**
+2. Select the desired time period
+3. Select the groups to analyze
+4. Export data if needed
+
+### Monitor Session Status
+
+1. Navigate to **Session Management** → **Session Dashboard**
+2. View all active sessions
+3. Click on a session to view details
+4. End sessions if needed
 
 ## Best Practices
 

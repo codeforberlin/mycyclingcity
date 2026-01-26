@@ -148,19 +148,19 @@ curl http://your-domain/health/
 
 Add to `/etc/crontab` for daily backups:
 
-**Hinweis:** Ersetzen Sie `BENUTZER` durch den vom Admin konfigurierten Benutzernamen, der die Anwendung startet.
+**Note:** Replace `USER` with the username configured by the administrator that starts the application.
 
 ```cron
 # Daily database backup at 2 AM
-# BENUTZER = der vom Admin konfigurierte Benutzer (z.B. mcc, www-data, etc.)
-0 2 * * * BENUTZER cd /data/appl/mcc/mcc-web && /data/appl/mcc/mcc-web/venv/bin/python utils/backup_database.py --keep-days 7 --compress
+# USER = the user configured by the administrator (e.g., mcc, www-data, etc.)
+0 2 * * * USER cd /data/appl/mcc/mcc-web && /data/appl/mcc/mcc-web/venv/bin/python utils/backup_database.py --keep-days 7 --compress
 ```
 
 ## Log Rotation
 
 Create `/etc/logrotate.d/mcc-web`:
 
-**Hinweis:** Ersetzen Sie `BENUTZER` und `GRUPPE` durch den vom Admin konfigurierten Benutzernamen und die Gruppe, die die Anwendung startet.
+**Note:** Replace `USER` and `GROUP` with the username and group configured by the administrator that starts the application.
 
 ```
 /data/appl/mcc/mcc-web/logs/*.log {
@@ -170,7 +170,7 @@ Create `/etc/logrotate.d/mcc-web`:
     delaycompress
     missingok
     notifempty
-    create 0640 BENUTZER GRUPPE
+    create 0640 USER GROUP
     sharedscripts
     postrotate
         /data/appl/mcc/mcc-web/scripts/mcc-web.sh reload > /dev/null 2>&1 || true
@@ -180,9 +180,9 @@ Create `/etc/logrotate.d/mcc-web`:
 
 ## Notes
 
-- **Benutzer**: Alle Scripts werden vom konfigurierten Benutzer ausgeführt (vom Admin definiert, z.B. `mcc`, `www-data`, etc.)
-- **Cronjobs**: Cronjobs werden vom konfigurierten Benutzer gestartet, nicht von `www-data`
-- **Anwendungsstart**: Die Software wird vom konfigurierten Benutzer gestartet, der Benutzer `mcc` ist nicht zwingend erforderlich
+- **User**: All scripts are executed by the configured user (defined by the administrator, e.g., `mcc`, `www-data`, etc.)
+- **Cronjobs**: Cronjobs are started by the configured user, not by `www-data`
+- **Application Start**: The software is started by the configured user, the user `mcc` is not mandatory
 - Backups should be tested regularly
 - Health check should be monitored by monitoring tools
 - Logs should be reviewed regularly
