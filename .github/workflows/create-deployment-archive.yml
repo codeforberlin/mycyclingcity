@@ -41,7 +41,7 @@ jobs:
       - name: Create deployment archive
         working-directory: mcc-web
         run: |
-          python utils/create_deployment_archive.py
+          python utils/create_deployment_archive.py -o .
         env:
           VERSION_OVERRIDE: ${{ inputs.version }}
     
