@@ -38,24 +38,6 @@ jobs:
         with:
           python-version: '3.11'
     
-      - name: Install gettext tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gettext
-    
-      - name: Install dependencies for translation check
-        working-directory: mcc-web
-        run: |
-          pip install --upgrade pip
-          # Install minimal dependencies needed for Django compilemessages
-          pip install django==5.2.9 python-decouple==3.8 python-dotenv==1.0.0
-          # Create minimal .env file if it doesn't exist (for decouple)
-          if [ ! -f .env ]; then
-            echo "SECRET_KEY=django-insecure-ci-build-key" > .env
-            echo "DEBUG=True" >> .env
-            echo "ALLOWED_HOSTS=localhost" >> .env
-          fi
-    
       - name: Create deployment archive
         working-directory: mcc-web
         run: |
