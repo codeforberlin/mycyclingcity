@@ -1,0 +1,233 @@
+name: Build and Release ESP32 Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on tags like v1.0.0, v2.1.3, etc.
+    branches:
+      - main      # Nightly builds on push to main
+    paths:
+      - 'mcc-esp32/**'
+      - '.github/workflows/mcc-esp32-build-release.yml'
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0). Leave empty to use Git tag or VERSION file.'
+        required: false
+        type: string
+
+jobs:
+  build-and-release:
+    name: Build Firmware and Create Release
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./mcc-esp32
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git describe
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            # Use manually provided version
+            VERSION="${{ inputs.version }}"
+          elif [ -n "${{ github.ref_type }}" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+            # Extract from Git tag (remove 'v' prefix if present)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            VERSION="${VERSION#refs/tags/}"
+          else
+            # Use Python script to extract version (Git tag > VERSION file > default)
+            VERSION=$(python3 scripts/extract_version.py)
+          fi
+          
+          # Validate version format (semantic versioning)
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "Error: Invalid version format: $VERSION"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version extracted: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Cache PlatformIO libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/lib
+          key: ${{ runner.os }}-pio-${{ hashFiles('mcc-esp32/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Cache PlatformIO toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/platforms
+            ~/.platformio/toolchains
+          key: ${{ runner.os }}-pio-toolchains-${{ hashFiles('mcc-esp32/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-toolchains-
+
+      - name: Build all environments
+        env:
+          FIRMWARE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "Building firmware version: $FIRMWARE_VERSION"
+          echo "Building for heltec_wifi_lora_32_V3..."
+          pio run -e heltec_wifi_lora_32_V3
+          echo "Building for heltec_wifi_lora_32_V2..."
+          pio run -e heltec_wifi_lora_32_V2
+          echo "Building for wemos_d1_mini32..."
+          pio run -e wemos_d1_mini32
+
+      - name: Prepare release artifacts
+        id: artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD_DIR=".pio/build"
+          RELEASE_DIR="release"
+          
+          mkdir -p "$RELEASE_DIR"
+          
+          # Find and rename binary files
+          ENVIRONMENTS=("heltec_wifi_lora_32_V3" "heltec_wifi_lora_32_V2" "wemos_d1_mini32")
+          
+          for ENV in "${ENVIRONMENTS[@]}"; do
+            BIN_FILE=$(find "$BUILD_DIR/$ENV" -name "*.bin" -type f | head -1)
+            if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
+              NEW_NAME="mcc-esp32-${ENV}-${VERSION}.bin"
+              cp "$BIN_FILE" "$RELEASE_DIR/$NEW_NAME"
+              echo "Created: $NEW_NAME"
+              
+              # Generate checksums
+              md5sum "$RELEASE_DIR/$NEW_NAME" > "$RELEASE_DIR/$NEW_NAME.md5"
+              sha256sum "$RELEASE_DIR/$NEW_NAME" > "$RELEASE_DIR/$NEW_NAME.sha256"
+              echo "Generated checksums for: $NEW_NAME"
+            else
+              echo "Warning: Binary not found for environment: $ENV"
+            fi
+          done
+          
+          # List all artifacts
+          echo "Release artifacts:" >> $GITHUB_STEP_SUMMARY
+          ls -lh "$RELEASE_DIR" >> $GITHUB_STEP_SUMMARY
+          
+          # Count artifacts
+          ARTIFACT_COUNT=$(find "$RELEASE_DIR" -type f | wc -l)
+          echo "artifact_count=$ARTIFACT_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        if: github.event_name != 'workflow_dispatch' || github.ref_type == 'tag'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES_FILE="release_notes.md"
+          
+          echo "# Release v${VERSION}" > "$NOTES_FILE"
+          echo "" >> "$NOTES_FILE"
+          echo "## Firmware Binaries" >> "$NOTES_FILE"
+          echo "" >> "$NOTES_FILE"
+          
+          # List all binaries with checksums
+          for BIN_FILE in release/*.bin; do
+            if [ -f "$BIN_FILE" ]; then
+              FILENAME=$(basename "$BIN_FILE")
+              SIZE=$(stat -f%z "$BIN_FILE" 2>/dev/null || stat -c%s "$BIN_FILE" 2>/dev/null || echo "unknown")
+              SIZE_KB=$((SIZE / 1024))
+              
+              echo "### ${FILENAME}" >> "$NOTES_FILE"
+              echo "" >> "$NOTES_FILE"
+              echo "- **Size**: ${SIZE_KB} KB" >> "$NOTES_FILE"
+              echo "- **MD5**: \`$(cat "${BIN_FILE}.md5" | cut -d' ' -f1)\`" >> "$NOTES_FILE"
+              echo "- **SHA256**: \`$(cat "${BIN_FILE}.sha256" | cut -d' ' -f1)\`" >> "$NOTES_FILE"
+              echo "" >> "$NOTES_FILE"
+            fi
+          done
+          
+          echo "## Changes" >> "$NOTES_FILE"
+          echo "" >> "$NOTES_FILE"
+          
+          # Get commits since last tag (if this is a tag release)
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              echo "### Commits since ${PREV_TAG}:" >> "$NOTES_FILE"
+              echo "" >> "$NOTES_FILE"
+              git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" >> "$NOTES_FILE" || echo "- No commits found" >> "$NOTES_FILE"
+            else
+              echo "### Recent commits:" >> "$NOTES_FILE"
+              echo "" >> "$NOTES_FILE"
+              git log --pretty=format:"- %s (%h)" -10 >> "$NOTES_FILE" || echo "- No commits found" >> "$NOTES_FILE"
+            fi
+          else
+            # For nightly builds, show recent commits
+            echo "### Recent commits:" >> "$NOTES_FILE"
+            echo "" >> "$NOTES_FILE"
+            git log --pretty=format:"- %s (%h)" -10 >> "$NOTES_FILE" || echo "- No commits found" >> "$NOTES_FILE"
+          fi
+          
+          echo "" >> "$NOTES_FILE"
+          echo "---" >> "$NOTES_FILE"
+          echo "" >> "$NOTES_FILE"
+          echo "*Built on $(date -u +"%Y-%m-%d %H:%M:%S UTC")*" >> "$NOTES_FILE"
+          echo "*Commit: ${GITHUB_SHA}*" >> "$NOTES_FILE"
+          
+          # Output notes for GitHub step summary
+          cat "$NOTES_FILE" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          files: |
+            mcc-esp32/release/*.bin
+            mcc-esp32/release/*.md5
+            mcc-esp32/release/*.sha256
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload nightly build artifacts
+        if: github.ref_type != 'tag' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-firmware-${{ steps.version.outputs.version }}-${{ github.sha }}
+          path: |
+            mcc-esp32/release/*.bin
+            mcc-esp32/release/*.md5
+            mcc-esp32/release/*.sha256
+          retention-days: 30
+
+      - name: Upload release artifacts
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-firmware-v${{ steps.version.outputs.version }}
+          path: |
+            mcc-esp32/release/*.bin
+            mcc-esp32/release/*.md5
+            mcc-esp32/release/*.sha256
+          retention-days: 90
