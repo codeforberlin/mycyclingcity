@@ -9,6 +9,8 @@
 #ifndef RFID_MFRC522_CONTROL_H
 #define RFID_MFRC522_CONTROL_H
 
+#ifdef ENABLE_RFID
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -94,4 +96,6 @@ void RFID_MFRC522_clearInt();
  */
 void RFID_MFRC522_activateRec();
 
-#endif
+#endif // ENABLE_RFID
+
+#endif // RFID_MFRC522_CONTROL_H

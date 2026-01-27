@@ -6,6 +6,8 @@
  * @note    This code was developed with the assistance of AI (LLMs).
  */
 
+#ifdef ENABLE_RFID
+
 #include "rfid_mfrc522_control.h"
 #include "led_control.h" // For the updateLed function
 
@@ -120,3 +122,5 @@ void RFID_MFRC522_loop_handler() {
         }
     }
 }
+
+#endif // ENABLE_RFID

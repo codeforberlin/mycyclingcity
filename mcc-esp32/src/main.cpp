@@ -24,11 +24,15 @@
 #include <U8g2lib.h>  // OLED display library if an OLED display is used
 #endif
 
-//#include <Wire.h>
+#ifdef ENABLE_OLED
+#include <Wire.h>
+#endif
 
+#ifdef ENABLE_RFID
 #include <SPI.h>
 #include <MFRC522.h>
-#include "rfid_mfrc522_control.h" 
+#include "rfid_mfrc522_control.h"
+#endif 
 
 
 // --- GLOBAL HARDWARE DEFINITIONS ---
@@ -56,7 +60,7 @@
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, OLED_RST_PIN);
 #endif
 
-
+#ifdef ENABLE_RFID
 // RFID module
 // --- GLOBAL VARIABLES (DEFINITIONS) ---
 #define RST_PIN         26
@@ -64,6 +68,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, OLED_RST_PIN);
 
 // MFRC522 instance and interrupt variable
 MFRC522 mfrc522(SS_PIN, RST_PIN);
+#endif
 
 
 // Checks if the build flag "PIO_BUILD_TEST_MODE" is set.
@@ -269,10 +274,10 @@ void play_wakeup_tone();
 void play_tag_detected_tone();
 
 /**
- * @brief Displays RFID tag name on OLED display.
+ * @brief Displays ID tag name on OLED display.
  * 
- * Shows a message indicating that an ID tag was recognized and displays the associated
- * username or "NULL" if no assignment found.
+ * Shows a message indicating that an ID tag was recognized (from RFID or NVS) and displays the associated
+ * username or "NULL" if no assignment found. Works independently of RFID - displays any idTag.
  * 
  * @param text Username string to display (or "NULL" if not found)
  * 
@@ -280,7 +285,9 @@ void play_tag_detected_tone();
  * @note Side effects: Updates OLED display buffer and sends to display
  * @note Only compiled if ENABLE_OLED is defined
  */
+#ifdef ENABLE_OLED
 void display_IdTag_Name(const char* text);
+#endif
 
 /**
  * @brief Queries the backend server to retrieve username for a given RFID tag ID.
@@ -418,17 +425,37 @@ void setup() {
     #ifdef ENABLE_OLED
     #ifdef BOARD_HELTEC
     // Turn on display - time to show
+    Serial.println("DEBUG: Turning on display - time to show");
     pinMode(VEXT_PIN, OUTPUT);
     digitalWrite(VEXT_PIN, LOW);  // LOW = ON (intuitive!)
-    delay(50);
+    delay(100);  // Give display time to power up
+    #endif
+    
+    // Initialize I2C for OLED (if using custom pins, otherwise U8g2 handles it)
+    #ifdef OLED_SDA_PIN
+    #ifdef OLED_SCL_PIN
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+    if (debugEnabled) {
+        Serial.printf("DEBUG: I2C initialized with SDA=%d, SCL=%d\n", OLED_SDA_PIN, OLED_SCL_PIN);
+    }
+    #else
+    Wire.begin();
+    #endif
+    #else
+    Wire.begin();  // Use default I2C pins
     #endif
     
     // Initialize display
     display.begin();
+    if (debugEnabled) {
+        Serial.println("DEBUG: OLED display.begin() called");
+    }
     #endif
  
     // RFID reader
+    #ifdef ENABLE_RFID
     RFID_MFRC522_setup();
+    #endif
     
     // Print sensor PIN configuration
     Serial.printf("SENSOR_PIN: %.d \n", SENSOR_PIN);
@@ -574,6 +601,8 @@ void setup() {
     // 1000 clock cycles / 80,000,000 clock cycles per second = 0.0000125 seconds or 12.5 microseconds
     pcnt_set_filter_value(PCNT_UNIT, 1023); // wait number of clock cycles, max 1023 cycles definable
     pcnt_filter_enable(PCNT_UNIT);
+    // Start the PCNT counter so it can detect pulses
+    pcnt_counter_resume(PCNT_UNIT);
     
     // Set initial send time
     lastDataSendTime = millis();
@@ -612,9 +641,10 @@ void setup() {
  */
 void loop() {
 
-    
     // --- CALL RFID PROCESSING ---
+    #ifdef ENABLE_RFID
     RFID_MFRC522_loop_handler();
+    #endif
         
     if (configMode) {
         server.handleClient();
@@ -697,31 +727,109 @@ void loop() {
 
         // --- End configuration mode on timeout ---
         if (millis() - configModeStartTime >= configModeTimeout_sec * 1000) {
+            // Check if critical configurations are still missing
+            // Reload preferences to check current state (user might have saved config)
+            preferences.begin("bike-tacho", true); // Read-only mode
+            String currentWifiSsid = preferences.getString("wifi_ssid", "");
+            String currentDefaultIdTag = preferences.getString("default_id_tag", "");
+            if (currentDefaultIdTag.length() == 0) {
+                currentDefaultIdTag = preferences.getString("idTag", "");
+            }
+            // Check if DEFAULT_ID_TAG is available as fallback
+            #ifdef DEFAULT_ID_TAG
+            if (currentDefaultIdTag.length() == 0) {
+                currentDefaultIdTag = String(DEFAULT_ID_TAG);
+            }
+            #endif
+            float currentWheelSize = preferences.getFloat("wheel_size", 0.0);
+            unsigned int currentSendInterval = preferences.getUInt("sendInterval", 0);
+            preferences.end();
+            
+            // Check if critical configs are still missing
+            // Note: serverUrl and apiKey are not critical if DEFAULT values are available
+            bool stillMissingCritical = (
+                currentWifiSsid.length() == 0 ||
+                currentDefaultIdTag.length() == 0 ||
+                currentWheelSize == 0.0 ||
+                currentSendInterval == 0
+            );
+            
+            if (stillMissingCritical) {
+                // Critical configs still missing - reset timeout and stay in config mode
+                configModeStartTime = millis(); // Reset timeout timer
+                Serial.println("\nWARNING: Configuration mode timeout reached, but critical configurations still missing. Staying in config mode.");
+                
+                #ifdef ENABLE_OLED
+                display.clearBuffer();
+                display.setFont(u8g2_font_7x14_tf);
+                display.drawStr(20, 12, "Config Timeout");
+                display.drawStr(20, 28, "Bitte");
+                display.drawStr(20, 44, "konfigurieren!");
+                display.sendBuffer();
+                delay(3000);
+                #endif
+                
+                // Continue in config mode - don't exit
+                return; // Continue config mode loop
+            }
+            
+            // All critical configs are present - switch to normal operation
             // Reset static variables for next config mode entry
             idTagAtConfigStartInitialized = false;
             
-            configMode = false;
-            Serial.println("\nWARNING: Configuration mode timeout reached. Restart in 5 seconds.");
+            Serial.println("\nINFO: Configuration mode timeout reached. All critical configurations present. Switching to normal operation and connecting to server.");
             
-            // Set flag to signal that restart is an intended end of config mode
-            preferences.putBool("configExit", true);
-
             #ifdef ENABLE_OLED
             display.clearBuffer();
             display.setFont(u8g2_font_7x14_tf);
             display.drawStr(20, 12, "Config Timeout");
-            display.drawStr(20, 40, "Warmstart ...");
+            display.drawStr(20, 28, "Wechsel zu");
+            display.drawStr(20, 44, "Normalbetrieb");
             display.sendBuffer();
+            delay(2000);
             #endif
             
-            delay(3000);
-            ESP.restart();
-            return; // End loop
+            // Stop config server
+            server.stop();
+            if (debugEnabled) {
+                Serial.println("DEBUG: Config server stopped");
+            }
+            
+            // Disconnect WiFi AP
+            WiFi.softAPdisconnect(true);
+            if (debugEnabled) {
+                Serial.println("DEBUG: WiFi AP disconnected");
+            }
+            
+            // Switch WiFi mode to Station only
+            WiFi.mode(WIFI_STA);
+            
+            // End configuration mode
+            configMode = false;
+            
+            // Reload preferences to get latest values (user might have saved config)
+            preferences.begin("bike-tacho", false);
+            getPreferences();
+            preferences.end();
+            
+            // Connect to WiFi and start normal operation (this will also connect to server)
+            if (debugEnabled) {
+                Serial.println("DEBUG: Connecting to WiFi and starting normal operation...");
+            }
+            connectToWiFi();
+            
+            // Reset lastSentIdTag so the default_id_tag is recognized as new and counting starts immediately
+            lastSentIdTag = "";
+            
+            // Continue with normal operation (no restart needed)
+            return; // Exit config mode handling, continue with normal mode in next loop iteration
         }
 
         // Optional: Pulse detection in config mode for quick switch to normal mode
+        delay(1000);
+        Serial.println("DEBUG: Pulse detection in config mode");
         pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
-        if (currentPulseCount > 0 && !configModeForced) { // Only end if not forced by missing config
+        if (currentPulseCount > 0) { // Pulse detected - always allow exit from config mode
             // Reset static variables for next config mode entry
             idTagAtConfigStartInitialized = false;
             
@@ -777,7 +885,8 @@ void loop() {
         // ----------------------------------------------------------------------
         // MONITOR ID TAG CHANGE
         // ----------------------------------------------------------------------
-        // Checks if the currently loaded idTag (from Preferences/RFID) differs from the last sent/used tag.
+        // Checks if the currently loaded idTag (from Preferences/NVS or RFID detection) differs from the last sent/used tag.
+        // This works both with and without RFID: idTag can be loaded from NVS or detected via RFID.
         //if (idTag != lastSentIdTag && lastSentIdTag.length() > 0) {
         if (idTag.length() > 0 && idTag != lastSentIdTag) {
           
@@ -789,9 +898,11 @@ void loop() {
             // IMPORTANT CORRECTION: lastSentIdTag MUST be set to the new idTag immediately to end the infinite loop.
             lastSentIdTag = idTag;
 
-            // QUERY USER_ID AND DISPLAY
+            // QUERY USER_ID FROM SERVER AND DISPLAY ON OLED (if enabled)
+            // This works independently of RFID - the server is queried for any idTag
             username = getUserIdFromTag(idTag);
             
+            #ifdef ENABLE_OLED
             if (username.length() > 0 && username != "NULL") {
                 display_IdTag_Name(username.c_str());
             } else {
@@ -799,6 +910,7 @@ void loop() {
                 display_IdTag_Name("NULL");
             }
             delay(3000);
+            #endif
 
         }  
 
@@ -1531,6 +1643,21 @@ void getPreferences() {
     wifi_ssid = preferences.getString("wifi_ssid", "");
     wifi_password = preferences.getString("wifi_password", "");
     deviceName = preferences.getString("deviceName", "");
+    
+    // Fallback to build flag DEFAULT_DEVICE_NAME if NVS is empty
+    // Note: deviceIdSuffix is already generated in setup() before getPreferences() is called
+    #ifdef DEFAULT_DEVICE_NAME
+    if (deviceName.length() == 0) {
+        deviceName = String(DEFAULT_DEVICE_NAME);
+        // Write default device name to NVS so it's available on next startup
+        preferences.putString("deviceName", deviceName);
+        if (debugEnabled) {
+            Serial.print("DEBUG: Using build flag DEFAULT_DEVICE_NAME as fallback and saving to NVS: ");
+            Serial.println(deviceName);
+        }
+    }
+    #endif
+    
     // Load default_id_tag from NVS (set via Config-GUI or Server config)
     // This is the default that should NOT be overwritten by RFID tag detection
     String defaultIdTag = preferences.getString("default_id_tag", "");
@@ -1542,6 +1669,19 @@ void getPreferences() {
             preferences.putString("default_id_tag", defaultIdTag);
         }
     }
+    // Fallback to build flag DEFAULT_ID_TAG if NVS is empty
+    #ifdef DEFAULT_ID_TAG
+    if (defaultIdTag.length() == 0) {
+        defaultIdTag = String(DEFAULT_ID_TAG);
+        // Write default ID tag to NVS so it's available on next startup
+        preferences.putString("default_id_tag", defaultIdTag);
+        if (debugEnabled) {
+            Serial.print("DEBUG: Using build flag DEFAULT_ID_TAG as fallback and saving to NVS: ");
+            Serial.println(defaultIdTag);
+        }
+    }
+    #endif
+    
     idTag = defaultIdTag; // Start with default, RFID tags will override temporarily in RAM only
     
     // Reset lastSentIdTag on wakeup/startup to ensure default_id_tag is recognized as new
@@ -1557,6 +1697,15 @@ void getPreferences() {
         apiKey = "";  // Key doesn't exist, use empty string
     }
     sendInterval_sec = preferences.getUInt("sendInterval", 30);
+    // If sendInterval is 0 or not set, use default value of 30 seconds and save to NVS
+    if (sendInterval_sec == 0) {
+        sendInterval_sec = 30;
+        preferences.putUInt("sendInterval", sendInterval_sec);
+        if (debugEnabled) {
+            Serial.print("DEBUG: Using default sendInterval (30 seconds) and saving to NVS: ");
+            Serial.println(sendInterval_sec);
+        }
+    }
     ledEnabled = preferences.getBool("ledEnabled", true);
     // NVS key max length is 15 characters, so use shorter key
     deepSleepTimeout_sec = preferences.getUInt("deep_sleep", deepSleepTimeout_sec);
@@ -1583,8 +1732,10 @@ void getPreferences() {
     #ifdef DEFAULT_SERVER_URL
     if (serverUrl.length() == 0) {
         serverUrl = String(DEFAULT_SERVER_URL);
+        // Write default server URL to NVS so it's available on next startup
+        preferences.putString("serverUrl", serverUrl);
         if (debugEnabled) {
-            Serial.print("DEBUG: Using build flag DEFAULT_SERVER_URL as fallback: ");
+            Serial.print("DEBUG: Using build flag DEFAULT_SERVER_URL as fallback and saving to NVS: ");
             Serial.println(serverUrl);
         }
     }
@@ -1593,8 +1744,10 @@ void getPreferences() {
     #ifdef DEFAULT_API_KEY
     if (apiKey.length() == 0) {
         apiKey = String(DEFAULT_API_KEY);
+        // Write default API key to NVS so it's available on next startup
+        preferences.putString("apiKey", apiKey);
         if (debugEnabled) {
-            Serial.print("DEBUG: Using build flag DEFAULT_API_KEY as fallback: ");
+            Serial.print("DEBUG: Using build flag DEFAULT_API_KEY as fallback and saving to NVS: ");
             Serial.println(apiKey);
         }
     }
@@ -1721,10 +1874,10 @@ void play_tag_detected_tone() {
 
 #ifdef ENABLE_OLED
 /**
- * @brief Displays RFID tag name on OLED display.
+ * @brief Displays ID tag name on OLED display.
  * 
- * Shows a message indicating that an ID tag was recognized and displays the associated
- * username or "NULL" if no assignment found.
+ * Shows a message indicating that an ID tag was recognized (from RFID or NVS) and displays the associated
+ * username or "NULL" if no assignment found. Works independently of RFID - displays any idTag.
  * 
  * @param id_name Username string to display (or "NULL" if not found)
  * 
