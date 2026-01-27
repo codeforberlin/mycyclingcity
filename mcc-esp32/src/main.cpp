@@ -816,8 +816,6 @@ void loop() {
         }
 
         // Optional: Pulse detection in config mode for quick switch to normal mode
-        delay(1000);
-        Serial.println("DEBUG: Pulse detection in config mode");
         pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
         if (currentPulseCount > 0) { // Pulse detected - always allow exit from config mode
             // Reset static variables for next config mode entry
@@ -879,8 +877,9 @@ void loop() {
         // This works both with and without RFID: idTag can be loaded from NVS or detected via RFID.
         //if (idTag != lastSentIdTag && lastSentIdTag.length() > 0) {
         if (idTag.length() > 0 && idTag != lastSentIdTag) {
-          
-            Serial.println("DEBUG: play_tag_detected_tone ");
+            if (debugEnabled) {
+              Serial.println("DEBUG: play_tag_detected_tone ");
+            }
             play_tag_detected_tone(); // <-- CALL: 1x long
             
             resetDistanceCounters();
