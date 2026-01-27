@@ -57,7 +57,10 @@
 
 // OLED object
 // Use the new pin names defined by build flag:
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, OLED_RST_PIN);
+// Use 4-parameter constructor to explicitly specify RST, SCL, SDA
+// This works for both Heltec V3 (RST=21) and wemos_d1_mini32 (RST=-1)
+// U8G2 handles -1 for RST correctly (no reset pin)
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, OLED_RST_PIN, OLED_SCL_PIN, OLED_SDA_PIN);
 #endif
 
 #ifdef ENABLE_RFID
@@ -428,24 +431,11 @@ void setup() {
     Serial.println("DEBUG: Turning on display - time to show");
     pinMode(VEXT_PIN, OUTPUT);
     digitalWrite(VEXT_PIN, LOW);  // LOW = ON (intuitive!)
-    delay(100);  // Give display time to power up
-    #endif
-    
-    // Initialize I2C for OLED (if using custom pins, otherwise U8g2 handles it)
-    #ifdef OLED_SDA_PIN
-    #ifdef OLED_SCL_PIN
-    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-    if (debugEnabled) {
-        Serial.printf("DEBUG: I2C initialized with SDA=%d, SCL=%d\n", OLED_SDA_PIN, OLED_SCL_PIN);
-    }
-    #else
-    Wire.begin();
-    #endif
-    #else
-    Wire.begin();  // Use default I2C pins
+    delay(50);  // Give display time to power up (as in example code)
     #endif
     
     // Initialize display
+    // Note: U8G2 with 4-parameter constructor handles I2C initialization internally
     display.begin();
     if (debugEnabled) {
         Serial.println("DEBUG: OLED display.begin() called");
