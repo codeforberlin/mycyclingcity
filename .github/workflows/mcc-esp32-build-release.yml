@@ -87,7 +87,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pio-toolchains-
 
-      - name: Build all environments
+      - name: Build production environments
         env:
           FIRMWARE_VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -98,6 +98,7 @@ jobs:
           pio run -e heltec_wifi_lora_32_V2
           echo "Building for wemos_d1_mini32..."
           pio run -e wemos_d1_mini32
+          echo "Build completed for all production environments"
 
       - name: Prepare release artifacts
         id: artifacts
