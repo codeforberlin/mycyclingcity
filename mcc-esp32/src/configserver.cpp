@@ -36,24 +36,6 @@ String getAPPassword() {
     return password;
 }
 
-// Wheel sizes in inches and calculated circumference in cm
-struct WheelSize {
-    int inches;
-    float circumference_cm;
-};
-
-// Calculated wheel circumference (circumference = diameter * Pi).
-// 20 inches: 50.8 cm -> circumference ~ 159.6 cm
-// 24 inches: 60.96 cm -> circumference ~ 191.6 cm
-// 26 inches: 66.04 cm -> circumference ~ 207.5 cm
-// 28 inches: 71.12 cm -> circumference ~ 223.2 cm
-WheelSize wheel_sizes[] = {
-    {20, 159.6},
-    {24, 191.6},
-    {26, 207.5},
-    {28, 223.2}
-};
-
 // HTML configuration form
 const char* HTML_FORM = R"rawliteral(
 <!DOCTYPE html>
@@ -87,13 +69,9 @@ const char* HTML_FORM = R"rawliteral(
   <input type="text" id="idTag" name="idTag" value="%IDTAG%" required>
 
   <h2>Fahrrad-Einstellungen</h2>
-  <label for="wheelSizeDropdown">Radgröße:</label>
-  <select name='wheelSizeDropdown' id='wheelSizeDropdown'>
-    %WHEELSIZES_OPTIONS%
-  </select>
-
-  <label for="wheel_size">Manuelle Eingabe (cm):</label>
-  <input type="number" id="wheel_size" name="wheel_size" step="0.1" value="%WHEELSIZE%">
+  <label for="wheel_size">Radumfang (mm):</label>
+  <input type="number" id="wheel_size" name="wheel_size" step="1" min="500" max="3000" value="%WHEELSIZE%" required>
+  <small>Radumfang in Millimeter (500-3000 mm). Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden (z.B. Sigma).</small>
 
   <label for="serverUrl">Webserver-URL (mit http:// oder https://):</label>
   <input type="text" id="serverUrl" name="serverUrl" value="%SERVERURL%">
@@ -178,43 +156,8 @@ void handleRoot() {
   Serial.print("Loaded wheel circumference for display: ");
   Serial.println(currentWheelSize, 1);
   
-  String wheelSizeOptions = "";
-  bool matchFound = false;
-
-  // Wheel sizes in inches and calculated circumference in cm
-  struct WheelSize {
-      int inches;
-      float circumference_cm;
-  };
-
-  WheelSize wheel_sizes[] = {
-      {20, 159.6},
-      {24, 191.6},
-      {26, 207.5},
-      {28, 223.2}
-  };
-
-  for (const auto& size : wheel_sizes) {
-      String selected = "";
-      if (abs(currentWheelSize - size.circumference_cm) < 0.1) {
-          selected = "selected";
-          matchFound = true;
-          Serial.printf("Match found! %s inches selected.\n", String(size.inches).c_str());
-      }
-      wheelSizeOptions += "<option value='" + String(size.circumference_cm) + "' " + selected + ">" + String(size.inches) + " Zoll (" + String(size.circumference_cm, 1) + " cm)</option>";
-  }
-
-  String manualValue = "";
-  if (!matchFound) {
-      wheelSizeOptions += "<option value='manual' selected>Manuelle Auswahl</option>";
-      manualValue = String(currentWheelSize);
-      Serial.println("Saved value is a manual entry. Menu item 'Manual selection' will be selected.");
-  } else {
-      wheelSizeOptions += "<option value='manual'>Manuelle Auswahl</option>";
-  }
-
-  html.replace("%WHEELSIZES_OPTIONS%", wheelSizeOptions);
-  html.replace("%WHEELSIZE%", manualValue);
+  // Display current wheel size in mm (no dropdown, only manual input)
+  html.replace("%WHEELSIZE%", String(currentWheelSize, 1));
   
   html.replace("%LEDCHECKED%", preferences.getBool("ledEnabled", true) ? "checked" : "");
   html.replace("%DEBUG_ENABLED%", preferences.getBool("debugEnabled", false) ? "checked" : "");
@@ -266,17 +209,19 @@ void handleSave() {
     idTag = newDefaultTag; // Update global variable
   }
   
-  // Correctly accept wheel circumference: manual entry takes priority
-  if (server.hasArg("wheelSizeDropdown") && server.arg("wheelSizeDropdown") == "manual") {
-      if (server.hasArg("wheel_size") && server.arg("wheel_size").length() > 0) {
-          float customSize = server.arg("wheel_size").toFloat();
-          preferences.putFloat("wheel_size", customSize);
-          wheel_size = customSize;
+  // Accept wheel circumference in millimeters (500-3000 mm)
+  if (server.hasArg("wheel_size") && server.arg("wheel_size").length() > 0) {
+      float newSizeMm = server.arg("wheel_size").toFloat();
+      // Validate range: 500-3000 mm
+      if (newSizeMm >= 500.0 && newSizeMm <= 3000.0) {
+          preferences.putFloat("wheel_size", newSizeMm);
+          wheel_size = newSizeMm;
+          if (debugEnabled) {
+              Serial.printf("DEBUG: Wheel size updated to: %.1f mm\n", newSizeMm);
+          }
+      } else {
+          Serial.printf("WARNING: Wheel size out of valid range (%.1f mm, expected 500-3000 mm), keeping current value\n", newSizeMm);
       }
-  } else if (server.hasArg("wheelSizeDropdown")) {
-      float dropdownSize = server.arg("wheelSizeDropdown").toFloat();
-      preferences.putFloat("wheel_size", dropdownSize);
-      wheel_size = dropdownSize;
   }
 
   if (server.hasArg("serverUrl")) {

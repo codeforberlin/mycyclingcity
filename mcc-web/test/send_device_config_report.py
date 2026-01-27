@@ -107,14 +107,14 @@ def create_modified_config(base_config: dict) -> dict:
         modified['deep_sleep_seconds'] = modified.get('deep_sleep_seconds', 300) - 50  # -50 seconds
     
     if 'wheel_size' in modified:
-        # Change wheel size (e.g., 26 -> 28)
-        current_size = modified.get('wheel_size', 26)
-        if current_size == 26:
-            modified['wheel_size'] = 28
-        elif current_size == 28:
-            modified['wheel_size'] = 24
+        # Change wheel size (in mm): 2075 (26") -> 2232 (28") -> 1916 (24") -> 2075 (26")
+        current_size = modified.get('wheel_size', 2075.0)
+        if abs(current_size - 2075.0) < 10:  # 26 Zoll = 2075 mm
+            modified['wheel_size'] = 2232.0  # 28 Zoll = 2232 mm
+        elif abs(current_size - 2232.0) < 10:  # 28 Zoll = 2232 mm
+            modified['wheel_size'] = 1916.0  # 24 Zoll = 1916 mm
         else:
-            modified['wheel_size'] = 26
+            modified['wheel_size'] = 2075.0  # 26 Zoll = 2075 mm
     
     return modified
 
@@ -338,7 +338,7 @@ def main():
             'debug_mode': False,
             'test_mode': False,
             'deep_sleep_seconds': 300,
-            'wheel_size': 26,
+            'wheel_size': 2075.0,  # 26 Zoll = 2075 mm
             'device_api_key': '',
         }
     

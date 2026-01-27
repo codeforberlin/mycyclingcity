@@ -2603,12 +2603,12 @@ msgid "Zeit in Sekunden für Deep-Sleep-Modus (0 = deaktiviert)"
 msgstr "Time in seconds for deep sleep mode (0 = disabled)"
 
 #: iot/models.py:208
-msgid "Radgröße (Zoll)"
-msgstr "Wheel Size (Inches)"
+msgid "Radumfang (mm)"
+msgstr "Wheel Circumference (mm)"
 
 #: iot/models.py:209
-msgid "Radgröße in Zoll für Distanzberechnung"
-msgstr "Wheel size in inches for distance calculation"
+msgid "Radumfang in Millimeter für Distanzberechnung. Gültiger Bereich: 500-3000 mm. Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden (z.B. Sigma)."
+msgstr "Wheel circumference in millimeters for distance calculation. Valid range: 500-3000 mm. Standard tachometer values can be taken from manufacturer tables (e.g. Sigma)."
 
 #: iot/models.py:219
 msgid "Zugewiesene Firmware"
@@ -4185,7 +4185,7 @@ msgstr ""
 #: mgmt/admin.py:3077
 msgid ""
 "JSON-Objekt mit Konfigurationswerten. Beispiel: {'send_interval_seconds': "
-"60, 'wheel_size': 26}"
+"60, 'wheel_size': 2075.0}"
 msgstr ""
 
 #: mgmt/admin.py:3094

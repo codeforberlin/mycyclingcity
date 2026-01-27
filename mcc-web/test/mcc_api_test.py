@@ -76,7 +76,7 @@ parser.add_argument("--loop", action="store_true", help="Continuously sends test
 # NEW: Option to test the get-user-id endpoint
 parser.add_argument("--get-user-id", action="store_true", help="Tests the /api/get-user-id endpoint with the specified --id_tag.")
 # --- Parameters for realistic simulation ---
-parser.add_argument("--wheel-size", type=int, choices=[20, 24, 26, 28], help="The wheel size in inches (20, 24, 26, 28).")
+parser.add_argument("--wheel-size", type=float, help="The wheel circumference in millimeters (mm). Valid range: 500-3000 mm. Common values: 1596 (20\"), 1916 (24\"), 2075 (26\"), 2232 (28\").")
 parser.add_argument("--speed", type=float, help="A fixed speed in km/h for the simulation.")
 parser.add_argument("--test-data-file", type=str, help="Path to a JSON file with lists of devices and id_tags for automated tests.")
 parser.add_argument("--cyclist-duration", type=int, help="Duration a cyclist stays on a device in seconds. Overrides the value in the configuration file.")
@@ -228,19 +228,21 @@ def get_simulated_distance(interval_seconds, wheel_size=None, speed=None):
         simulated_speed = speed
         print(f"Simulating with fixed speed: {simulated_speed} km/h")
     elif wheel_size is not None:
-        if wheel_size == 20:
+        # wheel_size is now in mm (circumference)
+        # Map common wheel sizes to speed ranges
+        if abs(wheel_size - 1596.0) < 10:  # 20 Zoll = 1596 mm
             speed_min, speed_max = 8, 15
-        elif wheel_size == 24:
+        elif abs(wheel_size - 1916.0) < 10:  # 24 Zoll = 1916 mm
             speed_min, speed_max = 10, 18
-        elif wheel_size == 26:
+        elif abs(wheel_size - 2075.0) < 10:  # 26 Zoll = 2075 mm
             speed_min, speed_max = 12, 22
-        elif wheel_size == 28:
+        elif abs(wheel_size - 2232.0) < 10:  # 28 Zoll = 2232 mm
             speed_min, speed_max = 15, 25
         else:
             speed_min, speed_max = 10, 25 
             
         simulated_speed = random.uniform(speed_min, speed_max)
-        print(f"Simulating with wheel size {wheel_size} inches. Random speed: {simulated_speed:.2f} km/h")
+        print(f"Simulating with wheel size {wheel_size} mm. Random speed: {simulated_speed:.2f} km/h")
     else:
         simulated_speed = random.uniform(10, 25)
         print(f"Simulating with random speed: {simulated_speed:.2f} km/h")
@@ -440,7 +442,7 @@ def load_extended_test_data(file_path):
         "devices": [
             {
                 "device_id": "mcc-demo01",
-                "wheel_size": 26
+                "wheel_size": 2075.0  # 26 Zoll = 2075 mm
             },
             ...
         ],
@@ -493,8 +495,15 @@ def load_extended_test_data(file_path):
             if 'wheel_size' not in device:
                 print(f"❌ Error: devices[{i}] must contain 'wheel_size'.")
                 return None
-            if device['wheel_size'] not in [20, 24, 26, 28]:
-                print(f"❌ Error: devices[{i}]['wheel_size'] must be 20, 24, 26, or 28.")
+            # wheel_size is now in mm (circumference), validate range 500-3000 mm
+            try:
+                wheel_size_mm = float(device['wheel_size'])
+                if wheel_size_mm < 500.0 or wheel_size_mm > 3000.0:
+                    print(f"❌ Error: devices[{i}]['wheel_size'] must be between 500 and 3000 mm (got {wheel_size_mm} mm).")
+                    return None
+            except (ValueError, TypeError):
+                print(f"❌ Error: devices[{i}]['wheel_size'] must be a number (in mm).")
+                return None
                 return None
         
         return {

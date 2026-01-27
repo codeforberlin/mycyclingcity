@@ -20,19 +20,19 @@
   "devices": [
     {
       "device_id": "mcc-demo01",
-      "wheel_size": 26
+      "wheel_size": 2075.0
     },
     {
       "device_id": "mcc-test-001",
-      "wheel_size": 24
+      "wheel_size": 1916.0
     },
     {
       "device_id": "mcc-test-002",
-      "wheel_size": 28
+      "wheel_size": 2232.0
     },
     {
       "device_id": "mcc-test-003",
-      "wheel_size": 20
+      "wheel_size": 1596.0
     }
   ],
   "device_switch_interval": 60,

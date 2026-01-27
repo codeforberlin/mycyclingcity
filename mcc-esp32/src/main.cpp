@@ -127,7 +127,7 @@ String deviceName = "";
 String idTag = "";        // uid from RFID tag
 String username ="";      // internal symbolic name from admin database
 String lastSentIdTag = "";
-float wheel_size = 210.0;
+float wheel_size = 2075.0;  // Default: 26 Zoll = 2075 mm circumference
 String serverUrl = "";
 String apiKey = "";
 unsigned int sendInterval_sec = 30;
@@ -146,8 +146,8 @@ const char* textline="";
 // Counter and distance
 int16_t currentPulseCount = 0;
 int16_t lastPulseCount = 0;
-float totalDistance_cm = 0;       // total distance traveled for current user since start or wakeup
-float distanceInInterval_cm = 0; // distance traveled between two send cycles
+float totalDistance_mm = 0;       // total distance traveled for current user since start or wakeup (in mm)
+float distanceInInterval_mm = 0; // distance traveled between two send cycles (in mm)
 int16_t pulsesAtLastSend = 0; // stores counter value at last send
 
 // Timer for data transmission
@@ -180,7 +180,7 @@ void connectToWiFi();
  * Handles both test mode (simulated data) and normal mode (real measurements).
  * 
  * @param currentSpeed_kmh Current speed in kilometers per hour
- * @param distanceInInterval_cm Distance traveled in the interval in centimeters
+ * @param distanceInInterval_mm Distance traveled in the interval in millimeters
  * @param pulsesInInterval Number of pulses detected in the interval
  * @param isTest If true, sends simulated test data instead of real measurements
  * @return HTTP status code on success (>0), -1 on WiFi error, -2 on configuration error
@@ -188,7 +188,7 @@ void connectToWiFi();
  * @note Hardware interaction: LED_PIN (blinks during transmission)
  * @note Side effects: Sends HTTP request, controls LED, writes to Serial
  */
-int  sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pulsesInInterval, bool isTest);
+int  sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pulsesInInterval, bool isTest);
 
 /**
  * @brief Displays all configuration values stored in NVS to Serial output.
@@ -403,7 +403,7 @@ void setup() {
         wifi_ssid.length() == 0 ||
         // wifi_password.length() == 0 || // Password can be empty, e.g. for Freifunk
         defaultIdTagCheck.length() == 0 ||
-        wheel_size == 0.0 ||
+        wheel_size < 500.0 || wheel_size > 3000.0 ||  // Valid range: 500-3000 mm
         sendInterval_sec == 0 ||
         serverUrlCritical ||
         apiKeyCritical
@@ -731,7 +731,7 @@ void loop() {
                 currentDefaultIdTag = String(DEFAULT_ID_TAG);
             }
             #endif
-            float currentWheelSize = preferences.getFloat("wheel_size", 0.0);
+            float currentWheelSize = preferences.getFloat("wheel_size", 2075.0);  // Default: 26 Zoll = 2075 mm
             unsigned int currentSendInterval = preferences.getUInt("sendInterval", 0);
             preferences.end();
             
@@ -941,10 +941,11 @@ void loop() {
 
             if (currentPulseCount != lastPulseCount) {
             // Total distance is still updated, but not sent
-            totalDistance_cm = (float)currentPulseCount * wheel_size;
+            // wheel_size is in mm, so result is in mm
+            totalDistance_mm = (float)currentPulseCount * wheel_size;
 
             if (debugEnabled) {
-              Serial.printf("DEBUG: Pulse detected! currentPulseCount: %d | totalDistance_cm: %2f cm\n", currentPulseCount, totalDistance_cm);
+              Serial.printf("DEBUG: Pulse detected! currentPulseCount: %d | totalDistance_mm: %.1f mm\n", currentPulseCount, totalDistance_mm);
             }
             lastPulseCount = currentPulseCount;
             lastPulseTime = millis(); // Update the timestamp of the last pulse for Deep Sleep
@@ -1006,20 +1007,21 @@ void loop() {
             // Calculate distance traveled and speed in last interval
             //pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
             int16_t pulsesInInterval = currentPulseCount - pulsesAtLastSend;
-            distanceInInterval_cm = (float)pulsesInInterval * wheel_size;
+            // wheel_size is in mm, so result is in mm
+            distanceInInterval_mm = (float)pulsesInInterval * wheel_size;
             if (debugEnabled) {
-              Serial.printf("DEBUG: pulsesInInterval: %d | distanceInInterval_cm: %2f cm\n", pulsesInInterval, distanceInInterval_cm);
+              Serial.printf("DEBUG: pulsesInInterval: %d | distanceInInterval_mm: %.1f mm\n", pulsesInInterval, distanceInInterval_mm);
             }
-            // Convert speed from cm/s to km/h
-            speed_kmh = (distanceInInterval_cm / (float)sendInterval_sec) * (3600.0 / 100000.0);
+            // Convert speed from mm/s to km/h: (mm/s) * (3600 s/h) / (1000000 mm/km) = (mm/s) * 0.0036
+            speed_kmh = (distanceInInterval_mm / (float)sendInterval_sec) * 0.0036;
             
             // Send data only if distance has changed
-            if (distanceInInterval_cm > 0) {
+            if (distanceInInterval_mm > 0) {
               if (debugEnabled) {
                 Serial.println("DEBUG: Sending real data after interval elapsed.");
               }             
 
-              int responseCode =  sendDataToServer(speed_kmh, distanceInInterval_cm, pulsesInInterval, false);
+              int responseCode =  sendDataToServer(speed_kmh, distanceInInterval_mm, pulsesInInterval, false);
               
               if (responseCode > 0 && responseCode < 300) { // HTTP status codes 2xx are usually successful
                     lastDataSendTime = millis();
@@ -1335,7 +1337,7 @@ void connectToWiFi() {
  * Handles both test mode (simulated data) and normal mode (real measurements).
  * 
  * @param currentSpeed_kmh Current speed in kilometers per hour
- * @param distanceInInterval_cm Distance traveled in the interval in centimeters
+ * @param distanceInInterval_mm Distance traveled in the interval in millimeters
  * @param pulsesInInterval Number of pulses detected in the interval
  * @param isTest If true, sends simulated test data instead of real measurements
  * @return HTTP status code on success (>0), -1 on WiFi error, -2 on configuration error
@@ -1343,7 +1345,7 @@ void connectToWiFi() {
  * @note Hardware interaction: LED_PIN (blinks during transmission)
  * @note Side effects: Sends HTTP request, controls LED, writes to Serial
  */
-int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pulsesInInterval, bool isTest) {
+int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pulsesInInterval, bool isTest) {
   if (serverUrl.length() == 0 || wifi_ssid.length() == 0) {
     if (debugEnabled) {
       Serial.println("DEBUG: Error: Server URL or WiFi SSID is not configured.");
@@ -1371,7 +1373,7 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pu
     snprintf(distanceStr, sizeof(distanceStr), "%.2f", testDistance);
     doc["distance"] = distanceStr;
   } else {
-      float distanceInInterval_km = distanceInInterval_cm / 100000.0;
+      float distanceInInterval_km = distanceInInterval_mm / 1000000.0;  // Convert mm to km
       if (debugEnabled) {
         Serial.println("DEBUG: Sending real data.");
         Serial.printf("DEBUG: Speed: %.2f km/h, Distance: %.6f km, Pulses: %d\n", currentSpeed_kmh, distanceInInterval_km, pulsesInInterval);
@@ -1422,7 +1424,7 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_cm, int pu
     }
 
     // Display current wheel circumference in log
-    Serial.printf("Wheel circumference: %.2f cm\n", wheel_size);
+    Serial.printf("Wheel circumference: %.1f mm\n", wheel_size);
 
     Serial.println("Sending JSON data:");
     Serial.println(jsonPayload);
@@ -1566,7 +1568,7 @@ void displayNVSConfig() {
     Serial.printf("WiFi password: %s\n", preferences.getString("wifi_password", "").c_str());
     Serial.printf("Device name: %s\n", (preferences.getString("deviceName", "") + deviceIdSuffix).c_str());
     Serial.printf("ID Tag: %s\n", preferences.getString("idTag", "").c_str());
-    Serial.printf("Wheel size: %.2f cm\n", preferences.getFloat("wheel_size", 210.0));
+    Serial.printf("Wheel size: %.1f mm\n", preferences.getFloat("wheel_size", 2075.0));
     Serial.printf("Server URL: %s\n", preferences.getString("serverUrl", "").c_str());
     Serial.printf("API Key: %s\n", preferences.getString("apiKey", "").c_str());
     Serial.printf("Send interval: %d s\n", preferences.getUInt("sendInterval", 30));
@@ -1677,7 +1679,7 @@ void getPreferences() {
     // This is important after deep sleep wakeup, as the default_id_tag should be used
     // even if a different RFID tag was used before deep sleep
     lastSentIdTag = "";
-    wheel_size = preferences.getFloat("wheel_size", 210.0);
+    wheel_size = preferences.getFloat("wheel_size", 2075.0);  // Default: 26 Zoll = 2075 mm
     serverUrl = preferences.getString("serverUrl", "");
     // Check if apiKey exists in NVS before reading to avoid error log
     if (preferences.isKey("apiKey")) {
@@ -1789,8 +1791,8 @@ void getPreferences() {
  */
 void resetDistanceCounters() {
     // Reset all distance and pulse counters to zero
-    totalDistance_cm = 0;
-    distanceInInterval_cm = 0;
+    totalDistance_mm = 0;
+    distanceInInterval_mm = 0;
     pulsesAtLastSend = 0;
     lastPulseCount = 0;
     currentPulseCount = 0; // Also reset current counter value
@@ -1933,7 +1935,7 @@ void display_Data() {
         display.drawStr(0, 44,  "Impulse:");  // 
         display.drawStr(70, 44, String(currentPulseCount).c_str() );  // 
         display.drawStr(0, 60,  "Distanz:");  //
-        display.drawStr(70, 60, String(totalDistance_cm/100000).c_str() );  // distance in kilometer
+        display.drawStr(70, 60, String(totalDistance_mm/1000000).c_str() );  // distance in kilometer (mm to km)
         display.sendBuffer();     
 
 }

@@ -113,7 +113,7 @@ class DeviceFactory(factory.django.DjangoModelFactory):
                 'debug_mode': False,
                 'test_mode': False,
                 'deep_sleep_seconds': 0,
-                'wheel_size': 26,
+                'wheel_size': 2075.0,  # 26 Zoll = 2075 mm
             }
         )
         

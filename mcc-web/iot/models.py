@@ -195,18 +195,14 @@ class DeviceConfiguration(models.Model):
     )
     
     # Hardware configuration
-    WHEEL_SIZE_CHOICES = [
-        (20, '20 Zoll'),
-        (24, '24 Zoll'),
-        (26, '26 Zoll'),
-        (28, '28 Zoll'),
-    ]
-    
-    wheel_size = models.IntegerField(
-        choices=WHEEL_SIZE_CHOICES,
-        default=26,
-        verbose_name=_("Radgröße (Zoll)"),
-        help_text=_("Radgröße in Zoll für Distanzberechnung")
+    wheel_size = models.FloatField(
+        default=2075.0,  # 26 Zoll Standard = 2075 mm
+        verbose_name=_("Radumfang (mm)"),
+        help_text=_("Radumfang in Millimeter für Distanzberechnung. Gültiger Bereich: 500-3000 mm. Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden (z.B. Sigma)."),
+        validators=[
+            MinValueValidator(500.0, message=_("Radumfang muss mindestens 500 mm betragen")),
+            MaxValueValidator(3000.0, message=_("Radumfang darf maximal 3000 mm betragen"))
+        ]
     )
     
     # Firmware management

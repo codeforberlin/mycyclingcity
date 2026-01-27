@@ -35,36 +35,6 @@ extern unsigned int configFetchInterval_sec;
 extern unsigned long lastConfigFetchTime;
 extern Preferences preferences;
 
-/**
- * @brief Converts wheel size from inches to circumference in cm.
- * 
- * The server sends wheel_size as inches (20, 24, 26, 28), but the device
- * needs circumference in cm for distance calculations.
- * 
- * @param inches Wheel size in inches
- * @return Circumference in cm, or 0.0 if invalid size
- */
-float convertWheelSizeInchesToCircumference(float inches) {
-    // Wheel size conversion table: inches -> circumference in cm
-    // Formula: circumference = diameter * Pi
-    // 20 inches: 50.8 cm diameter -> ~159.6 cm circumference
-    // 24 inches: 60.96 cm diameter -> ~191.6 cm circumference
-    // 26 inches: 66.04 cm diameter -> ~207.5 cm circumference
-    // 28 inches: 71.12 cm diameter -> ~223.2 cm circumference
-    
-    if (fabs(inches - 20.0) < 0.1) {
-        return 159.6;
-    } else if (fabs(inches - 24.0) < 0.1) {
-        return 191.6;
-    } else if (fabs(inches - 26.0) < 0.1) {
-        return 207.5;
-    } else if (fabs(inches - 28.0) < 0.1) {
-        return 223.2;
-    }
-    
-    // Invalid size, return 0
-    return 0.0;
-}
 
 // Internal state variables
 static unsigned long lastHeartbeatTime = 0;
@@ -442,33 +412,27 @@ bool fetchDeviceConfig() {
                     }
                     
                     if (config.containsKey("wheel_size")) {
-                        float newSizeInches = config["wheel_size"].as<float>();
-                        // Server sends wheel_size in inches, convert to circumference in cm
-                        // Only update if server provides a real (non-zero) value
-                        if (newSizeInches > 0) {
-                            float newSizeCircumference = convertWheelSizeInchesToCircumference(newSizeInches);
-                            if (newSizeCircumference > 0) {
+                        float newSizeMm = config["wheel_size"].as<float>();
+                        // Server sends wheel_size directly in millimeters (circumference)
+                        // Only update if server provides a valid value (500-3000 mm)
+                        if (newSizeMm >= 500.0 && newSizeMm <= 3000.0) {
+                            if (debugEnabled) {
+                                Serial.printf("DEBUG: [Config Update] wheel_size from server: %.1f mm, current: %.1f mm\n", 
+                                    newSizeMm, wheel_size);
+                            }
+                            if (abs(newSizeMm - wheel_size) > 1.0) {  // 1mm tolerance for comparison
+                                preferences.putFloat("wheel_size", newSizeMm);
+                                wheel_size = newSizeMm;  // Update global variable immediately
+                                configChanged = true;
                                 if (debugEnabled) {
-                                    Serial.printf("DEBUG: [Config Update] wheel_size from server: %.1f inches (%.1f cm), current: %.1f cm\n", 
-                                        newSizeInches, newSizeCircumference, wheel_size);
-                                }
-                                if (abs(newSizeCircumference - wheel_size) > 0.1) {  // Use abs() for float comparison
-                                    preferences.putFloat("wheel_size", newSizeCircumference);
-                                    wheel_size = newSizeCircumference;  // Update global variable immediately
-                                    configChanged = true;
-                                    if (debugEnabled) {
-                                        Serial.printf("DEBUG: [Config Update] wheel_size updated to: %.1f cm (from %.1f inches)\n", 
-                                            newSizeCircumference, newSizeInches);
-                                    }
-                                } else if (debugEnabled) {
-                                    Serial.println("DEBUG: [Config Update] wheel_size unchanged, no update needed");
+                                    Serial.printf("DEBUG: [Config Update] wheel_size updated to: %.1f mm\n", newSizeMm);
                                 }
                             } else if (debugEnabled) {
-                                Serial.printf("DEBUG: [Config Update] wheel_size from server is invalid (%.1f inches), ignoring (preserving device value)\n", 
-                                    newSizeInches);
+                                Serial.println("DEBUG: [Config Update] wheel_size unchanged, no update needed");
                             }
                         } else if (debugEnabled) {
-                            Serial.println("DEBUG: [Config Update] wheel_size from server is 0, ignoring (preserving device value)");
+                            Serial.printf("DEBUG: [Config Update] wheel_size from server is out of valid range (%.1f mm, expected 500-3000 mm), ignoring (preserving device value)\n", 
+                                newSizeMm);
                         }
                     }
                     

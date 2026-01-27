@@ -2133,7 +2133,7 @@ def device_config_report(request: HttpRequest) -> JsonResponse:
                 'debug_mode': reported_config.get('debug_mode', False),
                 'test_mode': reported_config.get('test_mode', False),
                 'deep_sleep_seconds': reported_config.get('deep_sleep_seconds', 0),
-                'wheel_size': reported_config.get('wheel_size', 26),
+                'wheel_size': reported_config.get('wheel_size', 2075.0),  # Default: 26 Zoll = 2075 mm
             }
         )
         
@@ -2165,7 +2165,37 @@ def device_config_report(request: HttpRequest) -> JsonResponse:
                     continue
                     
                 device_value = reported_config.get(key)
-                # Convert to strings for comparison
+                
+                # Special handling for wheel_size: compare with 1mm tolerance
+                if key == 'wheel_size':
+                    try:
+                        server_float = float(server_value) if server_value is not None else 0.0
+                        device_float = float(device_value) if device_value is not None else 0.0
+                        # Compare with 1mm tolerance
+                        if abs(server_float - device_float) > 1.0:
+                            diff_info = {
+                                'field': key,
+                                'server_value': str(server_value) if server_value is not None else '',
+                                'device_value': str(device_value) if device_value is not None else ''
+                            }
+                            differences.append(diff_info)
+                            
+                            # Create diff record
+                            DeviceConfigurationDiff.objects.create(
+                                device=device,
+                                report=report,
+                                field_name=key,
+                                server_value=str(server_float),
+                                device_value=str(device_float),
+                                is_resolved=False
+                            )
+                        # If within tolerance, no difference
+                        continue
+                    except (ValueError, TypeError):
+                        # If conversion fails, fall through to string comparison
+                        pass
+                
+                # Convert to strings for comparison (default for other fields)
                 server_str = str(server_value) if server_value is not None else ''
                 device_str = str(device_value) if device_value is not None else ''
                 
@@ -2290,7 +2320,7 @@ def device_config_fetch(request: HttpRequest) -> JsonResponse:
                 'debug_mode': False,
                 'test_mode': False,
                 'deep_sleep_seconds': 0,
-                'wheel_size': 26,
+                'wheel_size': 2075.0,  # Default: 26 Zoll = 2075 mm
                 'config_fetch_interval_seconds': 3600,
             }
             return JsonResponse({

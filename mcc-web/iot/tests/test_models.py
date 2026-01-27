@@ -95,7 +95,7 @@ class TestDeviceConfiguration:
         
         assert config.device == device
         assert config.send_interval_seconds == 60
-        assert config.wheel_size == 26
+        assert config.wheel_size == 2075.0  # 26 Zoll = 2075 mm
         assert config.debug_mode is False
     
     def test_configuration_one_to_one_relationship(self):

@@ -101,11 +101,11 @@ Create an extended JSON file (`test_data_extended.json`):
   "devices": [
     {
       "device_id": "mcc-demo01",
-      "wheel_size": 26
+      "wheel_size": 2075.0
     },
     {
       "device_id": "mcc-test-001",
-      "wheel_size": 24
+      "wheel_size": 1916.0
     }
   ],
   "device_switch_interval": 60,
@@ -270,7 +270,7 @@ python mcc_api_test.py --id_tag rfid001 --device mcc-demo01 --distance 1.0
 ### Example 2: Continuous Simulation
 
 ```bash
-python mcc_api_test.py --loop --id_tag rfid001 --device mcc-demo01 --wheel-size 26 --interval 5
+python mcc_api_test.py --loop --id_tag rfid001 --device mcc-demo01 --wheel-size 2075.0 --interval 5
 ```
 
 ### Example 3: Full Functional Test
