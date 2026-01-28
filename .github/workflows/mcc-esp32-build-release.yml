@@ -138,7 +138,6 @@ jobs:
 
       - name: Generate release notes
         id: release_notes
-        if: github.event_name != 'workflow_dispatch' || github.ref_type == 'tag'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           NOTES_FILE="release_notes.md"
