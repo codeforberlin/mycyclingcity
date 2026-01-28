@@ -129,12 +129,21 @@ jobs:
           done
           
           # List all artifacts
-          echo "Release artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           ls -lh "$RELEASE_DIR" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           
           # Count artifacts
           ARTIFACT_COUNT=$(find "$RELEASE_DIR" -type f | wc -l)
           echo "artifact_count=$ARTIFACT_COUNT" >> $GITHUB_OUTPUT
+          echo "Total files created: $ARTIFACT_COUNT"
+          
+          if [ "$ARTIFACT_COUNT" -eq 0 ]; then
+            echo "ERROR: No release artifacts created!"
+            exit 1
+          fi
 
       - name: Generate release notes
         id: release_notes
@@ -195,6 +204,14 @@ jobs:
           # Output notes for GitHub step summary
           cat "$NOTES_FILE" >> $GITHUB_STEP_SUMMARY
 
+      - name: Verify release artifacts
+        run: |
+          echo "Checking release artifacts..."
+          ls -lah release/ || echo "Release directory not found"
+          find release/ -type f || echo "No files found in release directory"
+          echo "Files to upload:"
+          find release/ -type f -name "*.bin" -o -name "*.md5" -o -name "*.sha256" || echo "No matching files found"
+
       - name: Create GitHub Release
         if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
         uses: softprops/action-gh-release@v1
@@ -210,6 +227,7 @@ jobs:
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
 
       - name: Upload nightly build artifacts
         if: github.ref_type != 'tag' && github.ref == 'refs/heads/main'
