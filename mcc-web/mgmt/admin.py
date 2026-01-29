@@ -10,6 +10,7 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django import forms
 from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
@@ -553,6 +554,209 @@ class MilestoneAdminForm(forms.ModelForm):
             'description': LimitedDescriptionWidget()
         }
 
+class WheelSizeWidget(forms.NumberInput):
+    """Custom widget for wheel size selection with preset checkboxes."""
+    
+    def __init__(self, attrs=None):
+        default_attrs = {'step': '1', 'min': '500', 'max': '3000'}
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(default_attrs)
+    
+    def render(self, name, value, attrs=None, renderer=None):
+        """Render the widget with preset dropdown and manual input."""
+        if renderer is None:
+            renderer = forms.renderers.get_default_renderer()
+        
+        # Get widget ID first (needed for labels and JavaScript)
+        widget_id = attrs.get('id', name) if attrs else name
+        if not widget_id:
+            widget_id = f"id_{name}"
+        
+        # Ensure attrs has the correct ID
+        if attrs is None:
+            attrs = {}
+        if 'id' not in attrs:
+            attrs['id'] = widget_id
+        
+        # Get the base HTML from parent (NumberInput)
+        number_input_html = super().render(name, value, attrs, renderer)
+        
+        # Wheel size presets (inches -> mm)
+        presets = [
+            {'inches': 20, 'mm': 1590},
+            {'inches': 24, 'mm': 1910},
+            {'inches': 26, 'mm': 2075},
+            {'inches': 28, 'mm': 2224},
+            {'inches': 29, 'mm': 2300},
+        ]
+        
+        # Determine which preset is selected (with 5mm tolerance)
+        current_value = float(value) if value else 2075.0
+        current_size_int = int(current_value + 0.5)
+        selected_preset = None
+        for preset in presets:
+            if abs(current_size_int - preset['mm']) <= 5:
+                selected_preset = preset
+                break
+        
+        # Generate preset selection HTML (dropdown select)
+        select_id = f"wheel_size_preset_{name}"
+        selected_value = selected_preset['mm'] if selected_preset else ''
+        
+        # Sanitize name for use in JavaScript function name (replace special chars)
+        # Django formsets use names like "form-0-wheel_size" which need to be cleaned
+        import re
+        js_function_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        
+        preset_html = '<div class="wheel-size-presets" style="margin-bottom: 10px;">'
+        preset_html += '<label for="' + select_id + '" style="font-weight: bold; display: block; margin-bottom: 5px;">Radgröße (Standard):</label>'
+        preset_html += '<select id="' + select_id + '" name="wheel_size_preset_' + name + '" onchange="updateWheelSizeFromPreset_' + js_function_name + '(); return false;" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">'
+        preset_html += '<option value="">-- Manuelle Eingabe --</option>'
+        
+        for preset in presets:
+            selected = 'selected' if selected_preset and selected_preset['inches'] == preset['inches'] else ''
+            preset_html += f'<option value="{preset["mm"]}" {selected}>{preset["inches"]} Zoll ({preset["mm"]} mm)</option>'
+        
+        preset_html += '</select></div>'
+        
+        # Add label for manual input
+        manual_label = f'<label for="{widget_id}" style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Radumfang (mm):</label>'
+        
+        # JavaScript to sync preset selection with number input
+        # Use a more robust approach to find the number input field
+        js_code = f'''
+        <script>
+        function updateWheelSizeFromPreset_{js_function_name}() {{
+            var selectId = 'wheel_size_preset_{name}';
+            var presetSelect = document.getElementById(selectId);
+            if (!presetSelect) {{
+                console.error('WheelSizeWidget: Could not find select element:', selectId);
+                return;
+            }}
+            
+            // Try multiple ways to find the number input
+            var numberInput = null;
+            
+            // Method 1: Try by ID
+            numberInput = document.getElementById('{widget_id}');
+            
+            // Method 2: Find by name attribute in the same container
+            if (!numberInput) {{
+                var container = presetSelect.closest('.form-row, .field-box, fieldset, .inline-group');
+                if (container) {{
+                    numberInput = container.querySelector('input[name*="{name}"][type="number"]');
+                }}
+            }}
+            
+            // Method 3: Find by name attribute anywhere
+            if (!numberInput) {{
+                numberInput = document.querySelector('input[name*="{name}"][type="number"]');
+            }}
+            
+            // Method 4: Find the next number input after the select
+            if (!numberInput) {{
+                var nextInput = presetSelect.parentElement.nextElementSibling;
+                while (nextInput && !numberInput) {{
+                    numberInput = nextInput.querySelector('input[type="number"]');
+                    nextInput = nextInput.nextElementSibling;
+                }}
+            }}
+            
+            if (!numberInput) {{
+                console.error('WheelSizeWidget: Could not find number input for field:', '{name}');
+                console.log('Tried ID:', '{widget_id}');
+                console.log('Select element:', presetSelect);
+                return;
+            }}
+            
+            if (presetSelect.value) {{
+                // Update the number input value immediately
+                var oldValue = numberInput.value;
+                numberInput.value = presetSelect.value;
+                
+                console.log('WheelSizeWidget: Updated value from', oldValue, 'to', presetSelect.value);
+                
+                // Visual feedback that value was updated
+                numberInput.style.backgroundColor = '#d4edda';
+                numberInput.style.transition = 'background-color 0.5s';
+                setTimeout(function() {{
+                    numberInput.style.backgroundColor = '';
+                }}, 500);
+                
+                // Trigger events to ensure Django recognizes the change
+                // Use jQuery if available (Django admin uses jQuery)
+                if (typeof jQuery !== 'undefined') {{
+                    jQuery(numberInput).val(presetSelect.value).trigger('input').trigger('change');
+                }} else {{
+                    // Fallback: native events
+                    try {{
+                        var inputEvent = new Event('input', {{ bubbles: true, cancelable: true }});
+                        var changeEvent = new Event('change', {{ bubbles: true, cancelable: true }});
+                        numberInput.dispatchEvent(inputEvent);
+                        numberInput.dispatchEvent(changeEvent);
+                    }} catch(e) {{
+                        console.error('Error dispatching events:', e);
+                    }}
+                }}
+                
+                // Trigger focus/blur to ensure form field is marked as changed
+                numberInput.focus();
+                setTimeout(function() {{
+                    numberInput.blur();
+                }}, 50);
+            }}
+        }}
+        
+        function updatePresetFromManual_{js_function_name}() {{
+            var numberInput = document.getElementById('{widget_id}');
+            if (!numberInput) return;
+            var manualValue = parseFloat(numberInput.value);
+            if (isNaN(manualValue)) return;
+            
+            var manualValueInt = Math.round(manualValue);
+            var presets = [
+                {{value: '1590', mm: 1590}},
+                {{value: '1910', mm: 1910}},
+                {{value: '2075', mm: 2075}},
+                {{value: '2224', mm: 2224}},
+                {{value: '2300', mm: 2300}}
+            ];
+            
+            var selectId = 'wheel_size_preset_{name}';
+            var presetSelect = document.getElementById(selectId);
+            if (!presetSelect) return;
+            
+            var matched = false;
+            for (var i = 0; i < presets.length; i++) {{
+                if (Math.abs(manualValueInt - presets[i].mm) <= 5) {{
+                    presetSelect.value = presets[i].value;
+                    matched = true;
+                    break;
+                }}
+            }}
+            
+            if (!matched) {{
+                presetSelect.value = '';
+            }}
+        }}
+        
+        // Initialize on page load
+        (function() {{
+            var numberInput = document.getElementById('{widget_id}');
+            if (numberInput) {{
+                // Listen to both input and change events
+                numberInput.addEventListener('input', updatePresetFromManual_{js_function_name});
+                numberInput.addEventListener('change', updatePresetFromManual_{js_function_name});
+                // Initialize preset selection on page load
+                updatePresetFromManual_{js_function_name}();
+            }}
+        }})();
+        </script>
+        '''
+        
+        return mark_safe(preset_html + manual_label + number_input_html + js_code)
+
 class CollapsibleCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
     """Collapsible checkbox widget for ManyToMany fields to save space in inline forms."""
     
@@ -792,16 +996,26 @@ LEAFLET_ASSETS = {
     )
 }
 
+class DeviceConfigurationForm(forms.ModelForm):
+    """Form for DeviceConfiguration with custom wheel size widget."""
+    class Meta:
+        model = DeviceConfiguration
+        fields = '__all__'
+        widgets = {
+            'wheel_size': WheelSizeWidget(),
+        }
+
 class DeviceConfigurationInline(admin.StackedInline):
     """Inline configuration for Device."""
     model = DeviceConfiguration
+    form = DeviceConfigurationForm
     extra = 0
     max_num = 1
     can_delete = False
     fieldsets = (
         (_("API-Key-Verwaltung"), {
-            'fields': ('device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button'),
-            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-Key generieren' für sofortige Erneuerung oder 'Rotation testen' um die automatische Rotation zu prüfen.")
+            'fields': ('api_key_status_display', 'device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button'),
+            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein gerätespezifischer Key gesetzt ist, wird automatisch der IoT Device Shared API Key verwendet (konfiguriert in Geräteverwaltungs-Einstellungen). Verwenden Sie 'API-Key generieren' für sofortige Erneuerung oder 'Rotation testen' um die automatische Rotation zu prüfen.")
         }),
         (_("Geräte-Identifikation"), {
             'fields': ('reported_device_name_display', 'default_id_tag'),
@@ -820,7 +1034,7 @@ class DeviceConfigurationInline(admin.StackedInline):
             'description': _("Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen erforderlich (WPA2-Anforderung).")
         }),
         (_("Geräte-Verhalten"), {
-            'fields': ('debug_mode', 'test_mode', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
+            'fields': ('debug_mode', 'test_mode', 'test_distance_km', 'test_interval_seconds', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
         }),
         (_("Hardware"), {
             'fields': ('wheel_size',)
@@ -829,7 +1043,77 @@ class DeviceConfigurationInline(admin.StackedInline):
             'fields': ('assigned_firmware', 'last_synced_at')
         }),
     )
-    readonly_fields = ('last_synced_at', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'reported_device_name_display')
+    readonly_fields = ('last_synced_at', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'reported_device_name_display')
+    
+    def get_queryset(self, request):
+        """Ensure existing configuration is always loaded."""
+        qs = super().get_queryset(request)
+        return qs.select_related('device', 'assigned_firmware')
+    
+    def get_extra(self, request, obj=None, **kwargs):
+        """
+        Return 0 extra forms - existing configuration will be shown automatically.
+        For OneToOneField relationships, Django automatically shows the existing object
+        even when extra=0, so we don't need to add empty forms.
+        """
+        return 0
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        """
+        Ensure that existing configuration is always included in the formset.
+        This is important for OneToOneField relationships to work correctly.
+        """
+        from django.forms import BaseInlineFormSet
+        
+        formset_class = super().get_formset(request, obj, **kwargs)
+        
+        class DeviceConfigurationFormSet(formset_class):
+            def __init__(self, *args, **kwargs):
+                """Initialize formset and ensure device is set on forms."""
+                super().__init__(*args, **kwargs)
+                # Ensure device is set on all form instances
+                if obj:
+                    for form in self.forms:
+                        if form.instance and not form.instance.device_id:
+                            form.instance.device = obj
+                        # Also set device in cleaned_data if form has been processed
+                        if hasattr(form, 'cleaned_data') and form.cleaned_data and 'device' not in form.cleaned_data:
+                            form.cleaned_data['device'] = obj
+            
+            def clean(self):
+                """Validate formset and ensure device is set on all forms."""
+                cleaned_data = super().clean()
+                
+                # Ensure device is set on all forms
+                if obj:
+                    for form in self.forms:
+                        if form.cleaned_data and 'device' not in form.cleaned_data:
+                            form.cleaned_data['device'] = obj
+                        if form.instance and not form.instance.device_id:
+                            form.instance.device = obj
+                
+                return cleaned_data
+            
+            def save(self, commit=True):
+                """Override save to ensure device is set and instances are saved properly."""
+                # Get instances from parent save (commit=False to handle device assignment)
+                instances = super().save(commit=False)
+                
+                # Ensure device is set on all instances
+                for instance in instances:
+                    if instance and not instance.device_id and obj:
+                        instance.device = obj
+                
+                # Save instances if commit=True
+                if commit:
+                    self.save_m2m()
+                    for instance in instances:
+                        if instance:  # Only save if instance exists
+                            instance.save()
+                
+                return instances
+        
+        return DeviceConfigurationFormSet
     
     def test_rotation_button(self, obj):
         """Display button to test API key rotation."""
@@ -866,6 +1150,46 @@ class DeviceConfigurationInline(admin.StackedInline):
             return _("Noch nicht vom Gerät gemeldet")
         return "-"
     reported_device_name_display.short_description = _("Gerätename (vom Gerät gemeldet)")
+    
+    def api_key_status_display(self, obj):
+        """Display which API key is currently being used by this device."""
+        if not obj:
+            return "-"
+        
+        if obj.device_specific_api_key:
+            return format_html(
+                '<span style="color: green;">✓ {}</span><br>'
+                '<small>{}</small>',
+                _("Gerätespezifischer API-Key aktiv"),
+                _("Das Gerät verwendet einen eindeutigen, gerätespezifischen API-Key.")
+            )
+        else:
+            # Check if IoT Shared API Key is configured
+            try:
+                from iot.models import DeviceManagementSettings
+                mgmt_settings = DeviceManagementSettings.get_settings()
+                if mgmt_settings.iot_device_shared_api_key:
+                    return format_html(
+                        '<span style="color: orange;">⚠ {}</span><br>'
+                        '<small>{}</small>',
+                        _("IoT Device Shared API Key wird verwendet"),
+                        _("Das Gerät verwendet den IoT Device Shared API Key (konfiguriert in Geräteverwaltungs-Einstellungen). Verwenden Sie \"API-Key generieren\", um einen gerätespezifischen Key zuzuweisen.")
+                    )
+                else:
+                    return format_html(
+                        '<span style="color: red;">✗ {}</span><br>'
+                        '<small>{}</small>',
+                        _("Kein API-Key konfiguriert"),
+                        _("Weder ein gerätespezifischer Key noch ein IoT Device Shared API Key ist konfiguriert. Bitte konfigurieren Sie einen IoT Device Shared API Key in Geräteverwaltungs-Einstellungen oder generieren Sie einen gerätespezifischen Key.")
+                    )
+            except Exception:
+                return format_html(
+                    '<span style="color: orange;">⚠ {}</span><br>'
+                    '<small>{}</small>',
+                    _("IoT Device Shared API Key wird verwendet"),
+                    _("Das Gerät verwendet den IoT Device Shared API Key (falls konfiguriert).")
+                )
+    api_key_status_display.short_description = _("API-Key-Status")
     
     def generate_api_key_button(self, obj):
         """Display button to generate API key."""
@@ -2776,6 +3100,33 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
             return mark_safe('<span style="color: gray;">- Keine Konfiguration</span>')
     config_status.short_description = _("Konfigurationsstatus")
 
+    def save_model(self, request, obj, form, change):
+        """Override save_model to automatically create DeviceConfiguration for new devices."""
+        # Save the device first
+        super().save_model(request, obj, form, change)
+        
+        # If this is a new device (not changed), create default configuration
+        if not change:
+            # Check if configuration already exists (shouldn't happen, but be safe)
+            DeviceConfiguration.objects.get_or_create(
+                device=obj,
+                defaults={
+                    'device_name': obj.name,
+                    'send_interval_seconds': 60,
+                    'config_fetch_interval_seconds': 3600,
+                    'test_distance_km': 0.01,
+                    'test_interval_seconds': 5,
+                    'wheel_size': 2075.0,  # 26 Zoll Standard = 2075 mm
+                    'debug_mode': False,
+                    'test_mode': False,
+                    'deep_sleep_seconds': 0,
+                    'api_key_rotation_enabled': False,
+                    'api_key_rotation_interval_days': 90,
+                    'request_config_comparison': False,
+                    # device_specific_api_key is left empty - will use IoT Shared API Key
+                }
+            )
+
     class Media:
         css = LEAFLET_ASSETS['css']
         js = LEAFLET_ASSETS['js']
@@ -2868,24 +3219,50 @@ class DeviceConfigurationDiffAdmin(admin.ModelAdmin):
 
 @admin.register(FirmwareImage)
 class FirmwareImageAdmin(admin.ModelAdmin):
-    list_display = ('name', 'version', 'is_stable', 'is_active', 'file_size_display', 'assigned_devices_count', 'created_at')
-    list_filter = ('is_stable', 'is_active', 'created_at')
-    search_fields = ('name', 'version', 'description')
+    list_display = ('name', 'version', 'environment', 'is_stable', 'is_active', 'file_size_display', 'assigned_devices_count', 'created_at')
+    list_filter = ('is_stable', 'is_active', 'environment', 'created_at')
+    search_fields = ('name', 'version', 'description', 'environment')
     list_editable = ('is_stable', 'is_active')
-    readonly_fields = ('file_size', 'checksum_md5', 'created_at', 'updated_at')
+    readonly_fields = ('file_size', 'checksum_md5', 'checksum_sha256', 'environment', 'assigned_devices_list', 'created_at', 'updated_at')
+    change_list_template = 'admin/iot/firmwareimage_change_list.html'
     
     fieldsets = (
         (_("Firmware-Informationen"), {
-            'fields': ('name', 'version', 'description', 'is_stable', 'is_active')
+            'fields': ('name', 'version', 'environment', 'description', 'is_stable', 'is_active')
+        }),
+        (_("Zugewiesene Geräte"), {
+            'fields': ('assigned_devices_list',),
+            'description': _("Liste aller Geräte, denen diese Firmware zugewiesen wurde.")
         }),
         (_("Firmware-Datei"), {
-            'fields': ('firmware_file', 'file_size', 'checksum_md5')
+            'fields': ('firmware_file', 'file_size', 'checksum_md5', 'checksum_sha256')
         }),
         (_("Zeitstempel"), {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_urls(self):
+        """Add custom URL for firmware import."""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('import-zip/', self.admin_site.admin_view(self.import_zip_view), name='iot_firmwareimage_import_zip'),
+        ]
+        return custom_urls + urls
+    
+    def import_zip_view(self, request):
+        """Redirect to import view."""
+        from mgmt.admin_firmware_import import import_firmware_from_zip
+        return import_firmware_from_zip(request)
+    
+    def changelist_view(self, request, extra_context=None):
+        """Add import button to changelist."""
+        extra_context = extra_context or {}
+        from django.urls import reverse
+        extra_context['import_url'] = reverse('admin:iot_firmwareimage_import_zip')
+        return super().changelist_view(request, extra_context)
     
     def file_size_display(self, obj):
         """Display file size in human-readable format."""
@@ -2904,6 +3281,124 @@ class FirmwareImageAdmin(admin.ModelAdmin):
         count = obj.assigned_devices.count()
         return count
     assigned_devices_count.short_description = _("Zugewiesene Geräte")
+    
+    def assigned_devices_list(self, obj):
+        """Display list of devices assigned to this firmware with links."""
+        if not obj or not obj.pk:
+            return _("Keine Geräte zugewiesen")
+        
+        devices = obj.assigned_devices.select_related('device').all()
+        if not devices:
+            return _("Keine Geräte zugewiesen")
+        
+        from django.urls import reverse
+        
+        device_links = []
+        for device_config in devices:
+            device = device_config.device
+            url = reverse('admin:iot_device_change', args=[device.pk])
+            device_links.append(f'<a href="{url}">{device.name}</a>')
+        
+        if device_links:
+            return format_html('<br>'.join(device_links))
+        return _("Keine Geräte zugewiesen")
+    assigned_devices_list.short_description = _("Zugewiesene Geräte")
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion if firmware is assigned to any device."""
+        if obj and obj.pk:
+            assigned_count = obj.assigned_devices.count()
+            if assigned_count > 0:
+                # Show custom error message
+                messages.error(
+                    request,
+                    _("Diese Firmware wird von {} Gerät(en) verwendet und kann nicht gelöscht werden.").format(assigned_count)
+                )
+                return False
+        return super().has_delete_permission(request, obj)
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make firmware file readonly if firmware is assigned to devices."""
+        readonly = list(self.readonly_fields)
+        if obj and obj.pk:
+            if obj.assigned_devices.count() > 0:
+                # Add firmware_file to readonly if assigned
+                if 'firmware_file' not in readonly:
+                    readonly.append('firmware_file')
+        return readonly
+    
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Add warning message if firmware is assigned to devices."""
+        extra_context = extra_context or {}
+        if object_id:
+            try:
+                obj = self.get_object(request, object_id)
+                if obj:
+                    assigned_count = obj.assigned_devices.count()
+                    if assigned_count > 0:
+                        messages.warning(
+                            request,
+                            _("Diese Firmware wird von {} Gerät(en) verwendet und kann nicht gelöscht werden.").format(assigned_count)
+                        )
+            except:
+                pass
+        return super().changeform_view(request, object_id, form_url, extra_context)
+    
+    def delete_model(self, request, obj):
+        """Override delete to show error message if firmware is assigned."""
+        assigned_count = obj.assigned_devices.count()
+        if assigned_count > 0:
+            from django.contrib import messages
+            messages.error(
+                request,
+                _("Firmware '{}' kann nicht gelöscht werden, da sie {} Gerät(en) zugewiesen ist. "
+                  "Bitte entfernen Sie die Zuweisung zuerst von den Geräten.").format(
+                    obj.name, assigned_count
+                )
+            )
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('admin:iot_firmwareimage_change', args=[obj.pk]))
+        return super().delete_model(request, obj)
+    
+    def delete_queryset(self, request, queryset):
+        """Override bulk delete to prevent deletion of firmware assigned to devices."""
+        from django.contrib import messages
+        
+        protected = []
+        deletable = []
+        
+        for obj in queryset:
+            assigned_count = obj.assigned_devices.count()
+            if assigned_count > 0:
+                protected.append((obj, assigned_count))
+            else:
+                deletable.append(obj)
+        
+        if protected:
+            protected_count = len(protected)
+            total_devices = sum(count for _, count in protected)
+            messages.error(
+                request,
+                _("{} Firmware-Image(s) werden von {} Gerät(en) verwendet und können nicht gelöscht werden.").format(
+                    protected_count, total_devices
+                )
+            )
+        
+        if deletable:
+            # Only delete firmware that is not assigned
+            for obj in deletable:
+                super().delete_model(request, obj)
+            messages.success(
+                request,
+                _("{} Firmware-Image(s) erfolgreich gelöscht.").format(len(deletable))
+            )
+        
+        if protected and not deletable:
+            # All selected items are protected, redirect back
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('admin:iot_firmwareimage_changelist'))
 
 
 @admin.register(MapPopupSettings)
@@ -3010,6 +3505,10 @@ class DeviceManagementSettingsAdmin(admin.ModelAdmin):
     
     list_display = ('email_notifications_enabled', 'notification_email', 'last_notification_sent', 'updated_at')
     fieldsets = (
+        (_("IoT Device Shared API Key"), {
+            'fields': ('iot_device_shared_api_key',),
+            'description': _("Dedizierter API-Key für IoT-Geräte, der von mehreren Geräten gleichzeitig verwendet werden kann. Wird als Standard-Key verwendet, bevor individuelle Geräte-Keys zugewiesen werden. Gilt nur für IoT-Geräte-Endpoints, nicht für öffentliche API-Endpoints.")
+        }),
         (_("E-Mail-Benachrichtigungen"), {
             'fields': ('email_notifications_enabled', 'notification_email', 'last_notification_sent'),
             'description': _("Konfigurieren Sie tägliche E-Mail-Benachrichtigungen für Gerätekonfigurationsunterschiede.")
@@ -3140,13 +3639,14 @@ class WebhookConfigurationAdmin(admin.ModelAdmin):
 class DeviceConfigurationAdmin(admin.ModelAdmin):
     """Standalone admin for DeviceConfiguration with API key generation."""
     
-    readonly_fields = ('reported_device_name_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button')
+    form = DeviceConfigurationForm
+    readonly_fields = ('reported_device_name_display', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button')
     exclude = ('apache_base64_auth_key', 'device_name')  # Remove deprecated Apache Base64 Auth Key field and device_name (use reported name instead)
     
     fieldsets = (
         (_("API-Key-Verwaltung"), {
-            'fields': ('device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button'),
-            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-Key generieren' für sofortige Erneuerung, 'Rotation jetzt ausführen' um die Rotation manuell zu triggern, oder 'Rotation testen' um die automatische Rotation zu prüfen.")
+            'fields': ('api_key_status_display', 'device_specific_api_key', 'api_key_rotation_enabled', 'api_key_rotation_interval_days', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button'),
+            'description': _("Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein gerätespezifischer Key gesetzt ist, wird automatisch der IoT Device Shared API Key verwendet (konfiguriert in Geräteverwaltungs-Einstellungen). Verwenden Sie 'API-Key generieren' für sofortige Erneuerung, 'Rotation jetzt ausführen' um die Rotation manuell zu triggern, oder 'Rotation testen' um die automatische Rotation zu prüfen.")
         }),
         (_("Geräte-Identifikation"), {
             'fields': ('reported_device_name_display', 'default_id_tag'),
@@ -3165,7 +3665,7 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
             'description': _("Passwort für den Config-WLAN-Hotspot. Minimum 8 Zeichen erforderlich (WPA2-Anforderung).")
         }),
         (_("Geräte-Verhalten"), {
-            'fields': ('debug_mode', 'test_mode', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
+            'fields': ('debug_mode', 'test_mode', 'test_distance_km', 'test_interval_seconds', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
         }),
         (_("Hardware"), {
             'fields': ('wheel_size',)
@@ -3184,6 +3684,46 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
             return _("Noch nicht vom Gerät gemeldet")
         return "-"
     reported_device_name_display.short_description = _("Gerätename (vom Gerät gemeldet)")
+    
+    def api_key_status_display(self, obj):
+        """Display which API key is currently being used by this device."""
+        if not obj:
+            return "-"
+        
+        if obj.device_specific_api_key:
+            return format_html(
+                '<span style="color: green;">✓ {}</span><br>'
+                '<small>{}</small>',
+                _("Gerätespezifischer API-Key aktiv"),
+                _("Das Gerät verwendet einen eindeutigen, gerätespezifischen API-Key.")
+            )
+        else:
+            # Check if IoT Shared API Key is configured
+            try:
+                from iot.models import DeviceManagementSettings
+                mgmt_settings = DeviceManagementSettings.get_settings()
+                if mgmt_settings.iot_device_shared_api_key:
+                    return format_html(
+                        '<span style="color: orange;">⚠ {}</span><br>'
+                        '<small>{}</small>',
+                        _("IoT Device Shared API Key wird verwendet"),
+                        _("Das Gerät verwendet den IoT Device Shared API Key (konfiguriert in Geräteverwaltungs-Einstellungen). Verwenden Sie \"API-Key generieren\", um einen gerätespezifischen Key zuzuweisen.")
+                    )
+                else:
+                    return format_html(
+                        '<span style="color: red;">✗ {}</span><br>'
+                        '<small>{}</small>',
+                        _("Kein API-Key konfiguriert"),
+                        _("Weder ein gerätespezifischer Key noch ein IoT Device Shared API Key ist konfiguriert. Bitte konfigurieren Sie einen IoT Device Shared API Key in Geräteverwaltungs-Einstellungen oder generieren Sie einen gerätespezifischen Key.")
+                    )
+            except Exception:
+                return format_html(
+                    '<span style="color: orange;">⚠ {}</span><br>'
+                    '<small>{}</small>',
+                    _("IoT Device Shared API Key wird verwendet"),
+                    _("Das Gerät verwendet den IoT Device Shared API Key (falls konfiguriert).")
+                )
+    api_key_status_display.short_description = _("API-Key-Status")
     
     def generate_api_key_button(self, obj):
         """Display button to generate API key."""
@@ -3839,6 +4379,7 @@ def get_urls_with_custom_views():
         # Minecraft control URLs
         path('minecraft/', admin.site.admin_view(minecraft_control), name='minecraft_control'),
         path('minecraft/action/<str:action>/', admin.site.admin_view(minecraft_action), name='minecraft_action'),
+        # Firmware import URL (already handled by FirmwareImageAdmin.get_urls, but kept for consistency)
     ]
     return custom_urls + urls
 

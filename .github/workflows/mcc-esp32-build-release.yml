@@ -12,7 +12,7 @@ on:
   workflow_dispatch:  # Manual trigger
     inputs:
       version:
-        description: 'Version number (e.g., 1.0.0). Leave empty to use Git tag or VERSION file.'
+        description: 'Version number (e.g., 1.0.0). Leave empty to use Git tag or version.txt file.'
         required: false
         type: string
 
@@ -52,7 +52,7 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/v}"
             VERSION="${VERSION#refs/tags/}"
           else
-            # Use Python script to extract version (Git tag > VERSION file > default)
+            # Use Python script to extract version (Git tag > version.txt > default)
             VERSION=$(python3 scripts/extract_version.py)
           fi
           

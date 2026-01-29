@@ -14,11 +14,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% trans "Kiosk-Rangliste" %}</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    {% url 'favicon' as favicon_url %}
+    <link rel="icon" type="image/png" href="{{ favicon_url }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js"></script>
     <style>
         @keyframes pulse-ring {
             0%, 100% { opacity: 1; }
@@ -146,16 +145,8 @@
     </style>
 </head>
 <body class="h-screen overflow-hidden bg-slate-900 text-white">
-    <!-- View Container -->
-    <div id="view-container" class="h-full w-full relative">
-        <!-- Map View (hidden by default, shown via rotation) -->
-        <div id="map-view" class="h-full w-full" style="display: none;">
-            <!-- Map container - Leaflet map will be initialized here -->
-            <div id="map" style="width: 100%; height: 100%;"></div>
-        </div>
-        
-        <!-- Leaderboard View -->
-        <div id="leaderboard-view" class="h-full w-full flex flex-col">
+    <!-- Leaderboard View -->
+    <div id="leaderboard-view" class="h-full w-full flex flex-col">
             <!-- Top Layer: Ticker (5vh) -->
             <div class="h-[5vh] bg-yellow-400 text-black border-b-2 border-yellow-600 overflow-hidden relative">
                 <div class="ticker-wrapper h-full">
@@ -201,125 +192,8 @@
                 {% include 'leaderboard/partials/footer.html' %}
             </div>
         </div>
-    </div>
-    
-    <!-- Progress Bar (2px at bottom) -->
-    <div class="fixed bottom-0 left-0 right-0 h-0.5 bg-slate-700">
-        <div id="progress-bar" class="progress-bar bg-blue-600 h-full" style="width: 0%"></div>
-    </div>
     
     <script>
-        // Check URL parameter for initial view
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewParam = urlParams.get('view');
-        const startWithLeaderboard = viewParam === 'leaderboard';
-        
-        // View rotation logic
-        let currentView = startWithLeaderboard ? 'leaderboard' : 'map'; // 'leaderboard' or 'map'
-        let rotationInterval = 60000; // 60 seconds
-        let progressInterval = null;
-        let isPaused = false;
-        let timeRemaining = rotationInterval;
-        
-        const mapView = document.getElementById('map-view');
-        const leaderboardView = document.getElementById('leaderboard-view');
-        const progressBar = document.getElementById('progress-bar');
-        const manualModeBadge = document.getElementById('manual-mode-badge');
-        
-        // Initialize view based on URL parameter
-        if (startWithLeaderboard) {
-            // Start with leaderboard - hide map immediately
-            mapView.style.display = 'none';
-            mapView.classList.add('hidden');
-            leaderboardView.style.display = 'flex';
-            leaderboardView.classList.remove('hidden');
-            currentView = 'leaderboard';
-        } else {
-            // Start with map - hide leaderboard
-            mapView.style.display = 'block';
-            mapView.classList.remove('hidden');
-            leaderboardView.style.display = 'none';
-            leaderboardView.classList.add('hidden');
-            currentView = 'map';
-        }
-        
-        function switchView() {
-            if (currentView === 'leaderboard') {
-                mapView.style.display = 'block';
-                mapView.classList.remove('hidden');
-                leaderboardView.style.display = 'none';
-                leaderboardView.classList.add('hidden');
-                currentView = 'map';
-                // Initialize map if not already done
-                if (!mapInitialized) {
-                    setTimeout(initializeMap, 100);
-                } else if (mapInstance) {
-                    // Invalidate size to fix map display after being hidden
-                    setTimeout(() => mapInstance.invalidateSize(), 100);
-                }
-            } else {
-                mapView.style.display = 'none';
-                mapView.classList.add('hidden');
-                leaderboardView.style.display = 'flex';
-                leaderboardView.classList.remove('hidden');
-                currentView = 'leaderboard';
-            }
-            resetTimer();
-        }
-        
-        function resetTimer() {
-            timeRemaining = rotationInterval;
-            updateProgressBar();
-            
-            // Restart the interval if not paused
-            if (progressInterval) {
-                clearInterval(progressInterval);
-                progressInterval = null;
-            }
-            if (!isPaused) {
-                startRotation();
-            }
-        }
-        
-        function updateProgressBar() {
-            const percentage = ((rotationInterval - timeRemaining) / rotationInterval) * 100;
-            progressBar.style.width = percentage + '%';
-        }
-        
-        function startRotation() {
-            if (isPaused) return;
-            
-            progressInterval = setInterval(() => {
-                if (!isPaused) {
-                    timeRemaining -= 100;
-                    updateProgressBar();
-                    
-                    if (timeRemaining <= 0) {
-                        switchView();
-                    }
-                }
-            }, 100);
-        }
-        
-        function pauseRotation() {
-            isPaused = !isPaused;
-            if (isPaused) {
-                // Show manual mode badge in footer
-                if (manualModeBadge) {
-                    manualModeBadge.classList.remove('hidden');
-                }
-                if (progressInterval) {
-                    clearInterval(progressInterval);
-                    progressInterval = null;
-                }
-            } else {
-                // Hide manual mode badge
-                if (manualModeBadge) {
-                    manualModeBadge.classList.add('hidden');
-                }
-                startRotation();
-            }
-        }
         
         // Ticker animation - ensure seamless scrolling
         function duplicateTickerContent() {
@@ -513,150 +387,6 @@
             }
         });
         
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.key === ' ') {
-                e.preventDefault();
-                // Toggle view and restart timer to exactly 60 seconds
-                switchView();
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                // Also toggle view and restart timer
-                switchView();
-            } else if (e.key === 'p' || e.key === 'P') {
-                e.preventDefault();
-                pauseRotation();
-            }
-        });
-        
-        // Map initialization (only once, state preserved via display:none)
-        let mapInstance = null;
-        let mapInitialized = false;
-        
-        function initializeMap() {
-            if (mapInitialized) return;
-            
-            const mapElement = document.getElementById('map');
-            if (!mapElement) return;
-            
-            // Initialize Leaflet map
-            mapInstance = L.map('map').setView([51.16, 10.45], 6);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
-            
-            // Add tracks
-            const tracks = {{ tracks_json|safe }};
-            const trackLayers = L.featureGroup().addTo(mapInstance);
-            tracks.forEach(function(t) {
-                if (t.points && t.points.length > 0) {
-                    L.polyline(t.points, {color: '#007bff', weight: 6, opacity: 0.5}).addTo(trackLayers);
-                }
-            });
-            if (tracks.length > 0) mapInstance.fitBounds(trackLayers.getBounds());
-            
-            // Map size adjustment function - fixes quarter-map issue on mobile
-            function adjustMap() {
-                if (typeof mapInstance !== 'undefined') {
-                    mapInstance.invalidateSize();
-                }
-            }
-            window.addEventListener('resize', adjustMap);
-            // Call after CSS changes to fill any gaps
-            setTimeout(adjustMap, 500);
-            setTimeout(adjustMap, 1000); // Additional call to ensure map fills after CSS is fully applied
-            
-            // Add devices
-            const devices = {{ devices_json|safe }};
-            const deviceMarkers = L.layerGroup().addTo(mapInstance);
-            devices.forEach(function(d) {
-                if (d.lat && d.lon) {
-                    const deviceIcon = L.divIcon({
-                        className: 'device-marker',
-                        html: '<div style="background: #28a745; border: 3px solid #155724; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">🚲</div>',
-                        iconSize: [30, 30],
-                        iconAnchor: [15, 15]
-                    });
-                    const marker = L.marker([d.lat, d.lon], {icon: deviceIcon}).addTo(deviceMarkers);
-                    // Format number based on current language
-                    function formatNumberDE(value, decimals) {
-                        if (value === null || value === undefined || isNaN(value)) {
-                            const lang = document.documentElement.lang || 'de';
-                            const isGerman = lang.startsWith('de');
-                            const decimalSep = isGerman ? ',' : '.';
-                            return '0' + (decimals > 0 ? decimalSep + '0'.repeat(decimals) : '');
-                        }
-                        const num = parseFloat(value);
-                        const fixed = num.toFixed(decimals || 2);
-                        const parts = fixed.split('.');
-                        const integerStr = parts[0];
-                        const decimalPart = parts[1] || '';
-                        
-                        // Get language from HTML lang attribute
-                        const lang = document.documentElement.lang || 'de';
-                        const isGerman = lang.startsWith('de');
-                        
-                        // Add thousands separators
-                        let integerWithSeparators = '';
-                        for (let i = 0; i < integerStr.length; i++) {
-                            if (i > 0 && (integerStr.length - i) % 3 === 0) {
-                                integerWithSeparators += isGerman ? '.' : ',';
-                            }
-                            integerWithSeparators += integerStr[i];
-                        }
-                        
-                        // Add decimal separator
-                        if (decimalPart) {
-                            return integerWithSeparators + (isGerman ? ',' : '.') + decimalPart;
-                        }
-                        return integerWithSeparators;
-                    }
-                    let popupContent = '<strong>{% trans "Gerät" %}: ' + d.name + '</strong><br>{% trans "Gesamt" %}: ' + formatNumberDE(d.distance_total, 2) + ' km';
-                    if (d.last_active) {
-                        popupContent += '<br>{% trans "Zuletzt aktiv" %}: ' + new Date(d.last_active).toLocaleString('de-DE');
-                    }
-                    marker.bindPopup(popupContent);
-                }
-            });
-            
-            // Add milestones
-            const milestones = {{ milestones_json|safe }};
-            const milestoneMarkers = L.layerGroup().addTo(mapInstance);
-            milestones.forEach(function(m) {
-                if (m.lat && m.lon) {
-                    const isTarget = (m.name && (m.name.toLowerCase().includes('ziel') || m.name.toLowerCase().includes('target'))) ||
-                                   (m.track_total_length_km && Math.abs(m.track_total_length_km - (m.km || 0)) < 0.1);
-                    const isReached = m.is_reached || false;
-                    const bgColor = isTarget ? (isReached ? '#28a745' : '#20c997') : (isReached ? '#28a745' : '#ffd700');
-                    const borderColor = isTarget ? (isReached ? '#155724' : '#17a2b8') : (isReached ? '#1e7e34' : '#ff8c00');
-                    const iconEmoji = isTarget ? '🏁' : (isReached ? '✅' : '🏆');
-                    
-                    const milestoneIcon = L.divIcon({
-                        className: 'milestone-marker',
-                        html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: ' + (isTarget ? '8px' : '50%') + '; width: ' + (isTarget ? '40px' : '30px') + '; height: ' + (isTarget ? '40px' : '30px') + '; display: flex; align-items: center; justify-content: center; font-size: ' + (isTarget ? '24px' : '18px') + '; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: ' + (isTarget ? 'rotate(-5deg)' : 'none') + ';">' + iconEmoji + '</div>',
-                        iconSize: [isTarget ? 40 : 30, isTarget ? 40 : 30],
-                        iconAnchor: [isTarget ? 20 : 15, isTarget ? 20 : 15]
-                    });
-                    const marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(milestoneMarkers);
-                    let popupContent = '<strong>' + (isTarget ? '🏁 ' + m.name : m.name) + '</strong><br>' + formatNumberDE(m.km, 1) + ' km';
-                    if (m.text) popupContent += '<br><em>' + m.text + '</em>';
-                    if (isReached && m.winner_group_name) {
-                        popupContent += '<br><strong>{% trans "Erreicht von" %}: ' + m.winner_group_name + '</strong>';
-                    }
-                    marker.bindPopup(popupContent);
-                }
-            });
-            
-            mapInitialized = true;
-        }
-        
-        // Initialize rotation
-        if (!startWithLeaderboard) {
-            startRotation();
-            // Initialize map immediately if starting with map view
-            setTimeout(initializeMap, 100);
-        } else {
-            // If starting with leaderboard, still start the timer
-            startRotation();
-        }
     </script>
 </body>
 </html>

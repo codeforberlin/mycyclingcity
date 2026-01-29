@@ -821,10 +821,8 @@ msgid "Loading..."
 msgstr "Laden..."
 
 #: api/templates/admin/api/analytics_dashboard.html:362
-#, fuzzy
-#| msgid "Top Players by Mileage"
 msgid "Top Cyclists by Mileage"
-msgstr "Top Spieler nach Kilometer"
+msgstr "Top Radler nach Kilometer"
 
 #: api/templates/admin/api/analytics_dashboard.html:368
 #: api/templates/admin/api/hierarchy_breakdown.html:246

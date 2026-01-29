@@ -45,11 +45,11 @@ const char* HTML_FORM = R"rawliteral(
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8"> <style>
   body{font-family:Arial,sans-serif;margin:auto;max-width:600px;padding:20px;}
-  .container{background:#f4f4f4;padding:20px;border-radius:10px;}
+  .container{background:#f4f4f4;padding:20px;border-radius:10px;box-sizing:border-box;}
   h2{text-align:center;}
   label{font-weight:bold;}
-  input[type="text"], input[type="number"], input[type="file"], select{width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:5px;}
-  input[type="submit"]{width:100%;padding:10px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;}
+  input[type="text"], input[type="number"], input[type="file"], select{width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:5px;box-sizing:border-box;}
+  input[type="submit"], button{width:100%;padding:10px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;box-sizing:border-box;}
 </style>
 </head>
 <body>
@@ -61,23 +61,78 @@ const char* HTML_FORM = R"rawliteral(
   <label for="wifi_password">WLAN-Passwort:</label>
   <input type="text" id="wifi_password" name="wifi_password" value="%WIFI_PASSWORD%">
   <hr>
-  <label for="deviceName">Gerätename (device_id):</label>
+  <label for="deviceName">Gerätename:</label>
   <input type="text" id="deviceName" name="deviceName" value="%DEVICENAME%" required>
   <small>(%FULL_DEVICENAME%)</small>
   <br><br>
-  <label for="idTag">ID Tag (id_tag):</label>
+  <label for="idTag">Default Benutzer:</label>
   <input type="text" id="idTag" name="idTag" value="%IDTAG%" required>
 
   <h2>Fahrrad-Einstellungen</h2>
+  <label for="wheel_size_preset">Radgröße (Standard):</label>
+  <select id="wheel_size_preset" onchange="updateWheelSizeFromPreset()">
+    <option value="">-- Manuelle Eingabe --</option>
+    <option value="1590" %PRESET_20_SELECTED%>20 Zoll (1590 mm)</option>
+    <option value="1910" %PRESET_24_SELECTED%>24 Zoll (1910 mm)</option>
+    <option value="2075" %PRESET_26_SELECTED%>26 Zoll (2075 mm)</option>
+    <option value="2224" %PRESET_28_SELECTED%>28 Zoll (2224 mm)</option>
+    <option value="2300" %PRESET_29_SELECTED%>29 Zoll (2300 mm)</option>
+  </select>
+  <br><br>
   <label for="wheel_size">Radumfang (mm):</label>
-  <input type="number" id="wheel_size" name="wheel_size" step="1" min="500" max="3000" value="%WHEELSIZE%" required>
-  <small>Radumfang in Millimeter (500-3000 mm). Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden (z.B. Sigma).</small>
+  <input type="number" id="wheel_size" name="wheel_size" step="1" min="500" max="3000" value="%WHEELSIZE%" required oninput="updatePresetFromManual()">
+  <small>Radumfang in Millimeter (500-3000 mm). Wählen Sie eine Standard-Radgröße oder geben Sie einen manuellen Wert ein.</small>
+  <br><br>
+  
+  <script>
+  function updateWheelSizeFromPreset() {
+    var preset = document.getElementById('wheel_size_preset');
+    var manual = document.getElementById('wheel_size');
+    if (preset.value) {
+      manual.value = preset.value;
+    }
+  }
+  
+  function updatePresetFromManual() {
+    var preset = document.getElementById('wheel_size_preset');
+    var manual = document.getElementById('wheel_size');
+    var manualValue = parseInt(manual.value);
+    
+    // Check if manual value matches a preset (with 5mm tolerance)
+    var presets = [
+      {value: '1590', mm: 1590},
+      {value: '1910', mm: 1910},
+      {value: '2075', mm: 2075},
+      {value: '2224', mm: 2224},
+      {value: '2300', mm: 2300}
+    ];
+    
+    var matched = false;
+    for (var i = 0; i < presets.length; i++) {
+      if (Math.abs(manualValue - presets[i].mm) <= 5) {
+        preset.value = presets[i].value;
+        matched = true;
+        break;
+      }
+    }
+    
+    if (!matched) {
+      preset.value = '';
+    }
+  }
+  
+  // Initialize preset selection on page load
+  window.onload = function() {
+    updatePresetFromManual();
+  };
+  </script>
 
-  <label for="serverUrl">Webserver-URL (mit http:// oder https://):</label>
+  <label for="serverUrl">Webserver-URL:</label>
   <input type="text" id="serverUrl" name="serverUrl" value="%SERVERURL%">
+  <br><br>
   <label for="apiKey">API Key:</label>
   <input type="text" id="apiKey" name="apiKey" value="%APIKEY%">
-  <label for="sendInterval">Sendeintervall (Sekunden):</label>
+  <label for="sendInterval">Sendezyklus (Sekunden):</label>
   <input type="number" id="sendInterval" name="sendInterval" value="%SENDINTERVAL%" required>
 
   <hr>
@@ -95,25 +150,17 @@ const char* HTML_FORM = R"rawliteral(
   <input type="checkbox" id="debugEnabled" name="debugEnabled" value="1" %DEBUG_ENABLED%>
   
   <br><br>
-  <label for="deepSleepTimeout">Deep-Sleep-Zeit (Sekunden, 0 = deaktiviert):</label>
+  <label for="deepSleepTimeout">Deep-Sleep-Zeit:</label>
   <input type="number" id="deepSleepTimeout" name="deepSleepTimeout" value="%DEEPSLEEPTIMEOUT%" min="0" required>
   <small>Zeit in Sekunden ohne Impulse bis zum Deep-Sleep (0 = Deep-Sleep deaktiviert)</small>
   
-  <hr>
-  <h2>Testmodus</h2>
-  <label for="testModeEnabled">Testmodus</label>
-  <input type="checkbox" id="testModeEnabled" name="testModeEnabled" value="1" %TESTMODECHECKED%>
-  <br><br>
-  <label for="testDistance">Simulierte Distanz (km):</label>
-  <input type="number" id="testDistance" name="testDistance" step="0.01" value="%TESTDISTANCE%" required>
-  <label for="testInterval">Sendeintervall (Sekunden):</label>
-  <input type="number" id="testInterval" name="testInterval" value="%TESTINTERVAL%" required>
-  <input type="submit" value="Speichern">
+  %TESTMODE_SECTION%
+  <input type="submit" id="saveButton" value="Speichern" style="display:none;">
 </form>
 <hr>
-<h2>Aktionen</h2>
+<button onclick="document.getElementById('saveButton').click();" style="width:100%;padding:10px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;margin-bottom:10px;">Speichern</button>
 <form action="/reboot" method="post">
-  <input type="submit" value="Neustart">
+  <input type="submit" value="Neustart" style="width:100%;padding:10px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;">
 </form>
 <hr>
 <h2>Firmware-Update (OTA)</h2>
@@ -156,15 +203,48 @@ void handleRoot() {
   Serial.print("Loaded wheel circumference for display: ");
   Serial.println(currentWheelSize, 1);
   
-  // Display current wheel size in mm (no dropdown, only manual input)
+  // Display current wheel size in mm
   html.replace("%WHEELSIZE%", String(currentWheelSize, 1));
+  
+  // Determine which preset is selected (with 5mm tolerance)
+  int currentSizeInt = (int)(currentWheelSize + 0.5); // Round to nearest integer
+  String preset20Selected = "";
+  String preset24Selected = "";
+  String preset26Selected = "";
+  String preset28Selected = "";
+  String preset29Selected = "";
+  
+  if (abs(currentSizeInt - 1590) <= 5) {
+    preset20Selected = "selected";
+  } else if (abs(currentSizeInt - 1910) <= 5) {
+    preset24Selected = "selected";
+  } else if (abs(currentSizeInt - 2075) <= 5) {
+    preset26Selected = "selected";
+  } else if (abs(currentSizeInt - 2224) <= 5) {
+    preset28Selected = "selected";
+  } else if (abs(currentSizeInt - 2300) <= 5) {
+    preset29Selected = "selected";
+  }
+  
+  // Replace preset selection placeholders in HTML
+  html.replace("%PRESET_20_SELECTED%", preset20Selected);
+  html.replace("%PRESET_24_SELECTED%", preset24Selected);
+  html.replace("%PRESET_26_SELECTED%", preset26Selected);
+  html.replace("%PRESET_28_SELECTED%", preset28Selected);
+  html.replace("%PRESET_29_SELECTED%", preset29Selected);
   
   html.replace("%LEDCHECKED%", preferences.getBool("ledEnabled", true) ? "checked" : "");
   html.replace("%DEBUG_ENABLED%", preferences.getBool("debugEnabled", false) ? "checked" : "");
 
-  html.replace("%TESTDISTANCE%", String(preferences.getFloat("testDistance", testDistance)));
-  html.replace("%TESTINTERVAL%", String(preferences.getUInt("testInterval", testInterval_sec)));
-  html.replace("%TESTMODECHECKED%", preferences.getBool("testModeEnabled", false) ? "checked" : "");
+  // Testmodus nur anzeigen, wenn vom Server aktiviert (NVS-Parameter "test_mode_admin_enabled")
+  String testModeSection = "";
+  if (preferences.getBool("test_mode_admin_enabled", false)) {
+    testModeSection = "<hr>\n  <h2>Testmodus</h2>\n  <label for=\"testModeEnabled\">Testmodus</label>\n  <input type=\"checkbox\" id=\"testModeEnabled\" name=\"testModeEnabled\" value=\"1\" %TESTMODECHECKED%>\n  <br><br>\n  <label for=\"testDistance\">Simulierte Distanz (km):</label>\n  <input type=\"number\" id=\"testDistance\" name=\"testDistance\" step=\"0.01\" value=\"%TESTDISTANCE%\" required>\n  <label for=\"testInterval\">Sendeintervall (Sekunden):</label>\n  <input type=\"number\" id=\"testInterval\" name=\"testInterval\" value=\"%TESTINTERVAL%\" required>\n";
+    testModeSection.replace("%TESTDISTANCE%", String(preferences.getFloat("testDistance", testDistance)));
+    testModeSection.replace("%TESTINTERVAL%", String(preferences.getUInt("testInterval", testInterval_sec)));
+    testModeSection.replace("%TESTMODECHECKED%", preferences.getBool("testModeEnabled", false) ? "checked" : "");
+  }
+  html.replace("%TESTMODE_SECTION%", testModeSection);
   
   html.replace("%SERVERURL%", preferences.getString("serverUrl", serverUrl));
   html.replace("%APIKEY%", preferences.getString("apiKey", apiKey));
@@ -399,13 +479,11 @@ void handleUpdate() {
     if (Update.end(true)) {
       Serial.printf("Update successful: %u bytes\n", upload.totalSize);
       
-      // Clear firmware version in NVS so it gets re-initialized from build flag on next boot
-      // The new firmware will have its own FIRMWARE_VERSION build flag, which will be loaded
-      // when getFirmwareVersion() is called on next boot (in initDeviceManagement())
-      preferences.remove("fw_ver");
+      // Firmware version is now always read from build flag (FIRMWARE_VERSION)
+      // No NVS cleanup needed - version is embedded in the binary
       if (debugEnabled) {
-        Serial.println("DEBUG: Manual firmware upload completed. Firmware version cleared from NVS.");
-        Serial.println("DEBUG: Version will be set from FIRMWARE_VERSION build flag on next boot.");
+        Serial.println("DEBUG: Manual firmware upload completed.");
+        Serial.println("DEBUG: Version will be read from FIRMWARE_VERSION build flag on next boot.");
       }
       
       // Send success response before restart

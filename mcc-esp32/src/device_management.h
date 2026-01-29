@@ -106,7 +106,9 @@ bool downloadFirmware();
 /**
  * @brief Gets the current firmware version.
  * 
- * Reads firmware version from NVS or returns default version.
+ * Returns firmware version from build flag (FIRMWARE_VERSION), which is
+ * embedded in the binary at compile time. This ensures the version is always
+ * correct, even after manual flashing with esptool.
  * 
  * @return String containing firmware version (e.g. "1.0.0")
  */

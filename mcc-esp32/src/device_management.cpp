@@ -28,10 +28,16 @@ extern String wifi_ssid;
 extern String wifi_password;
 extern bool testActive;
 extern float testDistance;
+extern bool apiKeyErrorActive;  // Track if API key error is active
 extern unsigned int testInterval_sec;
 extern unsigned long deepSleepTimeout_sec;
 extern bool ledEnabled;
 extern unsigned int configFetchInterval_sec;
+#ifdef ENABLE_OLED
+#include <U8g2lib.h>
+extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
+extern void display_ServerError(const char* errorType, int errorCode);
+#endif
 extern unsigned long lastConfigFetchTime;
 extern Preferences preferences;
 
@@ -43,17 +49,17 @@ static bool deviceManagementInitialized = false;
 static String pendingFirmwareVersion = "";  // Store version from firmware/info response
 
 /**
- * @brief Gets the current firmware version from NVS or returns default.
+ * @brief Gets the current firmware version from build flag.
+ * 
+ * The version is embedded in the binary at compile time via FIRMWARE_VERSION.
+ * This ensures the version is always correct, even after manual flashing with esptool.
+ * 
+ * @return String containing firmware version (e.g. "1.0.0")
  */
 String getFirmwareVersion() {
-    // NVS key max length is 15 characters, so use shorter key
-    String version = preferences.getString("fw_ver", "");
-    if (version.length() == 0) {
-        version = String(FIRMWARE_VERSION);
-        // Store default version in NVS
-        preferences.putString("fw_ver", version);
-    }
-    return version;
+    // Always return version from build flag (compiled into binary)
+    // This ensures the version is always correct, regardless of NVS state
+    return String(FIRMWARE_VERSION);
 }
 
 /**
@@ -69,8 +75,8 @@ void initDeviceManagement() {
     lastHeartbeatTime = preferences.getULong64("last_hb_time", 0);
     lastFirmwareCheckTime = preferences.getULong64("last_fw_chk", 0);
     
-    // Initialize firmware version if not set
-    getFirmwareVersion();
+    // Firmware version is now always read from build flag (FIRMWARE_VERSION)
+    // No NVS initialization needed
     
     deviceManagementInitialized = true;
     
@@ -117,6 +123,8 @@ StaticJsonDocument<512> createConfigJson() {
     // Note: wifi_password is intentionally NOT sent for security
     config["debug_mode"] = debugEnabled;
     config["test_mode"] = testActive;
+    config["test_distance_km"] = testDistance;
+    config["test_interval_seconds"] = testInterval_sec;
     config["deep_sleep_seconds"] = deepSleepTimeout_sec;
     config["wheel_size"] = wheel_size;
     // Note: apiKey/device_api_key is not part of config report (security)
@@ -313,6 +321,11 @@ bool fetchDeviceConfig() {
                     Serial.printf("DEBUG: [fetchDeviceConfig] Response success: %s\n", success ? "true" : "false");
                 }
                 
+                // Clear API key error flag on successful communication
+                if (success) {
+                    apiKeyErrorActive = false;
+                }
+                
                 if (success && responseDoc.containsKey("config")) {
                     JsonObject config = responseDoc["config"].as<JsonObject>();
                     bool configChanged = false;
@@ -455,6 +468,15 @@ bool fetchDeviceConfig() {
                         }
                     }
                     
+                    // Enable test mode admin access in config GUI (set by server)
+                    if (config.containsKey("test_mode_admin_enabled")) {
+                        bool adminEnabled = config["test_mode_admin_enabled"].as<bool>();
+                        preferences.putBool("test_mode_admin_enabled", adminEnabled);
+                        if (debugEnabled) {
+                            Serial.printf("DEBUG: [Config Update] test_mode_admin_enabled set to: %s\n", adminEnabled ? "true" : "false");
+                        }
+                    }
+                    
                     if (config.containsKey("test_mode")) {
                         bool newTest = config["test_mode"].as<bool>();
                         if (debugEnabled) {
@@ -469,6 +491,52 @@ bool fetchDeviceConfig() {
                             }
                         } else if (debugEnabled) {
                             Serial.println("DEBUG: [Config Update] test_mode unchanged, no update needed");
+                        }
+                    }
+                    
+                    // Handle test_distance_km from server
+                    if (config.containsKey("test_distance_km")) {
+                        float newTestDistance = config["test_distance_km"].as<float>();
+                        // Only update if server provides a valid value (> 0)
+                        if (newTestDistance > 0.0) {
+                            if (debugEnabled) {
+                                Serial.printf("DEBUG: [Config Update] test_distance_km from server: %.2f, current: %.2f\n", newTestDistance, testDistance);
+                            }
+                            if (abs(newTestDistance - testDistance) > 0.001) {  // 0.001 km tolerance for comparison
+                                preferences.putFloat("testDistance", newTestDistance);
+                                testDistance = newTestDistance;  // Update global variable immediately
+                                configChanged = true;
+                                if (debugEnabled) {
+                                    Serial.printf("DEBUG: [Config Update] test_distance_km updated to: %.2f\n", newTestDistance);
+                                }
+                            } else if (debugEnabled) {
+                                Serial.println("DEBUG: [Config Update] test_distance_km unchanged, no update needed");
+                            }
+                        } else if (debugEnabled) {
+                            Serial.printf("DEBUG: [Config Update] test_distance_km from server is invalid (%.2f, expected > 0), ignoring (preserving device value)\n", newTestDistance);
+                        }
+                    }
+                    
+                    // Handle test_interval_seconds from server
+                    if (config.containsKey("test_interval_seconds")) {
+                        unsigned int newTestInterval = config["test_interval_seconds"].as<unsigned int>();
+                        // Only update if server provides a valid value (> 0)
+                        if (newTestInterval > 0) {
+                            if (debugEnabled) {
+                                Serial.printf("DEBUG: [Config Update] test_interval_seconds from server: %u, current: %u\n", newTestInterval, testInterval_sec);
+                            }
+                            if (newTestInterval != testInterval_sec) {
+                                preferences.putUInt("testInterval", newTestInterval);
+                                testInterval_sec = newTestInterval;  // Update global variable immediately
+                                configChanged = true;
+                                if (debugEnabled) {
+                                    Serial.printf("DEBUG: [Config Update] test_interval_seconds updated to: %u\n", newTestInterval);
+                                }
+                            } else if (debugEnabled) {
+                                Serial.println("DEBUG: [Config Update] test_interval_seconds unchanged, no update needed");
+                            }
+                        } else if (debugEnabled) {
+                            Serial.printf("DEBUG: [Config Update] test_interval_seconds from server is invalid (%u, expected > 0), ignoring (preserving device value)\n", newTestInterval);
                         }
                     }
                     
@@ -589,6 +657,42 @@ bool fetchDeviceConfig() {
                 }
             }
         } else {
+            // Check for API key errors (401, 403)
+            if (httpCode == 401 || httpCode == 403) {
+                apiKeyErrorActive = true;
+                if (debugEnabled) {
+                    Serial.printf("DEBUG: [fetchDeviceConfig] API key error detected (HTTP %d). Setting apiKeyErrorActive = true\n", httpCode);
+                }
+            }
+            
+            // Show specific error message for device not found (404)
+            if (httpCode == 404) {
+                #ifdef ENABLE_OLED
+                // Show specific message for device not found
+                display.clearBuffer();
+                display.setFont(u8g2_font_7x14_tf);
+                
+                String textline = "Fehler:";
+                int textWidth = display.getStrWidth(textline.c_str());
+                display.setCursor((128 - textWidth) / 2, 12);
+                display.print(textline);
+                
+                textline = "Gerät nicht";
+                textWidth = display.getStrWidth(textline.c_str());
+                display.setCursor((128 - textWidth) / 2, 28);
+                display.print(textline);
+                
+                textline = "gefunden";
+                textWidth = display.getStrWidth(textline.c_str());
+                display.setCursor((128 - textWidth) / 2, 44);
+                display.print(textline);
+                
+                display.sendBuffer();
+                delay(3000);
+                #endif
+                digitalWrite(LED_PIN, LOW);
+            }
+            
             if (debugEnabled) {
                 Serial.printf("DEBUG: [fetchDeviceConfig] HTTP error: %d\n", httpCode);
                 String errorResponse = http.getString();
@@ -931,31 +1035,20 @@ bool downloadFirmware() {
                 // End update
                 if (Update.end()) {
                     if (Update.isFinished()) {
-                        // Update firmware version in NVS before restart
-                        // Use version from firmware/info response if available, otherwise try to get from header
+                        // Firmware version is now always read from build flag (FIRMWARE_VERSION)
+                        // No need to update NVS - the new firmware binary contains the correct version
+                        if (debugEnabled) {
                         String newVersion = pendingFirmwareVersion;
                         if (newVersion.length() == 0) {
-                            // Try to get version from response header
-                            String headerVersion = http.header("X-Firmware-Version");
-                            if (headerVersion.length() > 0) {
-                                newVersion = headerVersion;
+                                // Try to get version from response header for logging
+                                newVersion = http.header("X-Firmware-Version");
                             }
-                        }
-                        
                         if (newVersion.length() > 0) {
-                            // NVS key max length is 15 characters, so use shorter key
-                            preferences.putString("fw_ver", newVersion);
-                            if (debugEnabled) {
-                                Serial.printf("DEBUG: Updated firmware version in NVS: %s\n", newVersion.c_str());
-                            }
+                                Serial.printf("DEBUG: Firmware update successful! New version: %s (will be read from binary on restart)\n", newVersion.c_str());
                         } else {
-                            if (debugEnabled) {
-                                Serial.println("DEBUG: Warning: Could not determine new firmware version!");
+                                Serial.println("DEBUG: Firmware update successful! Version will be read from binary on restart.");
                             }
-                        }
-                        
-                        if (debugEnabled) {
-                            Serial.println("DEBUG: Firmware update successful! Restarting...");
+                            Serial.println("DEBUG: Restarting...");
                         }
                         http.end();
                         delay(1000);
