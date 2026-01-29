@@ -13,9 +13,21 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 from django.views.generic import RedirectView
+from django.http import HttpResponse
+from django.views.decorators.http import require_http_methods
 from config import views as config_views
 from config.views import set_language, privacy_policy, maintenance_page
 from mgmt.health_check_api import health_check_api
+
+@require_http_methods(["GET", "HEAD"])
+def favicon_view(request):
+    """Return a simple favicon to prevent 404 errors."""
+    # Return a minimal 1x1 transparent PNG as favicon
+    # This is a valid PNG file (1x1 transparent pixel)
+    favicon_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+    response = HttpResponse(favicon_data, content_type='image/png')
+    response['Cache-Control'] = 'public, max-age=31536000'  # Cache for 1 year
+    return response
 
 # Language switcher and API endpoints must be outside i18n_patterns
 urlpatterns = [
@@ -26,6 +38,8 @@ urlpatterns = [
     path('api/health/', health_check_api, name='health_check_api'),
     # Maintenance page (must be outside i18n_patterns to work with middleware redirect)
     path('maintenance.html', maintenance_page, name='maintenance_page'),
+    # Favicon (must be outside i18n_patterns to work from root URL)
+    path('favicon.ico', favicon_view, name='favicon'),
     # API endpoints (no language prefix needed)
     path('api/', include('api.urls')),       # MCC-DB logic
     # cath empty path and redirect to /de/map/

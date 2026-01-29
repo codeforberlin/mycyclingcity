@@ -100,6 +100,8 @@ void RFID_MFRC522_loop_handler() {
             // IMPORTANT CHANGE: The UID of the detected card should replace the UserID (idTag).
             if (idTag != newIdTag) {
                 idTag = newIdTag; // Assignment of RFID UID as current UserID
+                extern bool idTagFromRFID;
+                idTagFromRFID = true; // Mark that this idTag came from RFID detection
                 if (debugEnabled) {
                     Serial.print(F("New UserID (idTag) set by RFID tag: "));
                     Serial.println(idTag);

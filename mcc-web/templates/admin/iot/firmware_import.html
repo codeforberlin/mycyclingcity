@@ -1,0 +1,208 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:iot_firmwareimage_changelist' %}">{% trans 'Firmware Images' %}</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>{{ title }}</h1>
+    
+    <div style="margin: 20px 0;">
+        <p>{% trans 'Importieren Sie Firmware-Images aus einem GitHub Release ZIP-Archiv. Sie können entweder eine lokale ZIP-Datei hochladen oder direkt von GitHub importieren.' %}</p>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" id="firmware-import-form">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <h2>{% trans 'Import-Quelle' %}</h2>
+            
+            <div class="form-row">
+                <div>
+                    <label>
+                        <input type="radio" name="import_mode" value="upload" checked id="source-zip">
+                        {% trans 'ZIP-Datei hochladen' %}
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-row" id="zip-upload-section">
+                <div>
+                    <label for="id_zip_file">{% trans 'ZIP-Datei:' %}</label>
+                    <input type="file" name="zip_file" id="id_zip_file" accept=".zip" required>
+                    <p class="help">{% trans 'Wählen Sie eine ZIP-Datei aus, die Firmware-Images enthält (z.B. von einem GitHub Release heruntergeladen).' %}</p>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label>
+                        <input type="radio" name="import_mode" value="github" id="source-github">
+                        {% trans 'Direkt von GitHub importieren' %}
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-row" id="github-section" style="display: none;">
+                <div>
+                    <label for="id_repo_owner">{% trans 'GitHub Owner/Organisation:' %}</label>
+                    <input type="text" name="repo_owner" id="id_repo_owner" placeholder="z.B. myusername oder myorg">
+                    <p class="help">{% trans 'Der Benutzername oder die Organisation des GitHub-Repositories.' %}</p>
+                </div>
+                
+                <div>
+                    <label for="id_repo_name">{% trans 'Repository-Name:' %}</label>
+                    <input type="text" name="repo_name" id="id_repo_name" placeholder="z.B. mycyclingcity">
+                    <p class="help">{% trans 'Der Name des GitHub-Repositories.' %}</p>
+                </div>
+                
+                <div>
+                    <label for="id_tag">{% trans 'Release Tag:' %}</label>
+                    <input type="text" name="tag" id="id_tag" placeholder="z.B. v1.0.0">
+                    <p class="help">{% trans 'Der Tag des Releases (z.B. v1.0.0). Das "v" ist optional.' %}</p>
+                </div>
+                
+                <div>
+                    <label for="id_github_token">{% trans 'GitHub Token (optional):' %}</label>
+                    <input type="password" name="github_token" id="id_github_token" placeholder="ghp_...">
+                    <p class="help">{% trans 'Nur erforderlich für private Repositories. Erstellen Sie ein Personal Access Token mit "repo" Berechtigung.' %}</p>
+                </div>
+            </div>
+        </fieldset>
+        
+        <fieldset class="module aligned">
+            <h2>{% trans 'Import-Optionen' %}</h2>
+            
+            <div class="form-row">
+                <div>
+                    <label>
+                        <input type="checkbox" name="mark_as_stable" id="id_mark_as_stable" checked>
+                        {% trans 'Automatisch als stabil markieren' %}
+                    </label>
+                    <p class="help">{% trans 'Markiert die importierte Firmware als stabil.' %}</p>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label>
+                        <input type="checkbox" name="overwrite_duplicates" id="id_overwrite_duplicates">
+                        {% trans 'Bei Duplikaten überschreiben' %}
+                    </label>
+                    <p class="help">{% trans 'Wenn eine Firmware mit derselben Version und Environment bereits existiert, wird die alte Version deaktiviert und durch die neue ersetzt.' %}</p>
+                </div>
+            </div>
+        </fieldset>
+        
+        <fieldset class="module aligned">
+            <h2>{% trans 'Unterstützte Environments' %}</h2>
+            <div class="form-row">
+                <ul>
+                    {% for env in supported_environments %}
+                    <li><strong>{{ env.key }}</strong>: {{ env.display }}</li>
+                    {% endfor %}
+                </ul>
+                <p class="help">{% trans 'Die ZIP-Datei sollte Firmware-Images für diese Environments enthalten. Dateinamen müssen dem Format "mcc-esp32-&lt;environment&gt;-&lt;version&gt;.bin" entsprechen.' %}</p>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Import starten' %}" class="default" name="import">
+            <a href="{% url 'admin:iot_firmwareimage_changelist' %}" class="button">{% trans 'Abbrechen' %}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sourceZip = document.getElementById('source-zip');
+    const sourceGithub = document.getElementById('source-github');
+    const zipSection = document.getElementById('zip-upload-section');
+    const githubSection = document.getElementById('github-section');
+    const zipFileInput = document.getElementById('id_zip_file');
+    const githubTagInput = document.getElementById('id_tag');
+    
+    function updateFormVisibility() {
+        if (sourceZip.checked) {
+            zipSection.style.display = 'block';
+            githubSection.style.display = 'none';
+            zipFileInput.required = true;
+            githubTagInput.required = false;
+        } else {
+            zipSection.style.display = 'none';
+            githubSection.style.display = 'block';
+            zipFileInput.required = false;
+            githubTagInput.required = true;
+        }
+    }
+    
+    sourceZip.addEventListener('change', updateFormVisibility);
+    sourceGithub.addEventListener('change', updateFormVisibility);
+    
+    // Initial state
+    updateFormVisibility();
+});
+</script>
+
+<style>
+.form-row {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.form-row label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-row input[type="text"],
+.form-row input[type="password"],
+.form-row input[type="file"] {
+    width: 100%;
+    max-width: 500px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-row .help {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+fieldset.module {
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+fieldset.module h2 {
+    margin-top: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.submit-row {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.submit-row input[type="submit"] {
+    margin-right: 10px;
+}
+</style>
+{% endblock %}

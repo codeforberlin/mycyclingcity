@@ -129,18 +129,24 @@ def push_to_minecraft_bridge(
         return False
 
 def validate_api_key(api_key):
-    """Validates the API key (global or device-specific).
+    """Validates the API key for public endpoints (not IoT device endpoints).
+    
+    This function is used for public API endpoints (leaderboards, statistics, etc.)
+    and does NOT accept IoT Device Shared API Key - only public API key and
+    device-specific keys for backward compatibility.
     
     Also supports previous_api_key for grace period during rotation.
     """
     if not api_key:
+        logger.warning(f"[validate_api_key] API key validation failed: No API key provided")
         return False, None
     
-    # Check global API key first (for backward compatibility and testing)
+    # Check global public API key first (for public endpoints)
     if api_key == settings.MCC_APP_API_KEY:
         return True, None
     
-    # Check device-specific API keys (current key)
+    # Check device-specific API keys (current key) - for backward compatibility
+    # Note: IoT Device Shared Key is NOT accepted here - it's only for IoT endpoints
     try:
         config = DeviceConfiguration.objects.select_related('device').get(device_specific_api_key=api_key)
         # If device authenticated with new key and previous_key exists, clear it (rotation completed)
@@ -161,6 +167,8 @@ def validate_api_key(api_key):
     except DeviceConfiguration.DoesNotExist:
         pass
     
+    # Log the invalid API key for admin debugging
+    logger.warning(f"[validate_api_key] API key validation failed: Invalid API key received: {api_key}")
     return False, None
 
 
@@ -178,29 +186,21 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
     """
     Validate API key for device-specific endpoints.
     
+    Validates in this order:
+    1. Device-specific API key (current key)
+    2. IoT Device Shared API Key (from DeviceManagementSettings)
+    3. Previous API key (grace period for rotation)
+    4. Global API key (for testing and backward compatibility)
+    
     Returns:
         (is_valid, device, config) tuple
     """
     api_key_header = request.headers.get('X-Api-Key')
     if not api_key_header:
+        logger.warning(f"[validate_device_api_key] API key validation failed: No API key provided (device_id: {device_id})")
         return False, None, None
     
-    # Check global API key (for testing and backward compatibility)
-    if api_key_header == settings.MCC_APP_API_KEY:
-        # If device_id is provided, try to get the device
-        if device_id:
-            try:
-                device = Device.objects.get(name=device_id)
-                try:
-                    config = device.configuration
-                except DeviceConfiguration.DoesNotExist:
-                    config = None
-                return True, device, config
-            except Device.DoesNotExist:
-                return False, None, None
-        return True, None, None
-    
-    # Check device-specific API key (current key)
+    # Check device-specific API key (current key) - highest priority
     try:
         config = DeviceConfiguration.objects.select_related('device').get(device_specific_api_key=api_key_header)
         device = config.device
@@ -221,6 +221,43 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
     except DeviceConfiguration.DoesNotExist:
         pass
     
+    # Check IoT Device Shared API Key (from DeviceManagementSettings)
+    # This key can be used by multiple devices and is only valid for IoT endpoints
+    # It is used when device_specific_api_key is empty (not yet assigned to a device)
+    try:
+        mgmt_settings = DeviceManagementSettings.get_settings()
+        if mgmt_settings.iot_device_shared_api_key and api_key_header == mgmt_settings.iot_device_shared_api_key:
+            # If device_id is provided, try to get the device and create/update its configuration
+            if device_id:
+                try:
+                    device = Device.objects.get(name=device_id)
+                    # Get or create configuration (may not exist yet for new devices)
+                    try:
+                        config = device.configuration
+                    except DeviceConfiguration.DoesNotExist:
+                        # Create configuration for new device - device_specific_api_key will be empty
+                        # so the device will continue using the Shared Key
+                        config = DeviceConfiguration.objects.create(device=device)
+                        logger.info(f"[validate_device_api_key] Created DeviceConfiguration for device {device_id} - will use IoT Shared API Key")
+                    else:
+                        # Configuration exists - check if it has a device-specific key
+                        if not config.device_specific_api_key:
+                            logger.info(f"[validate_device_api_key] Device {device_id} authenticated with IoT Device Shared API Key (no device-specific key assigned)")
+                        else:
+                            # Device has its own key, but used Shared Key - log warning
+                            logger.warning(f"[validate_device_api_key] Device {device_id} has device_specific_api_key but used Shared Key - this may indicate a configuration issue")
+                    return True, device, config
+                except Device.DoesNotExist:
+                    logger.warning(f"[validate_device_api_key] IoT Device Shared API Key used, but device {device_id} not found")
+                    return False, None, None
+            else:
+                # IoT Shared Key is valid even without device_id (for initial connection)
+                logger.info(f"[validate_device_api_key] Authenticated with IoT Device Shared API Key (no device_id provided)")
+                return True, None, None
+    except Exception as e:
+        logger.warning(f"[validate_device_api_key] Error checking IoT Device Shared API Key: {e}")
+        pass
+    
     # Check previous API key (grace period for rotation - no expiration, until device uses new key)
     try:
         config = DeviceConfiguration.objects.select_related('device').get(
@@ -236,8 +273,28 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
         logger.info(f"[validate_device_api_key] Device {device.name} authenticated with previous API key (grace period - waiting for device to fetch new key)")
         return True, device, config
     except DeviceConfiguration.DoesNotExist:
-        logger.warning(f"[validate_device_api_key] Invalid device-specific API key")
-        return False, None, None
+        pass
+    
+    # Check global API key (for testing and backward compatibility)
+    if api_key_header == settings.MCC_APP_API_KEY:
+        # If device_id is provided, try to get the device
+        if device_id:
+            try:
+                device = Device.objects.get(name=device_id)
+                try:
+                    config = device.configuration
+                except DeviceConfiguration.DoesNotExist:
+                    config = None
+                logger.info(f"[validate_device_api_key] Device {device_id} authenticated with global API key (backward compatibility)")
+                return True, device, config
+            except Device.DoesNotExist:
+                return False, None, None
+        logger.info(f"[validate_device_api_key] Authenticated with global API key (backward compatibility)")
+        return True, None, None
+    
+    # Log the invalid API key for admin debugging
+    logger.warning(f"[validate_device_api_key] API key validation failed: Invalid API key received: {api_key_header} (device_id: {device_id})")
+    return False, None, None
 
 def check_milestone_victory(group, active_leaf_group=None):
     """
@@ -541,7 +598,7 @@ def update_data(request):
     # So we do a basic validation here and full device validation after parsing JSON
     is_valid, device_from_initial_key = validate_api_key(api_key_header)
     if not is_valid:
-        logger.warning(f"[update_data] Invalid API key")
+        logger.warning(f"[update_data] Invalid API key - API key validation failed (API key logged in validate_api_key)")
         return JsonResponse({"error": _("Ungültiger API-Key")}, status=403)
 
     # Handle JSON POST requests
@@ -586,7 +643,7 @@ def update_data(request):
     # This ensures device-specific API keys match the device_id in the request
     is_valid, device_from_key, config = validate_device_api_key(request, device_id)
     if not is_valid:
-        logger.warning(f"[update_data] Invalid API key for device {device_id}")
+        logger.warning(f"[update_data] Invalid API key for device {device_id} - API key validation failed (API key logged in validate_device_api_key)")
         return JsonResponse({"error": _("Ungültiger API-Key")}, status=403)
     
     try:
@@ -2319,6 +2376,8 @@ def device_config_fetch(request: HttpRequest) -> JsonResponse:
                 'ap_password': '',
                 'debug_mode': False,
                 'test_mode': False,
+                'test_distance_km': 0.01,
+                'test_interval_seconds': 5,
                 'deep_sleep_seconds': 0,
                 'wheel_size': 2075.0,  # Default: 26 Zoll = 2075 mm
                 'config_fetch_interval_seconds': 3600,
@@ -2400,19 +2459,50 @@ def device_firmware_download(request: HttpRequest) -> JsonResponse:
         if not os.path.exists(file_path):
             return JsonResponse({"error": _("Firmware-Datei auf dem Server nicht gefunden")}, status=404)
         
-        logger.info(f"[device_firmware_download] Device {device_id} downloading firmware {firmware.version}")
+        # Get actual file size from filesystem
+        actual_file_size = os.path.getsize(file_path)
+        stored_file_size = firmware.file_size or 0
+        
+        # Log file size information
+        logger.info(
+            f"[device_firmware_download] Device {device_id} downloading firmware {firmware.version} "
+            f"(stored_size={stored_file_size}, actual_size={actual_file_size})"
+        )
+        
+        # Validate file size (ESP32 firmware should be at least several KB)
+        if actual_file_size < 10000:  # At least 10 KB
+            logger.error(
+                f"[device_firmware_download] Firmware file too small: {actual_file_size} bytes. "
+                f"File path: {file_path}, Stored size: {stored_file_size}"
+            )
+            return JsonResponse({
+                "error": _("Firmware-Datei ist zu klein oder beschädigt"),
+                "details": f"Dateigröße: {actual_file_size} Bytes (erwartet: > 10 KB)"
+            }, status=500)
+        
+        # Warn if stored size doesn't match actual size
+        if stored_file_size > 0 and abs(stored_file_size - actual_file_size) > 100:
+            logger.warning(
+                f"[device_firmware_download] File size mismatch: stored={stored_file_size}, actual={actual_file_size}"
+            )
         
         # Return file response
-        response = FileResponse(
-            open(file_path, 'rb'),
-            content_type='application/octet-stream'
-        )
-        response['Content-Disposition'] = f'attachment; filename="{firmware.version}.bin"'
-        response['X-Firmware-Version'] = firmware.version
-        response['X-Firmware-Checksum'] = firmware.checksum_md5 or ''
-        response['X-Firmware-Size'] = str(firmware.file_size or 0)
-        
-        return response
+        try:
+            file_handle = open(file_path, 'rb')
+            response = FileResponse(
+                file_handle,
+                content_type='application/octet-stream'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{firmware.version}.bin"'
+            response['X-Firmware-Version'] = firmware.version
+            response['X-Firmware-Checksum'] = firmware.checksum_md5 or ''
+            response['X-Firmware-Size'] = str(actual_file_size)
+            response['Content-Length'] = str(actual_file_size)
+            
+            return response
+        except Exception as e:
+            logger.error(f"[device_firmware_download] Error opening file: {e}", exc_info=True)
+            return JsonResponse({"error": _("Fehler beim Öffnen der Firmware-Datei")}, status=500)
         
     except Exception as e:
         logger.error(f"[device_firmware_download] Error: {str(e)}", exc_info=True)

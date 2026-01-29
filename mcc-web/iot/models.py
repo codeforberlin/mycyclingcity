@@ -54,7 +54,7 @@ class DeviceConfiguration(models.Model):
         null=True,
         unique=True,
         verbose_name=_("Geräte-API-Key"),
-        help_text=_("Eindeutiger API-Key für dieses Gerät. Wenn nicht gesetzt, verwendet das Gerät den globalen API-Key.")
+        help_text=_("Eindeutiger API-Key für dieses Gerät. Wenn nicht gesetzt, verwendet das Gerät den IoT Device Shared API Key (konfiguriert in Geräteverwaltungs-Einstellungen).")
     )
     
     api_key_rotation_enabled = models.BooleanField(
@@ -187,6 +187,20 @@ class DeviceConfiguration(models.Model):
         help_text=_("Testdatenübertragungsmodus aktivieren")
     )
     
+    test_distance_km = models.FloatField(
+        default=0.01,
+        validators=[MinValueValidator(0.001)],
+        verbose_name=_("Test-Distanz (km)"),
+        help_text=_("Simulierte Distanz in Kilometern für Testmodus. Standard: 0.01 km")
+    )
+    
+    test_interval_seconds = models.IntegerField(
+        default=5,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Test-Intervall (Sekunden)"),
+        help_text=_("Sendeintervall in Sekunden für Testmodus. Standard: 5 Sekunden")
+    )
+    
     deep_sleep_seconds = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)],
@@ -232,6 +246,18 @@ class DeviceConfiguration(models.Model):
     
     def __str__(self):
         return f"{_('Configuration for')} {self.device.name}"
+    
+    def save(self, *args, **kwargs):
+        """Override save to handle automatic API key assignment.
+        
+        Note: We do NOT set device_specific_api_key to the IoT Shared Key here because
+        device_specific_api_key is unique=True and the Shared Key should be usable by multiple devices.
+        Instead, we leave device_specific_api_key empty, and validate_device_api_key() will
+        check the IoT Shared Key when device_specific_api_key is empty.
+        
+        This method is kept for potential future use (e.g., logging or other initialization).
+        """
+        super().save(*args, **kwargs)
     
     def generate_api_key(self) -> str:
         """Generate a new unique API key for this device.
@@ -297,6 +323,8 @@ class DeviceConfiguration(models.Model):
             'ap_password': self.ap_password or '',
             'debug_mode': self.debug_mode,
             'test_mode': self.test_mode,
+            'test_distance_km': self.test_distance_km,
+            'test_interval_seconds': self.test_interval_seconds,
             'deep_sleep_seconds': self.deep_sleep_seconds,
             'wheel_size': self.wheel_size,
             'device_api_key': self.device_specific_api_key or '',
@@ -428,9 +456,9 @@ class FirmwareImage(models.Model):
     
     version = models.CharField(
         max_length=50,
-        unique=True,
         verbose_name=_("Version"),
         help_text=_("Versionskennung (z.B. '1.2.3' oder 'v2.0.1')")
+        # Note: unique=True removed - use unique_together with environment instead
     )
     
     description = models.TextField(
@@ -461,6 +489,22 @@ class FirmwareImage(models.Model):
         help_text=_("MD5-Prüfsumme der Firmware-Datei zur Verifizierung")
     )
     
+    checksum_sha256 = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        verbose_name=_("SHA256-Prüfsumme"),
+        help_text=_("SHA256-Prüfsumme der Firmware-Datei zur Verifizierung")
+    )
+    
+    environment = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_("Environment"),
+        help_text=_("Hardware-Environment (z.B. heltec_wifi_lora_32_V3, wemos_d1_mini32)")
+    )
+    
     is_active = models.BooleanField(
         default=True,
         verbose_name=_("Aktiv"),
@@ -480,23 +524,30 @@ class FirmwareImage(models.Model):
         verbose_name = _("Firmware Image")
         verbose_name_plural = _("Firmware Images")
         ordering = ['-created_at']
+        unique_together = [['version', 'environment']]
     
     def __str__(self):
         stable = " [STABIL]" if self.is_stable else ""
         return f"{self.name} ({self.version}){stable}"
     
     def save(self, *args, **kwargs):
-        """Calculate file size and MD5 checksum on save."""
+        """Calculate file size, MD5 and SHA256 checksum on save."""
         if self.firmware_file:
             import hashlib
             self.file_size = self.firmware_file.size
-            # Calculate MD5
-            self.firmware_file.seek(0)
-            md5_hash = hashlib.md5()
-            for chunk in self.firmware_file.chunks():
-                md5_hash.update(chunk)
-            self.checksum_md5 = md5_hash.hexdigest()
-            self.firmware_file.seek(0)
+            # Calculate MD5 and SHA256 (only if not already set)
+            if not self.checksum_md5 or not self.checksum_sha256:
+                self.firmware_file.seek(0)
+                md5_hash = hashlib.md5()
+                sha256_hash = hashlib.sha256()
+                for chunk in self.firmware_file.chunks():
+                    md5_hash.update(chunk)
+                    sha256_hash.update(chunk)
+                if not self.checksum_md5:
+                    self.checksum_md5 = md5_hash.hexdigest()
+                if not self.checksum_sha256:
+                    self.checksum_sha256 = sha256_hash.hexdigest()
+                self.firmware_file.seek(0)
         super().save(*args, **kwargs)
 
 
@@ -522,15 +573,23 @@ class DeviceManagementSettings(models.Model):
         help_text=_("Timestamp of the last notification email sent")
     )
     
+    iot_device_shared_api_key = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name=_("IoT Device Shared API Key"),
+        help_text=_("Dedicated API key for IoT devices that can be shared by multiple devices. Used as default key before individual device keys are assigned. Only valid for IoT device endpoints.")
+    )
+    
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated at"))
     
     class Meta:
-        verbose_name = _("Device Management Settings")
-        verbose_name_plural = _("Device Management Settings")
+        verbose_name = _("Geräteverwaltungs-Einstellungen")
+        verbose_name_plural = _("Geräteverwaltungs-Einstellungen")
     
     def __str__(self):
         enabled = _("Enabled") if self.email_notifications_enabled else _("Disabled")
-        return f"{_('Device Management Settings')} ({enabled})"
+        return f"{_('Geräteverwaltungs-Einstellungen')} ({enabled})"
     
     @classmethod
     def get_settings(cls):
@@ -689,6 +748,8 @@ class ConfigTemplate(models.Model):
     
     def apply_to_device(self, device: Device) -> DeviceConfiguration:
         """Apply this template to a device configuration."""
+        # Note: DeviceConfiguration.save() will automatically assign IoT Shared API Key
+        # if device_specific_api_key is not set
         config, created = DeviceConfiguration.objects.get_or_create(device=device)
         
         # Update configuration with template values

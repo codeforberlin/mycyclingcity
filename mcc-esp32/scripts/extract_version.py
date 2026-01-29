@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Extract version from Git tag or VERSION file.
-Priority: Git tag > VERSION file > default
+Extract version from Git tag or version.txt file.
+Priority: Git tag > version.txt > default
 
 Usage:
     python3 extract_version.py [--output-format=env|version]
@@ -54,9 +54,9 @@ def get_version_from_git_tag():
 
 
 def get_version_from_file():
-    """Read version from VERSION file."""
+    """Read version from version.txt file."""
     script_dir = Path(__file__).parent
-    version_file = script_dir.parent / 'VERSION'
+    version_file = script_dir.parent / 'version.txt'
     
     if version_file.exists():
         try:
@@ -85,7 +85,7 @@ def main():
             if arg.startswith('--output-format='):
                 output_format = arg.split('=', 1)[1]
     
-    # Try to get version (priority: Git tag > VERSION file > default)
+    # Try to get version (priority: Git tag > version.txt > default)
     version = get_version_from_git_tag()
     if not version:
         version = get_version_from_file()

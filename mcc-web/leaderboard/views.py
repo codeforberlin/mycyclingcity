@@ -1254,6 +1254,9 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker
         'sort_by': sort_by,  # Pass sort parameter to template
         'parent_color_map': parent_color_map,  # Pass color map to template
+        'tracks_json': json.dumps(tracks_data),  # JSON string for JavaScript
+        'devices_json': json.dumps(devices_data),  # JSON string for JavaScript
+        'milestones_json': json.dumps(milestones_data),  # JSON string for JavaScript
     }
     
     # If HTMX request, check what to return

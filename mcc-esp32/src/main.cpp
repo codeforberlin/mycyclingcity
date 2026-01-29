@@ -127,6 +127,11 @@ String deviceName = "";
 String idTag = "";        // uid from RFID tag
 String username ="";      // internal symbolic name from admin database
 String lastSentIdTag = "";
+bool idTagFromRFID = false;  // Track if current idTag came from RFID detection (true) or default user (false)
+unsigned long lastServerErrorTime = 0;  // Track last server error time for backoff
+unsigned long serverErrorBackoffInterval = 60000;  // Wait 60 seconds between retries after server error
+bool apiKeyErrorActive = false;  // Track if API key error is active (don't show username error until fixed)
+int wifiConnectAttempts = 0;  // Track number of WiFi connection attempts (max 3)
 float wheel_size = 2075.0;  // Default: 26 Zoll = 2075 mm circumference
 String serverUrl = "";
 String apiKey = "";
@@ -289,7 +294,8 @@ void play_tag_detected_tone();
  * @note Only compiled if ENABLE_OLED is defined
  */
 #ifdef ENABLE_OLED
-void display_IdTag_Name(const char* text);
+void display_IdTag_Name(const char* text, bool isRfidDetected = false, bool queryWasSuccessful = false);
+void display_ServerError(const char* errorType, int errorCode);
 #endif
 
 /**
@@ -555,6 +561,7 @@ void setup() {
                     }
                     if (defaultIdTag.length() > 0) {
                         idTag = defaultIdTag; // Restore default_id_tag after config fetch
+                        idTagFromRFID = false; // Default user, not from RFID
                         if (debugEnabled) {
                             Serial.printf("DEBUG: Default ID tag restored after config fetch: %s\n", defaultIdTag.c_str());
                         }
@@ -889,35 +896,86 @@ void loop() {
 
             // QUERY USER_ID FROM SERVER AND DISPLAY ON OLED (if enabled)
             // This works independently of RFID - the server is queried for any idTag
-            username = getUserIdFromTag(idTag);
+            // Only query if WLAN is connected and API key error is not active
+            if (WiFi.status() == WL_CONNECTED && !apiKeyErrorActive) {
+                String newUsername = getUserIdFromTag(idTag);
+                // getUserIdFromTag() returns:
+                // - Valid username string if found
+                // - "NULL" if user not found (HTTP 404 or server returned "NULL")
+                // - "" (empty) if query failed (backoff period, connection error, etc.)
+                if (newUsername.length() > 0) {
+                    // Query was successful - update username (could be valid name or "NULL")
+                    bool wasUsernameNull = (username.length() == 0 || username == "NULL");
+                    bool isUsernameNull = (newUsername == "NULL");
+                    bool usernameChanged = (wasUsernameNull != isUsernameNull) || (username != newUsername);
+                    
+                    if (usernameChanged) {
+                        username = newUsername;
             
             #ifdef ENABLE_OLED
+                        // Always update display when ID tag changes (new query was made)
+                        // queryWasSuccessful = true because newUsername.length() > 0 means query was successful
+                        // Note: If HTTP 404, username was already set to "NULL" in getUserIdFromTag() and error was already shown
             if (username.length() > 0 && username != "NULL") {
-                display_IdTag_Name(username.c_str());
+                            display_IdTag_Name(username.c_str(), idTagFromRFID, true);
             } else {
-                // Show ID tag if no assignment found
-                display_IdTag_Name("NULL");
+                            // HTTP 404 - error message was already shown in getUserIdFromTag(), don't overwrite it
+                            // Just keep the "Radler nicht gefunden" message that was already displayed
             }
             delay(3000);
             #endif
-
+                    }
         }  
+                // If newUsername is empty, query failed - don't update username, keep previous value
+            } else {
+                // WLAN not connected or API key error is active - don't query username
+                if (debugEnabled) {
+                    if (WiFi.status() != WL_CONNECTED) {
+                        Serial.println("DEBUG: WLAN not connected, skipping username query.");
+                    } else {
+                        Serial.println("DEBUG: API key error active, skipping username query.");
+                    }
+                }
+            }
+
+        }
+        
+        // Check if username is valid - if not, don't send data to server
+        // Also don't send if API key error is active
+        bool hasValidUsername = (!apiKeyErrorActive && username.length() > 0 && username != "NULL");  
 
         if (WiFi.status() != WL_CONNECTED) {
+            // Only try to reconnect if we haven't exceeded 3 attempts
+            if (wifiConnectAttempts < 3) {
             // Connection is disconnected: TRY TO RESTORE CONNECTION
             connectToWiFi(); 
-        }
-
-        if (WiFi.status() != WL_CONNECTED) {
-            if (millis() - reconnectLastAttemptTime >= RECONNECT_INTERVAL_MS) {
+            } else {
+                // Already tried 3 times, don't retry (error message already shown)
+                if (debugEnabled && (millis() % 60000 < 100)) { // Log every ~60 seconds
+                    Serial.println("DEBUG: WiFi connection failed after 3 attempts. Not retrying.");
+                }
+            }
+        } else {
+            // WiFi is connected - reset attempt counter and update display if error was shown
+            bool hadWifiError = (wifiConnectAttempts >= 3);
+            if (wifiConnectAttempts > 0) {
+                wifiConnectAttempts = 0;
               if (debugEnabled) {
-                Serial.println("DEBUG: WiFi connection failed. Attempting to reconnect...");
+                    Serial.println("DEBUG: WiFi connection restored. Resetting attempt counter.");
               }
-              if (wifi_ssid.length() > 0) {
-                const char* password_cstr = wifi_password.length() > 0 ? wifi_password.c_str() : "";
-                WiFi.begin(wifi_ssid.c_str(), password_cstr);
-              }
-              reconnectLastAttemptTime = millis();
+                
+                // Update display if WiFi error was just resolved
+                if (hadWifiError) {
+                    #ifdef ENABLE_OLED
+                    // Show normal display (username or default message) - WiFi error is resolved
+                    // queryWasSuccessful = false because we're just showing the current username, no new query was made
+                    if (username.length() > 0 && username != "NULL") {
+                        display_IdTag_Name(username.c_str(), idTagFromRFID, false);
+                    } else {
+                        display_IdTag_Name("NULL", idTagFromRFID, false);
+                    }
+                    #endif
+                }
             }
         }
         
@@ -931,13 +989,15 @@ void loop() {
         // 2. Before deep sleep (below, when no pulses detected)
         // This avoids interrupting active pulse data collection
     
+        // Only count pulses if data can be sent (valid username and no API key error)
+        // Block pulse counting if errors are active, as it makes no sense to count pulses that cannot be sent
+        if (hasValidUsername) {
         // Query counter value and output in log, but only on change
         pcnt_get_counter_value(PCNT_UNIT, &currentPulseCount);
         //if (debugEnabled) {
         //      Serial.printf("Pulse detected! Current Pulse Count: %d\n", currentPulseCount);
         //}
         //delay(1);
-
 
             if (currentPulseCount != lastPulseCount) {
             // Total distance is still updated, but not sent
@@ -962,13 +1022,27 @@ void loop() {
                 delay(50);
                 //ledIsOn = false;
                 digitalWrite(LED_PIN, LOW);
+                }
+            }
+        } else {
+            // Block pulse counting when errors are active
+            // Don't read counter value to prevent counting pulses that cannot be sent
+            if (debugEnabled && (millis() % 10000 < 100)) { // Log every ~10 seconds
+                if (WiFi.status() != WL_CONNECTED) {
+                    Serial.println("DEBUG: Pulse counting blocked - WLAN not connected");
+                } else if (apiKeyErrorActive) {
+                    Serial.println("DEBUG: Pulse counting blocked - API key error active");
+                } else {
+                    Serial.println("DEBUG: Pulse counting blocked - no valid username assigned");
+                }
             }
         }
         
         // Periodic config fetch (even when Deep Sleep is disabled)
         // Also fetches on first start (lastConfigFetchTime == 0) or when interval is reached
+        // Don't fetch if API key error is active (must fix API key first)
         if (configFetchInterval_sec > 0) {
-            if (WiFi.status() == WL_CONNECTED) {
+            if (WiFi.status() == WL_CONNECTED && !apiKeyErrorActive) {
                 unsigned long elapsed_ms = (lastConfigFetchTime == 0) ? 0 : (millis() - lastConfigFetchTime);
                 bool shouldFetch = (lastConfigFetchTime == 0) || (elapsed_ms >= (unsigned long)configFetchInterval_sec * 1000);
                 
@@ -994,13 +1068,20 @@ void loop() {
                         // Don't update lastConfigFetchTime on failure, so it retries sooner
                     }
                 }
-            } else if (debugEnabled && (millis() % 60000 < 100)) { // Log every ~60 seconds when WiFi not connected
+            } else {
+                if (debugEnabled && (millis() % 60000 < 100)) { // Log every ~60 seconds
+                    if (apiKeyErrorActive) {
+                        Serial.println("DEBUG: Periodic config fetch skipped - API key error active (must fix API key first)");
+                    } else {
                 Serial.printf("DEBUG: Periodic config fetch skipped - WiFi not connected (interval: %u s)\n", configFetchInterval_sec);
+                    }
+                }
             }
         }
         
         // Logic for normal send mode
-        if (!testActive && (millis() - lastDataSendTime >= (unsigned long)sendInterval_sec * 1000)) {
+        // Only send data if username is valid (assigned on server)
+        if (!testActive && hasValidUsername && (millis() - lastDataSendTime >= (unsigned long)sendInterval_sec * 1000)) {
            if (debugEnabled) {
               Serial.println("DEBUG: Sending data");
             }
@@ -1028,22 +1109,120 @@ void loop() {
                     pulsesAtLastSend = currentPulseCount;
                     // Update lastSentIdTag here since data was sent successfully
                     lastSentIdTag = idTag;
+                    // Clear server error backoff on success
+                    bool hadServerError = (lastServerErrorTime > 0);
+                    lastServerErrorTime = 0;
+                    // Clear API key error flag on successful communication
+                    bool wasApiKeyError = apiKeyErrorActive;
+                    apiKeyErrorActive = false;
+                    
+                    // Update display if any error was just resolved (API key, WLAN, Wartung, Server)
+                    if (wasApiKeyError || hadServerError) {
+                        #ifdef ENABLE_OLED
+                        // Show normal display (username or default message) - error is resolved
+                        // queryWasSuccessful = false because we're just showing the current username, no new query was made
+                        if (username.length() > 0 && username != "NULL") {
+                            display_IdTag_Name(username.c_str(), idTagFromRFID, false);
+                        } else {
+                            display_IdTag_Name("NULL", idTagFromRFID, false);
+                        }
+                        #endif
+                    }
 
                     if (debugEnabled) {
                         Serial.printf("DEBUG: Data sent successfully! Status: %d\n", responseCode);
                     }
                 } else if (responseCode == -1) {
                     // WiFi error: No update of send time so it tries faster next time.
+                    digitalWrite(LED_PIN, LOW);
                     if (debugEnabled) {
                         Serial.println("DEBUG: Send failed: No WiFi.");
                     }
                 } else {
                     // Other error (e.g. HTTP 4xx/5xx, internal error)
+                    // Update backoff timer
+                    lastServerErrorTime = millis();
+                    digitalWrite(LED_PIN, LOW);
+                    
+                    // Show error on display
+                    String errorType = "Server";
+                    bool isApiKeyError = false;
+                    if (responseCode == 401 || responseCode == 403) {
+                        errorType = "API Key";
+                        isApiKeyError = true;
+                    } else if (responseCode == 503) {
+                        errorType = "Wartung";
+                    }
+                    
+                    // Set API key error flag if API key error detected
+                    if (isApiKeyError) {
+                        apiKeyErrorActive = true;
+                    }
+                    
+                    #ifdef ENABLE_OLED
+                    display_ServerError(errorType.c_str(), responseCode);
+                    delay(2000);
+                    // Ensure LED stays off after error display
+                    digitalWrite(LED_PIN, LOW);
+                    #endif
+                    
                     if (debugEnabled) {
                         Serial.printf("DEBUG: Send failed: Code %d. Waiting for next attempt.\n", responseCode);
                     }
               }
                 
+            }
+            lastDataSendTime = millis();
+        } else if (!testActive && !hasValidUsername && (millis() - lastDataSendTime >= (unsigned long)sendInterval_sec * 1000)) {
+            // No valid username - skip sending but update timer to avoid spamming
+            // Retry after backoff period, even if API key error is active (to check if API key was fixed)
+            if (lastServerErrorTime == 0 || (millis() - lastServerErrorTime) >= serverErrorBackoffInterval) {
+                // Only query if WLAN is connected
+                if (WiFi.status() == WL_CONNECTED) {
+                    if (debugEnabled) {
+                        if (apiKeyErrorActive) {
+                            Serial.println("DEBUG: Retrying connection after backoff period to check if API key error is resolved.");
+                        } else {
+                            Serial.println("DEBUG: Retrying username query after backoff period.");
+                        }
+                    }
+                    String newUsername = getUserIdFromTag(idTag);
+                    // getUserIdFromTag() returns:
+                    // - Valid username string if found
+                    // - "NULL" if user not found (HTTP 404 or server returned "NULL")
+                    // - "" (empty) if query failed (backoff period, connection error, etc.)
+                    if (newUsername.length() > 0) {
+                        // Query was successful - update username (could be valid name or "NULL")
+                        bool wasUsernameNull = (username.length() == 0 || username == "NULL");
+                        bool isUsernameNull = (newUsername == "NULL");
+                        bool usernameChanged = (wasUsernameNull != isUsernameNull) || (username != newUsername);
+                        
+                        if (usernameChanged) {
+                            username = newUsername;
+                            
+                            #ifdef ENABLE_OLED
+                            // Show updated display (username or default message)
+                            // queryWasSuccessful = true because newUsername.length() > 0 means query was successful
+                            // Note: If HTTP 404, username was already set to "NULL" in getUserIdFromTag() and error was already shown
+                            if (username.length() > 0 && username != "NULL") {
+                                display_IdTag_Name(username.c_str(), idTagFromRFID, true);
+                            } else {
+                                // HTTP 404 - error message was already shown in getUserIdFromTag(), don't overwrite it
+                                // Just keep the "Radler nicht gefunden" message that was already displayed
+                            }
+                            #endif
+                        }
+                    }
+                    // If newUsername is empty, query failed - don't update username, keep previous value
+                }
+            } else {
+                if (debugEnabled) {
+                    if (apiKeyErrorActive) {
+                        Serial.println("DEBUG: Skipping connection retry - still in backoff period (API key error active).");
+                    } else {
+                        Serial.println("DEBUG: Skipping data send - no valid username assigned on server (in backoff period).");
+                    }
+                }
             }
             lastDataSendTime = millis();
         }
@@ -1172,7 +1351,8 @@ void connectToWiFi() {
     
     WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    const int MAX_ATTEMPTS = 3;  // Maximum 3 connection attempts
+    while (WiFi.status() != WL_CONNECTED && attempts < MAX_ATTEMPTS) {
         delay(500);
         if (debugEnabled) {
           Serial.print(".");
@@ -1181,10 +1361,33 @@ void connectToWiFi() {
     }
     
     if (WiFi.status() == WL_CONNECTED) {
+        // Reset connection attempt counter on successful connection
+        bool hadWifiError = (wifiConnectAttempts >= 3);
+        wifiConnectAttempts = 0;
         if (debugEnabled) {
           Serial.println("\nDEBUG: Connected!");
           Serial.print("DEBUG: IP address: ");
           Serial.println(WiFi.localIP());
+        }
+        
+        // Update display if WiFi error was just resolved
+        if (hadWifiError) {
+            // Don't reset username here - it will be updated after successful query below
+            // Keep previous username value (if any) until new query is made
+            #ifdef ENABLE_OLED
+            // Show normal display (username or default message) - WiFi error is resolved
+            // Note: username will be queried after WiFi connection, so we show a temporary message first
+            display.clearBuffer();
+            display.setFont(u8g2_font_7x14_tf);
+            
+            textline = "WLAN verbunden";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 28);
+            display.print(textline);
+            
+            display.sendBuffer();
+            delay(1000);  // Brief display of connection message
+            #endif
         }
         
         // Report device configuration to server after successful WiFi connection
@@ -1289,13 +1492,92 @@ void connectToWiFi() {
         delay(2000);
         #endif
 
+        // Query username from server after successful WiFi connection
+        // Only query if WLAN is connected
+        if (idTag.length() > 0 && WiFi.status() == WL_CONNECTED) {
+            String newUsername = getUserIdFromTag(idTag);
+            // getUserIdFromTag() returns:
+            // - Valid username string if found
+            // - "NULL" if user not found (HTTP 404 or server returned "NULL")
+            // - "" (empty) if query failed (backoff period, connection error, etc.)
+            if (newUsername.length() > 0) {
+                // Query was successful - update username (could be valid name or "NULL")
+                bool wasUsernameNull = (username.length() == 0 || username == "NULL");
+                bool isUsernameNull = (newUsername == "NULL");
+                bool usernameChanged = (wasUsernameNull != isUsernameNull) || (username != newUsername);
+                
+                username = newUsername;
+                
+                // Always update display after successful query (especially after WLAN reconnection)
+                // queryWasSuccessful = true because newUsername.length() > 0 means query was successful
+                // Note: If HTTP 404, username was already set to "NULL" in getUserIdFromTag() and error was already shown
+                #ifdef ENABLE_OLED
+                if (username.length() > 0 && username != "NULL") {
+                    display_IdTag_Name(username.c_str(), idTagFromRFID, true);
     } else {
+                    // HTTP 404 - error message was already shown in getUserIdFromTag(), don't overwrite it
+                    // Just keep the "Radler nicht gefunden" message that was already displayed
+                }
+                #endif
+            }
+            // If newUsername is empty, query failed - don't update username, keep previous value
+            if (debugEnabled) {
+                if (newUsername.length() > 0) {
+                    if (username.length() > 0 && username != "NULL") {
+                        Serial.printf("DEBUG: Username queried on WiFi connect: %s\n", username.c_str());
+                    } else {
+                        Serial.println("DEBUG: No username assigned on server for this tag.");
+                    }
+                } else {
+                    Serial.println("DEBUG: Username query failed (backoff or connection error).");
+                }
+            }
+        }
+
+    } else {
+        // Increment connection attempt counter
+        wifiConnectAttempts++;
+        
         if (debugEnabled) {
           Serial.println("\nDEBUG: Connection failed.");
+          Serial.printf("DEBUG: WiFi connection attempt %d of 3\n", wifiConnectAttempts);
         }
+        
+        // Show error message after 3 failed attempts
+        if (wifiConnectAttempts >= 3) {
         #ifdef ENABLE_OLED
         display.clearBuffer();
         display.setFont(u8g2_font_7x14_tf);
+            
+            textline = "Fehler:";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 12);
+            display.print(textline);
+            
+            textline = "Keine";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 28);
+            display.print(textline);
+            
+            textline = "WLAN-Verbindung";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 44);
+            display.print(textline);
+            
+            display.sendBuffer();
+            #endif
+            digitalWrite(LED_PIN, LOW);
+            
+            if (debugEnabled) {
+                Serial.println("DEBUG: WiFi connection failed after 3 attempts. Showing error message.");
+            }
+        }
+        
+        #ifdef ENABLE_OLED
+        // Only show "keine Verbindung" message if we haven't already shown the error after 3 attempts
+        if (wifiConnectAttempts < 3) {
+            display.clearBuffer();
+            display.setFont(u8g2_font_7x14_tf);
 
         textline = "MyCyclingCity";
         textWidth = display.getStrWidth(textline);
@@ -1319,6 +1601,7 @@ void connectToWiFi() {
 
         display.sendBuffer();
         delay(2000); 
+        }
         #endif
         
         // Turn off LED on connection failure
@@ -1347,6 +1630,7 @@ void connectToWiFi() {
  */
 int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pulsesInInterval, bool isTest) {
   if (serverUrl.length() == 0 || wifi_ssid.length() == 0) {
+    digitalWrite(LED_PIN, LOW);  // Turn off LED on error
     if (debugEnabled) {
       Serial.println("DEBUG: Error: Server URL or WiFi SSID is not configured.");
     }
@@ -1354,6 +1638,7 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
   }
 
   if (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(LED_PIN, LOW);  // Turn off LED on error
     if (debugEnabled) {
       Serial.println("DEBUG: sendDataToServer: ERROR: No WiFi connected.");
     }
@@ -1476,11 +1761,24 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
  * @note Side effects: Sends HTTP request, writes to Serial
  */
 String getUserIdFromTag(String& tagId) {
+    // Check backoff interval - don't spam server with requests after errors
+    // After 60 seconds, retry even if API key error is active (to check if API key was fixed)
+    if (lastServerErrorTime > 0 && (millis() - lastServerErrorTime) < serverErrorBackoffInterval) {
+        if (debugEnabled) {
+            Serial.println("DEBUG: getUserIdFromTag: Still in backoff period, skipping request.");
+        }
+        // Return empty string to indicate query was not attempted (not just "not found")
+        return "";
+    }
+    
     if (serverUrl.length() == 0 || wifi_ssid.length() == 0 || WiFi.status() != WL_CONNECTED) {
         if (debugEnabled) {
             Serial.println("DEBUG: getUserIdFromTag: Error: No connection or configuration error.");
         }
-        return "NULL";
+        // Don't show error message here - WLAN error is shown in connectToWiFi() after 3 failed attempts
+        digitalWrite(LED_PIN, LOW);
+        // Return empty string to indicate query was not attempted (not just "not found")
+        return "";
     }
 
     HTTPClient http;
@@ -1535,24 +1833,149 @@ String getUserIdFromTag(String& tagId) {
             if (responseDoc.containsKey("user_id")) {
                 String userId = responseDoc["user_id"].as<String>();
                 http.end();
+                // Clear server error backoff on success
+                bool hadServerError = (lastServerErrorTime > 0);
+                lastServerErrorTime = 0;
+                // Clear API key error flag on successful communication
+                bool wasApiKeyError = apiKeyErrorActive;
+                apiKeyErrorActive = false;
+                
+                // Update username variable only if userId is not empty
+                // userId can be a valid username or "NULL" if not found
+                bool wasUsernameNull = (username.length() == 0 || username == "NULL");
+                bool isUsernameNull = (userId.length() == 0 || userId == "NULL");
+                bool usernameChanged = (wasUsernameNull != isUsernameNull) || (username != userId);
+                
+                if (userId.length() > 0) {
+                    username = userId;
+                }
+                
+                // Always update display after successful query (especially after errors are resolved)
+                // This ensures the error message is cleared immediately when username is successfully queried
+                // queryWasSuccessful = true because userId was successfully retrieved from server
+                if (wasApiKeyError || usernameChanged || hadServerError || userId.length() > 0) {
+                    #ifdef ENABLE_OLED
+                    // Show normal display (username or default message) - error is resolved
+                    if (userId.length() > 0 && userId != "NULL") {
+                        display_IdTag_Name(userId.c_str(), idTagFromRFID, true);
+                    } else {
+                        display_IdTag_Name("NULL", idTagFromRFID, true);
+                    }
+                    #endif
+                }
+                
                 // If server returns "NULL", we return this
                 return userId;
             }
             
         } else {
+            // HTTP error codes
+            String errorType = "Server";
+            bool isApiKeyError = false;
+            if (httpCode == 401) {
+                errorType = "API Key";
+                isApiKeyError = true;
+            } else if (httpCode == 403) {
+                errorType = "API Key";
+                isApiKeyError = true;
+            } else if (httpCode == 503) {
+                errorType = "Wartung";
+            } else if (httpCode == 500) {
+                errorType = "Server";
+            } else if (httpCode == 404) {
+                // 404 in getUserIdFromTag means cyclist not found
+                errorType = "Radler nicht";
+            }
+            
             if (debugEnabled) {
                 Serial.printf("DEBUG: HTTP error when retrieving user ID: %d\n", httpCode);
                 Serial.println(http.getString());
             }
+            
+            // Update backoff timer
+            lastServerErrorTime = millis();
+            
+            // Set API key error flag if API key error detected
+            if (isApiKeyError) {
+                apiKeyErrorActive = true;
+            }
+            
+            // Ensure LED is off before showing error (it should already be off from sendDataToServer, but make sure)
+            digitalWrite(LED_PIN, LOW);
+            
+            // For HTTP 404, update username to "NULL" immediately and show error message
+            // This ensures pulse counting is blocked immediately
+            if (httpCode == 404) {
+                // Update username to "NULL" immediately to block pulse counting
+                username = "NULL";
+                
+                #ifdef ENABLE_OLED
+                // Show specific message for cyclist not found
+                display.clearBuffer();
+                display.setFont(u8g2_font_7x14_tf);
+                
+                textline = "Fehler:";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 12);
+                display.print(textline);
+                
+                textline = "Radler nicht";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 28);
+                display.print(textline);
+                
+                textline = "gefunden";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 44);
+                display.print(textline);
+                
+                display.sendBuffer();
+                delay(3000);
+                #endif
+                
+                // Ensure LED stays off after error display
+                digitalWrite(LED_PIN, LOW);
+                
+                http.end();
+                return "NULL";
+    } else {
+                #ifdef ENABLE_OLED
+                display_ServerError(errorType.c_str(), httpCode);
+                delay(3000);
+                // Ensure LED stays off after error display
+                digitalWrite(LED_PIN, LOW);
+                #endif
+            }
+            // For other HTTP errors, return empty string (query failed, don't update username)
+            http.end();
+            return "";
         }
     } else {
+        // Connection error (httpCode < 0)
         if (debugEnabled) {
             Serial.printf("DEBUG: HTTP connection error: %s\n", http.errorToString(httpCode).c_str());
         }
+        
+        // Update backoff timer
+        lastServerErrorTime = millis();
+        // Don't set apiKeyErrorActive for connection errors (only for HTTP 401/403)
+        
+        #ifdef ENABLE_OLED
+        display_ServerError("Server", 0);
+        delay(3000);
+        #endif
+        digitalWrite(LED_PIN, LOW);
+        
+        http.end();
+        // Return empty string if query was not attempted (connection error, backoff, etc.)
+        // Only return "NULL" if query was actually made but user not found
+        // Connection errors mean query was not attempted, so return empty string
+        return ""; // Return empty string on connection errors (query not attempted)
     }
 
     http.end();
-    return "NULL"; // Default NULL on errors or no assignment
+    // Should not reach here, but return empty string as fallback
+    return "";
 }
 /**
  * @brief Displays all configuration values stored in NVS to Serial output.
@@ -1768,9 +2191,28 @@ void getPreferences() {
     }
     
     testActive = preferences.getBool("testModeEnabled", false);
-    if (testActive) {
-      testDistance = preferences.getFloat("testDistance", 0.01);
-      testInterval_sec = preferences.getUInt("testInterval", 5);
+    // Always load testDistance and testInterval_sec from NVS (even if test mode is not active)
+    // This ensures they are always available and initialized
+    testDistance = preferences.getFloat("testDistance", 0.01);
+    testInterval_sec = preferences.getUInt("testInterval", 5);
+    
+    // If testDistance was not in NVS (default value used), save it now to prevent NVS error
+    // Check if the key exists by trying to read it and comparing with a sentinel value
+    // Since getFloat returns default if not found, we check if it's the default and save it
+    // This ensures the value is always in NVS, even if it was never set before
+    if (!preferences.isKey("testDistance")) {
+        preferences.putFloat("testDistance", testDistance);
+        if (debugEnabled) {
+            Serial.printf("DEBUG: Initialized testDistance in NVS: %.2f km\n", testDistance);
+        }
+    }
+    
+    // Same for testInterval_sec
+    if (!preferences.isKey("testInterval")) {
+        preferences.putUInt("testInterval", testInterval_sec);
+        if (debugEnabled) {
+            Serial.printf("DEBUG: Initialized testInterval in NVS: %u s\n", testInterval_sec);
+        }
     }
     //preferences.end();
     
@@ -1865,42 +2307,188 @@ void play_tag_detected_tone() {
 
 #ifdef ENABLE_OLED
 /**
+ * @brief Displays server communication error on OLED display.
+ * 
+ * Shows detailed error message when server communication fails (API key, server unreachable, maintenance, etc.)
+ * Displays user-friendly error descriptions without technical error codes.
+ * 
+ * @param errorType Error type string (e.g., "API Key", "Server", "Wartung", "Kein WLAN")
+ * @param errorCode HTTP error code or 0 for connection error (not displayed, used only for internal logic)
+ * 
+ * @note Hardware interaction: OLED display (I2C communication)
+ * @note Side effects: Updates OLED display buffer and sends to display, turns off LED
+ * @note Only compiled if ENABLE_OLED is defined
+ */
+void display_ServerError(const char* errorType, int errorCode) {
+    // Turn off LED on error
+    digitalWrite(LED_PIN, LOW);
+    
+    display.clearBuffer();
+    display.setFont(u8g2_font_7x14_tf);
+    
+    // First line: "Fehler:"
+    textline = "Fehler:";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 12);
+    display.print(textline);
+    
+    // Second and third lines: Detailed error description based on error type
+    String errorDescription = "";
+    String errorDescription2 = "";
+    
+    if (strcmp(errorType, "API Key") == 0) {
+        errorDescription = "API-Key";
+        errorDescription2 = "ungültig";
+    } else if (strcmp(errorType, "Server") == 0) {
+        if (errorCode > 0) {
+            errorDescription = "Server";
+            errorDescription2 = "nicht erreichbar";
+        } else {
+            errorDescription = "Keine";
+            errorDescription2 = "Verbindung";
+        }
+    } else if (strcmp(errorType, "Wartung") == 0) {
+        errorDescription = "Server";
+        errorDescription2 = "in Wartung";
+    } else if (strcmp(errorType, "Kein WLAN") == 0) {
+        errorDescription = "Keine";
+        errorDescription2 = "WLAN-Verbindung";
+    } else {
+        // Fallback for unknown error types
+        errorDescription = errorType;
+        errorDescription2 = "";
+    }
+    
+    // Display first line of error description
+    textline = errorDescription.c_str();
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 28);
+    display.print(textline);
+    
+    // Display second line of error description (if available)
+    if (errorDescription2.length() > 0) {
+        textline = errorDescription2.c_str();
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 44);
+        display.print(textline);
+    }
+    
+    display.sendBuffer();
+}
+
+/**
  * @brief Displays ID tag name on OLED display.
  * 
- * Shows a message indicating that an ID tag was recognized (from RFID or NVS) and displays the associated
- * username or "NULL" if no assignment found. Works independently of RFID - displays any idTag.
+ * Shows username or default user name. Only shows "ID Tag erkannt!" if a RFID tag was actually detected.
+ * Shows error message if no name was found on server.
  * 
  * @param id_name Username string to display (or "NULL" if not found)
+ * @param isRfidDetected True if the current idTag came from RFID detection, false if it's the default user
  * 
  * @note Hardware interaction: OLED display (I2C communication)
  * @note Side effects: Updates OLED display buffer and sends to display
  * @note Only compiled if ENABLE_OLED is defined
  */
-void display_IdTag_Name(const char* id_name) {
+void display_IdTag_Name(const char* id_name, bool isRfidDetected, bool queryWasSuccessful) {
 
-        if (debugEnabled) Serial.printf("OLED: Show idTagName: '%s' \n", id_name);
+        if (debugEnabled) Serial.printf("OLED: Show idTagName: '%s' (RFID detected: %s, query successful: %s)\n", id_name, isRfidDetected ? "yes" : "no", queryWasSuccessful ? "yes" : "no");
         
         display.clearBuffer();
         display.setFont(u8g2_font_7x14_tf);
 
+        // Check if name is NULL or empty (no assignment found on server)
+        bool nameNotFound = (strcmp(id_name, "NULL") == 0 || strlen(id_name) == 0);
+        
+        // Only show error message if:
+        // 1. Name is actually NULL/empty (nameNotFound)
+        // 2. A query was actually made and was successful (queryWasSuccessful)
+        // 3. WiFi is connected (so we could actually query the server)
+        // 4. No API key error is active (so the query could succeed)
+        // This prevents showing the error when WiFi is not connected, API key is wrong, or query was not attempted
+        bool canShowNameError = nameNotFound && queryWasSuccessful && (WiFi.status() == WL_CONNECTED) && !apiKeyErrorActive;
+
+        if (canShowNameError) {
+            // Show "Radler nicht gefunden" error message (this is what the server returns for HTTP 404)
+            // This is more specific than "Kein Kurzname zugewiesen" and matches the server response
+            textline = "Fehler:";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 12);
+            display.print(textline);
+
+            textline = "Radler nicht";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 28);
+            display.print(textline);
+
+            textline = "gefunden";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 44);
+            display.print(textline);
+
+            // Show default tag ID so user knows which tag to report to admin (without "Tag:" prefix)
+            textline = idTag.c_str();
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 60);
+            display.print(textline);
+        } else if (nameNotFound) {
+            // Name is NULL but we can't show error (WiFi not connected or API key error)
+            // Just show the default user info without error message
+            if (isRfidDetected) {
         textline = "Id Tag erkannt!";
         textWidth = display.getStrWidth(textline);
-        // X-Koordinate: (Gesamtbreite - Textbreite) / 2
         display.setCursor((128 - textWidth) / 2, 12);
         display.print(textline);
 
-        //display.drawStr(10, 12, "Id Tag erkannt!");
-        //display.drawStr(20, 28, "Es strampelt:");
         textline = "Nun strampelt:";
         textWidth = display.getStrWidth(textline);
-        // X-Koordinate: (Gesamtbreite - Textbreite) / 2
+                display.setCursor((128 - textWidth) / 2, 28);
+                display.print(textline);
+                
+                textline = idTag.c_str();
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 50);
+                display.print(textline);
+            } else {
+                // Default user - just show the tag ID
+                textline = "Benutzer:";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 28);
+                display.print(textline);
+                
+                textline = idTag.c_str();
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 50);
+                display.print(textline);
+            }
+        } else {
+            // Only show "ID Tag erkannt!" if RFID tag was actually detected
+            if (isRfidDetected) {
+                textline = "Id Tag erkannt!";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 12);
+                display.print(textline);
+
+                textline = "Nun strampelt:";
+                textWidth = display.getStrWidth(textline);
         display.setCursor((128 - textWidth) / 2, 28);
         display.print(textline);
 
         textWidth = display.getStrWidth(id_name);
-        // X-Koordinate: (Gesamtbreite - Textbreite) / 2
         display.setCursor((128 - textWidth) / 2, 50);
         display.print(id_name);
+            } else {
+                // Default user - just show the name without "ID Tag erkannt!"
+                textline = "Benutzer:";
+                textWidth = display.getStrWidth(textline);
+                display.setCursor((128 - textWidth) / 2, 28);
+                display.print(textline);
+
+                textWidth = display.getStrWidth(id_name);
+                display.setCursor((128 - textWidth) / 2, 50);
+                display.print(id_name);
+            }
+        }
+        
         display.sendBuffer();
 }
 
@@ -1927,10 +2515,24 @@ void display_Data() {
         display.setCursor((128 - textWidth) / 2, 12);
         display.print(textline);
 
+        // Only display username if it's valid (not "NULL" or empty)
+        if (username.length() > 0 && username != "NULL") {
         textWidth = display.getStrWidth(username.c_str());
         // X-Koordinate: (Gesamtbreite - Textbreite) / 2
         display.setCursor((128 - textWidth) / 2, 28);
         display.print(username.c_str());
+        } else {
+            // Show default user tag ID instead
+            textline = "Benutzer:";
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 28);
+            display.print(textline);
+            
+            textline = idTag.c_str();
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 44);
+            display.print(textline);
+        }
 
         display.drawStr(0, 44,  "Impulse:");  // 
         display.drawStr(70, 44, String(currentPulseCount).c_str() );  // 

@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{{ import_url }}" class="addlink">
+            {% trans "Import from ZIP/GitHub" %}
+        </a>
+    </li>
+{% endblock %}
