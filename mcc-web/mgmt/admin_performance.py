@@ -32,6 +32,12 @@ class RequestLogAdmin(admin.ModelAdmin):
     ordering = ['-timestamp']
     list_per_page = 50
     
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
+    
     def path_short(self, obj):
         """Display shortened path."""
         if len(obj.path) > 50:
@@ -230,6 +236,12 @@ class PerformanceMetricAdmin(admin.ModelAdmin):
     actions = ['generate_hourly_metrics', 'generate_daily_metrics']
     change_list_template = 'admin/mgmt/performancemetric_change_list.html'
     
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
+    
     def get_urls(self):
         """Add custom URLs for generating metrics."""
         from django.urls import path
@@ -331,6 +343,12 @@ class AlertRuleAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('last_triggered', 'created_at')
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     
     def threshold_display(self, obj):
         """Display threshold with comparison."""

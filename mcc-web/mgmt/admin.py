@@ -47,6 +47,51 @@ def format_km_de(value):
     formatted = f"{float(value):,.2f}"
     return formatted.replace(',', '[TEMP]').replace('.', ',').replace('[TEMP]', '.') + " km"
 
+def get_operator_managed_group_ids(user):
+    """
+    Gibt alle Gruppen-IDs zurück, die der Operator verwaltet (inkl. aller Untergruppen).
+    Inkludiert die TOP-Gruppe selbst und alle rekursiven Untergruppen.
+    
+    Args:
+        user: Django User-Objekt (muss managed_groups haben)
+    
+    Returns:
+        List[int]: Liste aller Gruppen-IDs, die der Operator verwaltet
+    """
+    if user.is_superuser:
+        # Superuser verwaltet alle Gruppen
+        return list(Group.objects.filter(is_visible=True).values_list('id', flat=True))
+    
+    managed_groups = user.managed_groups.all()
+    if not managed_groups.exists():
+        return []
+    
+    all_group_ids = set()
+    
+    def get_all_descendants(group_id, visited=None):
+        """Rekursiv alle Untergruppen einer Gruppe sammeln."""
+        if visited is None:
+            visited = set()
+        if group_id in visited:
+            return set()
+        visited.add(group_id)
+        
+        descendants = {group_id}  # Include the group itself
+        children = Group.objects.filter(
+            parent_id=group_id, 
+            is_visible=True
+        ).values_list('id', flat=True)
+        
+        for child_id in children:
+            descendants.update(get_all_descendants(child_id, visited))
+        
+        return descendants
+    
+    for group in managed_groups:
+        all_group_ids.update(get_all_descendants(group.id))
+    
+    return list(all_group_ids)
+
 class GroupTravelStatusInline(admin.TabularInline):
     """Displays all groups traveling on this track"""
     model = GroupTravelStatus
@@ -55,6 +100,7 @@ class GroupTravelStatusInline(admin.TabularInline):
     verbose_name_plural = _("Teilnehmende Gruppen")
     fields = ('group', 'current_travel_distance_display', 'abort_trip_action')
     readonly_fields = ('current_travel_distance_display', 'abort_trip_action')
+    
 
     def current_travel_distance_display(self, obj):
         """Display current_travel_distance with German format (comma decimal)."""
@@ -81,6 +127,34 @@ class GroupTravelStatusInline(admin.TabularInline):
         # This will be shown when a group with existing travel status is selected
         return mark_safe('<span class="abort-trip-placeholder" style="display: none;"></span>')
     abort_trip_action.short_description = _("Aktionen")
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter groups to only show managed groups for operators and customize display."""
+        if db_field.name == 'group':
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                queryset = Group.objects.filter(
+                    id__in=managed_group_ids,
+                    is_visible=True
+                ).order_by('name')
+            else:
+                queryset = Group.objects.filter(
+                    is_visible=True
+                ).order_by('name')
+            
+            kwargs['queryset'] = queryset
+            
+            # Get the form field from super()
+            field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+            
+            # Override label_from_instance to show only group name
+            def label_from_instance(obj):
+                """Return only the group name, without the group type."""
+                return obj.name
+            
+            field.label_from_instance = label_from_instance
+            return field
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
     def get_formset(self, request, obj=None, **kwargs):
         """Customize formset to prevent accidental removal of groups with kilometers."""
@@ -121,8 +195,16 @@ class LeafGroupTravelContributionInline(admin.TabularInline):
     extra = 0
     verbose_name = _("Leaf-Gruppe Beitrag")
     verbose_name_plural = _("Leaf-Gruppen Beiträge (Ranking)")
-    fields = ('rank_display', 'leaf_group', 'parent_group_display', 'current_travel_distance_display', 'percentage_display')
-    readonly_fields = ('rank_display', 'leaf_group', 'parent_group_display', 'current_travel_distance_display', 'percentage_display')
+    fields = ('rank_display', 'leaf_group_display', 'parent_group_display', 'current_travel_distance_display', 'percentage_display')
+    readonly_fields = ('rank_display', 'leaf_group_display', 'parent_group_display', 'current_travel_distance_display', 'percentage_display')
+    
+    def leaf_group_display(self, obj):
+        """Display only the group name without group type."""
+        if obj and obj.leaf_group:
+            return obj.leaf_group.name
+        return "-"
+    leaf_group_display.short_description = _("Leaf-Gruppe")
+    leaf_group_display.admin_order_field = 'leaf_group__name'
     can_delete = False  # Prevent deletion of contributions
     can_add = False  # Contributions are created automatically
     
@@ -248,6 +330,45 @@ class MilestoneInline(admin.TabularInline):
         """Exclude start milestones (distance_km = 0) from the table."""
         qs = super().get_queryset(request)
         return qs.exclude(distance_km=0)
+    
+    def has_add_permission(self, request, obj=None):
+        """Prüfe, ob der Operator Meilensteine hinzufügen kann."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.add_milestone')
+        # Prüfe, ob der Operator die Route bearbeiten kann
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group der Route
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_change_permission(self, request, obj=None):
+        """Prüfe, ob der Operator Meilensteine bearbeiten kann."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.change_milestone')
+        # Prüfe, ob der Operator die Route bearbeiten kann
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group der Route
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prüfe, ob der Operator Meilensteine löschen kann."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.delete_milestone')
+        # Prüfe, ob der Operator die Route bearbeiten kann
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group der Route
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
     
     def get_formset(self, request, obj=None, **kwargs):
         """Customize formset to make GPS and distance fields readonly and add milestone data."""
@@ -1224,6 +1345,12 @@ class GroupTypeAdmin(admin.ModelAdmin):
     list_editable = ('is_active',)
     search_fields = ('name', 'description')
     list_filter = ('is_active',)
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
 
 @admin.register(Group)
 class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
@@ -1268,11 +1395,66 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
         }),
     )
 
+    def get_queryset(self, request):
+        """Filter groups based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Gruppen, die der Operator verwaltet (inkl. Untergruppen)
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(id__in=managed_group_ids)
+    
+    def has_add_permission(self, request):
+        """Operator kann Untergruppen hinzufügen."""
+        return request.user.has_perm('api.add_group')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur verwaltete Gruppen bearbeiten."""
+        if obj is None:
+            return request.user.has_perm('api.change_group')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.id in managed_group_ids
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Untergruppen löschen, nicht die TOP-Gruppe selbst."""
+        if obj is None:
+            return request.user.has_perm('api.delete_group')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        if obj.id not in managed_group_ids:
+            return False
+        # Prüfen, ob es die TOP-Gruppe ist (kein parent)
+        if obj.parent is None:
+            # Operator kann TOP-Gruppe nicht löschen
+            return False
+        return True
+    
     def get_form(self, request, obj=None, **kwargs):
-        """Override to use custom widget for short_name field."""
+        """Override to use custom widget for short_name field and filter parent groups."""
         form = super().get_form(request, obj, **kwargs)
         if 'short_name' in form.base_fields:
             form.base_fields['short_name'].widget = ShortNameWidget()
+        
+        # Filter parent groups for operators
+        if not request.user.is_superuser and 'parent' in form.base_fields:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            form.base_fields['parent'].queryset = Group.objects.filter(
+                id__in=managed_group_ids
+            )
+        
+        # Filter managers field for operators
+        if not request.user.is_superuser and 'managers' in form.base_fields:
+            # Operators können nur sich selbst oder andere Operatoren als Manager setzen
+            # (System-Admin sollte nicht von Operatoren verwaltet werden)
+            from django.contrib.auth.models import User
+            form.base_fields['managers'].queryset = User.objects.filter(
+                is_staff=True,
+                is_superuser=False
+            )
+        
         return form
 
     def distance_total_display(self, obj):
@@ -1341,12 +1523,22 @@ class CyclistAdminForm(forms.ModelForm):
         exclude = ('groups',)  # Exclude groups field, we use 'group' instead
     
     def __init__(self, *args, **kwargs):
+        # Extract request from kwargs if available (passed by admin)
+        self.request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         
         # Remove the original groups ManyToMany field if it exists
         # This must be done after super().__init__() so the field is created first
         if 'groups' in self.fields:
             del self.fields['groups']
+        
+        # Filter groups for operators
+        if self.request and not self.request.user.is_superuser and 'group' in self.fields:
+            managed_group_ids = get_operator_managed_group_ids(self.request.user)
+            self.fields['group'].queryset = Group.objects.filter(
+                id__in=managed_group_ids,
+                is_visible=True
+            ).order_by('name')
         
         # Set initial value for group field if instance exists and has groups
         # This must be done after removing 'groups' field
@@ -1381,11 +1573,48 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     readonly_fields = ('avatar_preview',)
     list_filter = ('groups', 'is_visible', 'is_km_collection_enabled', 'last_active')
     
+    def get_queryset(self, request):
+        """Filter cyclists based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Radler, die zu verwalteten Gruppen gehören
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(groups__id__in=managed_group_ids).distinct()
+    
+    def has_add_permission(self, request):
+        """Operator kann Radler hinzufügen."""
+        return request.user.has_perm('api.add_cyclist')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur Radler aus verwalteten Gruppen bearbeiten."""
+        if obj is None:
+            return request.user.has_perm('api.change_cyclist')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.groups.filter(id__in=managed_group_ids).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Radler aus verwalteten Gruppen löschen."""
+        if obj is None:
+            return request.user.has_perm('api.delete_cyclist')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.groups.filter(id__in=managed_group_ids).exists()
     
     def get_form(self, request, obj=None, **kwargs):
-        """Override get_form to ensure form is properly initialized."""
-        form = super().get_form(request, obj, **kwargs)
-        return form
+        """Override get_form to pass request to form."""
+        # Get the form class from super() first (without request in kwargs)
+        form_class = super().get_form(request, obj, **kwargs)
+        # Now wrap the form class to pass request to __init__
+        original_init = form_class.__init__
+        def __init__(self, *args, **form_kwargs):
+            form_kwargs['request'] = request
+            return original_init(self, *args, **form_kwargs)
+        form_class.__init__ = __init__
+        return form_class
     
 
     def groups_display(self, obj):
@@ -1428,6 +1657,12 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
 @admin.register(CyclistDeviceCurrentMileage)
 class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
     list_display = ('cyclist', 'top_group_display', 'device', 'cumulative_mileage_display')
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     
     def get_queryset(self, request):
         """Optimize queryset with select_related and prefetch_related to avoid N+1 queries."""
@@ -1499,6 +1734,12 @@ class GroupEventStatusInline(admin.TabularInline):
         """Customize formset to filter available groups for selection."""
         formset = super().get_formset(request, obj, **kwargs)
         
+        # Get managed groups for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+        else:
+            managed_group_ids = None
+        
         class GroupEventStatusFormSet(formset):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
@@ -1510,7 +1751,13 @@ class GroupEventStatusInline(admin.TabularInline):
                         id__in=existing_group_ids
                     ).filter(
                         is_visible=True
-                    ).order_by('name')
+                    )
+                    
+                    # Filter for operators
+                    if managed_group_ids is not None:
+                        available_groups = available_groups.filter(id__in=managed_group_ids)
+                    
+                    available_groups = available_groups.order_by('name')
                     
                     for form in self.forms:
                         # For new entries, customize the group field
@@ -1541,10 +1788,75 @@ class TravelTrackAdmin(admin.ModelAdmin):
     list_display = ('name', 'total_length_km_display', 'groups_count', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time')
     list_editable = ('is_active', 'is_visible_on_map', 'auto_start')
     inlines = [MilestoneInline, GroupTravelStatusInline, LeafGroupTravelContributionInline]
-    fields = ('name', 'track_file', 'total_length_km', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time', 'geojson_data', 'top_groups_ranking_display')
+    fields = ('name', 'assigned_to_group', 'track_file', 'total_length_km', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time', 'geojson_data', 'top_groups_ranking_display')
     readonly_fields = ('total_length_km', 'top_groups_ranking_display')
+    
+    def get_readonly_fields(self, request, obj=None):
+        """assigned_to_group ist nur für Superuser editierbar."""
+        readonly = list(self.readonly_fields)
+        if not request.user.is_superuser:
+            readonly.append('assigned_to_group')
+        return readonly
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
+        form = super().get_form(request, obj, **kwargs)
+        
+        if request.user.is_superuser:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            from api.models import Group
+            form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True
+            ).order_by('name')
+        
+        return form
     formfield_overrides = {models.TextField: {'widget': TrackMapWidget}}
     actions = ['restart_trip', 'save_trip_to_history']
+    
+    def get_queryset(self, request):
+        """Filter travel tracks based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Reiserouten, die:
+        # - assigned_to_group in managed_group_ids haben ODER
+        # - GroupTravelStatus Einträge mit group in managed_group_ids haben
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        from django.db.models import Q
+        
+        return qs.filter(
+            Q(assigned_to_group_id__in=managed_group_ids) |
+            Q(group_statuses__group__id__in=managed_group_ids)
+        ).distinct()
+    
+    def has_add_permission(self, request):
+        """Operator kann Reiserouten hinzufügen."""
+        return request.user.has_perm('api.add_traveltrack')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur Reiserouten bearbeiten, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.change_traveltrack')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Reiserouten löschen, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.delete_traveltrack')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
     
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         """Override to inject groups with travel status data for JavaScript."""
@@ -1553,7 +1865,14 @@ class TravelTrackAdmin(admin.ModelAdmin):
         import json
         
         # Get all groups with existing travel status for JavaScript
-        existing_statuses = GroupTravelStatus.objects.select_related('group', 'track').all()
+        if request.user.is_superuser:
+            existing_statuses = GroupTravelStatus.objects.select_related('group', 'track').all()
+        else:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            existing_statuses = GroupTravelStatus.objects.filter(
+                group__id__in=managed_group_ids
+            ).select_related('group', 'track').all()
+        
         groups_with_status = {}
         for status in existing_statuses:
             groups_with_status[str(status.group_id)] = {
@@ -1760,6 +2079,12 @@ class TravelTrackAdmin(admin.ModelAdmin):
         from django.contrib import messages
         obj = self.get_object(request, object_id)
         if obj:
+            # Check permission for operators
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
+                    messages.error(request, _("Sie haben keine Berechtigung, diese Reise neu zu starten."))
+                    return redirect('admin:api_traveltrack_changelist')
             queryset = TravelTrack.objects.filter(pk=obj.pk)
             self.restart_trip(request, queryset)
         return redirect('admin:api_traveltrack_change', object_id)
@@ -1805,6 +2130,11 @@ class TravelTrackAdmin(admin.ModelAdmin):
     def restart_trip(self, request, queryset):
         """Restart selected trips by resetting all travel statuses and milestones."""
         from api.models import TravelHistory
+        
+        # Filter queryset for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            queryset = queryset.filter(group_statuses__group__id__in=managed_group_ids).distinct()
         
         count = 0
         for track in queryset:
@@ -1882,14 +2212,22 @@ class TravelTrackAdmin(admin.ModelAdmin):
 @admin.register(Milestone)
 class MilestoneAdmin(admin.ModelAdmin):
     form = MilestoneAdminForm
-    list_display = ('name', 'distance_km_display', 'track', 'winner_group', 'reached_at', 'deletion_warning')
+    list_display = ('name', 'distance_km_display', 'track', 'winner_group_display', 'reached_at', 'deletion_warning')
     list_filter = ('track', 'winner_group', 'reached_at')
     search_fields = ('name', 'track__name', 'winner_group__name', 'description')
+    
+    def winner_group_display(self, obj):
+        """Display only the group name without group type."""
+        if obj and obj.winner_group:
+            return obj.winner_group.name
+        return "-"
+    winner_group_display.short_description = _("Gewinner")
+    winner_group_display.admin_order_field = 'winner_group__name'
     formfield_overrides = {models.DecimalField: {'widget': MapInputWidget}}
     readonly_fields = ('reached_at',)
     fieldsets = (
         (_('Grundinformationen'), {
-            'fields': ('track', 'name', 'distance_km', 'gps_latitude', 'gps_longitude')
+            'fields': ('track', 'assigned_to_group', 'name', 'distance_km', 'gps_latitude', 'gps_longitude')
         }),
         (_('Beschreibung & Links'), {
             'fields': ('description', 'external_link', 'reward_text'),
@@ -1900,6 +2238,90 @@ class MilestoneAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_readonly_fields(self, request, obj=None):
+        """assigned_to_group ist nur für Superuser editierbar."""
+        readonly = list(self.readonly_fields)
+        if not request.user.is_superuser:
+            readonly.append('assigned_to_group')
+        return readonly
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
+        form = super().get_form(request, obj, **kwargs)
+        
+        if request.user.is_superuser:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            from api.models import Group
+            if 'assigned_to_group' in form.base_fields:
+                form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
+                    parent__isnull=True,
+                    is_visible=True
+                ).order_by('name')
+        
+        return form
+    
+    def get_queryset(self, request):
+        """Filter milestones based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Meilensteine, die:
+        # - assigned_to_group in managed_group_ids haben ODER
+        # - zu Reiserouten gehören, die assigned_to_group in managed_group_ids haben ODER
+        # - zu Reiserouten gehören, die GroupTravelStatus Einträge mit group in managed_group_ids haben
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        from django.db.models import Q
+        
+        return qs.filter(
+            Q(assigned_to_group_id__in=managed_group_ids) |
+            Q(track__assigned_to_group_id__in=managed_group_ids) |
+            Q(track__group_statuses__group__id__in=managed_group_ids)
+        ).distinct()
+    
+    def has_add_permission(self, request):
+        """Operator kann Meilensteine hinzufügen."""
+        return request.user.has_perm('api.add_milestone')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur Meilensteine bearbeiten, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.change_milestone')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        # Prüfe über Route
+        if obj.track.assigned_to_group_id and obj.track.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.track.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Meilensteine löschen, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.delete_milestone')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        # Prüfe über Route
+        if obj.track.assigned_to_group_id and obj.track.assigned_to_group_id in managed_group_ids:
+            return True
+        return obj.track.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Filter track field for operators."""
+        form = super().get_form(request, obj, **kwargs)
+        if not request.user.is_superuser and 'track' in form.base_fields:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            form.base_fields['track'].queryset = TravelTrack.objects.filter(
+                group_statuses__group__id__in=managed_group_ids
+            ).distinct()
+        return form
 
     def distance_km_display(self, obj):
         """Display distance_km with German format (comma decimal)."""
@@ -1919,10 +2341,16 @@ class MilestoneAdmin(admin.ModelAdmin):
     deletion_warning.admin_order_field = 'track'
 
     def has_delete_permission(self, request, obj=None):
-        """Prevent deletion if milestone is used in a trip."""
+        """Prevent deletion if milestone is used in a trip. Also check operator permissions."""
         if obj and obj.pk and obj.track_id:
             return False
-        return super().has_delete_permission(request, obj)
+        # Check operator permissions
+        if obj is None:
+            return request.user.has_perm('api.delete_milestone')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.track.group_statuses.filter(group__id__in=managed_group_ids).exists()
 
     class Media:
         css = LEAFLET_ASSETS['css']
@@ -1930,11 +2358,19 @@ class MilestoneAdmin(admin.ModelAdmin):
 
 @admin.register(GroupTravelStatus)
 class GroupTravelStatusAdmin(admin.ModelAdmin):
-    list_display = ('group', 'track', 'current_travel_distance_display', 'abort_trip_action')
+    list_display = ('group_display', 'track', 'current_travel_distance_display', 'abort_trip_action')
     list_filter = ('track',)
     search_fields = ('group__name', 'track__name')
     actions = ['abort_trip_bulk_action']
     readonly_fields = ('leaf_groups_contributions_display',)
+    
+    def group_display(self, obj):
+        """Display only the group name without group type."""
+        if obj and obj.group:
+            return obj.group.name
+        return "-"
+    group_display.short_description = _("Gruppe")
+    group_display.admin_order_field = 'group__name'
     
     fieldsets = (
         (_("Reisestatus"), {
@@ -1945,6 +2381,52 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
             'description': _("Ranking der Leaf-Gruppen basierend auf ihrem Beitrag zur Reise der Parent-Gruppe."),
         }),
     )
+    
+    def get_queryset(self, request):
+        """Filter travel status based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Reise-Status für verwaltete Gruppen
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group__id__in=managed_group_ids)
+    
+    def has_add_permission(self, request):
+        """Operator kann Reise-Status hinzufügen."""
+        return request.user.has_perm('api.add_grouptravelstatus')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur Reise-Status für verwaltete Gruppen bearbeiten."""
+        if obj is None:
+            return request.user.has_perm('api.change_grouptravelstatus')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group.id in managed_group_ids
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Reise-Status für verwaltete Gruppen löschen."""
+        if obj is None:
+            return request.user.has_perm('api.delete_grouptravelstatus')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group.id in managed_group_ids
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Filter group and track fields for operators."""
+        form = super().get_form(request, obj, **kwargs)
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            if 'group' in form.base_fields:
+                form.base_fields['group'].queryset = Group.objects.filter(
+                    id__in=managed_group_ids
+                )
+            if 'track' in form.base_fields:
+                form.base_fields['track'].queryset = TravelTrack.objects.filter(
+                    group_statuses__group__id__in=managed_group_ids
+                ).distinct()
+        return form
     
     def leaf_groups_contributions_display(self, obj):
         """Display leaf groups contributions as a table."""
@@ -2064,6 +2546,13 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
             messages.error(request, _("Reisestatus nicht gefunden."))
             return redirect('admin:api_grouptravelstatus_changelist')
         
+        # Check permission for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            if status.group.id not in managed_group_ids:
+                messages.error(request, _("Sie haben keine Berechtigung, diese Reise abzubrechen."))
+                return redirect('admin:api_grouptravelstatus_changelist')
+        
         if request.method == 'POST':
             # Confirmed - abort the trip
             # Note: TravelHistory entry will be created by pre_delete signal,
@@ -2128,6 +2617,11 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
         from django.utils import timezone
         from django.contrib import messages
         
+        # Filter queryset for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            queryset = queryset.filter(group__id__in=managed_group_ids)
+        
         aborted_count = 0
         for status in queryset:
             # Note: TravelHistory entry will be created by pre_delete signal,
@@ -2170,11 +2664,28 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
 
 @admin.register(TravelHistory)
 class TravelHistoryAdmin(admin.ModelAdmin):
-    list_display = ('track', 'group', 'action_type', 'start_time', 'end_time', 'total_distance_km_display', 'travel_duration_display', 'created_at')
+    list_display = ('track', 'group_display', 'action_type', 'start_time', 'end_time', 'total_distance_km_display', 'travel_duration_display', 'created_at')
     list_filter = ('track', 'group', 'action_type', 'start_time', 'end_time')
     search_fields = ('track__name', 'group__name')
     readonly_fields = ('track', 'group', 'action_type', 'start_time', 'end_time', 'total_distance_km', 'created_at', 'travel_duration_display')
     date_hierarchy = 'end_time'
+    
+    def group_display(self, obj):
+        """Display only the group name without group type."""
+        if obj and obj.group:
+            return obj.group.name
+        return "-"
+    group_display.short_description = _("Gruppe")
+    group_display.admin_order_field = 'group__name'
+    
+    def get_queryset(self, request):
+        """Filter travel history based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Reise-Historie für verwaltete Gruppen
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group__id__in=managed_group_ids)
     
     def has_add_permission(self, request):
         """Prevent adding new history entries."""
@@ -2216,7 +2727,7 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
     list_display = ('leaf_group_display', 'top_group_display', 'milestone_display', 'track', 'reached_at', 'reward_text', 'is_redeemed', 'redeemed_at', 'redeem_reward_action')
     list_filter = ('track', 'group', 'milestone', 'is_redeemed', 'reached_at', 'redeemed_at')
     search_fields = ('group__name', 'milestone__name', 'track__name', 'reward_text')
-    readonly_fields = ('group', 'milestone_display_detail', 'track', 'reached_at', 'reached_distance', 'reward_text', 'is_redeemed', 'redeemed_at', 'redeem_reward_action')
+    readonly_fields = ('group', 'milestone_display_detail', 'track', 'reached_at', 'reached_distance', 'reward_text', 'redeemed_at', 'redeem_reward_action')
     date_hierarchy = 'reached_at'
     
     fieldsets = (
@@ -2231,6 +2742,109 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
             'description': _("Die Belohnung wurde zum Zeitpunkt des Erreichens des Meilensteins gespeichert und bleibt unverändert, auch wenn die Meilenstein-Belohnung später geändert wird.")
         }),
     )
+    
+    def get_queryset(self, request):
+        """
+        Filter milestone achievements based on operator permissions.
+        
+        Prüft für jeden Meilenstein, ob seine Gruppe tatsächlich zur TOP-Gruppe des Operators gehört,
+        indem die Parent-Hierarchie bis zur TOP-Gruppe geprüft wird.
+        """
+        if request.user.is_superuser:
+            return super().get_queryset(request)
+        
+        # Hole die TOP-Gruppen des Operators (die direkt zugewiesenen Gruppen)
+        managed_top_groups = request.user.managed_groups.all()
+        if not managed_top_groups.exists():
+            return GroupMilestoneAchievement.objects.none()
+        
+        top_group_ids = set(managed_top_groups.values_list('id', flat=True))
+        
+        # Lade alle Meilensteine mit ihren Gruppen
+        # WICHTIG: Verwende GroupMilestoneAchievement.objects direkt, nicht super().get_queryset()
+        all_achievements = list(GroupMilestoneAchievement.objects.select_related('group', 'milestone', 'track'))
+        
+        if not all_achievements:
+            return GroupMilestoneAchievement.objects.none()
+        
+        # Lade alle Gruppen mit ihren vollständigen Parent-Hierarchien
+        all_group_ids = {achievement.group_id for achievement in all_achievements}
+        
+        # Lade alle Gruppen mit ihren Parent-Beziehungen
+        # WICHTIG: Wir müssen die Parent-Hierarchie vollständig laden
+        groups_dict = {}
+        groups_to_load = set(all_group_ids)
+        
+        # Lade alle Gruppen rekursiv (auch Parent-Gruppen)
+        while groups_to_load:
+            loaded_groups = Group.objects.filter(id__in=groups_to_load).select_related('parent')
+            groups_to_load = set()
+            
+            for group in loaded_groups:
+                groups_dict[group.id] = group
+                # Wenn die Gruppe einen Parent hat, den wir noch nicht geladen haben, lade ihn auch
+                if group.parent_id and group.parent_id not in groups_dict:
+                    groups_to_load.add(group.parent_id)
+        
+        # Prüfe für jeden Meilenstein, ob seine Gruppe zu einer TOP-Gruppe gehört
+        valid_achievement_ids = []
+        
+        for achievement in all_achievements:
+            group_id = achievement.group_id
+            
+            if group_id not in groups_dict:
+                # Gruppe nicht gefunden - überspringe
+                continue
+            
+            # Prüfe rekursiv die Parent-Hierarchie nach oben
+            current_group = groups_dict[group_id]
+            visited = set()
+            belongs_to_top = False
+            
+            while current_group and current_group.id not in visited:
+                visited.add(current_group.id)
+                
+                # Wenn die aktuelle Gruppe eine TOP-Gruppe ist, gehört die ursprüngliche Gruppe dazu
+                if current_group.id in top_group_ids:
+                    belongs_to_top = True
+                    break
+                
+                # Gehe zur Parent-Gruppe
+                if current_group.parent_id and current_group.parent_id in groups_dict:
+                    current_group = groups_dict[current_group.parent_id]
+                else:
+                    # Keine Parent-Gruppe mehr oder Gruppe nicht gefunden
+                    break
+            
+            if belongs_to_top:
+                valid_achievement_ids.append(achievement.id)
+        
+        # Wenn keine gültigen Meilensteine gefunden wurden, gib leeren QuerySet zurück
+        if not valid_achievement_ids:
+            return GroupMilestoneAchievement.objects.none()
+        
+        # Filtere nach den validierten Meilenstein-IDs
+        # WICHTIG: Verwende GroupMilestoneAchievement.objects direkt
+        return GroupMilestoneAchievement.objects.filter(
+            id__in=valid_achievement_ids
+        ).select_related('group', 'milestone', 'track')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann Meilensteinerfolge bearbeiten (z.B. is_redeemed setzen)."""
+        if obj is None:
+            return request.user.has_perm('api.change_groupmilestoneachievement')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group.id in managed_group_ids
+    
+    def get_readonly_fields(self, request, obj=None):
+        """is_redeemed is editable for operators, redeemed_at is readonly."""
+        readonly = list(self.readonly_fields)
+        # is_redeemed is editable, so remove it from readonly if present
+        if 'is_redeemed' in readonly:
+            readonly.remove('is_redeemed')
+        return readonly
 
     def leaf_group_display(self, obj):
         """Display the leaf group (the group that actually reached the milestone)."""
@@ -2341,6 +2955,13 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
             messages.error(request, _("Meilenstein-Erreichung nicht gefunden."))
             return redirect('admin:api_groupmilestoneachievement_changelist')
         
+        # Check permission for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            if achievement.group.id not in managed_group_ids:
+                messages.error(request, _("Sie haben keine Berechtigung, diese Belohnung einzulösen."))
+                return redirect('admin:api_groupmilestoneachievement_changelist')
+        
         if request.method == 'POST':
             # Check if already redeemed
             if achievement.is_redeemed:
@@ -2372,11 +2993,6 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
             'has_change_permission': self.has_change_permission(request, achievement),
         }
         return render(request, 'admin/api/groupmilestoneachievement_redeem_confirmation.html', context)
-    
-    def get_queryset(self, request):
-        """Optimize queryset with select_related and prefetch parent groups."""
-        qs = super().get_queryset(request)
-        return qs.select_related('group', 'group__parent', 'milestone', 'track')
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
@@ -2387,6 +3003,37 @@ class EventAdmin(admin.ModelAdmin):
     list_filter = ('event_type', 'is_active', 'is_visible_on_map')
     search_fields = ('name', 'description')
     actions = ['save_event_to_history']
+    
+    def get_queryset(self, request):
+        """Filter events based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Events, die zu verwalteten Gruppen gehören
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group_statuses__group__id__in=managed_group_ids).distinct()
+    
+    def has_add_permission(self, request):
+        """Operator kann Events hinzufügen."""
+        return request.user.has_perm('api.add_event')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann nur Events bearbeiten, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.change_event')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann nur Events löschen, die zu verwalteten Gruppen gehören."""
+        if obj is None:
+            return request.user.has_perm('api.delete_event')
+        if request.user.is_superuser:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
 
     def total_distance_km_display(self, obj):
         """Display total kilometers collected in this event with German format."""
@@ -2398,6 +3045,11 @@ class EventAdmin(admin.ModelAdmin):
 
     def save_event_to_history(self, request, queryset):
         """Save event progress to history and reset event statuses."""
+        # Filter queryset for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            queryset = queryset.filter(group_statuses__group__id__in=managed_group_ids).distinct()
+        
         count = 0
         for event in queryset:
             event.save_event_to_history()
@@ -2420,6 +3072,12 @@ class EventAdmin(admin.ModelAdmin):
         from django.contrib import messages
         obj = self.get_object(request, object_id)
         if obj:
+            # Check permission for operators
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
+                    messages.error(request, _("Sie haben keine Berechtigung, dieses Event in die Historie zu speichern."))
+                    return redirect('admin:api_event_changelist')
             obj.save_event_to_history()
             self.message_user(request, _("Event wurde in die Historie gespeichert und zurückgesetzt."), messages.SUCCESS)
         return redirect('admin:api_event_change', object_id)
@@ -2433,6 +3091,15 @@ class EventHistoryAdmin(admin.ModelAdmin):
     search_fields = ('event__name', 'group__name')
     readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_distance_km', 'created_at')
     date_hierarchy = 'end_time'
+    
+    def get_queryset(self, request):
+        """Filter event history based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Nur Event-Historie für verwaltete Gruppen
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group__id__in=managed_group_ids)
     
     def has_add_permission(self, request):
         """Prevent adding new history entries."""
@@ -2460,6 +3127,12 @@ class HourlyMetricAdmin(admin.ModelAdmin):
     readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'group_at_time')
     list_filter = ('timestamp', 'device', 'cyclist', 'group_at_time')
     search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'device__name')
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     date_hierarchy = 'timestamp'
     list_per_page = 50
     
@@ -2524,10 +3197,45 @@ class KioskPlaylistEntryInline(admin.TabularInline):
         """Return 0 extra forms - user must explicitly add entries."""
         return 0
     
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter foreign key fields for operators."""
+        if db_field.name == 'group_filter':
+            # Für Operatoren: Nur Gruppen aus ihrer TOP-Gruppe anzeigen
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if managed_group_ids:
+                    kwargs['queryset'] = Group.objects.filter(id__in=managed_group_ids, is_visible=True)
+                else:
+                    kwargs['queryset'] = Group.objects.none()
+        elif db_field.name == 'event_filter':
+            # Für Operatoren: Nur Events aus ihrer TOP-Gruppe anzeigen
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if managed_group_ids:
+                    from api.models import Event
+                    kwargs['queryset'] = Event.objects.filter(
+                        group_statuses__group_id__in=managed_group_ids
+                    ).distinct()
+                else:
+                    from api.models import Event
+                    kwargs['queryset'] = Event.objects.none()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """Use collapsible checkbox widget for track_filter field."""
+        """Use collapsible checkbox widget for track_filter field and filter for operators."""
         if db_field.name == 'track_filter':
             kwargs['widget'] = CollapsibleCheckboxSelectMultiple(attrs={'class': 'collapsible-checkbox'})
+            # Für Operatoren: Nur Tracks aus ihrer TOP-Gruppe anzeigen
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if managed_group_ids:
+                    from api.models import TravelTrack
+                    kwargs['queryset'] = TravelTrack.objects.filter(
+                        group_statuses__group_id__in=managed_group_ids
+                    ).distinct()
+                else:
+                    from api.models import TravelTrack
+                    kwargs['queryset'] = TravelTrack.objects.none()
         return super().formfield_for_manytomany(db_field, request, **kwargs)
     
     def get_formset(self, request, obj=None, **kwargs):
@@ -2937,11 +3645,11 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     search_fields = ('name', 'uid')
     fieldsets = (
         (_("Device Information"), {
-            'fields': ('name', 'uid', 'is_active')
+            'fields': ('name', 'uid', 'is_active', 'assigned_to_group')
         }),
         (_("Hardware Control"), {
             'fields': ('brightness', 'command_queue'),
-            'description': _("Brightness: 0-100. Command Queue: JSON array of pending commands (e.g., ['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])")
+            'description': _("Helligkeit: 0-100. Befehls-Warteschlange: JSON-Array mit ausstehenden Befehlen (z.B. ['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])")
         }),
         (_("Timestamps"), {
             'fields': ('created_at', 'updated_at'),
@@ -2949,7 +3657,124 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at', 'command_queue')
+    
+    def get_readonly_fields(self, request, obj=None):
+        """assigned_to_group ist nur für Superuser editierbar."""
+        readonly = list(self.readonly_fields)
+        if not request.user.is_superuser:
+            readonly.append('assigned_to_group')
+        return readonly
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
+        form = super().get_form(request, obj, **kwargs)
+        
+        if request.user.is_superuser:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            from api.models import Group
+            form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True
+            ).order_by('name')
+        
+        return form
     inlines = [KioskPlaylistEntryInline]
+    
+    def has_module_permission(self, request):
+        """Kiosk Management ist für Operatoren verfügbar."""
+        # Operatoren und Superuser haben Zugriff
+        return request.user.is_staff
+    
+    def get_queryset(self, request):
+        """Filter Kiosk devices based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        
+        # Für Operatoren: Nur Geräte anzeigen, die Playlist-Einträge mit group_filter
+        # oder event_filter in der TOP-Gruppe des Operators haben
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        if not managed_group_ids:
+            return qs.none()
+        
+        # Hole alle Events, die zu verwalteten Gruppen gehören
+        from api.models import Event
+        managed_event_ids = Event.objects.filter(
+            group_statuses__group_id__in=managed_group_ids
+        ).values_list('id', flat=True).distinct()
+        
+        # Filtere Geräte, die:
+        # - assigned_to_group in managed_group_ids haben ODER
+        # - Playlist-Einträge mit group_filter in managed_group_ids haben ODER
+        # - Playlist-Einträge mit event_filter in managed_event_ids haben
+        from django.db.models import Q
+        
+        return qs.filter(
+            Q(assigned_to_group_id__in=managed_group_ids) |
+            Q(playlist_entries__group_filter_id__in=managed_group_ids) |
+            Q(playlist_entries__event_filter_id__in=managed_event_ids)
+        ).distinct()
+    
+    def has_add_permission(self, request):
+        """Operatoren können neue Kiosk-Geräte erstellen."""
+        return request.user.has_perm('kiosk.add_kioskdevice')
+    
+    def has_change_permission(self, request, obj=None):
+        """Operatoren können ihre eigenen Kiosk-Geräte bearbeiten."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('kiosk.change_kioskdevice')
+        
+        # Prüfe, ob das Gerät assigned_to_group in der TOP-Gruppe des Operators hat,
+        # ODER ob Playlist-Einträge mit group_filter oder event_filter in der TOP-Gruppe haben
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        if not managed_group_ids:
+            return False
+        
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        
+        # Prüfe, ob Playlist-Einträge zur TOP-Gruppe gehören
+        from api.models import Event
+        managed_event_ids = Event.objects.filter(
+            group_statuses__group_id__in=managed_group_ids
+        ).values_list('id', flat=True).distinct()
+        
+        return obj.playlist_entries.filter(
+            group_filter_id__in=managed_group_ids
+        ).exists() or obj.playlist_entries.filter(
+            event_filter_id__in=managed_event_ids
+        ).exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operatoren können ihre eigenen Kiosk-Geräte löschen."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('kiosk.delete_kioskdevice')
+        
+        # Gleiche Prüfung wie bei has_change_permission
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        if not managed_group_ids:
+            return False
+        
+        # Prüfe zuerst assigned_to_group
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        
+        # Prüfe, ob Playlist-Einträge zur TOP-Gruppe gehören
+        from api.models import Event
+        managed_event_ids = Event.objects.filter(
+            group_statuses__group_id__in=managed_group_ids
+        ).values_list('id', flat=True).distinct()
+        
+        return obj.playlist_entries.filter(
+            group_filter_id__in=managed_group_ids
+        ).exists() or obj.playlist_entries.filter(
+            event_filter_id__in=managed_event_ids
+        ).exists()
     
     def changelist_view(self, request, extra_context=None):
         """Store request for use in list_display methods."""
@@ -3151,6 +3976,12 @@ class DeviceConfigurationReportAdmin(admin.ModelAdmin):
     readonly_fields = ('device', 'reported_config', 'has_differences', 'created_at')
     inlines = [DeviceConfigurationDiffInline]
     
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
+    
     fieldsets = (
         (_("Berichts-Informationen"), {
             'fields': ('device', 'created_at', 'has_differences')
@@ -3177,6 +4008,12 @@ class DeviceConfigurationDiffAdmin(admin.ModelAdmin):
     search_fields = ('device__name', 'field_name')
     readonly_fields = ('device', 'report', 'field_name', 'server_value', 'device_value', 'created_at')
     list_editable = ('is_resolved',)
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     
     fieldsets = (
         (_("Unterschieds-Informationen"), {
@@ -3588,6 +4425,12 @@ class DeviceAuditLogAdmin(admin.ModelAdmin):
     list_filter = ('action', 'created_at', 'device')
     search_fields = ('device__name', 'user__username', 'ip_address')
     readonly_fields = ('device', 'action', 'user', 'details', 'ip_address', 'created_at')
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     
     fieldsets = (
         (_("Protokoll-Informationen"), {
@@ -4261,54 +5104,56 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     
     # Add custom menu items for "Historische Berichte & Analysen" and "Session Management"
     # These appear as separate apps in the admin menu, positioned above Mgmt
-    try:
-        analytics_app = {
-            'name': _('Historical Reports & Analytics'),
-            'app_label': 'analytics',
-            'app_url': reverse('admin:api_analytics_dashboard'),
-            'has_module_perms': request.user.is_staff,
-            'models': [
-                {
-                    'name': _('Analytics Dashboard'),
-                    'object_name': 'Analytics Dashboard',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
-                    'admin_url': reverse('admin:api_analytics_dashboard'),
-                    'add_url': None,
-                    'view_only': True,
-                },
-                {
-                    'name': _('Hierarchy Breakdown'),
-                    'object_name': 'Hierarchy Breakdown',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
-                    'admin_url': reverse('admin:api_analytics_hierarchy'),
-                    'add_url': None,
-                    'view_only': True,
-                },
-            ],
-        }
-        
-        session_app = {
-            'name': _('Session Management'),
-            'app_label': 'session_management',
-            'app_url': reverse('admin:game_session_dashboard'),
-            'has_module_perms': request.user.is_staff,
-            'models': [
-                {
-                    'name': _('Session Dashboard'),
-                    'object_name': 'Session Dashboard',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_staff},
-                    'admin_url': reverse('admin:game_session_dashboard'),
-                    'add_url': None,
-                    'view_only': True,
-                },
-            ],
-        }
-        
-        app_list.append(analytics_app)
-        app_list.append(session_app)
-    except Exception:
-        # Silently fail if URLs are not available
-        pass
+    # Only show these menus for superusers (not for operators)
+    if request.user.is_superuser:
+        try:
+            analytics_app = {
+                'name': _('Historical Reports & Analytics'),
+                'app_label': 'analytics',
+                'app_url': reverse('admin:api_analytics_dashboard'),
+                'has_module_perms': request.user.is_superuser,
+                'models': [
+                    {
+                        'name': _('Analytics Dashboard'),
+                        'object_name': 'Analytics Dashboard',
+                        'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_superuser},
+                        'admin_url': reverse('admin:api_analytics_dashboard'),
+                        'add_url': None,
+                        'view_only': True,
+                    },
+                    {
+                        'name': _('Hierarchy Breakdown'),
+                        'object_name': 'Hierarchy Breakdown',
+                        'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_superuser},
+                        'admin_url': reverse('admin:api_analytics_hierarchy'),
+                        'add_url': None,
+                        'view_only': True,
+                    },
+                ],
+            }
+            
+            session_app = {
+                'name': _('Session Management'),
+                'app_label': 'session_management',
+                'app_url': reverse('admin:game_session_dashboard'),
+                'has_module_perms': request.user.is_superuser,
+                'models': [
+                    {
+                        'name': _('Session Dashboard'),
+                        'object_name': 'Session Dashboard',
+                        'perms': {'add': False, 'change': False, 'delete': False, 'view': request.user.is_superuser},
+                        'admin_url': reverse('admin:game_session_dashboard'),
+                        'add_url': None,
+                        'view_only': True,
+                    },
+                ],
+            }
+            
+            app_list.append(analytics_app)
+            app_list.append(session_app)
+        except Exception:
+            # Silently fail if URLs are not available
+            pass
     
     # Define custom ordering
     # Apps with lower numbers appear first, higher numbers appear last

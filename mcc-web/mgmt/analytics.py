@@ -42,6 +42,10 @@ from leaderboard.views import _calculate_group_totals_from_metrics
 @staff_member_required
 def analytics_dashboard(request):
     """Main analytics dashboard view."""
+    # Block access for operators
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden(_("Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese Funktion."))
     # Get date range from request
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
@@ -89,6 +93,10 @@ def analytics_dashboard(request):
 @staff_member_required
 def analytics_data_api(request):
     """API endpoint for chart data and aggregated statistics."""
+    # Block access for operators
+    if not request.user.is_superuser:
+        from django.http import JsonResponse
+        return JsonResponse({'error': _("Zugriff verweigert")}, status=403)
     start_date = request.GET.get('start_date', '').strip()
     end_date = request.GET.get('end_date', '').strip()
     event_id = request.GET.get('event_id', '').strip()
@@ -1141,6 +1149,10 @@ def analytics_data_api(request):
 @staff_member_required
 def export_data(request):
     """Export filtered data as CSV or Excel."""
+    # Block access for operators
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden(_("Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese Funktion."))
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     event_id = request.GET.get('event_id')
@@ -1266,6 +1278,10 @@ def export_data(request):
 @staff_member_required
 def hierarchy_breakdown(request):
     """Hierarchy breakdown view with drill-down capability."""
+    # Block access for operators
+    if not request.user.is_superuser:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden(_("Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese Funktion."))
     event_id = request.GET.get('event_id')
     parent_group_id = request.GET.get('parent_group_id')
     group_id = request.GET.get('group_id')

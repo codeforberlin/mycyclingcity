@@ -16,30 +16,41 @@ class KioskDevice(models.Model):
     name = models.CharField(
         max_length=200,
         verbose_name=_("Gerätename"),
-        help_text=_("Human-readable name for this Kiosk device")
+        help_text=_("Lesbarer Name für dieses Kiosk-Gerät")
     )
     uid = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name=_("Unique ID"),
-        help_text=_("Unique identifier for this device (e.g., MAC address or serial number)")
+        verbose_name=_("Eindeutige ID"),
+        help_text=_("Eindeutige Kennung für dieses Gerät (z.B. MAC-Adresse oder Seriennummer)")
     )
     brightness = models.IntegerField(
         default=100,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name=_("Brightness"),
-        help_text=_("Display brightness level (0-100)")
+        verbose_name=_("Helligkeit"),
+        help_text=_("Helligkeitsstufe der Anzeige (0-100)")
     )
     is_active = models.BooleanField(
         default=True,
         verbose_name=_("Aktiv"),
-        help_text=_("Whether this device is currently active and should display content")
+        help_text=_("Ob dieses Gerät derzeit aktiv ist und Inhalte anzeigen soll")
     )
     command_queue = models.JSONField(
         default=list,
         blank=True,
-        verbose_name=_("Command Queue"),
-        help_text=_("JSON array of pending hardware commands (e.g., ['RELOAD', 'SET_BRIGHTNESS:50'])")
+        verbose_name=_("Befehls-Warteschlange"),
+        help_text=_("JSON-Array mit ausstehenden Hardware-Befehlen (z.B. ['RELOAD', 'SET_BRIGHTNESS:50'])")
+    )
+    assigned_to_group = models.ForeignKey(
+        'api.Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_kiosk_devices',
+        verbose_name=_("Zugewiesene TOP-Gruppe"),
+        help_text=_("TOP-Gruppe, der dieses Kiosk-Gerät zugewiesen ist. "
+                   "Operatoren dieser TOP-Gruppe können das Gerät verwalten. "
+                   "Kann vom System-Admin gesetzt werden, bevor Playlist-Einträge erstellt werden.")
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert am"))
@@ -91,8 +102,8 @@ class KioskPlaylistEntry(models.Model):
         max_length=20,
         choices=VIEW_TYPES,
         default='leaderboard',
-        verbose_name=_("View Type"),
-        help_text=_("Type of view to display")
+        verbose_name=_("Ansichtstyp"),
+        help_text=_("Art der anzuzeigenden Ansicht")
     )
     event_filter = models.ForeignKey(
         'api.Event',
@@ -100,8 +111,8 @@ class KioskPlaylistEntry(models.Model):
         null=True,
         blank=True,
         related_name='kiosk_playlist_entries',
-        verbose_name=_("Event Filter"),
-        help_text=_("Optional: Filter content by specific event")
+        verbose_name=_("Event-Filter"),
+        help_text=_("Optional: Inhalte nach spezifischem Event filtern")
     )
     group_filter = models.ForeignKey(
         'api.Group',
@@ -109,31 +120,31 @@ class KioskPlaylistEntry(models.Model):
         null=True,
         blank=True,
         related_name='kiosk_playlist_entries',
-        verbose_name=_("Group Filter"),
-        help_text=_("Optional: Filter content to show only groups and cyclists belonging to this master group")
+        verbose_name=_("Gruppen-Filter"),
+        help_text=_("Optional: Inhalte filtern, um nur Gruppen und Radler anzuzeigen, die zu dieser Hauptgruppe gehören")
     )
     track_filter = models.ManyToManyField(
         'api.TravelTrack',
         blank=True,
         related_name='kiosk_playlist_entries',
-        verbose_name=_("Track Filter"),
-        help_text=_("Optional: Filter map view to show only selected tracks (leave empty to show all tracks)")
+        verbose_name=_("Routen-Filter"),
+        help_text=_("Optional: Kartenansicht filtern, um nur ausgewählte Routen anzuzeigen (leer lassen, um alle Routen anzuzeigen)")
     )
     display_duration = models.IntegerField(
         default=30,
         validators=[MinValueValidator(1)],
-        verbose_name=_("Display Duration (seconds)"),
-        help_text=_("How long to display this view before rotating to the next")
+        verbose_name=_("Anzeigedauer (Sekunden)"),
+        help_text=_("Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt wird")
     )
     order = models.PositiveIntegerField(
         default=1,
-        verbose_name=_("Order"),
-        help_text=_("Display order in the playlist (lower numbers first, starts at 1)")
+        verbose_name=_("Reihenfolge"),
+        help_text=_("Anzeigereihenfolge in der Playlist (niedrigere Zahlen zuerst, beginnt bei 1)")
     )
     is_active = models.BooleanField(
         default=True,
         verbose_name=_("Aktiv"),
-        help_text=_("Whether this entry is active in the playlist")
+        help_text=_("Ob dieser Eintrag in der Playlist aktiv ist")
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert am"))

@@ -434,6 +434,17 @@ class TravelTrack(models.Model):
         verbose_name=_("Endzeitpunkt"),
         help_text=_("Optional: Definiert den Endzeitpunkt der Reise. Wenn nicht gesetzt, läuft die Reise unbegrenzt.")
     )
+    assigned_to_group = models.ForeignKey(
+        'Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_travel_tracks',
+        verbose_name=_("Zugewiesene TOP-Gruppe"),
+        help_text=_("TOP-Gruppe, der diese Reiseroute zugewiesen ist. "
+                   "Operatoren dieser TOP-Gruppe können die Route verwalten. "
+                   "Kann vom System-Admin gesetzt werden, bevor GroupTravelStatus Einträge erstellt werden.")
+    )
 
     class Meta:
         verbose_name = _("Travels - Route")
@@ -514,6 +525,17 @@ class Milestone(models.Model):
     gps_longitude = models.DecimalField(max_digits=9, decimal_places=6, verbose_name=_("Längengrad"))
     winner_group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Gewinner"))
     reached_at = models.DateTimeField(null=True, blank=True, verbose_name=_("Erreicht am"))
+    assigned_to_group = models.ForeignKey(
+        'Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_milestones',
+        verbose_name=_("Zugewiesene TOP-Gruppe"),
+        help_text=_("TOP-Gruppe, der dieser Meilenstein zugewiesen ist. "
+                   "Operatoren dieser TOP-Gruppe können den Meilenstein verwalten. "
+                   "Kann vom System-Admin gesetzt werden. Falls nicht gesetzt, wird die Zugehörigkeit über die Route bestimmt.")
+    )
 
     class Meta:
         ordering = ['distance_km']

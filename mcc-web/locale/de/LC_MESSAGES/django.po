@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-25 12:36+0000\n"
+"POT-Creation-Date: 2026-01-29 23:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -101,9 +101,9 @@ msgstr ""
 "Transparenz des Meilenstein Popups (0.01 = fast transparent, 1.00 = "
 "vollständig opak)"
 
-#: api/models.py:89 api/models.py:725 api/models.py:879 iot/models.py:225
-#: iot/models.py:481 iot/models.py:602 iot/models.py:684 iot/models.py:812
-#: kiosk/models.py:45 kiosk/models.py:139
+#: api/models.py:89 api/models.py:747 api/models.py:901 iot/models.py:235
+#: iot/models.py:521 iot/models.py:657 iot/models.py:739 iot/models.py:869
+#: kiosk/models.py:56 kiosk/models.py:150
 msgid "Aktualisiert am"
 msgstr "Aktualisiert am"
 
@@ -124,16 +124,16 @@ msgstr ""
 msgid "Typ-Name"
 msgstr "Typ-Name"
 
-#: api/models.py:111 api/models.py:509 api/models.py:872 iot/models.py:443
-#: iot/models.py:667 map/templates/map/dashboard.html:1725
-#: map/templates/map/map_mobile.html:1412
+#: api/models.py:111 api/models.py:520 api/models.py:894 iot/models.py:467
+#: iot/models.py:722 map/templates/map/dashboard.html:1727
+#: map/templates/map/map_mobile.html:1414
 #: templates/admin/mgmt/log_file_list.html:19
 msgid "Beschreibung"
 msgstr "Beschreibung"
 
-#: api/models.py:112 api/models.py:417 api/models.py:873 game/models.py:36
-#: game/models.py:112 iot/models.py:470 iot/models.py:679 iot/models.py:807
-#: kiosk/models.py:35 kiosk/models.py:135 mgmt/models_performance.py:232
+#: api/models.py:112 api/models.py:417 api/models.py:895 game/models.py:36
+#: game/models.py:112 iot/models.py:510 iot/models.py:734 iot/models.py:864
+#: kiosk/models.py:35 kiosk/models.py:146 mgmt/models_performance.py:232
 msgid "Aktiv"
 msgstr "Aktiv"
 
@@ -165,7 +165,7 @@ msgstr "Gesamt-Coins"
 msgid "Logo für Karte"
 msgstr "Logo für Karte"
 
-#: api/models.py:157 mgmt/admin.py:967
+#: api/models.py:157 mgmt/admin.py:1473
 msgid "Übergeordnete Gruppe"
 msgstr "Übergeordnete Gruppe"
 
@@ -187,7 +187,7 @@ msgstr "Gruppe"
 msgid "Groups"
 msgstr "Gruppen"
 
-#: api/models.py:189 api/models.py:383 api/models.py:874 iot/models.py:37
+#: api/models.py:189 api/models.py:383 api/models.py:896 iot/models.py:37
 #: templates/admin/api/bulk_create_school.html:214
 #: templates/admin/api/bulk_create_school.html:262
 msgid "In Map/Game anzeigen"
@@ -238,19 +238,17 @@ msgstr "Ausgebbare Coins"
 msgid "Coin-Faktor"
 msgstr "Coin-Faktor"
 
-#: api/models.py:361 map/templates/map/dashboard.html:1604
-#: map/templates/map/map_mobile.html:1322 map/templates/map/mcc_map.html:177
+#: api/models.py:361 map/templates/map/dashboard.html:1606
+#: map/templates/map/map_mobile.html:1324 map/templates/map/mcc_map.html:179
 #: map/templates/map/table_data.html:77 map/templates/map/table_data.html:83
-#: mgmt/admin.py:1073 ranking/templates/ranking/table_data.html:82
+#: mgmt/admin.py:1626 ranking/templates/ranking/table_data.html:82
 #: ranking/templates/ranking/table_data.html:88
 msgid "Gruppen"
 msgstr "Gruppen"
 
-#: api/models.py:362 iot/models.py:23
-#: leaderboard/templates/leaderboard/leaderboard_page.html:614
-#: map/templates/map/dashboard.html:2282
-#: map/templates/map/kiosk_leaderboard.html:645
-#: map/templates/map/map_mobile.html:1665
+#: api/models.py:362 iot/models.py:23 map/templates/map/dashboard.html:2284
+#: map/templates/map/kiosk_leaderboard.html:647
+#: map/templates/map/map_mobile.html:1667
 msgid "Zuletzt aktiv"
 msgstr "Zuletzt aktiv"
 
@@ -273,19 +271,18 @@ msgstr "Kilometer-Erfassung aktiv"
 msgid "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
 msgstr "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
 
-#: api/models.py:390 api/models.py:402 game/admin.py:206
-#: game/session_admin.py:516 game/templates/game/mcc_game.html:656
-#: iot/models.py:339 iot/models.py:371 iot/models.py:552 iot/models.py:713
-#: leaderboard/templates/leaderboard/leaderboard_page.html:612
-#: map/templates/map/dashboard.html:2280
-#: map/templates/map/kiosk_leaderboard.html:643
-#: map/templates/map/map_mobile.html:1663 map/templates/map/mcc_map.html:332
+#: api/models.py:390 api/models.py:402 game/admin.py:212
+#: game/session_admin.py:516 game/templates/game/mcc_game.html:658
+#: iot/models.py:363 iot/models.py:395 iot/models.py:607 iot/models.py:770
+#: map/templates/map/dashboard.html:2282
+#: map/templates/map/kiosk_leaderboard.html:645
+#: map/templates/map/map_mobile.html:1665 map/templates/map/mcc_map.html:334
 msgid "Gerät"
 msgstr "Gerät"
 
 #: api/models.py:391 api/models.py:401
 #: game/templates/admin/game/session_dashboard.html:199
-#: game/templates/game/mcc_game.html:655
+#: game/templates/game/mcc_game.html:657
 #: templates/admin/api/bulk_create_school_preview.html:19
 #: templates/admin/api/bulk_create_school_preview.html:36
 msgid "Radler"
@@ -299,13 +296,13 @@ msgstr "Zeitpunkt"
 msgid "Intervall-Distanz (km)"
 msgstr "Intervall-Distanz (km)"
 
-#: api/models.py:394 api/models.py:542 api/models.py:612 api/models.py:762
-#: api/models.py:945 api/models.py:988 map/templates/map/dashboard.html:1715
-#: map/templates/map/map_mobile.html:1322
-#: map/templates/map/map_mobile.html:1402 map/templates/map/mcc_map.html:346
+#: api/models.py:394 api/models.py:564 api/models.py:634 api/models.py:784
+#: api/models.py:967 api/models.py:1010 map/templates/map/dashboard.html:1717
+#: map/templates/map/map_mobile.html:1324
+#: map/templates/map/map_mobile.html:1404 map/templates/map/mcc_map.html:348
 #: map/templates/map/table_data.html:77 map/templates/map/table_data.html:83
-#: mgmt/admin.py:1011 mgmt/admin.py:1279 mgmt/admin.py:1916
-#: ranking/templates/ranking/table_data.html:82
+#: mgmt/admin.py:1517 mgmt/admin.py:1922 mgmt/admin.py:2372 mgmt/admin.py:2678
+#: mgmt/admin.py:2854 ranking/templates/ranking/table_data.html:82
 #: ranking/templates/ranking/table_data.html:88
 msgid "Gruppe"
 msgstr "Gruppe"
@@ -346,7 +343,7 @@ msgstr "GPX-Datei"
 msgid "GeoJSON Daten"
 msgstr "GeoJSON Daten"
 
-#: api/models.py:416 mgmt/admin.py:1250
+#: api/models.py:416 mgmt/admin.py:1893
 msgid "Gesamtlänge (km)"
 msgstr "Gesamtlänge (km)"
 
@@ -364,7 +361,7 @@ msgid ""
 "Kilometer. Wenn deaktiviert, muss eine Startzeit definiert werden."
 msgstr ""
 
-#: api/models.py:428 api/models.py:764 api/models.py:875 api/models.py:990
+#: api/models.py:428 api/models.py:786 api/models.py:897 api/models.py:1012
 msgid "Startzeitpunkt"
 msgstr "Startzeitpunkt"
 
@@ -374,7 +371,7 @@ msgid ""
 "'Automatischer Start' aktiviert ist."
 msgstr ""
 
-#: api/models.py:434 api/models.py:765 api/models.py:876 api/models.py:991
+#: api/models.py:434 api/models.py:787 api/models.py:898 api/models.py:1013
 msgid "Endzeitpunkt"
 msgstr "Endzeitpunkt"
 
@@ -384,280 +381,300 @@ msgid ""
 "die Reise unbegrenzt."
 msgstr ""
 
-#: api/models.py:439
+#: api/models.py:443 api/models.py:534 kiosk/models.py:50
+#, fuzzy
+#| msgid "Zugeordnete Gruppe"
+msgid "Zugewiesene TOP-Gruppe"
+msgstr "Zugewiesene TOP-Gruppe"
+
+#: api/models.py:444
+msgid ""
+"TOP-Gruppe, der diese Reiseroute zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können die Route verwalten. Kann vom System-Admin gesetzt werden, "
+"bevor GroupTravelStatus Einträge erstellt werden."
+msgstr ""
+
+#: api/models.py:450
 msgid "Travels - Route"
 msgstr "Reisen - Route"
 
-#: api/models.py:440
+#: api/models.py:451
 msgid "Travels - Routes"
 msgstr "Reisen - Routen"
 
-#: api/models.py:507 api/models.py:554
+#: api/models.py:518 api/models.py:576
 msgid "Route"
 msgstr "Route"
 
-#: api/models.py:508
+#: api/models.py:519
 msgid "Bezeichnung"
 msgstr "Bezeichnung"
 
-#: api/models.py:510
+#: api/models.py:521
 msgid "Info-Link"
 msgstr "Info-Link"
 
-#: api/models.py:511 api/models.py:572 map/templates/map/dashboard.html:1719
-#: map/templates/map/dashboard.html:3318 map/templates/map/map_mobile.html:1406
-#: map/templates/map/map_mobile.html:2459 mgmt/admin.py:1905
+#: api/models.py:522 api/models.py:594 map/templates/map/dashboard.html:1721
+#: map/templates/map/dashboard.html:3323 map/templates/map/map_mobile.html:1408
+#: map/templates/map/map_mobile.html:2461 mgmt/admin.py:2740
 msgid "Belohnung"
 msgstr "Belohnung"
 
-#: api/models.py:512 mgmt/admin.py:1585
+#: api/models.py:523 mgmt/admin.py:2331
 msgid "KM-Marke"
 msgstr "KM-Marke"
 
-#: api/models.py:513 iot/models.py:21
+#: api/models.py:524 iot/models.py:21
 msgid "Breitengrad"
 msgstr "Breitengrad"
 
-#: api/models.py:514 iot/models.py:22
+#: api/models.py:525 iot/models.py:22
 msgid "Längengrad"
 msgstr "Längengrad"
 
-#: api/models.py:515
+#: api/models.py:526 mgmt/admin.py:2224
 msgid "Gewinner"
 msgstr "Gewinner"
 
-#: api/models.py:516 api/models.py:557 map/templates/map/dashboard.html:2347
-#: map/templates/map/dashboard.html:3328 map/templates/map/map_mobile.html:1733
-#: map/templates/map/map_mobile.html:2473
+#: api/models.py:527 api/models.py:579 map/templates/map/dashboard.html:2349
+#: map/templates/map/dashboard.html:3333 map/templates/map/map_mobile.html:1735
+#: map/templates/map/map_mobile.html:2475
 msgid "Erreicht am"
 msgstr "Erreicht am"
 
-#: api/models.py:520
+#: api/models.py:535
+msgid ""
+"TOP-Gruppe, der dieser Meilenstein zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können den Meilenstein verwalten. Kann vom System-Admin gesetzt "
+"werden. Falls nicht gesetzt, wird die Zugehörigkeit über die Route bestimmt."
+msgstr ""
+
+#: api/models.py:542
 msgid "Travels - Milestone"
 msgstr "Reisen - Meilenstein"
 
-#: api/models.py:521
+#: api/models.py:543
 msgid "Travels - Milestones"
 msgstr "Reisen - Meilensteine"
 
-#: api/models.py:548 map/templates/map/dashboard.html:1701
-#: map/templates/map/dashboard.html:2328 map/templates/map/dashboard.html:3310
-#: map/templates/map/dashboard.html:3503 map/templates/map/map_mobile.html:1388
-#: map/templates/map/map_mobile.html:1714
-#: map/templates/map/map_mobile.html:2452
-#: map/templates/map/map_mobile.html:2616 mgmt/admin.py:1932 mgmt/admin.py:1940
+#: api/models.py:570 map/templates/map/dashboard.html:1703
+#: map/templates/map/dashboard.html:2330 map/templates/map/dashboard.html:3315
+#: map/templates/map/dashboard.html:3508 map/templates/map/map_mobile.html:1390
+#: map/templates/map/map_mobile.html:1716
+#: map/templates/map/map_mobile.html:2454
+#: map/templates/map/map_mobile.html:2618 mgmt/admin.py:2870 mgmt/admin.py:2878
 msgid "Meilenstein"
 msgstr "Meilenstein"
 
-#: api/models.py:565 mgmt/admin.py:227 mgmt/admin.py:1972
+#: api/models.py:587 mgmt/admin.py:310 mgmt/admin.py:2910
 #, fuzzy
 #| msgid "Aktuelle Distanz (km)"
 msgid "Erreichte Distanz (km)"
 msgstr "Aktuelle Distanz (km)"
 
-#: api/models.py:573
+#: api/models.py:595
 msgid ""
 "Die Belohnung, die zum Zeitpunkt des Erreichens des Meilensteins definiert "
 "war. Diese bleibt unverändert, auch wenn die Meilenstein-Belohnung später "
 "geändert wird."
 msgstr ""
 
-#: api/models.py:579 mgmt/admin.py:1991
+#: api/models.py:601 mgmt/admin.py:2929
 msgid "Eingelöst"
 msgstr ""
 
-#: api/models.py:580
+#: api/models.py:602
 msgid ""
 "Gibt an, ob die Belohnung bereits eingelöst wurde. Eine Belohnung kann nur "
 "einmal eingelöst werden."
 msgstr ""
 
-#: api/models.py:585
+#: api/models.py:607
 msgid "Eingelöst am"
 msgstr ""
 
-#: api/models.py:586
+#: api/models.py:608
 msgid "Zeitpunkt, zu dem die Belohnung eingelöst wurde."
 msgstr ""
 
-#: api/models.py:591 api/models.py:592
+#: api/models.py:613 api/models.py:614
 msgid "Reisen - erreichte Meilensteine"
 msgstr "Reisen - erreichte Meilensteine"
 
-#: api/models.py:619 api/models.py:714
+#: api/models.py:641 api/models.py:736
 #, fuzzy
 #| msgid "Reise-Track"
 msgid "Reisen-Track"
 msgstr "Reise-Track"
 
-#: api/models.py:625
+#: api/models.py:647
 msgid "Aktuelle Reisen-Distanz (km)"
 msgstr "Aktuelle Reisen-Distanz (km)"
 
-#: api/models.py:631 api/models.py:963
+#: api/models.py:653 api/models.py:985
 msgid "Start-Offset (km)"
 msgstr "Start-Offset (km)"
 
-#: api/models.py:636
+#: api/models.py:658
 msgid "Ziel erreicht am"
 msgstr "Ziel erreicht am"
 
-#: api/models.py:637
+#: api/models.py:659
 msgid ""
 "Zeitpunkt, zu dem die Gruppe das Ziel erreicht hat. Wird für die Sortierung "
 "am Ziel verwendet."
 msgstr ""
 
-#: api/models.py:641 api/models.py:642
+#: api/models.py:663 api/models.py:664
 msgid "Travels - Status"
 msgstr "Reisen - Status"
 
-#: api/models.py:707 mgmt/admin.py:1651
+#: api/models.py:729 mgmt/admin.py:206 mgmt/admin.py:2457
 msgid "Leaf-Gruppe"
 msgstr "Leaf-Gruppe"
 
-#: api/models.py:708
+#: api/models.py:730
 msgid "Die Leaf-Gruppe (z.B. Klasse), die Kilometer beiträgt"
 msgstr ""
 
-#: api/models.py:720 mgmt/admin.py:63 mgmt/admin.py:1702
+#: api/models.py:742 mgmt/admin.py:110 mgmt/admin.py:2508
 msgid "Aktuelle Reise-Distanz (km)"
 msgstr "Aktuelle Reise-Distanz (km)"
 
-#: api/models.py:721
+#: api/models.py:743
 msgid ""
 "Die von dieser Leaf-Gruppe während der aktuellen Reise zurückgelegte Distanz"
 msgstr ""
 
-#: api/models.py:729
+#: api/models.py:751
 msgid "Leaf-Gruppe Reise-Beitrag"
 msgstr ""
 
-#: api/models.py:730
+#: api/models.py:752
 msgid "Leaf-Gruppe Reise-Beiträge"
 msgstr ""
 
-#: api/models.py:745
+#: api/models.py:767
 msgid "Zuordnung"
 msgstr "Zuordnung"
 
-#: api/models.py:746
+#: api/models.py:768
 msgid "Abgebrochen"
 msgstr ""
 
-#: api/models.py:747 game/models.py:112 map/templates/map/map_mobile.html:1320
-#: map/templates/map/map_mobile.html:1333 map/templates/map/table_data.html:76
+#: api/models.py:769 game/models.py:112 map/templates/map/map_mobile.html:1322
+#: map/templates/map/map_mobile.html:1335 map/templates/map/table_data.html:76
 #: map/templates/map/table_data.html:95
 #: ranking/templates/ranking/table_data.html:81
 #: ranking/templates/ranking/table_data.html:100
 msgid "Beendet"
 msgstr ""
 
-#: api/models.py:748
+#: api/models.py:770
 msgid "Neu gestartet"
 msgstr "Neu gestartet"
 
-#: api/models.py:749
+#: api/models.py:771
 msgid "Entfernt"
 msgstr "Entfernt"
 
-#: api/models.py:756
+#: api/models.py:778
 msgid "Reisen - Route"
 msgstr "Reisen - Route"
 
-#: api/models.py:766 api/models.py:992 mgmt/admin.py:1868 mgmt/admin.py:2130
+#: api/models.py:788 api/models.py:1014 mgmt/admin.py:2703 mgmt/admin.py:3121
 msgid "Gesammelte Kilometer"
 msgstr "Gesammelte Kilometer"
 
-#: api/models.py:771
+#: api/models.py:793
 msgid "Aktionstyp"
 msgstr "Aktionstyp"
 
-#: api/models.py:772
+#: api/models.py:794
 msgid "Art der Aktion, die zu diesem Historieeintrag geführt hat"
 msgstr ""
 
-#: api/models.py:774 api/models.py:878 api/models.py:993 game/models.py:102
-#: game/models.py:180 iot/models.py:224 iot/models.py:353 iot/models.py:413
-#: iot/models.py:480 iot/models.py:683 iot/models.py:755 iot/models.py:811
-#: kiosk/models.py:44 kiosk/models.py:138
+#: api/models.py:796 api/models.py:900 api/models.py:1015 game/models.py:102
+#: game/models.py:180 iot/models.py:234 iot/models.py:377 iot/models.py:437
+#: iot/models.py:520 iot/models.py:738 iot/models.py:812 iot/models.py:868
+#: kiosk/models.py:55 kiosk/models.py:149
 msgid "Erstellt am"
 msgstr "Erstellt am"
 
-#: api/models.py:777
+#: api/models.py:799
 msgid "Travels - History"
 msgstr "Reisen - Historie"
 
-#: api/models.py:778
+#: api/models.py:800
 msgid "Travels - Histories"
 msgstr "Reisen - Historien"
 
-#: api/models.py:863
+#: api/models.py:885
 msgid "Schulfest"
 msgstr ""
 
-#: api/models.py:864
+#: api/models.py:886
 msgid "Feier"
 msgstr ""
 
-#: api/models.py:865
+#: api/models.py:887
 msgid "Spendensammeln"
 msgstr ""
 
-#: api/models.py:866
+#: api/models.py:888
 msgid "Wettbewerb"
 msgstr "Wettbewerb"
 
-#: api/models.py:867
+#: api/models.py:889
 msgid "Sonstiges"
 msgstr ""
 
-#: api/models.py:870
+#: api/models.py:892
 msgid "Event-Name"
 msgstr "Event-Name"
 
-#: api/models.py:871
+#: api/models.py:893
 msgid "Event-Typ"
 msgstr "Event-Typ"
 
-#: api/models.py:877
+#: api/models.py:899
 msgid "Ab diesem Datum nicht mehr anzeigen"
 msgstr ""
 
-#: api/models.py:877
+#: api/models.py:899
 msgid ""
 "Events werden nach diesem Datum nicht mehr in der Karte angezeigt, auch wenn "
 "sie noch aktiv sind"
 msgstr ""
 
-#: api/models.py:882 api/models.py:951 api/models.py:982
+#: api/models.py:904 api/models.py:973 api/models.py:1004
 #: api/templates/admin/api/hierarchy_breakdown.html:140
 msgid "Event"
 msgstr "Event"
 
-#: api/models.py:883 iot/models.py:793 map/templates/map/map_mobile.html:1312
+#: api/models.py:905 iot/models.py:850 map/templates/map/map_mobile.html:1314
 #: map/templates/map/table_data.html:71
 #: ranking/templates/ranking/table_data.html:76
 msgid "Events"
 msgstr "Events"
 
-#: api/models.py:957 mgmt/admin.py:1213
+#: api/models.py:979 mgmt/admin.py:1784
 msgid "Aktuelle Distanz (km)"
 msgstr "Aktuelle Distanz (km)"
 
-#: api/models.py:965
+#: api/models.py:987
 msgid "Beigetreten am"
 msgstr ""
 
-#: api/models.py:968 api/models.py:969
+#: api/models.py:990 api/models.py:991
 msgid "Gruppen-Event-Status"
 msgstr "Gruppen-Event-Status"
 
-#: api/models.py:996
+#: api/models.py:1018
 msgid "Events - History"
 msgstr "Events - Historie"
 
-#: api/models.py:997
+#: api/models.py:1019
 msgid "Events - Histories"
 msgstr "Events - Historien"
 
@@ -667,10 +684,11 @@ msgstr "Events - Historien"
 #: game/templates/admin/game/edit_session_data.html:12
 #: game/templates/admin/game/session_dashboard.html:13
 #: templates/admin/api/bulk_create_school.html:12
-#: templates/admin/base_site.html:12
+#: templates/admin/base_site.html:12 templates/admin/iot/firmware_import.html:4
 #: templates/admin/mgmt/backup_control.html:12
 #: templates/admin/mgmt/log_file_list.html:4
 #: templates/admin/mgmt/log_file_viewer.html:4
+#: templates/admin/mgmt/maintenance_control.html:4
 #: templates/admin/mgmt/server_control.html:4
 #: templates/admin/minecraft/minecraft_control.html:4
 msgid "Django site admin"
@@ -690,7 +708,7 @@ msgstr "Startdatum"
 msgid "End Date"
 msgstr "Enddatum"
 
-#: api/templates/admin/api/analytics_dashboard.html:216 kiosk/models.py:112
+#: api/templates/admin/api/analytics_dashboard.html:216
 #, fuzzy
 #| msgid "Apply Filters"
 msgid "Group Filter"
@@ -712,7 +730,7 @@ msgstr "Radler"
 msgid "All Cyclists"
 msgstr "Radler"
 
-#: api/templates/admin/api/analytics_dashboard.html:244 kiosk/models.py:103
+#: api/templates/admin/api/analytics_dashboard.html:244
 msgid "Event Filter"
 msgstr "Event Filter"
 
@@ -737,8 +755,8 @@ msgstr "Filter anwenden"
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: api/templates/admin/api/analytics_dashboard.html:273 mgmt/admin.py:3670
-#: mgmt/analytics.py:1286
+#: api/templates/admin/api/analytics_dashboard.html:273 mgmt/admin.py:5125
+#: mgmt/analytics.py:1302
 msgid "Hierarchy Breakdown"
 msgstr "Hierarchie-Aufschlüsselung"
 
@@ -834,7 +852,7 @@ msgid "Top Devices by Mileage"
 msgstr "Top Geräte nach Kilometer"
 
 #: api/templates/admin/api/analytics_dashboard.html:387 iot/models.py:31
-#: iot/models.py:47 kiosk/models.py:48
+#: iot/models.py:47 kiosk/models.py:59
 msgid "Device"
 msgstr "Gerät"
 
@@ -864,7 +882,7 @@ msgid "Hourly Distance (km)"
 msgstr "Stündliche Distanz (km)"
 
 #: api/templates/admin/api/analytics_dashboard.html:823
-#: api/templates/admin/api/analytics_dashboard.html:844 mgmt/analytics.py:451
+#: api/templates/admin/api/analytics_dashboard.html:844 mgmt/analytics.py:459
 msgid "Unknown"
 msgstr "Unbekannt"
 
@@ -877,17 +895,19 @@ msgstr "Keine Daten verfügbar für die ausgewählten Filter."
 
 #: api/templates/admin/api/groupmilestoneachievement_redeem_confirmation.html:14
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:14
+#: templates/admin/iot/firmware_import.html:8
 #: templates/admin/mgmt/backup_control.html:16
 #: templates/admin/mgmt/log_file_list.html:8
 #: templates/admin/mgmt/log_file_viewer.html:66
+#: templates/admin/mgmt/maintenance_control.html:126
 #: templates/admin/mgmt/server_control.html:182
-#: templates/admin/minecraft/minecraft_control.html:142
+#: templates/admin/minecraft/minecraft_control.html:153
 msgid "Home"
 msgstr ""
 
 #: api/templates/admin/api/groupmilestoneachievement_redeem_confirmation.html:17
 #: api/templates/admin/api/groupmilestoneachievement_redeem_confirmation.html:22
-#: mgmt/admin.py:2044
+#: mgmt/admin.py:2989
 #, fuzzy
 #| msgid "Belohnung"
 msgid "Belohnung einlösen"
@@ -935,12 +955,13 @@ msgstr ""
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:58
 #: game/templates/admin/game/edit_session_data.html:50
 #: templates/admin/api/bulk_create_school.html:284
+#: templates/admin/iot/firmware_import.html:119
 msgid "Abbrechen"
 msgstr ""
 
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:17
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:22
-#: mgmt/admin.py:76 mgmt/admin.py:1716 mgmt/admin.py:1789
+#: mgmt/admin.py:123 mgmt/admin.py:2522 mgmt/admin.py:2602
 msgid "Reise abbrechen"
 msgstr ""
 
@@ -977,7 +998,7 @@ msgstr ""
 msgid "Ja, Reise abbrechen"
 msgstr ""
 
-#: api/templates/admin/api/hierarchy_breakdown.html:123 mgmt/admin.py:3662
+#: api/templates/admin/api/hierarchy_breakdown.html:123 mgmt/admin.py:5117
 msgid "Analytics Dashboard"
 msgstr "Analysen-Dashboard"
 
@@ -1064,350 +1085,364 @@ msgstr ""
 msgid " Konfiguration für Minecraft-Bridge ist unvollständig."
 msgstr " Konfiguration für Minecraft-Bridge ist unvollständig."
 
-#: api/views.py:545 api/views.py:590 api/views.py:2114 api/views.py:2267
-#: api/views.py:2342 api/views.py:2410 api/views.py:2493
+#: api/views.py:602 api/views.py:647 api/views.py:2171 api/views.py:2354
+#: api/views.py:2431 api/views.py:2530 api/views.py:2613
 #, fuzzy
 #| msgid "Ungültiger API-Schlüssel"
 msgid "Ungültiger API-Key"
 msgstr "Ungültiger API-Schlüssel"
 
-#: api/views.py:558
+#: api/views.py:615
 msgid "Keine Daten empfangen"
 msgstr "Keine Daten empfangen"
 
-#: api/views.py:563 api/views.py:2245 api/views.py:2607
+#: api/views.py:620 api/views.py:2332 api/views.py:2727
 msgid "Ungültiges JSON-Format"
 msgstr "Ungültiges JSON-Format"
 
-#: api/views.py:570
+#: api/views.py:627
 msgid "Datenfehler"
 msgstr "Datenfehler"
 
-#: api/views.py:580
+#: api/views.py:637
 msgid "id_tag fehlt"
 msgstr "id_tag fehlt"
 
-#: api/views.py:583
+#: api/views.py:640
 msgid "device_id fehlt"
 msgstr ""
 
-#: api/views.py:597 api/views.py:888 api/views.py:1148
+#: api/views.py:654 api/views.py:945 api/views.py:1205
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Radler nicht gefunden"
 msgstr "Spieler nicht gefunden"
 
-#: api/views.py:604 api/views.py:2121 api/views.py:2274 api/views.py:2349
-#: api/views.py:2417 api/views.py:2500
+#: api/views.py:661 api/views.py:2178 api/views.py:2361 api/views.py:2438
+#: api/views.py:2537 api/views.py:2620
 msgid "Gerät nicht gefunden"
 msgstr "Gerät nicht gefunden"
 
-#: api/views.py:609
+#: api/views.py:666
 msgid "API-Key gehört zu einem anderen Gerät"
 msgstr ""
 
-#: api/views.py:616
+#: api/views.py:673
 #, fuzzy
 #| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 msgid "Kilometer-Erfassung für diesen Radler ist deaktiviert"
 msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 
-#: api/views.py:624
+#: api/views.py:681
 msgid "Kilometer-Erfassung für dieses Gerät ist deaktiviert"
 msgstr "Kilometer-Erfassung für dieses Gerät ist deaktiviert"
 
-#: api/views.py:640
+#: api/views.py:697
 msgid "Datenbank temporär nicht verfügbar"
 msgstr ""
 
-#: api/views.py:641
+#: api/views.py:698
 msgid "Bitte versuchen Sie es später erneut"
 msgstr ""
 
-#: api/views.py:883 api/views.py:910 api/views.py:945 api/views.py:973
-#: api/views.py:1137 api/views.py:1239 api/views.py:1364 api/views.py:1490
-#: api/views.py:1629 api/views.py:1727 api/views.py:1812 api/views.py:1885
-#: api/views.py:1953 api/views.py:2550 api/views.py:2629
+#: api/views.py:940 api/views.py:967 api/views.py:1002 api/views.py:1030
+#: api/views.py:1194 api/views.py:1296 api/views.py:1421 api/views.py:1547
+#: api/views.py:1686 api/views.py:1784 api/views.py:1869 api/views.py:1942
+#: api/views.py:2010 api/views.py:2670 api/views.py:2749
 msgid "Ungültiger API-Schlüssel"
 msgstr "Ungültiger API-Schlüssel"
 
-#: api/views.py:917
+#: api/views.py:974
 msgid "Ungültige oder fehlende Daten."
 msgstr "Ungültige oder fehlende Daten."
 
-#: api/views.py:922
+#: api/views.py:979
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Radler nicht gefunden."
 msgstr "Spieler nicht gefunden"
 
-#: api/views.py:927
+#: api/views.py:984
 msgid "Nicht genug Coins"
 msgstr "Nicht genug Coins"
 
-#: api/views.py:938
+#: api/views.py:995
 msgid "Coins abgezogen."
 msgstr "Coins abgezogen."
 
-#: api/views.py:976
+#: api/views.py:1033
 msgid "Methode nicht erlaubt."
 msgstr "Methode nicht erlaubt."
 
-#: api/views.py:983
+#: api/views.py:1040
 msgid "Ungültiges Format."
 msgstr "Ungültiges Format."
 
-#: api/views.py:987
+#: api/views.py:1044
 msgid "id_tag erforderlich."
 msgstr "id_tag erforderlich."
 
-#: api/views.py:1175 api/views.py:1282 api/views.py:1969
+#: api/views.py:1232 api/views.py:1339 api/views.py:2026
 msgid "start_date muss vor end_date liegen"
 msgstr ""
 
-#: api/views.py:1207 api/views.py:1324 api/views.py:1973
+#: api/views.py:1264 api/views.py:1381 api/views.py:2030
 msgid "Ungültiges Datumsformat. Verwenden Sie YYYY-MM-DD"
 msgstr ""
 
-#: api/views.py:1213 api/views.py:1330
+#: api/views.py:1270 api/views.py:1387
 msgid "start_date und end_date müssen beide angegeben werden"
 msgstr ""
 
-#: api/views.py:1249 api/views.py:1391 api/views.py:1665 api/views.py:1760
-#: api/views.py:1998 api/views.py:2638
+#: api/views.py:1306 api/views.py:1448 api/views.py:1722 api/views.py:1817
+#: api/views.py:2055 api/views.py:2758
 #, fuzzy
 #| msgid "Gerät nicht gefunden"
 msgid "Gruppe nicht gefunden"
 msgstr "Gerät nicht gefunden"
 
-#: api/views.py:1254
+#: api/views.py:1311
 #, fuzzy
 #| msgid "Ungültiges Format."
 msgid "Ungültige Gruppen-ID"
 msgstr "Ungültiges Format."
 
-#: api/views.py:1519 api/views.py:1842
+#: api/views.py:1576 api/views.py:1899
 #, fuzzy
 #| msgid "Übergeordnete Gruppe"
 msgid "Übergeordnete Gruppe nicht gefunden"
 msgstr "Übergeordnete Gruppe"
 
-#: api/views.py:1899
+#: api/views.py:1956
 #, fuzzy
 #| msgid "Ungültiges Format."
 msgid "Ungültige Track-ID"
 msgstr "Ungültiges Format."
 
-#: api/views.py:2101 api/views.py:2481 game/views.py:769
+#: api/views.py:2158 api/views.py:2601 game/views.py:769
 msgid "Methode nicht erlaubt"
 msgstr "Methode nicht erlaubt"
 
-#: api/views.py:2108 api/views.py:2487
+#: api/views.py:2165 api/views.py:2607
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "device_id ist erforderlich"
 msgstr "id_tag erforderlich."
 
-#: api/views.py:2248 api/views.py:2323 api/views.py:2389 api/views.py:2468
-#: api/views.py:2610
+#: api/views.py:2335 api/views.py:2412 api/views.py:2509 api/views.py:2588
+#: api/views.py:2730
 msgid "Interner Serverfehler"
 msgstr ""
 
-#: api/views.py:2261 api/views.py:2336 api/views.py:2404
+#: api/views.py:2348 api/views.py:2425 api/views.py:2524
 msgid "device_id-Parameter ist erforderlich"
 msgstr ""
 
-#: api/views.py:2299
+#: api/views.py:2388
 msgid "Verwende Standard-Konfiguration"
 msgstr ""
 
-#: api/views.py:2356
+#: api/views.py:2445
 #, fuzzy
 #| msgid "Keine aktiven Gruppen gefunden."
 msgid "Keine Konfiguration für Gerät gefunden"
 msgstr "Keine aktiven Gruppen gefunden."
 
-#: api/views.py:2358
+#: api/views.py:2447
 #, fuzzy
 #| msgid "Spieler & Geräte zuweisen"
 msgid "Keine Firmware für Gerät zugewiesen"
 msgstr "Spieler & Geräte zuweisen"
 
-#: api/views.py:2361 api/views.py:2440
+#: api/views.py:2450 api/views.py:2560
 #, fuzzy
 #| msgid "Keine aktiven Gruppen gefunden."
 msgid "Keine aktive Firmware zugewiesen"
 msgstr "Keine aktiven Gruppen gefunden."
 
-#: api/views.py:2364
+#: api/views.py:2453
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Firmware-Datei nicht gefunden"
 msgstr "Spieler nicht gefunden"
 
-#: api/views.py:2371
+#: api/views.py:2460
 msgid "Firmware-Datei auf dem Server nicht gefunden"
 msgstr ""
 
-#: api/views.py:2427 api/views.py:2433
+#: api/views.py:2479
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Firmware-Datei ist zu klein oder beschädigt"
+msgstr "Spieler nicht gefunden"
+
+#: api/views.py:2505
+#, fuzzy
+#| msgid "Fehler beim Laden der Avatar-Daten"
+msgid "Fehler beim Öffnen der Firmware-Datei"
+msgstr "Fehler beim Laden der Avatar-Daten"
+
+#: api/views.py:2547 api/views.py:2553
 msgid "Keine Firmware zugewiesen"
 msgstr ""
 
-#: api/views.py:2458
+#: api/views.py:2578
 msgid "Firmware-Update verfügbar"
 msgstr ""
 
-#: api/views.py:2460
+#: api/views.py:2580
 msgid "Gerät ist auf dem neuesten Stand"
 msgstr ""
 
-#: api/views.py:2553
+#: api/views.py:2673
 msgid "Nur POST-Requests erlaubt"
 msgstr ""
 
-#: api/views.py:2561
+#: api/views.py:2681
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "achievement_id ist erforderlich"
 msgstr "id_tag erforderlich."
 
-#: api/views.py:2566
+#: api/views.py:2686
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Meilenstein-Erreichung nicht gefunden"
 msgstr "Spieler nicht gefunden"
 
-#: api/views.py:2572
+#: api/views.py:2692
 #, fuzzy
 #| msgid "Gerät nicht gefunden"
 msgid "Gruppe stimmt nicht überein"
 msgstr "Gerät nicht gefunden"
 
-#: api/views.py:2574
+#: api/views.py:2694
 #, fuzzy
 #| msgid "Ungültiges Format."
 msgid "Ungültige group_id"
 msgstr "Ungültiges Format."
 
-#: api/views.py:2580
+#: api/views.py:2700
 msgid "Belohnung wurde bereits eingelöst"
 msgstr ""
 
-#: api/views.py:2588
+#: api/views.py:2708
 #, fuzzy
 #| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 msgid "Keine Belohnung für diesen Meilenstein definiert"
 msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 
-#: api/views.py:2601
+#: api/views.py:2721
 msgid "Belohnung erfolgreich eingelöst"
 msgstr ""
 
-#: api/views.py:2633
+#: api/views.py:2753
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "group_id ist erforderlich"
 msgstr "id_tag erforderlich."
 
-#: api/views.py:2657
+#: api/views.py:2777
 #, fuzzy
 #| msgid "Ungültiges Format."
 msgid "Ungültige track_id"
 msgstr "Ungültiges Format."
 
-#: config/settings.py:279
+#: config/settings.py:283
 msgid "English"
 msgstr "English"
 
-#: config/settings.py:280
+#: config/settings.py:284
 msgid "Deutsch"
 msgstr "Deutsch"
 
-#: game/admin.py:73 game/session_admin.py:308 mgmt/admin.py:1567
-#: mgmt/admin_performance.py:319
+#: game/admin.py:79 game/session_admin.py:308 mgmt/admin.py:2229
+#: mgmt/admin_performance.py:331
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Grundinformationen"
 msgstr "Gruppenname"
 
-#: game/admin.py:76 game/admin.py:198 game/admin.py:324 game/admin.py:326
-#: game/admin.py:328 game/session_admin.py:557 game/session_admin.py:559
+#: game/admin.py:82 game/admin.py:204 game/admin.py:330 game/admin.py:332
+#: game/admin.py:334 game/session_admin.py:557 game/session_admin.py:559
 #, fuzzy
 #| msgid "Station"
 msgid "Spielstatus"
 msgstr "Station"
 
-#: game/admin.py:79
+#: game/admin.py:85
 #, fuzzy
 #| msgid "Teilnehmende Gruppe"
 msgid "Teilnehmer & Sitzungen"
 msgstr "Teilnehmende Gruppe"
 
-#: game/admin.py:82 game/admin.py:214 game/models.py:43
+#: game/admin.py:88 game/admin.py:220 game/models.py:43
 #: game/session_admin.py:528
 #, fuzzy
 #| msgid "Spieler & Geräte zuweisen"
 msgid "Gerätezuweisungen"
 msgstr "Spieler & Geräte zuweisen"
 
-#: game/admin.py:85
+#: game/admin.py:91
 #, fuzzy
 #| msgid "Entfernen"
 msgid "Entfernungen"
 msgstr "Entfernen"
 
-#: game/admin.py:88 game/admin.py:334 game/session_admin.py:314
-#: game/session_admin.py:568 mgmt/admin.py:939
+#: game/admin.py:94 game/admin.py:340 game/session_admin.py:314
+#: game/session_admin.py:568 mgmt/admin.py:1390
 #, fuzzy
 #| msgid "Station"
 msgid "Statistiken"
 msgstr "Station"
 
-#: game/admin.py:106
+#: game/admin.py:112
 #, fuzzy
 #| msgid "Aktiv"
 msgid "🟢 Aktiv"
 msgstr "Aktiv"
 
-#: game/admin.py:109
+#: game/admin.py:115
 msgid "⚫ Beendet"
 msgstr ""
 
-#: game/admin.py:114 iot/models.py:566 mgmt/admin.py:1574
-#: mgmt/admin_performance.py:57 mgmt/admin_performance.py:328
+#: game/admin.py:120 iot/models.py:621 mgmt/admin.py:2236
+#: mgmt/admin_performance.py:63 mgmt/admin_performance.py:340
 #: templates/admin/mgmt/log_file_list.html:21
-#: templates/admin/minecraft/minecraft_control.html:293
+#: templates/admin/minecraft/minecraft_control.html:316
 #, fuzzy
 #| msgid "Station"
 msgid "Status"
 msgstr "Station"
 
-#: game/admin.py:121 game/admin.py:296 game/admin.py:306
-#: game/session_admin.py:429
+#: game/admin.py:127 game/admin.py:302 game/admin.py:312
+#: game/session_admin.py:429 game/session_dashboard.py:94
 #, fuzzy, python-brace-format
 #| msgid "{count} day(s)"
 msgid "{count} Tag(e)"
 msgstr "{count} Tag(e)"
 
-#: game/admin.py:124 game/admin.py:309 game/session_admin.py:432
+#: game/admin.py:130 game/admin.py:315 game/session_admin.py:432
+#: game/session_dashboard.py:97
 #, fuzzy, python-brace-format
 #| msgid "{count} day(s)"
 msgid "{count} Stunde(n)"
 msgstr "{count} Tag(e)"
 
-#: game/admin.py:127 game/admin.py:312 game/session_admin.py:435
+#: game/admin.py:133 game/admin.py:318 game/session_admin.py:435
+#: game/session_dashboard.py:100
 #, fuzzy, python-brace-format
 #| msgid "{count} minute(s)"
 msgid "{count} Minute(n)"
 msgstr "{count} Minute(n)"
 
-#: game/admin.py:129 game/session_admin.py:437
+#: game/admin.py:135 game/session_admin.py:437
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "< 1 Minute"
 msgstr "Keine Gruppen"
 
-#: game/admin.py:130 game/admin.py:296 game/admin.py:300
+#: game/admin.py:136 game/admin.py:302 game/admin.py:306
 #: game/session_admin.py:438 game/templates/admin/game/dashboard.html:194
 #: game/templates/admin/game/session_dashboard.html:202
 #, fuzzy
@@ -1415,31 +1450,31 @@ msgstr "Keine Gruppen"
 msgid "Alter"
 msgstr "Filter"
 
-#: game/admin.py:137 game/admin.py:316
+#: game/admin.py:143 game/admin.py:322
 #: game/templates/admin/game/dashboard.html:196
 #, fuzzy
 #| msgid "Teilnehmende Gruppe"
 msgid "Teilnehmer"
 msgstr "Teilnehmende Gruppe"
 
-#: game/admin.py:160
+#: game/admin.py:166
 #, fuzzy
 #| msgid "Teilnehmende Gruppe"
 msgid "Teilnehmer (Radfahrer)"
 msgstr "Teilnehmende Gruppe"
 
-#: game/admin.py:165
+#: game/admin.py:171
 #, fuzzy
 #| msgid "Erstellt am"
 msgid "Raum beendet"
 msgstr "Erstellt am"
 
-#: game/admin.py:172 game/admin.py:174 game/session_admin.py:462
+#: game/admin.py:178 game/admin.py:180 game/session_admin.py:462
 #: game/templates/admin/game/session_dashboard.html:247
 msgid "Raum betreten"
 msgstr ""
 
-#: game/admin.py:180 game/admin.py:320 game/session_admin.py:412
+#: game/admin.py:186 game/admin.py:326 game/session_admin.py:412
 #: game/session_admin.py:547 game/templates/admin/game/dashboard.html:197
 #: game/templates/admin/game/session_dashboard.html:201
 #, fuzzy
@@ -1447,123 +1482,123 @@ msgstr ""
 msgid "Zuweisungen"
 msgstr "Zuweisung hinzufügen"
 
-#: game/admin.py:187 game/session_admin.py:552
+#: game/admin.py:193 game/session_admin.py:552
 #: game/templates/admin/game/dashboard.html:198
 #, fuzzy
 #| msgid "Distance (km)"
 msgid "Ziel (km)"
 msgstr "Distanz (km)"
 
-#: game/admin.py:193 game/admin.py:324 game/dashboard.py:105
+#: game/admin.py:199 game/admin.py:330 game/dashboard.py:105
 #: game/session_admin.py:557
 msgid "Gestoppt"
 msgstr ""
 
-#: game/admin.py:195 game/admin.py:326 game/dashboard.py:108
+#: game/admin.py:201 game/admin.py:332 game/dashboard.py:108
 #: game/session_admin.py:559
 msgid "Läuft"
 msgstr ""
 
-#: game/admin.py:197 game/admin.py:328 game/dashboard.py:111
+#: game/admin.py:203 game/admin.py:334 game/dashboard.py:111
 #, fuzzy
 #| msgid "Neu gestartet"
 msgid "Nicht gestartet"
 msgstr "Neu gestartet"
 
-#: game/admin.py:206 game/admin.py:222 game/admin.py:238 game/admin.py:266
+#: game/admin.py:212 game/admin.py:228 game/admin.py:244 game/admin.py:272
 #: game/session_admin.py:388 game/session_admin.py:516
 msgid "Radfahrer"
 msgstr ""
 
-#: game/admin.py:222
+#: game/admin.py:228
 #, fuzzy
 #| msgid "Start-Offset (km)"
 msgid "Startentfernung (km)"
 msgstr "Start-Offset (km)"
 
-#: game/admin.py:230 game/models.py:50
+#: game/admin.py:236 game/models.py:50
 #, fuzzy
 #| msgid "Entfernen"
 msgid "Startentfernungen"
 msgstr "Entfernen"
 
-#: game/admin.py:238
+#: game/admin.py:244
 msgid "Stoppentfernung (km)"
 msgstr ""
 
-#: game/admin.py:246 game/models.py:57
+#: game/admin.py:252 game/models.py:57
 #, fuzzy
 #| msgid "Entfernen"
 msgid "Stoppentfernungen"
 msgstr "Entfernen"
 
-#: game/admin.py:258 game/models.py:83
+#: game/admin.py:264 game/models.py:83
 #, fuzzy
 #| msgid "Spieler"
 msgid "Aktive Sitzungen"
 msgstr "Spieler"
 
-#: game/admin.py:266 game/admin.py:548 game/models.py:147
+#: game/admin.py:272 game/admin.py:560 game/models.py:147
 #: game/session_admin.py:351
 #: game/templates/admin/game/edit_session_data.html:24
 #: game/templates/admin/game/session_dashboard.html:197
 msgid "Sitzungsschlüssel"
 msgstr ""
 
-#: game/admin.py:275
+#: game/admin.py:281
 msgid "Sitzung → Radfahrer Zuordnung"
 msgstr ""
 
-#: game/admin.py:287 game/models.py:70
+#: game/admin.py:293 game/models.py:70
 msgid "Bekanntgegebene Gewinner"
 msgstr ""
 
-#: game/admin.py:306 game/admin.py:309 game/admin.py:312
+#: game/admin.py:312 game/admin.py:315 game/admin.py:318
 msgid "Inaktiv seit"
 msgstr ""
 
-#: game/admin.py:349
+#: game/admin.py:355
 #, python-brace-format
 msgid "{count} Raum/Räume wurde(n) beendet."
 msgstr ""
 
-#: game/admin.py:351
+#: game/admin.py:357
 #, fuzzy
 #| msgid "Alle Zuweisungen löschen"
 msgid "Ausgewählte Räume beenden"
 msgstr "Alle Zuweisungen löschen"
 
-#: game/admin.py:364
+#: game/admin.py:370
 #, python-brace-format
 msgid "{count} Raum/Räume wurde(n) aktiviert."
 msgstr ""
 
-#: game/admin.py:366
+#: game/admin.py:372
 #, fuzzy
 #| msgid "Auf Karte anzeigen"
 msgid "Ausgewählte Räume aktivieren"
 msgstr "Auf Karte anzeigen"
 
-#: game/admin.py:377
+#: game/admin.py:383
 #, python-brace-format
 msgid "{count} Raum/Räume älter als 7 Tage wurde(n) gelöscht."
 msgstr ""
 
-#: game/admin.py:379
+#: game/admin.py:385
 msgid "Räume älter als 7 Tage löschen"
 msgstr ""
 
-#: game/admin.py:393
+#: game/admin.py:399
 #, python-brace-format
 msgid ""
 "{count} inaktive(r) Raum/Räume (keine Aktivität seit 24h) wurde(n) gelöscht."
 msgstr ""
 
-#: game/admin.py:395
+#: game/admin.py:401
 msgid "Inaktive Räume löschen (>24h)"
 msgstr ""
 
-#: game/admin.py:432
+#: game/admin.py:438
 #, python-brace-format
 msgid ""
 "Sie werden automatisch als Spielleiter gesetzt, wenn Sie {count} Raum/Räume "
@@ -1571,36 +1606,36 @@ msgid ""
 "existiert)."
 msgstr ""
 
-#: game/admin.py:434
+#: game/admin.py:440
 #, python-brace-format
 msgid ""
 "{count} Raum/Räume wurde(n) übersprungen, da bereits ein aktiver Spielleiter "
 "existiert."
 msgstr ""
 
-#: game/admin.py:441 game/admin.py:489
+#: game/admin.py:447 game/admin.py:495
 msgid "Keine aktiven Räume ausgewählt oder alle Räume sind bereits beendet."
 msgstr ""
 
-#: game/admin.py:444
+#: game/admin.py:450
 msgid "Als Spielleiter setzen (Admin, nur wenn kein Spielleiter existiert)"
 msgstr ""
 
-#: game/admin.py:480
+#: game/admin.py:486
 #, python-brace-format
 msgid ""
 "Sie werden als Spielleiter gesetzt, wenn Sie {count} Raum/Räume über den "
 "'Raum betreten'-Link betreten."
 msgstr ""
 
-#: game/admin.py:482
+#: game/admin.py:488
 #, python-brace-format
 msgid ""
 "⚠️ {count} Raum/Räume hatte(n) bereits einen aktiven Spielleiter, der ersetzt "
 "wird."
 msgstr ""
 
-#: game/admin.py:492
+#: game/admin.py:498
 msgid "Spielleiter-Rolle erzwingen (ersetzt aktuellen Spielleiter)"
 msgstr ""
 
@@ -1652,7 +1687,7 @@ msgstr "Analysen-Dashboard"
 
 #: game/models.py:22 game/models.py:156
 #: game/templates/admin/game/dashboard.html:193
-#: game/templates/game/mcc_game.html:1920
+#: game/templates/game/mcc_game.html:1922
 msgid "Raum-Code"
 msgstr ""
 
@@ -1762,7 +1797,7 @@ msgstr ""
 #: game/session_admin.py:543
 #: game/templates/admin/game/session_dashboard.html:200
 #: game/templates/admin/game/session_dashboard.html:233
-#: game/templates/game/mcc_game.html:590
+#: game/templates/game/mcc_game.html:592
 #, fuzzy
 #| msgid "Spieler"
 msgid "Spielleiter"
@@ -1792,7 +1827,7 @@ msgstr ""
 msgid "Ob diese Sitzung ein Zielkilometer gesetzt hat"
 msgstr ""
 
-#: game/models.py:185 mgmt/models.py:44 mgmt/models.py:187
+#: game/models.py:185 mgmt/models.py:44 mgmt/models.py:187 mgmt/models.py:249
 #, fuzzy
 #| msgid "Zuletzt aktiv"
 msgid "Zuletzt aktualisiert"
@@ -1816,7 +1851,7 @@ msgstr "Spieler nicht gefunden"
 
 #: game/session_admin.py:373 game/session_admin.py:539
 #: game/templates/admin/game/session_dashboard.html:198
-#: game/templates/game/mcc_game.html:593
+#: game/templates/game/mcc_game.html:595
 msgid "Raum"
 msgstr ""
 
@@ -1827,14 +1862,14 @@ msgid "Ablauf"
 msgstr ""
 
 #: game/session_admin.py:452 game/templates/admin/game/dashboard.html:219
-#: game/templates/admin/game/session_dashboard.html:243 iot/models.py:744
-#: map/templates/map/dashboard.html:2615 mgmt/admin.py:3097
+#: game/templates/admin/game/session_dashboard.html:243 iot/models.py:801
+#: map/templates/map/dashboard.html:2620 mgmt/admin.py:4439
 msgid "Details"
 msgstr "Details"
 
 #: game/session_admin.py:472 game/templates/admin/game/dashboard.html:200
-#: game/templates/admin/game/session_dashboard.html:204 mgmt/admin.py:82
-#: mgmt/admin.py:1719 mgmt/admin.py:1995
+#: game/templates/admin/game/session_dashboard.html:204 mgmt/admin.py:129
+#: mgmt/admin.py:2525 mgmt/admin.py:2933
 #: templates/admin/mgmt/log_file_list.html:22
 #, fuzzy
 #| msgid "Station"
@@ -1852,12 +1887,12 @@ msgid "Sitzungsdaten (vollständig)"
 msgstr ""
 
 #: game/session_admin.py:501 game/session_admin.py:527
-#: game/session_admin.py:567 iot/models.py:559
-#: templates/admin/minecraft/minecraft_control.html:132
-#: templates/admin/minecraft/minecraft_control.html:156
+#: game/session_admin.py:567 iot/models.py:614
+#: templates/admin/minecraft/minecraft_control.html:143
 #: templates/admin/minecraft/minecraft_control.html:167
-#: templates/admin/minecraft/minecraft_control.html:192
-#: templates/admin/minecraft/minecraft_control.html:270
+#: templates/admin/minecraft/minecraft_control.html:178
+#: templates/admin/minecraft/minecraft_control.html:203
+#: templates/admin/minecraft/minecraft_control.html:293
 msgid "Fehler"
 msgstr ""
 
@@ -1964,22 +1999,7 @@ msgstr ""
 msgid "Schlüssel nicht gefunden."
 msgstr "Spieler nicht gefunden"
 
-#: game/session_dashboard.py:94
-#, python-brace-format
-msgid "{count} day(s)"
-msgstr "{count} Tag(e)"
-
-#: game/session_dashboard.py:97
-#, python-brace-format
-msgid "{count} hour(s)"
-msgstr "{count} Stunde(n)"
-
-#: game/session_dashboard.py:100
-#, python-brace-format
-msgid "{count} minute(s)"
-msgstr "{count} Minute(n)"
-
-#: game/session_dashboard.py:126 mgmt/admin.py:3687
+#: game/session_dashboard.py:126 mgmt/admin.py:5142
 #, fuzzy
 #| msgid "2.2 Session Data"
 msgid "Session Dashboard"
@@ -2038,8 +2058,8 @@ msgstr "Keine aktiven Gruppen gefunden."
 msgid "Alle Räume anzeigen"
 msgstr "Auf Karte anzeigen"
 
-#: game/templates/admin/game/edit_session_data.html:19 iot/models.py:558
-#: mgmt/admin.py:1594
+#: game/templates/admin/game/edit_session_data.html:19 iot/models.py:613
+#: mgmt/admin.py:2340
 msgid "Warnung"
 msgstr "Warnung"
 
@@ -2147,7 +2167,7 @@ msgid "Alle Sitzungen anzeigen"
 msgstr "Gewinner"
 
 #: game/templates/game/join_room.html:16 game/templates/game/join_room.html:116
-#: game/templates/game/mcc_game.html:630
+#: game/templates/game/mcc_game.html:632
 msgid "Raum beitreten"
 msgstr ""
 
@@ -2170,210 +2190,210 @@ msgstr ""
 msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Spielraum beizutreten."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:576
+#: game/templates/game/mcc_game.html:578
 msgid "Logo links"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:579
+#: game/templates/game/mcc_game.html:581
 #: game/templates/game/partials/info_modal.html:14
 msgid "Kilometer-Challenge"
 msgstr "Kilometer-Challenge"
 
-#: game/templates/game/mcc_game.html:581
+#: game/templates/game/mcc_game.html:583
 #, fuzzy
 #| msgid "Logo Vorschau"
 msgid "Logo rechts"
 msgstr "Logo Vorschau"
 
-#: game/templates/game/mcc_game.html:584
+#: game/templates/game/mcc_game.html:586
 msgid "Radler und Geräte zuweisen → Spiel starten → Kilometer sammeln!"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:598
+#: game/templates/game/mcc_game.html:600
 msgid "QR-Code zum Beitreten"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:602
+#: game/templates/game/mcc_game.html:604
 msgid "Teilen"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:605
+#: game/templates/game/mcc_game.html:607
 msgid "Verlassen"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:609
+#: game/templates/game/mcc_game.html:611
 msgid "Möchten Sie den Raum wirklich beenden? Alle Teilnehmer werden getrennt."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:612
+#: game/templates/game/mcc_game.html:614
 msgid "Beenden"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:618
+#: game/templates/game/mcc_game.html:620
 msgid "Tipp: 👑 neben Radlernamen = Spielleiter-Rolle übertragen"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:623
+#: game/templates/game/mcc_game.html:625
 msgid "Gemeinsam spielen"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:624
+#: game/templates/game/mcc_game.html:626
 msgid ""
 "Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die "
 "gleiche Tabelle sehen können."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:627
+#: game/templates/game/mcc_game.html:629
 #, fuzzy
 #| msgid "Erstellt am"
 msgid "Raum erstellen"
 msgstr "Erstellt am"
 
-#: game/templates/game/mcc_game.html:654
+#: game/templates/game/mcc_game.html:656
 #: map/templates/map/partials/ranking_devices.html:11
-#: map/templates/map/partials/ranking_players.html:11 mgmt/admin.py:162
-#: mgmt/admin.py:1278 mgmt/admin.py:1650
+#: map/templates/map/partials/ranking_players.html:11 mgmt/admin.py:245
+#: mgmt/admin.py:1921 mgmt/admin.py:2456
 #: ranking/templates/ranking/partials/ranking_devices.html:11
 #: ranking/templates/ranking/partials/ranking_players.html:11
 msgid "Rang"
 msgstr "Rang"
 
-#: game/templates/game/mcc_game.html:657
+#: game/templates/game/mcc_game.html:659
 msgid "Kilometer (km)"
 msgstr "Kilometer (km)"
 
-#: game/templates/game/mcc_game.html:658
+#: game/templates/game/mcc_game.html:660
 msgid "MCC-Coins"
 msgstr "MCC-Coins"
 
-#: game/templates/game/mcc_game.html:659
+#: game/templates/game/mcc_game.html:661
 #: game/templates/game/results_table_fragment.html:126
 msgid "Entfernen"
 msgstr "Entfernen"
 
-#: game/templates/game/mcc_game.html:684
+#: game/templates/game/mcc_game.html:686
 #, fuzzy
 #| msgid "Spieler & Geräte zuweisen"
 msgid "Radler & Geräte zuweisen"
 msgstr "Spieler & Geräte zuweisen"
 
-#: game/templates/game/mcc_game.html:706
+#: game/templates/game/mcc_game.html:708
 #, fuzzy
 #| msgid "Alle Top-Gruppen"
 msgid "Alle TOP-Gruppen"
 msgstr "Alle Top-Gruppen"
 
-#: game/templates/game/mcc_game.html:716
+#: game/templates/game/mcc_game.html:718
 #: game/templates/game/partials/subgroup_options.html:2
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Alle Untergruppen"
 msgstr "Keine Gruppen"
 
-#: game/templates/game/mcc_game.html:724
+#: game/templates/game/mcc_game.html:726
 msgid "🔍 Radler suchen..."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:735
+#: game/templates/game/mcc_game.html:737
 msgid "🔍 Gerät suchen..."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:747
+#: game/templates/game/mcc_game.html:749
 #: game/templates/game/partials/cyclist_options.html:2
 #, fuzzy
 #| msgid "Wähle einen Spieler"
 msgid "Wähle einen Radler"
 msgstr "Wähle einen Spieler"
 
-#: game/templates/game/mcc_game.html:754
+#: game/templates/game/mcc_game.html:756
 msgid "Wähle ein Gerät"
 msgstr "Wähle ein Gerät"
 
-#: game/templates/game/mcc_game.html:760
+#: game/templates/game/mcc_game.html:762
 msgid "Zuweisung hinzufügen"
 msgstr "Zuweisung hinzufügen"
 
-#: game/templates/game/mcc_game.html:769
+#: game/templates/game/mcc_game.html:771
 #, fuzzy
 #| msgid "Sind Sie sicher, dass Sie die Zuweisung entfernen möchten?"
 msgid "Sind Sie sicher, dass Sie alle Zuweisungen löschen möchten?"
 msgstr "Sind Sie sicher, dass Sie die Zuweisung entfernen möchten?"
 
-#: game/templates/game/mcc_game.html:770
+#: game/templates/game/mcc_game.html:772
 msgid "Alle Zuweisungen löschen"
 msgstr "Alle Zuweisungen löschen"
 
-#: game/templates/game/mcc_game.html:777
+#: game/templates/game/mcc_game.html:779
 msgid "Zielkilometer (optional)"
 msgstr "Zielkilometer (optional)"
 
-#: game/templates/game/mcc_game.html:833
+#: game/templates/game/mcc_game.html:835
 msgid "Oder manuell eingeben"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:839
+#: game/templates/game/mcc_game.html:841
 msgid "Ziel-km eingeben"
 msgstr "Ziel-km eingeben"
 
-#: game/templates/game/mcc_game.html:865
+#: game/templates/game/mcc_game.html:867
 #: game/templates/game/target_km_fragment.html:11
 #, fuzzy
 #| msgid "Kilometer"
 msgid "Zielkilometer"
 msgstr "Kilometer"
 
-#: game/templates/game/mcc_game.html:872
+#: game/templates/game/mcc_game.html:874
 #: game/templates/game/target_km_fragment.html:18
 msgid "Kein Ziel gesetzt"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:876
+#: game/templates/game/mcc_game.html:878
 #: game/templates/game/target_km_fragment.html:22
 msgid "Nur der Spielleiter kann das Ziel ändern"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:886 map/templates/map/map_mobile.html:1369
-#: mgmt/admin.py:3419 mgmt/admin.py:3504
+#: game/templates/game/mcc_game.html:888 map/templates/map/map_mobile.html:1371
+#: mgmt/admin.py:4802 mgmt/admin.py:4882 mgmt/admin.py:4949
 #: templates/admin/mgmt/log_file_list.html:76
 #: templates/admin/mgmt/server_control.html:313
 #: templates/partials/info_hub.html:11
 msgid "Information"
 msgstr "Informationen"
 
-#: game/templates/game/mcc_game.html:896
+#: game/templates/game/mcc_game.html:898
 msgid "Kilometerweltmeister!"
 msgstr "Kilometerweltmeister!"
 
-#: game/templates/game/mcc_game.html:898
+#: game/templates/game/mcc_game.html:900
 msgid "Foto des Gewinners"
 msgstr "Foto des Gewinners"
 
-#: game/templates/game/mcc_game.html:948
+#: game/templates/game/mcc_game.html:950
 msgid "Möchten Sie die Spielleiter-Rolle wirklich an"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:948
+#: game/templates/game/mcc_game.html:950
 msgid "übertragen?"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1018
+#: game/templates/game/mcc_game.html:1020
 msgid "Spielleiter-Rolle wurde übertragen. Die Buttons sind jetzt aktiv."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1020
-#: game/templates/game/mcc_game.html:1029
-#: game/templates/game/mcc_game.html:1037
-#: game/templates/game/mcc_game.html:1045
+#: game/templates/game/mcc_game.html:1022
+#: game/templates/game/mcc_game.html:1031
+#: game/templates/game/mcc_game.html:1039
+#: game/templates/game/mcc_game.html:1047
 msgid "Spielleiter-Rolle wurde übertragen."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1060
+#: game/templates/game/mcc_game.html:1062
 #, fuzzy
 #| msgid "Fehler beim Laden der Avatar-Daten"
 msgid "Fehler beim Übertragen der Spielleiter-Rolle"
 msgstr "Fehler beim Laden der Avatar-Daten"
 
-#: game/templates/game/mcc_game.html:1103
+#: game/templates/game/mcc_game.html:1105
 #: game/templates/game/partials/game_buttons.html:27
 #: game/templates/game/partials/game_buttons.html:59
 msgid ""
@@ -2383,41 +2403,41 @@ msgstr ""
 "Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen "
 "zurückgesetzt. Sind Sie sicher?"
 
-#: game/templates/game/mcc_game.html:1628
+#: game/templates/game/mcc_game.html:1630
 msgid "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)."
 msgstr "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)."
 
-#: game/templates/game/mcc_game.html:1660
+#: game/templates/game/mcc_game.html:1662
 msgid "Spiel konnte nicht gestoppt werden."
 msgstr "Spiel konnte nicht gestoppt werden."
 
-#: game/templates/game/mcc_game.html:1794
+#: game/templates/game/mcc_game.html:1796
 msgid "Fehler: Funktion nicht verfügbar. Bitte Seite neu laden."
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1854
-#: game/templates/game/mcc_game.html:1918
+#: game/templates/game/mcc_game.html:1856
+#: game/templates/game/mcc_game.html:1920
 #, fuzzy
 #| msgid "Spiel starten"
 msgid "Spiel-Raum beitreten"
 msgstr "Spiel starten"
 
-#: game/templates/game/mcc_game.html:1855
-#: game/templates/game/mcc_game.html:1919
+#: game/templates/game/mcc_game.html:1857
+#: game/templates/game/mcc_game.html:1921
 msgid "Tritt meinem Spiel-Raum bei!"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1882
-#: game/templates/game/mcc_game.html:1905
+#: game/templates/game/mcc_game.html:1884
+#: game/templates/game/mcc_game.html:1907
 msgid "Raum-URL wurde in die Zwischenablage kopiert!"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1907
-#: game/templates/game/mcc_game.html:1911
+#: game/templates/game/mcc_game.html:1909
+#: game/templates/game/mcc_game.html:1913
 msgid "Bitte kopieren Sie die URL manuell:"
 msgstr ""
 
-#: game/templates/game/mcc_game.html:1921
+#: game/templates/game/mcc_game.html:1923
 #, fuzzy
 #| msgid "Info-Link"
 msgid "Link"
@@ -2458,7 +2478,7 @@ msgid ""
 "Nur der Spielleiter kann das Spiel starten, stoppen oder die Session beenden."
 msgstr ""
 
-#: game/templates/game/partials/info_modal.html:16 iot/models.py:436
+#: game/templates/game/partials/info_modal.html:16 iot/models.py:459
 #: map/templates/map/partials/info_modal.html:31
 #, fuzzy
 #| msgid "2.2 Session Data"
@@ -2513,13 +2533,13 @@ msgid "Sprache"
 msgstr ""
 
 #: game/templates/game/partials/info_modal.html:91
-#: map/templates/map/mcc_map.html:230
+#: map/templates/map/mcc_map.html:232
 #: map/templates/map/partials/info_modal.html:106
 msgid "Impressum"
 msgstr ""
 
 #: game/templates/game/partials/info_modal.html:93
-#: map/templates/map/mcc_map.html:231
+#: map/templates/map/mcc_map.html:233
 #: map/templates/map/partials/info_modal.html:108
 msgid "Datenschutzerklärung"
 msgstr ""
@@ -2673,7 +2693,7 @@ msgstr "Letztes Intervall (km)"
 msgid "Letzter Bericht"
 msgstr "Letzter Bericht"
 
-#: iot/models.py:32 kiosk/models.py:49
+#: iot/models.py:32 kiosk/models.py:60
 msgid "Devices"
 msgstr "Geräte"
 
@@ -2690,7 +2710,8 @@ msgstr "Geräte"
 #: iot/models.py:57
 msgid ""
 "Eindeutiger API-Key für dieses Gerät. Wenn nicht gesetzt, verwendet das "
-"Gerät den globalen API-Key."
+"Gerät den IoT Device Shared API Key (konfiguriert in Geräteverwaltungs-"
+"Einstellungen)."
 msgstr ""
 
 #: iot/models.py:62
@@ -2844,455 +2865,515 @@ msgid "Testdatenübertragungsmodus aktivieren"
 msgstr ""
 
 #: iot/models.py:193
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Test-Distanz (km)"
+msgstr "Distanz (km)"
+
+#: iot/models.py:194
+msgid "Simulierte Distanz in Kilometern für Testmodus. Standard: 0.01 km"
+msgstr ""
+
+#: iot/models.py:200
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Test-Intervall (Sekunden)"
+msgstr "Letztes Intervall (km)"
+
+#: iot/models.py:201
+msgid "Sendeintervall in Sekunden für Testmodus. Standard: 5 Sekunden"
+msgstr ""
+
+#: iot/models.py:207
 msgid "Deep-Sleep-Zeit (Sekunden)"
 msgstr ""
 
-#: iot/models.py:194
+#: iot/models.py:208
 msgid "Zeit in Sekunden für Deep-Sleep-Modus (0 = deaktiviert)"
 msgstr ""
 
-#: iot/models.py:208
+#: iot/models.py:214
 msgid "Radumfang (mm)"
 msgstr ""
 
-#: iot/models.py:209
-msgid "Radumfang in Millimeter für Distanzberechnung. Gültiger Bereich: 500-3000 mm. Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden (z.B. Sigma)."
+#: iot/models.py:215
+msgid ""
+"Radumfang in Millimeter für Distanzberechnung. Gültiger Bereich: 500-3000 "
+"mm. Standard-Tachowerte können aus Hersteller-Tabellen entnommen werden "
+"(z.B. Sigma)."
 msgstr ""
 
-#: iot/models.py:219
-msgid "Zugewiesene Firmware"
+#: iot/models.py:217
+msgid "Radumfang muss mindestens 500 mm betragen"
 msgstr ""
 
-#: iot/models.py:220
-msgid "Firmware-Image, das diesem Gerät für OTA-Updates zugewiesen wurde"
+#: iot/models.py:218
+msgid "Radumfang darf maximal 3000 mm betragen"
 msgstr ""
 
 #: iot/models.py:229
-msgid "Zuletzt synchronisiert"
+msgid "Zugewiesene Firmware"
 msgstr ""
 
 #: iot/models.py:230
+msgid "Firmware-Image, das diesem Gerät für OTA-Updates zugewiesen wurde"
+msgstr ""
+
+#: iot/models.py:239
+msgid "Zuletzt synchronisiert"
+msgstr ""
+
+#: iot/models.py:240
 msgid "Zeitpunkt der letzten erfolgreichen Konfigurationssynchronisation"
 msgstr ""
 
-#: iot/models.py:234
+#: iot/models.py:244
 msgid "Device Configuration"
 msgstr "Gerätekonfiguration"
 
-#: iot/models.py:235
+#: iot/models.py:245
 msgid "Device Configurations"
 msgstr "Gerätekonfigurationen"
 
-#: iot/models.py:238
+#: iot/models.py:248
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Configuration for"
 msgstr "id_tag erforderlich."
 
-#: iot/models.py:343 mgmt/admin.py:2807
+#: iot/models.py:367 mgmt/admin.py:3989
 msgid "Gemeldete Konfiguration"
 msgstr ""
 
-#: iot/models.py:344
+#: iot/models.py:368
 msgid "Vom Gerät gemeldete Konfigurationsdaten"
 msgstr ""
 
-#: iot/models.py:349
+#: iot/models.py:373
 msgid "Hat Unterschiede"
 msgstr ""
 
-#: iot/models.py:350
+#: iot/models.py:374
 msgid "Ob dieser Bericht Konfigurationsunterschiede enthält"
 msgstr ""
 
-#: iot/models.py:356
+#: iot/models.py:380
 msgid "Device Configuration Report"
 msgstr "Gerätekonfigurationsbericht"
 
-#: iot/models.py:357
+#: iot/models.py:381
 msgid "Device Configuration Reports"
 msgstr "Gerätekonfigurationsberichte"
 
-#: iot/models.py:378
+#: iot/models.py:402
 #, fuzzy
 #| msgid "Letzter Bericht"
 msgid "Bericht"
 msgstr "Letzter Bericht"
 
-#: iot/models.py:383
+#: iot/models.py:407
 msgid "Feldname"
 msgstr ""
 
-#: iot/models.py:384
+#: iot/models.py:408
 msgid "Name des Konfigurationsfelds mit Unterschied"
 msgstr ""
 
-#: iot/models.py:390 mgmt/admin.py:2847
+#: iot/models.py:414 mgmt/admin.py:4035
 msgid "Server-Wert"
 msgstr ""
 
-#: iot/models.py:391
+#: iot/models.py:415
 msgid "Auf dem Server konfigurierter Wert"
 msgstr ""
 
-#: iot/models.py:397 mgmt/admin.py:2857
+#: iot/models.py:421 mgmt/admin.py:4045
 #, fuzzy
 #| msgid "Geräte"
 msgid "Geräte-Wert"
 msgstr "Geräte"
 
-#: iot/models.py:398
+#: iot/models.py:422
 msgid "Vom Gerät gemeldeter Wert"
 msgstr ""
 
-#: iot/models.py:403
+#: iot/models.py:427
 msgid "Gelöst"
 msgstr ""
 
-#: iot/models.py:404
+#: iot/models.py:428
 msgid "Ob dieser Unterschied behoben wurde"
 msgstr ""
 
-#: iot/models.py:410
+#: iot/models.py:434
 msgid "Gelöst am"
 msgstr ""
 
-#: iot/models.py:416 iot/models.py:785
+#: iot/models.py:440 iot/models.py:842
 msgid "Configuration Difference"
 msgstr "Konfigurationsunterschied"
 
-#: iot/models.py:417
+#: iot/models.py:441
 msgid "Configuration Differences"
 msgstr "Konfigurationsunterschiede"
 
-#: iot/models.py:429
+#: iot/models.py:453
 msgid "Firmware-Name"
 msgstr ""
 
-#: iot/models.py:430
+#: iot/models.py:454
 msgid "Lesbarer Name für diese Firmware-Version"
 msgstr ""
 
-#: iot/models.py:437
+#: iot/models.py:460
 msgid "Versionskennung (z.B. '1.2.3' oder 'v2.0.1')"
 msgstr ""
 
-#: iot/models.py:444
+#: iot/models.py:468
 msgid "Beschreibung der Änderungen und Features in dieser Version"
 msgstr ""
 
-#: iot/models.py:449 mgmt/admin.py:2881
+#: iot/models.py:473 mgmt/admin.py:4074
 msgid "Firmware-Datei"
 msgstr ""
 
-#: iot/models.py:450
+#: iot/models.py:474
 msgid "Binäre Firmware-Datei (.bin) für ESP32"
 msgstr ""
 
-#: iot/models.py:456
+#: iot/models.py:480
 msgid "Dateigröße (Bytes)"
 msgstr ""
 
-#: iot/models.py:457
+#: iot/models.py:481
 msgid "Größe der Firmware-Datei in Bytes"
 msgstr ""
 
-#: iot/models.py:464
+#: iot/models.py:488
 msgid "MD5-Prüfsumme"
 msgstr ""
 
-#: iot/models.py:465
+#: iot/models.py:489
 msgid "MD5-Prüfsumme der Firmware-Datei zur Verifizierung"
 msgstr ""
 
-#: iot/models.py:471
+#: iot/models.py:496
+msgid "SHA256-Prüfsumme"
+msgstr ""
+
+#: iot/models.py:497
+msgid "SHA256-Prüfsumme der Firmware-Datei zur Verifizierung"
+msgstr ""
+
+#: iot/models.py:504
+msgid "Environment"
+msgstr ""
+
+#: iot/models.py:505
+msgid "Hardware-Environment (z.B. heltec_wifi_lora_32_V3, wemos_d1_mini32)"
+msgstr ""
+
+#: iot/models.py:511
 msgid "Ob diese Firmware-Version aktiv und für Updates verfügbar ist"
 msgstr ""
 
-#: iot/models.py:476
+#: iot/models.py:516
 msgid "Stabile Version"
 msgstr ""
 
-#: iot/models.py:477
+#: iot/models.py:517
 msgid "Ob dies eine stabile Release-Version ist"
 msgstr ""
 
-#: iot/models.py:484
+#: iot/models.py:524
 msgid "Firmware Image"
 msgstr "Firmware-Image"
 
-#: iot/models.py:485
+#: iot/models.py:525 templates/admin/iot/firmware_import.html:9
 msgid "Firmware Images"
 msgstr "Firmware-Images"
 
-#: iot/models.py:511
+#: iot/models.py:558
 msgid "Email Notifications Enabled"
 msgstr ""
 
-#: iot/models.py:512
+#: iot/models.py:559
 msgid "Enable daily email notifications for configuration differences"
 msgstr ""
 
-#: iot/models.py:518
+#: iot/models.py:565
 msgid "Notification Email Address"
 msgstr ""
 
-#: iot/models.py:519
+#: iot/models.py:566
 msgid "Email address to receive daily device status reports"
 msgstr ""
 
-#: iot/models.py:525
+#: iot/models.py:572
 msgid "Last Notification Sent"
 msgstr ""
 
-#: iot/models.py:526
+#: iot/models.py:573
 msgid "Timestamp of the last notification email sent"
 msgstr ""
 
-#: iot/models.py:529
+#: iot/models.py:580 mgmt/admin.py:4345
+msgid "IoT Device Shared API Key"
+msgstr ""
+
+#: iot/models.py:581
+msgid ""
+"Dedicated API key for IoT devices that can be shared by multiple devices. "
+"Used as default key before individual device keys are assigned. Only valid "
+"for IoT device endpoints."
+msgstr ""
+
+#: iot/models.py:584
 msgid "Updated at"
 msgstr ""
 
-#: iot/models.py:532 iot/models.py:533 iot/models.py:537
-msgid "Device Management Settings"
-msgstr "Geräteverwaltungs-Einstellungen"
+#: iot/models.py:587 iot/models.py:588 iot/models.py:592
+#, fuzzy
+#| msgid "Ziel-Einstellungen"
+msgid "Geräteverwaltungs-Einstellungen"
+msgstr "Ziel-Einstellungen"
 
-#: iot/models.py:536
+#: iot/models.py:591
 #, fuzzy
 #| msgid "Table"
 msgid "Enabled"
 msgstr "Tabelle"
 
-#: iot/models.py:536
+#: iot/models.py:591
 #, fuzzy
 #| msgid "Table"
 msgid "Disabled"
 msgstr "Tabelle"
 
-#: iot/models.py:556
+#: iot/models.py:611
 msgid "Online"
 msgstr ""
 
-#: iot/models.py:557
+#: iot/models.py:612
 msgid "Offline"
 msgstr ""
 
-#: iot/models.py:572 templates/admin/minecraft/minecraft_control.html:201
+#: iot/models.py:627 templates/admin/minecraft/minecraft_control.html:212
 #, fuzzy
 #| msgid "Letzter Bericht"
 msgid "Letzter Heartbeat"
 msgstr "Letzter Bericht"
 
-#: iot/models.py:573
+#: iot/models.py:628
 msgid "Zeitpunkt des letzten Heartbeat-Signals vom Gerät"
 msgstr ""
 
-#: iot/models.py:579
+#: iot/models.py:634
 msgid "Erwartetes Heartbeat-Intervall (Sekunden)"
 msgstr ""
 
-#: iot/models.py:580
+#: iot/models.py:635
 msgid "Erwartetes Intervall zwischen Heartbeats in Sekunden"
 msgstr ""
 
-#: iot/models.py:586
+#: iot/models.py:641
 msgid "Offline-Schwellenwert (Sekunden)"
 msgstr ""
 
-#: iot/models.py:587
+#: iot/models.py:642
 msgid ""
 "Gerät gilt als offline, wenn kein Heartbeat für diese Dauer empfangen wurde"
 msgstr ""
 
-#: iot/models.py:592
+#: iot/models.py:647
 msgid "Aufeinanderfolgende Fehler"
 msgstr ""
 
-#: iot/models.py:593
+#: iot/models.py:648
 msgid "Anzahl aufeinanderfolgender fehlgeschlagener Anfragen"
 msgstr ""
 
-#: iot/models.py:599
+#: iot/models.py:654
 msgid "Letzte Fehlermeldung"
 msgstr ""
 
-#: iot/models.py:605
+#: iot/models.py:660
 msgid "Device Health"
 msgstr "Gerätegesundheit"
 
-#: iot/models.py:606
+#: iot/models.py:661
 msgid "Device Health Status"
 msgstr "Gerätegesundheits-Status"
 
-#: iot/models.py:660
+#: iot/models.py:715
 #, fuzzy
 #| msgid "Event-Name"
 msgid "Template-Name"
 msgstr "Event-Name"
 
-#: iot/models.py:661
+#: iot/models.py:716
 msgid "Lesbarer Name für dieses Template"
 msgstr ""
 
-#: iot/models.py:668
+#: iot/models.py:723
 msgid "Beschreibung, wann dieses Template verwendet werden soll"
 msgstr ""
 
-#: iot/models.py:673 mgmt/admin.py:3075
+#: iot/models.py:728 mgmt/admin.py:4411
 msgid "Template-Konfiguration"
 msgstr ""
 
-#: iot/models.py:674
+#: iot/models.py:729
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Konfigurationswerte für dieses Template"
 msgstr "id_tag erforderlich."
 
-#: iot/models.py:680
+#: iot/models.py:735
 msgid "Ob dieses Template aktiv und verfügbar ist"
 msgstr ""
 
-#: iot/models.py:687
+#: iot/models.py:742
 msgid "Configuration Template"
 msgstr "Konfigurations-Template"
 
-#: iot/models.py:688
+#: iot/models.py:743
 msgid "Configuration Templates"
 msgstr "Konfigurations-Templates"
 
-#: iot/models.py:717
+#: iot/models.py:774
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Konfiguration aktualisiert"
 msgstr "id_tag erforderlich."
 
-#: iot/models.py:718
+#: iot/models.py:775
 msgid "API-Key generiert"
 msgstr ""
 
-#: iot/models.py:719
+#: iot/models.py:776
 msgid "API-Key rotiert"
 msgstr ""
 
-#: iot/models.py:720
+#: iot/models.py:777
 msgid "Firmware zugewiesen"
 msgstr ""
 
-#: iot/models.py:721
+#: iot/models.py:778
 msgid "Firmware aktualisiert"
 msgstr ""
 
-#: iot/models.py:722
+#: iot/models.py:779
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Konfiguration synchronisiert"
 msgstr "id_tag erforderlich."
 
-#: iot/models.py:723
+#: iot/models.py:780
 #, fuzzy
 #| msgid "Keine Daten empfangen"
 msgid "Heartbeat empfangen"
 msgstr "Keine Daten empfangen"
 
-#: iot/models.py:729
+#: iot/models.py:786
 #, fuzzy
 #| msgid "Station"
 msgid "Aktion"
 msgstr "Station"
 
-#: iot/models.py:737 map/templates/map/mcc_map.html:179
+#: iot/models.py:794 map/templates/map/mcc_map.html:181
 msgid "Benutzer"
 msgstr "Benutzer"
 
-#: iot/models.py:738
+#: iot/models.py:795
 msgid "Benutzer, der die Aktion durchgeführt hat (null für Systemaktionen)"
 msgstr ""
 
-#: iot/models.py:745
+#: iot/models.py:802
 msgid "Zusätzliche Details zur Aktion"
 msgstr ""
 
-#: iot/models.py:751
+#: iot/models.py:808
 #, fuzzy
 #| msgid "IP address"
 msgid "IP-Adresse"
 msgstr "IP-Adresse"
 
-#: iot/models.py:752
+#: iot/models.py:809
 msgid "IP-Adresse, von der die Aktion durchgeführt wurde"
 msgstr ""
 
-#: iot/models.py:758
+#: iot/models.py:815
 msgid "Device Audit Log"
 msgstr "Geräte-Audit-Protokoll"
 
-#: iot/models.py:759
+#: iot/models.py:816
 msgid "Device Audit Logs"
 msgstr "Geräte-Audit-Protokolle"
 
-#: iot/models.py:772
+#: iot/models.py:829
 #, fuzzy
 #| msgid "Cookie Name"
 msgid "Webhook Name"
 msgstr "Cookie-Name"
 
-#: iot/models.py:773
+#: iot/models.py:830
 msgid "Human-readable name for this webhook"
 msgstr ""
 
-#: iot/models.py:778
+#: iot/models.py:835
 msgid "Webhook URL"
 msgstr ""
 
-#: iot/models.py:779
+#: iot/models.py:836
 msgid "URL to send webhook requests to"
 msgstr ""
 
-#: iot/models.py:783
+#: iot/models.py:840
 #, fuzzy
 #| msgid "Device"
 msgid "Device Offline"
 msgstr "Gerät"
 
-#: iot/models.py:784
+#: iot/models.py:841
 #, fuzzy
 #| msgid "Device"
 msgid "Device Online"
 msgstr "Gerät"
 
-#: iot/models.py:786
+#: iot/models.py:843
 msgid "Firmware Update"
 msgstr ""
 
-#: iot/models.py:787
+#: iot/models.py:844
 msgid "API Key Rotated"
 msgstr ""
 
-#: iot/models.py:788
+#: iot/models.py:845
 msgid "Health Warning"
 msgstr ""
 
-#: iot/models.py:794
+#: iot/models.py:851
 msgid "List of events to trigger this webhook"
 msgstr ""
 
-#: iot/models.py:801
+#: iot/models.py:858
 msgid "Secret Key"
 msgstr ""
 
-#: iot/models.py:802
+#: iot/models.py:859
 msgid "Secret key for webhook authentication (optional)"
 msgstr ""
 
-#: iot/models.py:808
+#: iot/models.py:865
 msgid "Whether this webhook is active"
 msgstr ""
 
-#: iot/models.py:815
+#: iot/models.py:872
 msgid "Webhook Configuration"
 msgstr ""
 
-#: iot/models.py:816
+#: iot/models.py:873
 msgid "Webhook Configurations"
 msgstr ""
 
@@ -3301,118 +3382,146 @@ msgid "Kiosk Management"
 msgstr ""
 
 #: kiosk/models.py:19
-msgid "Human-readable name for this Kiosk device"
-msgstr ""
+msgid "Lesbarer Name für dieses Kiosk-Gerät"
+msgstr "Lesbarer Name für dieses Kiosk-Gerät"
 
 #: kiosk/models.py:24
-msgid "Unique ID"
-msgstr ""
+msgid "Eindeutige ID"
+msgstr "Eindeutige ID"
 
 #: kiosk/models.py:25
-msgid "Unique identifier for this device (e.g., MAC address or serial number)"
+msgid ""
+"Eindeutige Kennung für dieses Gerät (z.B. MAC-Adresse oder Seriennummer)"
 msgstr ""
+"Eindeutige Kennung für dieses Gerät (z.B. MAC-Adresse oder Seriennummer)"
 
 #: kiosk/models.py:30
-msgid "Brightness"
-msgstr ""
+msgid "Helligkeit"
+msgstr "Helligkeit"
 
 #: kiosk/models.py:31
-msgid "Display brightness level (0-100)"
-msgstr ""
+msgid "Helligkeitsstufe der Anzeige (0-100)"
+msgstr "Helligkeitsstufe der Anzeige (0-100)"
 
 #: kiosk/models.py:36
-msgid "Whether this device is currently active and should display content"
-msgstr ""
+msgid "Ob dieses Gerät derzeit aktiv ist und Inhalte anzeigen soll"
+msgstr "Ob dieses Gerät derzeit aktiv ist und Inhalte anzeigen soll"
 
 #: kiosk/models.py:41
-msgid "Command Queue"
-msgstr ""
+msgid "Befehls-Warteschlange"
+msgstr "Befehls-Warteschlange"
 
 #: kiosk/models.py:42
 msgid ""
-"JSON array of pending hardware commands (e.g., ['RELOAD', "
+"JSON-Array mit ausstehenden Hardware-Befehlen (z.B. ['RELOAD', "
 "'SET_BRIGHTNESS:50'])"
 msgstr ""
+"JSON-Array mit ausstehenden Hardware-Befehlen (z.B. ['RELOAD', "
+"'SET_BRIGHTNESS:50'])"
 
-#: kiosk/models.py:79 leaderboard/apps.py:26
+#: kiosk/models.py:51
+msgid ""
+"TOP-Gruppe, der dieses Kiosk-Gerät zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können das Gerät verwalten. Kann vom System-Admin gesetzt werden, "
+"bevor Playlist-Einträge erstellt werden."
+msgstr ""
+"TOP-Gruppe, der dieses Kiosk-Gerät zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können das Gerät verwalten. Kann vom System-Admin gesetzt werden, "
+"bevor Playlist-Einträge erstellt werden."
+
+#: kiosk/models.py:90 leaderboard/apps.py:26
 #, fuzzy
 #| msgid "Leaderboard for"
 msgid "Leaderboard"
 msgstr "Leaderboard für"
 
-#: kiosk/models.py:80
+#: kiosk/models.py:91
 #, fuzzy
 #| msgid "Event-Name"
 msgid "Eventboard"
 msgstr "Event-Name"
 
-#: kiosk/models.py:81 map/templates/map/map_mobile.html:2697
+#: kiosk/models.py:92 map/templates/map/map_mobile.html:2699
 msgid "Map"
 msgstr "Karte"
 
-#: kiosk/models.py:88
+#: kiosk/models.py:99
 #, fuzzy
 #| msgid "Device"
 msgid "Kiosk Device"
 msgstr "Gerät"
 
-#: kiosk/models.py:94
-#, fuzzy
-#| msgid "View site"
-msgid "View Type"
-msgstr "View site"
+#: kiosk/models.py:105
+msgid "Ansichtstyp"
+msgstr "Ansichtstyp"
 
-#: kiosk/models.py:95
-msgid "Type of view to display"
-msgstr ""
+#: kiosk/models.py:106
+msgid "Art der anzuzeigenden Ansicht"
+msgstr "Art der anzuzeigenden Ansicht"
 
-#: kiosk/models.py:104
-msgid "Optional: Filter content by specific event"
-msgstr ""
+#: kiosk/models.py:114
+msgid "Event-Filter"
+msgstr "Event-Filter"
 
-#: kiosk/models.py:113
+#: kiosk/models.py:115
+msgid "Optional: Inhalte nach spezifischem Event filtern"
+msgstr "Optional: Inhalte nach spezifischem Event filtern"
+
+#: kiosk/models.py:123
+msgid "Gruppen-Filter"
+msgstr "Gruppen-Filter"
+
+#: kiosk/models.py:124
 msgid ""
-"Optional: Filter content to show only groups and cyclists belonging to this "
-"master group"
+"Optional: Inhalte filtern, um nur Gruppen und Radler anzuzeigen, die zu "
+"dieser Hauptgruppe gehören"
 msgstr ""
-
-#: kiosk/models.py:119
-#, fuzzy
-#| msgid "Apply Filters"
-msgid "Track Filter"
-msgstr "Filter anwenden"
-
-#: kiosk/models.py:120
-msgid ""
-"Optional: Filter map view to show only selected tracks (leave empty to show "
-"all tracks)"
-msgstr ""
-
-#: kiosk/models.py:125
-msgid "Display Duration (seconds)"
-msgstr ""
-
-#: kiosk/models.py:126
-msgid "How long to display this view before rotating to the next"
-msgstr ""
+"Optional: Inhalte filtern, um nur Gruppen und Radler anzuzeigen, die zu "
+"dieser Hauptgruppe gehören"
 
 #: kiosk/models.py:130
-msgid "Order"
-msgstr ""
+msgid "Routen-Filter"
+msgstr "Routen-Filter"
 
 #: kiosk/models.py:131
-msgid "Display order in the playlist (lower numbers first, starts at 1)"
+msgid ""
+"Optional: Kartenansicht filtern, um nur ausgewählte Routen anzuzeigen (leer "
+"lassen, um alle Routen anzuzeigen)"
 msgstr ""
+"Optional: Kartenansicht filtern, um nur ausgewählte Routen anzuzeigen (leer "
+"lassen, um alle Routen anzuzeigen)"
 
 #: kiosk/models.py:136
-msgid "Whether this entry is active in the playlist"
-msgstr ""
+msgid "Anzeigedauer (Sekunden)"
+msgstr "Anzeigedauer (Sekunden)"
 
-#: kiosk/models.py:142 mgmt/admin.py:2194
+#: kiosk/models.py:137
+msgid ""
+"Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt "
+"wird"
+msgstr ""
+"Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt "
+"wird"
+
+#: kiosk/models.py:141
+msgid "Reihenfolge"
+msgstr "Reihenfolge"
+
+#: kiosk/models.py:142
+msgid ""
+"Anzeigereihenfolge in der Playlist (niedrigere Zahlen zuerst, beginnt bei 1)"
+msgstr ""
+"Anzeigereihenfolge in der Playlist (niedrigere Zahlen zuerst, beginnt bei 1)"
+
+#: kiosk/models.py:147
+msgid "Ob dieser Eintrag in der Playlist aktiv ist"
+msgstr "Ob dieser Eintrag in der Playlist aktiv ist"
+
+#: kiosk/models.py:153 mgmt/admin.py:3191
 msgid "Playlist Entry"
 msgstr ""
 
-#: kiosk/models.py:143 mgmt/admin.py:2195
+#: kiosk/models.py:154 mgmt/admin.py:3192
 msgid "Playlist Entries"
 msgstr ""
 
@@ -3420,19 +3529,19 @@ msgstr ""
 msgid "Maintenance"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:72
+#: kiosk/templates/kiosk/kiosk_maintenance.html:74
 msgid "Wartung"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:73
+#: kiosk/templates/kiosk/kiosk_maintenance.html:75
 msgid "Dieses Gerät wird derzeit gewartet."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:74
+#: kiosk/templates/kiosk/kiosk_maintenance.html:76
 msgid "Bitte versuchen Sie es später erneut."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:76
+#: kiosk/templates/kiosk/kiosk_maintenance.html:78
 #, fuzzy
 #| msgid "Geräte"
 msgid "Geräte-ID"
@@ -3442,21 +3551,21 @@ msgstr "Geräte"
 msgid "Configuration Required"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:84
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:86
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Konfiguration erforderlich"
 msgstr "id_tag erforderlich."
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:85
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:87
 msgid "Dieses Gerät ist aktiv, aber noch nicht konfiguriert."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:86
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:88
 msgid "Bitte kontaktieren Sie den Administrator, um die Anzeige zu aktivieren."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:89
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:91
 msgid "E-Mail senden"
 msgstr ""
 
@@ -3466,7 +3575,7 @@ msgstr ""
 msgid "Kiosk-Anzeige"
 msgstr "Anzeige"
 
-#: kiosk/templates/kiosk/kiosk_playlist.html:128
+#: kiosk/templates/kiosk/kiosk_playlist.html:130
 msgid "Playlist wird geladen..."
 msgstr ""
 
@@ -3487,24 +3596,15 @@ msgstr ""
 msgid "Kiosk-Rangliste"
 msgstr ""
 
-#: leaderboard/templates/leaderboard/leaderboard_page.html:612
 #: leaderboard/templates/leaderboard/partials/content.html:62
-#: map/templates/map/dashboard.html:2280
-#: map/templates/map/kiosk_leaderboard.html:643
-#: map/templates/map/map_mobile.html:1663
+#: map/templates/map/dashboard.html:2282
+#: map/templates/map/kiosk_leaderboard.html:645
+#: map/templates/map/map_mobile.html:1665
 #: map/templates/map/partials/kiosk_leaderboard_content.html:62
 #: map/templates/map/partials/ranking_devices.html:11
 #: ranking/templates/ranking/partials/ranking_devices.html:11
 msgid "Gesamt"
 msgstr "Gesamt"
-
-#: leaderboard/templates/leaderboard/leaderboard_page.html:642
-#: map/templates/map/dashboard.html:2339 map/templates/map/dashboard.html:3324
-#: map/templates/map/kiosk_leaderboard.html:673
-#: map/templates/map/map_mobile.html:1725
-#: map/templates/map/map_mobile.html:2465
-msgid "Erreicht von"
-msgstr "Erreicht von"
 
 #: leaderboard/templates/leaderboard/partials/content.html:73
 #: map/templates/map/partials/kiosk_leaderboard_content.html:73
@@ -3529,7 +3629,7 @@ msgstr "Keine aktiven Gruppen gefunden."
 
 #: leaderboard/templates/leaderboard/partials/footer.html:12
 #: map/templates/map/partials/kiosk_leaderboard_footer.html:12
-#: mgmt/admin.py:959 mgmt/admin.py:1081 mgmt/admin.py:2073 mgmt/admin.py:2761
+#: mgmt/admin.py:1465 mgmt/admin.py:1634 mgmt/admin.py:3044 mgmt/admin.py:3910
 msgid "Gesamtkilometer"
 msgstr "Gesamtkilometer"
 
@@ -3566,160 +3666,173 @@ msgstr "MCC Live Map"
 msgid "Live-Map & Wettbewerb"
 msgstr "Live-Map & Wettbewerb"
 
-#: map/templates/map/dashboard.html:1564
+#: map/templates/map/dashboard.html:1566
 msgid "Karte"
 msgstr "Karte"
 
-#: map/templates/map/dashboard.html:1565 ranking/apps.py:26
+#: map/templates/map/dashboard.html:1567 ranking/apps.py:26
 #: ranking/templates/ranking/ranking_page.html:15
 msgid "Ranking"
 msgstr "Rang"
 
-#: map/templates/map/dashboard.html:1570 map/templates/map/map_mobile.html:1183
+#: map/templates/map/dashboard.html:1572 map/templates/map/map_mobile.html:1185
 msgid "Ebenen anzeigen/verstecken"
 msgstr "Ebenen anzeigen/verstecken"
 
-#: map/templates/map/dashboard.html:1579 map/templates/map/dashboard.html:1652
-#: map/templates/map/dashboard.html:3669 map/templates/map/map_mobile.html:1192
+#: map/templates/map/dashboard.html:1581 map/templates/map/dashboard.html:1654
+#: map/templates/map/dashboard.html:3674 map/templates/map/map_mobile.html:1194
 #, fuzzy
 #| msgid "Route"
 msgid "Routen"
 msgstr "Route"
 
-#: map/templates/map/dashboard.html:1586 map/templates/map/dashboard.html:1654
-#: map/templates/map/dashboard.html:1660 map/templates/map/dashboard.html:3661
-#: map/templates/map/map_mobile.html:1199
+#: map/templates/map/dashboard.html:1588 map/templates/map/dashboard.html:1656
+#: map/templates/map/dashboard.html:1662 map/templates/map/dashboard.html:3666
+#: map/templates/map/map_mobile.html:1201
 #, fuzzy
 #| msgid "Alle Top-Gruppen"
 msgid "Alle Routen"
 msgstr "Alle Top-Gruppen"
 
-#: map/templates/map/dashboard.html:1611
+#: map/templates/map/dashboard.html:1613
 #, fuzzy
 #| msgid "Alle Top-Gruppen"
 msgid "Alle Gruppen"
 msgstr "Alle Top-Gruppen"
 
-#: map/templates/map/dashboard.html:1629 map/templates/map/mcc_map.html:168
+#: map/templates/map/dashboard.html:1631 map/templates/map/mcc_map.html:170
 msgid "Anzeige"
 msgstr "Anzeige"
 
-#: map/templates/map/dashboard.html:1636
+#: map/templates/map/dashboard.html:1638
 #, fuzzy
 #| msgid "Gewinner"
 msgid "Gewinner anzeigen"
 msgstr "Gewinner"
 
-#: map/templates/map/dashboard.html:1644
+#: map/templates/map/dashboard.html:1646
 msgid "Steuerung anzeigen/verstecken"
 msgstr "Steuerung anzeigen/verstecken"
 
-#: map/templates/map/dashboard.html:1692 map/templates/map/dashboard.html:2623
+#: map/templates/map/dashboard.html:1694 map/templates/map/dashboard.html:2628
 #, fuzzy
 #| msgid "In Map/Game anzeigen"
 msgid "Weniger anzeigen"
 msgstr "In Map/Game anzeigen"
 
-#: map/templates/map/dashboard.html:1707 map/templates/map/map_mobile.html:1394
+#: map/templates/map/dashboard.html:1709 map/templates/map/map_mobile.html:1396
 #, fuzzy
 #| msgid "Reisen - Route"
 msgid "Reiseroute"
 msgstr "Reisen - Route"
 
-#: map/templates/map/dashboard.html:1711 map/templates/map/map_mobile.html:1398
-#: mgmt/admin.py:1163
+#: map/templates/map/dashboard.html:1713 map/templates/map/map_mobile.html:1400
+#: mgmt/admin.py:1722
 #, fuzzy
 #| msgid "Gruppe"
 msgid "TOP Gruppe"
 msgstr "Gruppe"
 
-#: map/templates/map/dashboard.html:1733 map/templates/map/map_mobile.html:1420
+#: map/templates/map/dashboard.html:1735 map/templates/map/map_mobile.html:1422
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Weitere Informationen"
 msgstr "Gruppenname"
 
-#: map/templates/map/dashboard.html:1746
+#: map/templates/map/dashboard.html:1748
 #, fuzzy
 #| msgid "Filters"
 msgid "Filter:"
 msgstr "Filter"
 
-#: map/templates/map/dashboard.html:1764 map/templates/map/map_mobile.html:1434
+#: map/templates/map/dashboard.html:1766 map/templates/map/map_mobile.html:1436
 #, fuzzy
 #| msgid "Aktuelle Reise-Distanz (km)"
 msgid "Aktuell radelnd"
 msgstr "Aktuelle Reise-Distanz (km)"
 
-#: map/templates/map/dashboard.html:1912 map/templates/map/dashboard.html:1914
-#: map/templates/map/map_mobile.html:1330
-#: map/templates/map/map_mobile.html:2213
-#: map/templates/map/map_mobile.html:2215 map/templates/map/table_data.html:92
+#: map/templates/map/dashboard.html:1914 map/templates/map/dashboard.html:1916
+#: map/templates/map/map_mobile.html:1332
+#: map/templates/map/map_mobile.html:2215
+#: map/templates/map/map_mobile.html:2217 map/templates/map/table_data.html:92
 #: ranking/templates/ranking/table_data.html:97
 msgid "Start"
 msgstr "Start"
 
-#: map/templates/map/dashboard.html:1925 map/templates/map/dashboard.html:1927
-#: map/templates/map/map_mobile.html:2226
+#: map/templates/map/dashboard.html:1927 map/templates/map/dashboard.html:1929
+#: map/templates/map/kiosk_leaderboard.html:582
+#: map/templates/map/kiosk_leaderboard.html:584
 #: map/templates/map/map_mobile.html:2228
+#: map/templates/map/map_mobile.html:2230
 msgid "Ziel"
 msgstr ""
 
-#: map/templates/map/dashboard.html:2332 map/templates/map/dashboard.html:3314
-#: map/templates/map/map_mobile.html:1718
-#: map/templates/map/map_mobile.html:2456
+#: map/templates/map/dashboard.html:2334 map/templates/map/dashboard.html:3319
+#: map/templates/map/map_mobile.html:1720
+#: map/templates/map/map_mobile.html:2458
 #, fuzzy
 #| msgid "Meilenstein erreicht!"
 msgid "Ziel erreicht!"
 msgstr "Meilenstein erreicht!"
 
-#: map/templates/map/dashboard.html:2366 map/templates/map/dashboard.html:3347
-#: map/templates/map/map_mobile.html:1752
-#: map/templates/map/map_mobile.html:2480
+#: map/templates/map/dashboard.html:2341 map/templates/map/dashboard.html:3329
+#: map/templates/map/kiosk_leaderboard.html:675
+#: map/templates/map/map_mobile.html:1727
+#: map/templates/map/map_mobile.html:2467
+msgid "Erreicht von"
+msgstr "Erreicht von"
+
+#: map/templates/map/dashboard.html:2368 map/templates/map/dashboard.html:3352
+#: map/templates/map/map_mobile.html:1754
+#: map/templates/map/map_mobile.html:2482
 #, fuzzy
 #| msgid "In Map/Game anzeigen"
 msgid "Details anzeigen"
 msgstr "In Map/Game anzeigen"
 
-#: map/templates/map/dashboard.html:3033 map/templates/map/map_mobile.html:2064
+#: map/templates/map/dashboard.html:2467
+msgid "Platz"
+msgstr ""
+
+#: map/templates/map/dashboard.html:3038 map/templates/map/map_mobile.html:2066
 msgid "Fehler beim Laden der Avatar-Daten"
 msgstr "Fehler beim Laden der Avatar-Daten"
 
-#: map/templates/map/dashboard.html:3503 map/templates/map/map_mobile.html:2616
+#: map/templates/map/dashboard.html:3508 map/templates/map/map_mobile.html:2618
 msgid "Meilenstein erreicht!"
 msgstr "Meilenstein erreicht!"
 
-#: map/templates/map/dashboard.html:3511 map/templates/map/map_mobile.html:2623
+#: map/templates/map/dashboard.html:3516 map/templates/map/map_mobile.html:2625
 msgid "Herzlichen Glückwunsch!"
 msgstr "Herzlichen Glückwunsch!"
 
-#: map/templates/map/dashboard.html:3663
+#: map/templates/map/dashboard.html:3668
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Routen"
 msgstr "Keine Gruppen"
 
-#: map/templates/map/dashboard.html:4992 map/templates/map/dashboard.html:5212
+#: map/templates/map/dashboard.html:4997 map/templates/map/dashboard.html:5217
 msgid "Gruppe deaktivieren"
 msgstr ""
 
-#: map/templates/map/dashboard.html:4992 map/templates/map/dashboard.html:5225
+#: map/templates/map/dashboard.html:4997 map/templates/map/dashboard.html:5230
 #, fuzzy
 #| msgid "Gerät nicht gefunden"
 msgid "Gruppe aktivieren"
 msgstr "Gerät nicht gefunden"
 
-#: map/templates/map/dashboard.html:5109
+#: map/templates/map/dashboard.html:5114
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Untergruppen"
 msgstr "Keine Gruppen"
 
-#: map/templates/map/dashboard.html:5176 map/templates/map/dashboard.html:5336
+#: map/templates/map/dashboard.html:5181 map/templates/map/dashboard.html:5341
 msgid "Untergruppe deaktivieren"
 msgstr ""
 
-#: map/templates/map/dashboard.html:5176 map/templates/map/dashboard.html:5317
+#: map/templates/map/dashboard.html:5181 map/templates/map/dashboard.html:5322
 msgid "Untergruppe aktivieren"
 msgstr ""
 
@@ -3729,90 +3842,90 @@ msgstr ""
 msgid "Live-Map"
 msgstr "MCC Live Map"
 
-#: map/templates/map/map_mobile.html:1178
+#: map/templates/map/map_mobile.html:1180
 msgid "Tabelle"
 msgstr "Tabelle"
 
-#: map/templates/map/map_mobile.html:1229
+#: map/templates/map/map_mobile.html:1231
 #, fuzzy
 #| msgid "Filters"
 msgid "Filter"
 msgstr "Filter"
 
-#: map/templates/map/map_mobile.html:1271
-#: map/templates/map/map_mobile.html:1295 map/templates/map/table_data.html:55
+#: map/templates/map/map_mobile.html:1273
+#: map/templates/map/map_mobile.html:1297 map/templates/map/table_data.html:55
 #: ranking/templates/ranking/table_data.html:60
 #, fuzzy
 #| msgid "2.2 Session Data"
 msgid "Session"
 msgstr "2.2 Sitzungsdaten"
 
-#: map/templates/map/map_mobile.html:1284
+#: map/templates/map/map_mobile.html:1286
 msgid "Direkte Mitglieder"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1307 map/templates/map/table_data.html:66
+#: map/templates/map/map_mobile.html:1309 map/templates/map/table_data.html:66
 #: ranking/templates/ranking/table_data.html:71
 msgid "Keine aktiven Gruppen gefunden."
 msgstr "Keine aktiven Gruppen gefunden."
 
-#: map/templates/map/map_mobile.html:1328 map/templates/map/table_data.html:90
+#: map/templates/map/map_mobile.html:1330 map/templates/map/table_data.html:90
 #: ranking/templates/ranking/table_data.html:95
 msgid "Zeitraum"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1333 map/templates/map/table_data.html:95
+#: map/templates/map/map_mobile.html:1335 map/templates/map/table_data.html:95
 #: ranking/templates/ranking/table_data.html:100
 msgid "Ende"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1361
+#: map/templates/map/map_mobile.html:1363
 msgid "Listenansicht umschalten"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:2696
+#: map/templates/map/map_mobile.html:2698
 msgid "Table"
 msgstr "Tabelle"
 
-#: map/templates/map/map_mobile.html:2836 map/templates/map/mcc_map.html:213
+#: map/templates/map/map_mobile.html:2838 map/templates/map/mcc_map.html:215
 #: map/templates/map/partials/item_row.html:16
 msgid "Lade Daten..."
 msgstr "Lade Daten..."
 
-#: map/templates/map/map_mobile.html:3198
+#: map/templates/map/map_mobile.html:3200
 msgid "Toast-Ansicht"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:3207
+#: map/templates/map/map_mobile.html:3209
 msgid "Listenansicht"
 msgstr ""
 
-#: map/templates/map/mcc_map.html:16 map/templates/map/mcc_map.html:164
+#: map/templates/map/mcc_map.html:16 map/templates/map/mcc_map.html:166
 msgid "MCC Live Karte"
 msgstr "MCC Live Karte"
 
-#: map/templates/map/mcc_map.html:178
+#: map/templates/map/mcc_map.html:180
 msgid "Geräte"
 msgstr "Geräte"
 
-#: map/templates/map/mcc_map.html:183
+#: map/templates/map/mcc_map.html:185
 msgid "Gruppen-Typ"
 msgstr "Gruppen-Typ"
 
-#: map/templates/map/mcc_map.html:192
+#: map/templates/map/mcc_map.html:194
 msgid "Alle"
 msgstr "Alle"
 
-#: map/templates/map/mcc_map.html:200
+#: map/templates/map/mcc_map.html:202
 #: templates/admin/mgmt/log_file_viewer.html:92
 msgid "Suche"
 msgstr "Suche"
 
-#: map/templates/map/mcc_map.html:208
+#: map/templates/map/mcc_map.html:210
 msgid "Suchen nach Name/ID..."
 msgstr "Suchen nach Name/ID..."
 
-#: map/templates/map/mcc_map.html:332 map/templates/map/mcc_map.html:346
+#: map/templates/map/mcc_map.html:334 map/templates/map/mcc_map.html:348
 #: map/templates/map/partials/ranking_players.html:11
 #: ranking/templates/ranking/partials/ranking_players.html:11
 msgid "Distanz"
@@ -3901,354 +4014,405 @@ msgstr "Coins"
 msgid "Keine Daten gefunden."
 msgstr "Keine Daten gefunden."
 
-#: mgmt/admin.py:53 mgmt/admin.py:1170
+#: mgmt/admin.py:99 mgmt/admin.py:1729
 msgid "Teilnehmende Gruppe"
 msgstr "Teilnehmende Gruppe"
 
-#: mgmt/admin.py:54
+#: mgmt/admin.py:100
 msgid "Teilnehmende Gruppen"
 msgstr "Teilnehmende Gruppen"
 
-#: mgmt/admin.py:75 mgmt/admin.py:1715
+#: mgmt/admin.py:122 mgmt/admin.py:2521
 msgid ""
 "Möchten Sie die Reise für diese Gruppe wirklich abbrechen? Die aktuellen "
 "Reisekilometer ({}) gehen verloren."
 msgstr ""
 
-#: mgmt/admin.py:102
+#: mgmt/admin.py:177
 msgid ""
 "Die Gruppe '{}' hat bereits {} Reisekilometer. Bitte verwenden Sie die "
 "'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen."
 msgstr ""
 
-#: mgmt/admin.py:121
+#: mgmt/admin.py:196
 msgid "Leaf-Gruppe Beitrag"
 msgstr ""
 
-#: mgmt/admin.py:122 mgmt/admin.py:1695
+#: mgmt/admin.py:197 mgmt/admin.py:2501
 msgid "Leaf-Gruppen Beiträge (Ranking)"
 msgstr ""
 
-#: mgmt/admin.py:169
+#: mgmt/admin.py:252
 #, fuzzy
 #| msgid "No Group"
 msgid "Parent-Gruppe"
 msgstr "Keine Gruppe"
 
-#: mgmt/admin.py:181 mgmt/admin.py:1652
+#: mgmt/admin.py:264 mgmt/admin.py:2458
 #, fuzzy
 #| msgid "Distance (km)"
 msgid "Beitrag (km)"
 msgstr "Distanz (km)"
 
-#: mgmt/admin.py:202 mgmt/admin.py:1653
+#: mgmt/admin.py:285 mgmt/admin.py:2459
 msgid "Anteil"
 msgstr ""
 
-#: mgmt/admin.py:216
+#: mgmt/admin.py:299
 #, fuzzy
 #| msgid "Reisen - erreichte Meilensteine"
 msgid "Erreichter Meilenstein"
 msgstr "Reisen - erreichte Meilensteine"
 
-#: mgmt/admin.py:217
+#: mgmt/admin.py:300
 #, fuzzy
 #| msgid "Reisen - erreichte Meilensteine"
 msgid "Erreichte Meilensteine"
 msgstr "Reisen - erreichte Meilensteine"
 
-#: mgmt/admin.py:401 mgmt/admin.py:419 mgmt/admin.py:436
+#: mgmt/admin.py:523 mgmt/admin.py:541 mgmt/admin.py:558
 msgid ""
 "Die Datenbank ist derzeit ausgelastet. Bitte versuchen Sie es in ein paar "
 "Sekunden erneut."
 msgstr ""
 
-#: mgmt/admin.py:757
+#: mgmt/admin.py:1082
 msgid "ACHTUNG: Kilometerstand manuell ändern?"
 msgstr ""
 
-#: mgmt/admin.py:802 mgmt/admin.py:3147
+#: mgmt/admin.py:1137 mgmt/admin.py:4490
 msgid "API-Key-Verwaltung"
 msgstr ""
 
-#: mgmt/admin.py:804
+#: mgmt/admin.py:1139
 msgid ""
-"Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-"
-"Key generieren' für sofortige Erneuerung oder 'Rotation testen' um die "
-"automatische Rotation zu prüfen."
+"Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein "
+"gerätespezifischer Key gesetzt ist, wird automatisch der IoT Device Shared "
+"API Key verwendet (konfiguriert in Geräteverwaltungs-Einstellungen). "
+"Verwenden Sie 'API-Key generieren' für sofortige Erneuerung oder 'Rotation "
+"testen' um die automatische Rotation zu prüfen."
 msgstr ""
 
-#: mgmt/admin.py:806 mgmt/admin.py:3151
+#: mgmt/admin.py:1141 mgmt/admin.py:4494
 msgid "Geräte-Identifikation"
 msgstr ""
 
-#: mgmt/admin.py:808 mgmt/admin.py:3153
+#: mgmt/admin.py:1143 mgmt/admin.py:4496
 msgid ""
 "Der Gerätename wird vom Gerät gemeldet und ist schreibgeschützt. Der "
 "Standard-ID-Tag kann konfiguriert werden."
 msgstr ""
 
-#: mgmt/admin.py:810 mgmt/admin.py:3155
+#: mgmt/admin.py:1145 mgmt/admin.py:4498
 #, fuzzy
 #| msgid "Documentation"
 msgid "Kommunikation"
 msgstr "Documentation"
 
-#: mgmt/admin.py:813 mgmt/admin.py:3158
+#: mgmt/admin.py:1148 mgmt/admin.py:4501
 #, fuzzy
 #| msgid "Ziel-Einstellungen"
 msgid "WLAN-Einstellungen"
 msgstr "Ziel-Einstellungen"
 
-#: mgmt/admin.py:817 mgmt/admin.py:3162
+#: mgmt/admin.py:1152 mgmt/admin.py:4505
 #, fuzzy
 #| msgid "Ziel-Einstellungen"
 msgid "Config-WLAN-Einstellungen"
 msgstr "Ziel-Einstellungen"
 
-#: mgmt/admin.py:820
+#: mgmt/admin.py:1155
 msgid ""
 "Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen "
 "erforderlich (WPA2-Anforderung)."
 msgstr ""
 
-#: mgmt/admin.py:822 mgmt/admin.py:3167
+#: mgmt/admin.py:1157 mgmt/admin.py:4510
 #, fuzzy
 #| msgid "Gerätename"
 msgid "Geräte-Verhalten"
 msgstr "Gerätename"
 
-#: mgmt/admin.py:825 mgmt/admin.py:3170
+#: mgmt/admin.py:1160 mgmt/admin.py:4513
 msgid "Hardware"
 msgstr ""
 
-#: mgmt/admin.py:828 mgmt/admin.py:3173
+#: mgmt/admin.py:1163 mgmt/admin.py:4516
 msgid "Firmware"
 msgstr ""
 
-#: mgmt/admin.py:844 mgmt/admin.py:3211
+#: mgmt/admin.py:1249 mgmt/admin.py:4594
 msgid "Speichern Sie zuerst die Gerätekonfiguration, um die Rotation zu testen"
 msgstr ""
 
-#: mgmt/admin.py:845 mgmt/admin.py:3212
+#: mgmt/admin.py:1250 mgmt/admin.py:4595
 #, fuzzy
 #| msgid "Station"
 msgid "Rotation testen"
 msgstr "Station"
 
-#: mgmt/admin.py:857 mgmt/admin.py:3224
+#: mgmt/admin.py:1262 mgmt/admin.py:4607
 msgid ""
 "Speichern Sie zuerst die Gerätekonfiguration, um die Rotation auszuführen"
 msgstr ""
 
-#: mgmt/admin.py:858 mgmt/admin.py:3225
+#: mgmt/admin.py:1263 mgmt/admin.py:4608
 msgid "Rotation jetzt ausführen"
 msgstr ""
 
-#: mgmt/admin.py:866 mgmt/admin.py:3184
+#: mgmt/admin.py:1271 mgmt/admin.py:4527
 msgid "Noch nicht vom Gerät gemeldet"
 msgstr ""
 
-#: mgmt/admin.py:868 mgmt/admin.py:3186
+#: mgmt/admin.py:1273 mgmt/admin.py:4529
 msgid "Gerätename (vom Gerät gemeldet)"
 msgstr ""
 
-#: mgmt/admin.py:880 mgmt/admin.py:3198
+#: mgmt/admin.py:1284 mgmt/admin.py:4540
+msgid "Gerätespezifischer API-Key aktiv"
+msgstr ""
+
+#: mgmt/admin.py:1285 mgmt/admin.py:4541
+msgid "Das Gerät verwendet einen eindeutigen, gerätespezifischen API-Key."
+msgstr ""
+
+#: mgmt/admin.py:1296 mgmt/admin.py:1310 mgmt/admin.py:4552 mgmt/admin.py:4566
+msgid "IoT Device Shared API Key wird verwendet"
+msgstr ""
+
+#: mgmt/admin.py:1297 mgmt/admin.py:4553
+msgid ""
+"Das Gerät verwendet den IoT Device Shared API Key (konfiguriert in "
+"Geräteverwaltungs-Einstellungen). Verwenden Sie \"API-Key generieren\", um "
+"einen gerätespezifischen Key zuzuweisen."
+msgstr ""
+
+#: mgmt/admin.py:1303 mgmt/admin.py:4559
+msgid "Kein API-Key konfiguriert"
+msgstr ""
+
+#: mgmt/admin.py:1304 mgmt/admin.py:4560
+msgid ""
+"Weder ein gerätespezifischer Key noch ein IoT Device Shared API Key ist "
+"konfiguriert. Bitte konfigurieren Sie einen IoT Device Shared API Key in "
+"Geräteverwaltungs-Einstellungen oder generieren Sie einen gerätespezifischen "
+"Key."
+msgstr ""
+
+#: mgmt/admin.py:1311 mgmt/admin.py:4567
+msgid "Das Gerät verwendet den IoT Device Shared API Key (falls konfiguriert)."
+msgstr ""
+
+#: mgmt/admin.py:1313 mgmt/admin.py:4569
+#, fuzzy
+#| msgid "Station"
+msgid "API-Key-Status"
+msgstr "Station"
+
+#: mgmt/admin.py:1325 mgmt/admin.py:4581
 msgid ""
 "Speichern Sie zuerst die Gerätekonfiguration, um einen API-Key zu generieren"
 msgstr ""
 
-#: mgmt/admin.py:881 mgmt/admin.py:3199
+#: mgmt/admin.py:1326 mgmt/admin.py:4582
 msgid "API-Key-Aktionen"
 msgstr ""
 
-#: mgmt/admin.py:930
+#: mgmt/admin.py:1381
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Gruppeninformationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:933
+#: mgmt/admin.py:1384
 msgid "Darstellung"
 msgstr ""
 
-#: mgmt/admin.py:935
+#: mgmt/admin.py:1386
 msgid ""
 "Verwenden Sie einen <a href=\"https://htmlcolorcodes.com/color-picker/\" "
 "target=\"_blank\">Farbwähler</a> oder <a href=\"https://colorpicker.me/\" "
 "target=\"_blank\">Color Picker</a> um den Hex-Code zu ermitteln."
 msgstr ""
 
-#: mgmt/admin.py:942
+#: mgmt/admin.py:1393
 msgid "Verwaltung"
 msgstr ""
 
-#: mgmt/admin.py:966
+#: mgmt/admin.py:1472
 msgid "Keine"
 msgstr ""
 
-#: mgmt/admin.py:974
+#: mgmt/admin.py:1480
 msgid "Kein Logo"
 msgstr "Kein Logo"
 
-#: mgmt/admin.py:975
+#: mgmt/admin.py:1481
 msgid "Logo Vorschau"
 msgstr "Logo Vorschau"
 
-#: mgmt/admin.py:996 mgmt/admin.py:2953 mgmt/admin.py:2968 mgmt/admin.py:2983
+#: mgmt/admin.py:1502 mgmt/admin.py:4285 mgmt/admin.py:4300 mgmt/admin.py:4315
 msgid "Keine Farbe definiert"
 msgstr "Keine Farbe definiert"
 
-#: mgmt/admin.py:997 mgmt/admin.py:2984
+#: mgmt/admin.py:1503 mgmt/admin.py:4316
 #, fuzzy
 #| msgid "Avatar Vorschau"
 msgid "Farbvorschau"
 msgstr "Avatar Vorschau"
 
-#: mgmt/admin.py:1012
+#: mgmt/admin.py:1518
 msgid ""
 "Wählen Sie eine Gruppe aus. Ein Radler darf nur einer Gruppe zugeordnet "
 "werden."
 msgstr ""
 
-#: mgmt/admin.py:1072
+#: mgmt/admin.py:1625
 msgid "Keine Gruppen"
 msgstr "Keine Gruppen"
 
-#: mgmt/admin.py:1088
+#: mgmt/admin.py:1641
 msgid "Kein Avatar"
 msgstr "Kein Avatar"
 
-#: mgmt/admin.py:1089
+#: mgmt/admin.py:1642
 msgid "Avatar Vorschau"
 msgstr "Avatar Vorschau"
 
-#: mgmt/admin.py:1138
+#: mgmt/admin.py:1697
 msgid "Kumulative Kilometer"
 msgstr ""
 
-#: mgmt/admin.py:1256
+#: mgmt/admin.py:1899
 msgid ""
 "Speichern Sie zuerst die Reiseroute, um das Ranking der Top-Gruppen "
 "anzuzeigen."
 msgstr ""
 
-#: mgmt/admin.py:1264
+#: mgmt/admin.py:1907
 msgid "Noch keine Gruppen auf dieser Reiseroute."
 msgstr ""
 
-#: mgmt/admin.py:1280
+#: mgmt/admin.py:1923
 #, fuzzy
 #| msgid "Distance (km)"
 msgid "Distanz (km)"
 msgstr "Distanz (km)"
 
-#: mgmt/admin.py:1281
+#: mgmt/admin.py:1924
 #, fuzzy
 #| msgid "Meilenstein erreicht!"
 msgid "Ziel erreicht"
 msgstr "Meilenstein erreicht!"
 
-#: mgmt/admin.py:1282 mgmt/admin.py:1888
+#: mgmt/admin.py:1925 mgmt/admin.py:2723
 msgid "Reisezeit"
 msgstr ""
 
-#: mgmt/admin.py:1402
+#: mgmt/admin.py:2045
 #, fuzzy
 #| msgid "Alle Top-Gruppen"
 msgid "Top-Gruppen Ranking"
 msgstr "Alle Top-Gruppen"
 
-#: mgmt/admin.py:1408
+#: mgmt/admin.py:2051
 #, fuzzy
 #| msgid "Zugeordnete Gruppe"
 msgid "Zugeordnete Gruppen"
 msgstr "Zugeordnete Gruppe"
 
-#: mgmt/admin.py:1517
+#: mgmt/admin.py:2086
+msgid "Sie haben keine Berechtigung, diese Reise neu zu starten."
+msgstr ""
+
+#: mgmt/admin.py:2171
 msgid "Restart trip(s) and save to history"
 msgstr ""
 
-#: mgmt/admin.py:1552
+#: mgmt/admin.py:2206
 msgid "Save trip progress to history"
 msgstr ""
 
-#: mgmt/admin.py:1570
+#: mgmt/admin.py:2232
 #, fuzzy
 #| msgid "Beschreibung"
 msgid "Beschreibung & Links"
 msgstr "Beschreibung"
 
-#: mgmt/admin.py:1572
+#: mgmt/admin.py:2234
 msgid ""
 "Beschreibung (max. 500 Zeichen) und externe Links werden in den Milestone-"
 "Details angezeigt. Die Beschreibung wird im Overlay mit maximal 200px Höhe "
 "angezeigt."
 msgstr ""
 
-#: mgmt/admin.py:1592
+#: mgmt/admin.py:2338
 msgid "In Reise verwendet"
 msgstr "In Reise verwendet"
 
-#: mgmt/admin.py:1616
+#: mgmt/admin.py:2376
 #, fuzzy
 #| msgid "Gruppen-Reisestatus"
 msgid "Reisestatus"
 msgstr "Gruppen-Reisestatus"
 
-#: mgmt/admin.py:1619
+#: mgmt/admin.py:2379
 msgid "Leaf-Gruppen Beiträge"
 msgstr ""
 
-#: mgmt/admin.py:1621
+#: mgmt/admin.py:2381
 msgid ""
 "Ranking der Leaf-Gruppen basierend auf ihrem Beitrag zur Reise der Parent-"
 "Gruppe."
 msgstr ""
 
-#: mgmt/admin.py:1628
+#: mgmt/admin.py:2434
 msgid ""
 "Speichern Sie zuerst den Reisestatus, um die Leaf-Gruppen Beiträge "
 "anzuzeigen."
 msgstr ""
 
-#: mgmt/admin.py:1636
+#: mgmt/admin.py:2442
 msgid "Diese Gruppe hat keine Leaf-Gruppen."
 msgstr ""
 
-#: mgmt/admin.py:1645
+#: mgmt/admin.py:2451
 msgid "Noch keine Beiträge von Leaf-Gruppen vorhanden."
 msgstr ""
 
-#: mgmt/admin.py:1740
+#: mgmt/admin.py:2546
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Reisestatus nicht gefunden."
 msgstr "Spieler nicht gefunden"
 
-#: mgmt/admin.py:1783
+#: mgmt/admin.py:2553
+msgid "Sie haben keine Berechtigung, diese Reise abzubrechen."
+msgstr ""
+
+#: mgmt/admin.py:2596
 msgid ""
 "Reise für Gruppe '{}' wurde abgebrochen. Die Gruppe kann nun einer neuen "
 "Reise zugeordnet werden."
 msgstr ""
 
-#: mgmt/admin.py:1843
+#: mgmt/admin.py:2661
 msgid ""
 "{} Reise(n) wurde(n) abgebrochen. Die Gruppen können nun neuen Reisen "
 "zugeordnet werden."
 msgstr ""
 
-#: mgmt/admin.py:1845
+#: mgmt/admin.py:2663
 msgid "Ausgewählte Reisen abbrechen"
 msgstr ""
 
-#: mgmt/admin.py:1899
+#: mgmt/admin.py:2734
 #, fuzzy
 #| msgid "Erreicht von"
 msgid "Erreichung"
 msgstr "Erreicht von"
 
-#: mgmt/admin.py:1901
+#: mgmt/admin.py:2736
 msgid ""
 "Diese Informationen sind historische Daten und können nicht mehr geändert "
 "werden. Die 'Gruppe' ist die Leaf-Gruppe (z.B. Klasse), die den Meilenstein "
@@ -4256,193 +4420,236 @@ msgid ""
 "Gruppe zum Zeitpunkt des Erreichens."
 msgstr ""
 
-#: mgmt/admin.py:1907
+#: mgmt/admin.py:2742
 msgid ""
 "Die Belohnung wurde zum Zeitpunkt des Erreichens des Meilensteins "
 "gespeichert und bleibt unverändert, auch wenn die Meilenstein-Belohnung "
 "später geändert wird."
 msgstr ""
 
-#: mgmt/admin.py:1924
+#: mgmt/admin.py:2862
 #, fuzzy
 #| msgid "Alle Top-Gruppen"
 msgid "Top-Gruppe"
 msgstr "Alle Top-Gruppen"
 
-#: mgmt/admin.py:1965
+#: mgmt/admin.py:2903
 #, fuzzy
 #| msgid "Gruppen"
 msgid "Gruppen-Pfad"
 msgstr "Gruppen"
 
-#: mgmt/admin.py:1986
+#: mgmt/admin.py:2924
 msgid "Möchten Sie die Belohnung wirklich einlösen?"
 msgstr ""
 
-#: mgmt/admin.py:1988
+#: mgmt/admin.py:2926
 msgid "Einlösen"
 msgstr ""
 
-#: mgmt/admin.py:2017
+#: mgmt/admin.py:2955
 #, fuzzy
 #| msgid "Spieler nicht gefunden"
 msgid "Meilenstein-Erreichung nicht gefunden."
 msgstr "Spieler nicht gefunden"
 
-#: mgmt/admin.py:2023
+#: mgmt/admin.py:2962
+msgid "Sie haben keine Berechtigung, diese Belohnung einzulösen."
+msgstr ""
+
+#: mgmt/admin.py:2968
 msgid "Die Belohnung wurde bereits eingelöst."
 msgstr ""
 
-#: mgmt/admin.py:2028
+#: mgmt/admin.py:2973
 #, fuzzy
 #| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 msgid "Keine Belohnung für diesen Meilenstein definiert."
 msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
 
-#: mgmt/admin.py:2037
+#: mgmt/admin.py:2982
 msgid "Belohnung erfolgreich eingelöst."
 msgstr ""
 
-#: mgmt/admin.py:2081
+#: mgmt/admin.py:3057
 msgid "{} Event(s) wurden in die Historie gespeichert und zurückgesetzt."
 msgstr ""
 
-#: mgmt/admin.py:2082
+#: mgmt/admin.py:3058
 msgid "Event(s) in Historie speichern und zurücksetzen"
 msgstr "Event(s) in Historie speichern und zurücksetzen"
 
-#: mgmt/admin.py:2100
+#: mgmt/admin.py:3079
+msgid ""
+"Sie haben keine Berechtigung, dieses Event in die Historie zu speichern."
+msgstr ""
+
+#: mgmt/admin.py:3082
 msgid "Event wurde in die Historie gespeichert und zurückgesetzt."
 msgstr "Event wurde in die Historie gespeichert und zurückgesetzt."
 
-#: mgmt/admin.py:2172
+#: mgmt/admin.py:3169
 msgid "Kilometer"
 msgstr "Kilometer"
 
-#: mgmt/admin.py:2316
+#: mgmt/admin.py:3348
 msgid ""
 "Die Order-Nummer {} ist bereits vergeben. Jede Order-Nummer darf nur einmal "
 "pro Gerät verwendet werden."
 msgstr ""
 
-#: mgmt/admin.py:2615
+#: mgmt/admin.py:3647
 msgid "Device Information"
 msgstr ""
 
-#: mgmt/admin.py:2618
+#: mgmt/admin.py:3650
 msgid "Hardware Control"
 msgstr ""
 
-#: mgmt/admin.py:2620
+#: mgmt/admin.py:3652
 msgid ""
-"Brightness: 0-100. Command Queue: JSON array of pending commands (e.g., "
-"['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
+"Helligkeit: 0-100. Befehls-Warteschlange: JSON-Array mit ausstehenden "
+"Befehlen (z.B. ['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
 msgstr ""
+"Helligkeit: 0-100. Befehls-Warteschlange: JSON-Array mit ausstehenden "
+"Befehlen (z.B. ['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
 
-#: mgmt/admin.py:2622
+#: mgmt/admin.py:3654
 msgid "Timestamps"
 msgstr ""
 
-#: mgmt/admin.py:2638
+#: mgmt/admin.py:3787
 msgid "Aktive Einträge"
 msgstr ""
 
-#: mgmt/admin.py:2663
+#: mgmt/admin.py:3812
 msgid "Playlist URL"
 msgstr ""
 
-#: mgmt/admin.py:2670
+#: mgmt/admin.py:3819
 msgid "Ausstehende Befehle"
 msgstr ""
 
-#: mgmt/admin.py:2690
+#: mgmt/admin.py:3839
 msgid "Reload command queued for device '{}'."
 msgstr ""
 
-#: mgmt/admin.py:2700
+#: mgmt/admin.py:3849
 msgid "Reboot command queued for device '{}'."
 msgstr ""
 
-#: mgmt/admin.py:2710
+#: mgmt/admin.py:3859
 msgid "Set brightness command queued for device '{}' to {}%."
 msgstr ""
 
-#: mgmt/admin.py:2721
+#: mgmt/admin.py:3870
 #, fuzzy
 #| msgid "Device"
 msgid "Reload Device"
 msgstr "Gerät"
 
-#: mgmt/admin.py:2726
+#: mgmt/admin.py:3875
 #, fuzzy
 #| msgid "Device"
 msgid "Reboot Device"
 msgstr "Gerät"
 
-#: mgmt/admin.py:2731
+#: mgmt/admin.py:3880
 msgid "Set Brightness: 50%"
 msgstr ""
 
-#: mgmt/admin.py:2737
+#: mgmt/admin.py:3886
 msgid "Set Brightness: 100%"
 msgstr ""
 
-#: mgmt/admin.py:2777
+#: mgmt/admin.py:3926
 msgid "Konfigurationsstatus"
 msgstr ""
 
-#: mgmt/admin.py:2804
+#: mgmt/admin.py:3986
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Berichts-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:2819
+#: mgmt/admin.py:4001
 msgid "Offene Unterschiede"
 msgstr ""
 
-#: mgmt/admin.py:2831
+#: mgmt/admin.py:4019
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Unterschieds-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:2834
+#: mgmt/admin.py:4022
 msgid "Werte"
 msgstr ""
 
-#: mgmt/admin.py:2878
+#: mgmt/admin.py:4067
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Firmware-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:2884 mgmt/admin.py:2933 mgmt/admin.py:3017 mgmt/admin.py:3049
-#: mgmt/admin.py:3079 mgmt/admin.py:3124
-msgid "Zeitstempel"
-msgstr "Zeitstempel"
-
-#: mgmt/admin.py:2900
-msgid "Dateigröße"
-msgstr ""
-
-#: mgmt/admin.py:2906
+#: mgmt/admin.py:4070 mgmt/admin.py:4120 mgmt/admin.py:4142
 msgid "Zugewiesene Geräte"
 msgstr ""
 
-#: mgmt/admin.py:2915
+#: mgmt/admin.py:4072
+msgid "Liste aller Geräte, denen diese Firmware zugewiesen wurde."
+msgstr ""
+
+#: mgmt/admin.py:4077 mgmt/admin.py:4265 mgmt/admin.py:4353 mgmt/admin.py:4385
+#: mgmt/admin.py:4415 mgmt/admin.py:4466
+msgid "Zeitstempel"
+msgstr "Zeitstempel"
+
+#: mgmt/admin.py:4114
+msgid "Dateigröße"
+msgstr ""
+
+#: mgmt/admin.py:4125 mgmt/admin.py:4129 mgmt/admin.py:4141
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Geräte zugewiesen"
+msgstr "Keine Daten gefunden."
+
+#: mgmt/admin.py:4152 mgmt/admin.py:4178
+msgid ""
+"Diese Firmware wird von {} Gerät(en) verwendet und kann nicht gelöscht "
+"werden."
+msgstr ""
+
+#: mgmt/admin.py:4191
+msgid ""
+"Firmware '{}' kann nicht gelöscht werden, da sie {} Gerät(en) zugewiesen "
+"ist. Bitte entfernen Sie die Zuweisung zuerst von den Geräten."
+msgstr ""
+
+#: mgmt/admin.py:4220
+msgid ""
+"{} Firmware-Image(s) werden von {} Gerät(en) verwendet und können nicht "
+"gelöscht werden."
+msgstr ""
+
+#: mgmt/admin.py:4231
+msgid "{} Firmware-Image(s) erfolgreich gelöscht."
+msgstr ""
+
+#: mgmt/admin.py:4247
 msgid "Popup-Dauer"
 msgstr "Popup-Dauer"
 
-#: mgmt/admin.py:2917
+#: mgmt/admin.py:4249
 msgid "Anzeigedauer der Popups in Sekunden (1-300)"
 msgstr "Anzeigedauer der Popups in Sekunden (1-300)"
 
-#: mgmt/admin.py:2919
+#: mgmt/admin.py:4251
 msgid "Kilometer-Weltmeister Popup Styling"
 msgstr "Kilometer-Weltmeister Popup Styling"
 
-#: mgmt/admin.py:2921
+#: mgmt/admin.py:4253
 msgid ""
 "Hintergrundfarbe und Transparenz des Kilometer-Weltmeister Popups. Verwenden "
 "Sie einen <a href='https://htmlcolorcodes.com/color-picker/' "
@@ -4454,11 +4661,11 @@ msgstr ""
 "target='_blank'>Farbwähler</a> oder <a href='https://colorpicker.me/' "
 "target='_blank'>Color Picker</a> um den Hex-Code zu ermitteln."
 
-#: mgmt/admin.py:2926
+#: mgmt/admin.py:4258
 msgid "Meilenstein Popup Styling"
 msgstr "Meilenstein Popup Styling"
 
-#: mgmt/admin.py:2928
+#: mgmt/admin.py:4260
 msgid ""
 "Hintergrundfarbe und Transparenz des Meilenstein Popups. Verwenden Sie einen "
 "<a href='https://htmlcolorcodes.com/color-picker/' "
@@ -4470,101 +4677,111 @@ msgstr ""
 "target='_blank'>Farbwähler</a> oder <a href='https://colorpicker.me/' "
 "target='_blank'>Color Picker</a> um den Hex-Code zu ermitteln."
 
-#: mgmt/admin.py:2954
+#: mgmt/admin.py:4286
 msgid "Farbvorschau (Start)"
 msgstr "Farbvorschau (Start)"
 
-#: mgmt/admin.py:2969
+#: mgmt/admin.py:4301
 msgid "Farbvorschau (Ende)"
 msgstr "Farbvorschau (Ende)"
 
-#: mgmt/admin.py:3013
+#: mgmt/admin.py:4347
+msgid ""
+"Dedizierter API-Key für IoT-Geräte, der von mehreren Geräten gleichzeitig "
+"verwendet werden kann. Wird als Standard-Key verwendet, bevor individuelle "
+"Geräte-Keys zugewiesen werden. Gilt nur für IoT-Geräte-Endpoints, nicht für "
+"öffentliche API-Endpoints."
+msgstr ""
+
+#: mgmt/admin.py:4349
 msgid "E-Mail-Benachrichtigungen"
 msgstr ""
 
-#: mgmt/admin.py:3015
+#: mgmt/admin.py:4351
 msgid ""
 "Konfigurieren Sie tägliche E-Mail-Benachrichtigungen für "
 "Gerätekonfigurationsunterschiede."
 msgstr ""
 
-#: mgmt/admin.py:3040
+#: mgmt/admin.py:4376
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Geräte-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:3043
+#: mgmt/admin.py:4379
 #, fuzzy
 #| msgid "Gruppen-Reisestatus"
 msgid "Gesundheitsstatus"
 msgstr "Gruppen-Reisestatus"
 
-#: mgmt/admin.py:3046 mgmt/admin.py:3120
+#: mgmt/admin.py:4382 mgmt/admin.py:4462
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Konfiguration"
 msgstr "id_tag erforderlich."
 
-#: mgmt/admin.py:3060
+#: mgmt/admin.py:4396
 msgid "Online-Status"
 msgstr ""
 
-#: mgmt/admin.py:3072
+#: mgmt/admin.py:4408
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Template-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:3077
+#: mgmt/admin.py:4413
 msgid ""
 "JSON-Objekt mit Konfigurationswerten. Beispiel: {'send_interval_seconds': "
-"60, 'wheel_size': 2075.0}"
+"60, 'wheel_size': 26}"
 msgstr ""
 
-#: mgmt/admin.py:3094
+#: mgmt/admin.py:4436
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Protokoll-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:3117
+#: mgmt/admin.py:4459
 #, fuzzy
 #| msgid "Gruppenname"
 msgid "Webhook-Informationen"
 msgstr "Gruppenname"
 
-#: mgmt/admin.py:3122
+#: mgmt/admin.py:4464
 msgid ""
 "Wählen Sie Ereignisse aus, die diesen Webhook auslösen sollen. Geheimer "
 "Schlüssel ist optional für die Authentifizierung."
 msgstr ""
 
-#: mgmt/admin.py:3135
+#: mgmt/admin.py:4477
 msgid "Ereignisse"
 msgstr ""
 
-#: mgmt/admin.py:3149
+#: mgmt/admin.py:4492
 msgid ""
-"Gerätespezifischer API-Key für sichere Authentifizierung. Verwenden Sie 'API-"
-"Key generieren' für sofortige Erneuerung, 'Rotation jetzt ausführen' um die "
-"Rotation manuell zu triggern, oder 'Rotation testen' um die automatische "
-"Rotation zu prüfen."
+"Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein "
+"gerätespezifischer Key gesetzt ist, wird automatisch der IoT Device Shared "
+"API Key verwendet (konfiguriert in Geräteverwaltungs-Einstellungen). "
+"Verwenden Sie 'API-Key generieren' für sofortige Erneuerung, 'Rotation jetzt "
+"ausführen' um die Rotation manuell zu triggern, oder 'Rotation testen' um "
+"die automatische Rotation zu prüfen."
 msgstr ""
 
-#: mgmt/admin.py:3165
+#: mgmt/admin.py:4508
 msgid ""
 "Passwort für den Config-WLAN-Hotspot. Minimum 8 Zeichen erforderlich (WPA2-"
 "Anforderung)."
 msgstr ""
 
-#: mgmt/admin.py:3402
+#: mgmt/admin.py:4785
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Log Level Configuration"
 msgstr "Gerätekonfiguration"
 
-#: mgmt/admin.py:3405
+#: mgmt/admin.py:4788
 msgid ""
 "Select the minimum log level that will be written to log files. Only logs "
 "with this level or higher will be written to log files. Changes apply "
@@ -4572,42 +4789,65 @@ msgid ""
 "under \"Log File Viewer\"."
 msgstr ""
 
-#: mgmt/admin.py:3411 mgmt/admin.py:3452
+#: mgmt/admin.py:4794 mgmt/admin.py:4835
 #, fuzzy
 #| msgid "Requested URL"
 msgid "Request Logging"
 msgstr "Angeforderte URL"
 
-#: mgmt/admin.py:3414
+#: mgmt/admin.py:4797
 msgid ""
 "Enable Request Logging to store all HTTP requests in the database "
 "(RequestLog). Disable this to avoid overloading the database. Changes apply "
 "immediately to new requests."
 msgstr ""
 
-#: mgmt/admin.py:3440 mgmt/models.py:32
+#: mgmt/admin.py:4823 mgmt/models.py:32
 msgid "Minimum Log Level"
 msgstr ""
 
-#: mgmt/admin.py:3483
+#: mgmt/admin.py:4864 mgmt/models.py:237
+msgid "IP Whitelist"
+msgstr ""
+
+#: mgmt/admin.py:4867
+msgid ""
+"Geben Sie eine IP-Adresse oder einen CIDR-Block pro Zeile ein. Beispiele:\n"
+"192.168.1.100\n"
+"10.0.0.0/8\n"
+"172.16.0.0/12\n"
+"Diese IPs können während der Wartung auf die Website zugreifen."
+msgstr ""
+
+#: mgmt/admin.py:4875
+msgid "Admin Access"
+msgstr ""
+
+#: mgmt/admin.py:4878
+msgid ""
+"Wenn aktiviert, können Superuser auch ohne IP-Whitelist auf /admin/ "
+"zugreifen. Dies ist für Notfälle empfohlen."
+msgstr ""
+
+#: mgmt/admin.py:4928
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Gunicorn Log Level Configuration"
 msgstr "Gerätekonfiguration"
 
-#: mgmt/admin.py:3486
+#: mgmt/admin.py:4931
 msgid ""
 "Select the log level for the Gunicorn server. Changes require a server "
 "restart to take effect."
 msgstr ""
 
-#: mgmt/admin.py:3490
+#: mgmt/admin.py:4935
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Worker Configuration"
 msgstr "Gerätekonfiguration"
 
-#: mgmt/admin.py:3493
+#: mgmt/admin.py:4938
 msgid ""
 "Configure the number of workers and threads. <strong>Recommended "
 "combinations:</strong><br><ul><li><strong>Small servers (1-2 CPU):</strong> "
@@ -4618,102 +4858,189 @@ msgid ""
 "strong> Threads are only used when worker_class=\"gthread\"."
 msgstr ""
 
-#: mgmt/admin.py:3525 mgmt/models.py:118
+#: mgmt/admin.py:4970 mgmt/models.py:118
 #: templates/admin/mgmt/server_control.html:325
 msgid "Log Level"
 msgstr ""
 
-#: mgmt/admin.py:3530
+#: mgmt/admin.py:4975
 msgid "manual"
 msgstr ""
 
-#: mgmt/admin.py:3533
+#: mgmt/admin.py:4978
 msgid "automatic"
 msgstr ""
 
-#: mgmt/admin.py:3534 templates/admin/mgmt/server_control.html:241
+#: mgmt/admin.py:4979 templates/admin/mgmt/server_control.html:241
 #: templates/admin/mgmt/server_control.html:326
 msgid "Workers"
 msgstr ""
 
-#: mgmt/admin.py:3539
+#: mgmt/admin.py:4984
 msgid "Threads"
 msgstr ""
 
-#: mgmt/admin.py:3544 templates/admin/mgmt/server_control.html:334
+#: mgmt/admin.py:4989 templates/admin/mgmt/server_control.html:334
 msgid "Worker Class"
 msgstr ""
 
-#: mgmt/admin.py:3563
+#: mgmt/admin.py:5008
 msgid ""
 "Gunicorn-Konfiguration wurde aktualisiert. Bitte starten Sie den Server neu, "
 "damit die Änderungen wirksam werden. <a href=\"{}\">Server Control öffnen</a>"
 msgstr ""
 
-#: mgmt/admin.py:3610 mgmt/server_control.py:62
+#: mgmt/admin.py:5055 mgmt/server_control.py:62
 #: templates/admin/mgmt/server_control.html:183
 msgid "Server Control"
 msgstr ""
 
-#: mgmt/admin.py:3618
+#: mgmt/admin.py:5063 templates/admin/mgmt/maintenance_control.html:127
+msgid "Maintenance Control"
+msgstr ""
+
+#: mgmt/admin.py:5071
 #, fuzzy
 #| msgid "View site"
 msgid "View Application Logs"
 msgstr "View site"
 
-#: mgmt/admin.py:3626 mgmt/views_deployment.py:71
+#: mgmt/admin.py:5079 mgmt/views_deployment.py:71
 msgid "Backup Management"
 msgstr ""
 
-#: mgmt/admin.py:3640 minecraft/admin_views.py:129
+#: mgmt/admin.py:5093 minecraft/admin_views.py:158
 msgid "Minecraft Control"
 msgstr ""
 
-#: mgmt/admin.py:3656 mgmt/analytics.py:69
+#: mgmt/admin.py:5111 mgmt/analytics.py:73
 msgid "Historical Reports & Analytics"
 msgstr "Historische Berichte & Analysen"
 
-#: mgmt/admin.py:3681
+#: mgmt/admin.py:5136
 #, fuzzy
 #| msgid "Session beenden"
 msgid "Session Management"
 msgstr "Session beenden"
 
-#: mgmt/admin_performance.py:40 mgmt/models_performance.py:40
+#: mgmt/admin_firmware_import.py:109
+msgid "MD5-Prüfsumme stimmt nicht überein: erwartet {}, berechnet {}"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:116
+msgid "SHA256-Prüfsumme stimmt nicht überein: erwartet {}, berechnet {}"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:277
+msgid "Firmware {} ({}) wird überschrieben"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:285
+msgid "Firmware {} ({}) existiert bereits und wird übersprungen"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:425 mgmt/admin_firmware_import.py:514
+#: mgmt/admin_firmware_import.py:524 mgmt/admin_firmware_import.py:546
+#: mgmt/admin_firmware_import.py:639 mgmt/admin_firmware_import.py:649
+msgid "Firmware aus GitHub Release ZIP importieren"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:454
+msgid "Repository-Owner, Repository-Name und Tag sind erforderlich"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:456
+msgid "Lade Release-Assets von GitHub herunter..."
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:463
+#, fuzzy
+#| msgid "Fehler beim Laden der Avatar-Daten"
+msgid "Fehler beim Herunterladen des GitHub Releases"
+msgstr "Fehler beim Laden der Avatar-Daten"
+
+#: mgmt/admin_firmware_import.py:471
+msgid "Bitte wählen Sie eine ZIP-Datei aus"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:475
+msgid "Die Datei muss eine ZIP-Datei sein"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:522
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Keine gültigen Firmware-Dateien im ZIP-Archiv gefunden"
+msgstr "Spieler nicht gefunden"
+
+#: mgmt/admin_firmware_import.py:561
+msgid "Importiert aus GitHub Release ZIP"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:572
+msgid ""
+"Firmware-Datei {} ist zu klein ({} Bytes). Möglicherweise wurde eine "
+"Checksum-Datei statt der .bin-Datei importiert."
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:603
+msgid ""
+"Fehler beim Speichern der Firmware-Datei {}: Dateigröße stimmt nicht überein"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:624
+msgid "{} Firmware-Image(s) erfolgreich importiert"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:626
+msgid "• {} ({})"
+msgstr ""
+
+#: mgmt/admin_firmware_import.py:637
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültiges ZIP-Archiv"
+msgstr "Ungültiges Format."
+
+#: mgmt/admin_firmware_import.py:647
+msgid "Fehler beim Import: {}"
+msgstr ""
+
+#: mgmt/admin_performance.py:46 mgmt/models_performance.py:40
 msgid "Path"
 msgstr ""
 
-#: mgmt/admin_performance.py:50 mgmt/models_performance.py:194
+#: mgmt/admin_performance.py:56 mgmt/models_performance.py:194
 msgid "Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:276
+#: mgmt/admin_performance.py:288
 msgid "Avg Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:281
+#: mgmt/admin_performance.py:293
 msgid "P95 Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:299
+#: mgmt/admin_performance.py:311
 msgid "Generate hourly metrics from RequestLog data"
 msgstr ""
 
-#: mgmt/admin_performance.py:309
+#: mgmt/admin_performance.py:321
 msgid "Generate daily metrics from RequestLog data"
 msgstr ""
 
-#: mgmt/admin_performance.py:322
+#: mgmt/admin_performance.py:334
 #, fuzzy
 #| msgid "Warnung"
 msgid "Warnbedingungen"
 msgstr "Warnung"
 
-#: mgmt/admin_performance.py:325
+#: mgmt/admin_performance.py:337
 msgid "Benachrichtigungen"
 msgstr ""
 
-#: mgmt/admin_performance.py:345
+#: mgmt/admin_performance.py:363
 msgid "Schwellenwert"
 msgstr ""
 
@@ -4743,23 +5070,33 @@ msgstr ""
 msgid "Massenerstellung: Schule, Klassen und Spieler"
 msgstr ""
 
-#: mgmt/analytics.py:444 mgmt/analytics.py:482
+#: mgmt/analytics.py:48 mgmt/analytics.py:1155 mgmt/analytics.py:1284
+msgid ""
+"Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese "
+"Funktion."
+msgstr ""
+
+#: mgmt/analytics.py:99
+msgid "Zugriff verweigert"
+msgstr ""
+
+#: mgmt/analytics.py:452 mgmt/analytics.py:490
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Gruppe"
 msgstr "Keine Gruppen"
 
-#: mgmt/analytics.py:1301
+#: mgmt/analytics.py:1317
 msgid "Event not found"
 msgstr ""
 
-#: mgmt/analytics.py:1330
+#: mgmt/analytics.py:1346
 #, fuzzy
 #| msgid "No groups found"
 msgid "Parent group not found"
 msgstr "Keine Gruppen gefunden"
 
-#: mgmt/analytics.py:1357
+#: mgmt/analytics.py:1373
 #, fuzzy
 #| msgid "No groups found"
 msgid "Group not found"
@@ -4851,6 +5188,23 @@ msgstr ""
 msgid "Fehler beim Lesen der Log-Datei"
 msgstr "Fehler beim Laden der Avatar-Daten"
 
+#: mgmt/maintenance_control.py:112
+#: templates/admin/mgmt/maintenance_control.html:133
+msgid "Maintenance Mode Control"
+msgstr ""
+
+#: mgmt/maintenance_control.py:155
+msgid "Maintenance mode activated"
+msgstr ""
+
+#: mgmt/maintenance_control.py:165
+msgid "Maintenance mode deactivated"
+msgstr ""
+
+#: mgmt/maintenance_control.py:172
+msgid "Permission denied. Please check file permissions."
+msgstr ""
+
 #: mgmt/models.py:33
 msgid ""
 "Nur Logs mit diesem Level oder höher werden in die Log-Dateien geschrieben."
@@ -4868,13 +5222,13 @@ msgid ""
 "(RequestLog). Deaktivieren Sie dies, um die Datenbank nicht zu überladen."
 msgstr ""
 
-#: mgmt/models.py:51 mgmt/models.py:194
+#: mgmt/models.py:51 mgmt/models.py:194 mgmt/models.py:256
 #, fuzzy
 #| msgid "Aktualisiert am"
 msgid "Aktualisiert von"
 msgstr "Aktualisiert am"
 
-#: mgmt/models.py:52 mgmt/models.py:195
+#: mgmt/models.py:52 mgmt/models.py:195 mgmt/models.py:257
 msgid "Benutzer, der diese Einstellung zuletzt geändert hat"
 msgstr ""
 
@@ -5014,6 +5368,30 @@ msgstr ""
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Gunicorn Configuration"
+msgstr "Gerätekonfiguration"
+
+#: mgmt/models.py:238
+msgid ""
+"Eine IP-Adresse oder ein CIDR-Block pro Zeile. Beispiel:\n"
+"192.168.1.100\n"
+"10.0.0.0/8\n"
+"172.16.0.0/12\n"
+"Diese IPs können während der Wartung auf die Website zugreifen."
+msgstr ""
+
+#: mgmt/models.py:243
+msgid "Admin-Zugriff während Wartung erlauben"
+msgstr ""
+
+#: mgmt/models.py:244
+msgid ""
+"Wenn aktiviert, können Superuser auch ohne IP-Whitelist auf /admin/ zugreifen"
+msgstr ""
+
+#: mgmt/models.py:261 mgmt/models.py:262
+#, fuzzy
+#| msgid "Device Configuration"
+msgid "Maintenance Configuration"
 msgstr "Gerätekonfiguration"
 
 #: mgmt/models_performance.py:41
@@ -5270,83 +5648,83 @@ msgstr ""
 msgid "Backup created successfully"
 msgstr ""
 
-#: minecraft/admin_views.py:35 minecraft/admin_views.py:56
+#: minecraft/admin_views.py:59 minecraft/admin_views.py:80
 #, fuzzy
 #| msgid "No groups found"
 msgid "Script not found"
 msgstr "Keine Gruppen gefunden"
 
-#: minecraft/admin_views.py:38 minecraft/admin_views.py:59
-#: minecraft/admin_views.py:216
+#: minecraft/admin_views.py:62 minecraft/admin_views.py:83
+#: minecraft/admin_views.py:255
 msgid "Script not executable"
 msgstr ""
 
-#: minecraft/admin_views.py:151
+#: minecraft/admin_views.py:183
 msgid "Only POST allowed"
 msgstr ""
 
-#: minecraft/admin_views.py:165
+#: minecraft/admin_views.py:197
 msgid "Invalid action"
 msgstr ""
 
-#: minecraft/admin_views.py:170
+#: minecraft/admin_views.py:202
 msgid "Sync queued"
 msgstr ""
 
-#: minecraft/admin_views.py:173
+#: minecraft/admin_views.py:205
 #, python-format
 msgid "Sync failed: %(error)s"
 msgstr ""
 
-#: minecraft/admin_views.py:180
+#: minecraft/admin_views.py:212
 #, python-format
 msgid "Snapshot updated: %(count)s players updated"
 msgstr ""
 
-#: minecraft/admin_views.py:185
+#: minecraft/admin_views.py:217
 #, python-format
 msgid "Snapshot failed: %(error)s"
 msgstr ""
 
-#: minecraft/admin_views.py:190
+#: minecraft/admin_views.py:222
 msgid "RCON connection OK"
 msgstr ""
 
-#: minecraft/admin_views.py:192
+#: minecraft/admin_views.py:224
 msgid "RCON port reachable (Auth not checked)"
 msgstr ""
 
-#: minecraft/admin_views.py:193
+#: minecraft/admin_views.py:225
 #, python-format
 msgid "RCON error: %(error)s"
 msgstr ""
 
-#: minecraft/admin_views.py:196
+#: minecraft/admin_views.py:228
 #, python-format
 msgid "RCON test failed: %(error)s"
 msgstr ""
 
-#: minecraft/admin_views.py:213
+#: minecraft/admin_views.py:248
 #, python-format
 msgid "Script not found: %(path)s"
 msgstr ""
 
-#: minecraft/admin_views.py:236
+#: minecraft/admin_views.py:287
 #, python-format
 msgid "Action '%(action)s' started in background"
 msgstr ""
 
-#: minecraft/admin_views.py:237
+#: minecraft/admin_views.py:288
 #, python-format
 msgid "Background execution. Details in %(log)s"
 msgstr ""
 
-#: minecraft/admin_views.py:254
+#: minecraft/admin_views.py:305
 #, python-format
 msgid "Action '%(action)s' executed"
 msgstr ""
 
-#: minecraft/apps.py:8
+#: minecraft/apps.py:9
 #, fuzzy
 #| msgid "Minecraft-Name"
 msgid "Minecraft Management"
@@ -5549,26 +5927,138 @@ msgstr ""
 msgid "Save to History"
 msgstr ""
 
-#: templates/admin/base_site.html:16
+#: templates/admin/base_site.html:21
 msgid "Django administration"
 msgstr "Django administration"
 
-#: templates/admin/base_site.html:63
+#: templates/admin/base_site.html:68
 msgid "View site"
 msgstr "View site"
 
-#: templates/admin/base_site.html:68 templates/admin/base_site.html:92
-#: templates/admin/base_site.html:94
+#: templates/admin/base_site.html:73 templates/admin/base_site.html:97
+#: templates/admin/base_site.html:99
 msgid "Documentation"
 msgstr "Documentation"
 
-#: templates/admin/base_site.html:72
+#: templates/admin/base_site.html:77
 msgid "Change password"
 msgstr "Change password"
 
-#: templates/admin/base_site.html:96
+#: templates/admin/base_site.html:103
 msgid "Log out"
 msgstr "Log out"
+
+#: templates/admin/iot/firmware_import.html:19
+msgid ""
+"Importieren Sie Firmware-Images aus einem GitHub Release ZIP-Archiv. Sie "
+"können entweder eine lokale ZIP-Datei hochladen oder direkt von GitHub "
+"importieren."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:26
+msgid "Import-Quelle"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:32
+msgid "ZIP-Datei hochladen"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:39
+#, fuzzy
+#| msgid "GPX-Datei"
+msgid "ZIP-Datei:"
+msgstr "GPX-Datei"
+
+#: templates/admin/iot/firmware_import.html:41
+msgid ""
+"Wählen Sie eine ZIP-Datei aus, die Firmware-Images enthält (z.B. von einem "
+"GitHub Release heruntergeladen)."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:49
+msgid "Direkt von GitHub importieren"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:56
+msgid "GitHub Owner/Organisation:"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:58
+msgid "Der Benutzername oder die Organisation des GitHub-Repositories."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:62
+msgid "Repository-Name:"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:64
+msgid "Der Name des GitHub-Repositories."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:68
+msgid "Release Tag:"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:70
+msgid "Der Tag des Releases (z.B. v1.0.0). Das \"v\" ist optional."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:74
+#, fuzzy
+#| msgid "Cyclist (Optional)"
+msgid "GitHub Token (optional):"
+msgstr "Spieler (Optional)"
+
+#: templates/admin/iot/firmware_import.html:76
+msgid ""
+"Nur erforderlich für private Repositories. Erstellen Sie ein Personal Access "
+"Token mit \"repo\" Berechtigung."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:82
+#, fuzzy
+#| msgid "Information"
+msgid "Import-Optionen"
+msgstr "Informationen"
+
+#: templates/admin/iot/firmware_import.html:88
+msgid "Automatisch als stabil markieren"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:90
+msgid "Markiert die importierte Firmware als stabil."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:98
+msgid "Bei Duplikaten überschreiben"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:100
+msgid ""
+"Wenn eine Firmware mit derselben Version und Environment bereits existiert, "
+"wird die alte Version deaktiviert und durch die neue ersetzt."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:106
+msgid "Unterstützte Environments"
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:113
+msgid ""
+"Die ZIP-Datei sollte Firmware-Images für diese Environments enthalten. "
+"Dateinamen müssen dem Format \"mcc-esp32-&lt;environment&gt;-"
+"&lt;version&gt;.bin\" entsprechen."
+msgstr ""
+
+#: templates/admin/iot/firmware_import.html:118
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Import starten"
+msgstr "Spiel starten"
+
+#: templates/admin/iot/firmwareimage_change_list.html:8
+msgid "Import from ZIP/GitHub"
+msgstr ""
 
 #: templates/admin/mgmt/backup_control.html:24
 #: templates/admin/mgmt/backup_control.html:27
@@ -5622,6 +6112,8 @@ msgstr ""
 
 #: templates/admin/mgmt/backup_control.html:99
 #: templates/admin/mgmt/backup_control.html:104
+#: templates/admin/mgmt/maintenance_control.html:112
+#: templates/admin/mgmt/maintenance_control.html:118
 #: templates/admin/mgmt/server_control.html:161
 #: templates/admin/mgmt/server_control.html:164
 #: templates/admin/mgmt/server_control.html:198
@@ -5629,6 +6121,7 @@ msgid "Error"
 msgstr ""
 
 #: templates/admin/mgmt/backup_control.html:99
+#: templates/admin/mgmt/maintenance_control.html:112
 #: templates/admin/mgmt/server_control.html:154
 #, fuzzy
 #| msgid "Unknown"
@@ -5770,6 +6263,136 @@ msgstr ""
 msgid "Weiter"
 msgstr ""
 
+#: templates/admin/mgmt/maintenance_control.html:82
+msgid ""
+"Are you sure you want to activate maintenance mode? All visitors will see "
+"the maintenance page."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:84
+msgid "Are you sure you want to deactivate maintenance mode?"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:94
+#: templates/admin/mgmt/server_control.html:111
+#, fuzzy
+#| msgid "Loading..."
+msgid "Processing..."
+msgstr "Laden..."
+
+#: templates/admin/mgmt/maintenance_control.html:109
+#: templates/admin/mgmt/server_control.html:138
+#: templates/admin/mgmt/server_control.html:143
+msgid "Action completed successfully"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:137
+msgid "Maintenance Mode: ACTIVE"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:138
+msgid "The website is currently showing the maintenance page to all visitors."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:140
+msgid "Maintenance Mode: INACTIVE"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:141
+msgid "The website is running normally."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:148
+msgid "Deactivate Maintenance Mode"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:152
+msgid "Activate Maintenance Mode"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:156
+#: templates/admin/mgmt/server_control.html:221
+#, fuzzy
+#| msgid "Gruppen-Reisestatus"
+msgid "Refresh Status"
+msgstr "Gruppen-Reisestatus"
+
+#: templates/admin/mgmt/maintenance_control.html:161
+#, fuzzy
+#| msgid "Gruppenname"
+msgid "IP Whitelist Information"
+msgstr "Gruppenname"
+
+#: templates/admin/mgmt/maintenance_control.html:162
+#, fuzzy
+#| msgid "IP address"
+msgid "Your current IP address"
+msgstr "IP-Adresse"
+
+#: templates/admin/mgmt/maintenance_control.html:164
+msgid ""
+"Your IP is in the whitelist. You can access the website during maintenance."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:166
+msgid ""
+"Your IP is NOT in the whitelist. You will be redirected to the maintenance "
+"page if maintenance mode is active."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:168
+msgid ""
+"However, as a superuser, you can still access /admin/ during maintenance."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:173
+msgid "Whitelisted IPs/CIDR blocks"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:180
+msgid ""
+"No IPs are whitelisted. Only superusers with admin access enabled can access "
+"the site during maintenance."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:185
+msgid "Configure IP Whitelist"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:191
+#, fuzzy
+#| msgid "Gruppenname"
+msgid "General Information"
+msgstr "Gruppenname"
+
+#: templates/admin/mgmt/maintenance_control.html:193
+msgid "Flag file path"
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:194
+msgid ""
+"When activated, all requests (except whitelisted IPs) will be redirected to "
+"the maintenance page."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:195
+msgid "Static files (/static/) remain accessible during maintenance."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:196
+msgid "Only superusers can activate or deactivate maintenance mode."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:198
+msgid ""
+"Admin access is enabled. Superusers can access /admin/ during maintenance."
+msgstr ""
+
+#: templates/admin/mgmt/maintenance_control.html:200
+msgid ""
+"Admin access is disabled. Even superusers need to be in the IP whitelist."
+msgstr ""
+
 #: templates/admin/mgmt/performancemetric_change_list.html:16
 #, fuzzy
 #| msgid "Hourly Metrics"
@@ -5792,19 +6415,8 @@ msgid ""
 "interruption."
 msgstr ""
 
-#: templates/admin/mgmt/server_control.html:111
-#, fuzzy
-#| msgid "Loading..."
-msgid "Processing..."
-msgstr "Laden..."
-
 #: templates/admin/mgmt/server_control.html:116
 msgid "Executing action..."
-msgstr ""
-
-#: templates/admin/mgmt/server_control.html:138
-#: templates/admin/mgmt/server_control.html:143
-msgid "Action completed successfully"
 msgstr ""
 
 #: templates/admin/mgmt/server_control.html:151
@@ -5847,12 +6459,6 @@ msgstr ""
 #| msgid "Device Configuration"
 msgid "Reload Configuration"
 msgstr "Gerätekonfiguration"
-
-#: templates/admin/mgmt/server_control.html:221
-#, fuzzy
-#| msgid "Gruppen-Reisestatus"
-msgid "Refresh Status"
-msgstr "Gruppen-Reisestatus"
 
 #: templates/admin/mgmt/server_control.html:230
 #, fuzzy
@@ -5964,220 +6570,236 @@ msgstr "Lade Daten..."
 msgid "Aktion wird ausgeführt..."
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:123
+#: templates/admin/minecraft/minecraft_control.html:131
 msgid "Aktion abgeschlossen"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:143
+#: templates/admin/minecraft/minecraft_control.html:154
 #, fuzzy
 #| msgid "Minecraft-Name"
 msgid "Minecraft Steuerung"
 msgstr "Minecraft-Name"
 
-#: templates/admin/minecraft/minecraft_control.html:151
-msgid "Worker läuft"
-msgstr ""
-
-#: templates/admin/minecraft/minecraft_control.html:153
-#, fuzzy
-#| msgid "Spiel stoppen"
-msgid "Worker gestoppt"
-msgstr "Spiel stoppen"
-
 #: templates/admin/minecraft/minecraft_control.html:162
-msgid "Snapshot Worker läuft"
+msgid "Worker läuft"
 msgstr ""
 
 #: templates/admin/minecraft/minecraft_control.html:164
 #, fuzzy
 #| msgid "Spiel stoppen"
-msgid "Snapshot Worker gestoppt"
+msgid "Worker gestoppt"
 msgstr "Spiel stoppen"
 
-#: templates/admin/minecraft/minecraft_control.html:172
-msgid "Websocket aktiv"
-msgstr ""
-
 #: templates/admin/minecraft/minecraft_control.html:173
-msgid "Yes,No"
+msgid "Snapshot Worker läuft"
 msgstr ""
 
 #: templates/admin/minecraft/minecraft_control.html:175
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Snapshot Worker gestoppt"
+msgstr "Spiel stoppen"
+
+#: templates/admin/minecraft/minecraft_control.html:183
+msgid "Websocket aktiv"
+msgstr ""
+
+#: templates/admin/minecraft/minecraft_control.html:184
+msgid "Yes,No"
+msgstr ""
+
+#: templates/admin/minecraft/minecraft_control.html:186
 msgid "Ausstehende Events"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:178
+#: templates/admin/minecraft/minecraft_control.html:189
 #, fuzzy
 #| msgid "All Events"
 msgid "Fehlerhafte Events"
 msgstr "Alle Events"
 
-#: templates/admin/minecraft/minecraft_control.html:183
+#: templates/admin/minecraft/minecraft_control.html:194
 msgid "RCON Verbindung"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:185
+#: templates/admin/minecraft/minecraft_control.html:196
 msgid "Verbunden"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:187
+#: templates/admin/minecraft/minecraft_control.html:198
 msgid "Authentifizierung nicht geprüft (Thread-Modus)"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:190
+#: templates/admin/minecraft/minecraft_control.html:201
 #, fuzzy
 #| msgid "Ziel erreicht am"
 msgid "Nicht erreichbar"
 msgstr "Ziel erreicht am"
 
-#: templates/admin/minecraft/minecraft_control.html:198
+#: templates/admin/minecraft/minecraft_control.html:209
 msgid "Worker-PID"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:204
+#: templates/admin/minecraft/minecraft_control.html:215
 #, fuzzy
 #| msgid "Letzter Bericht"
 msgid "Letzter Fehler"
 msgstr "Letzter Bericht"
 
-#: templates/admin/minecraft/minecraft_control.html:209
+#: templates/admin/minecraft/minecraft_control.html:220
+#, fuzzy
+#| msgid "Gruppen"
+msgid "Script-Pfad"
+msgstr "Gruppen"
+
+#: templates/admin/minecraft/minecraft_control.html:223
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Script nicht gefunden!"
+msgstr "Gerät nicht gefunden"
+
+#: templates/admin/minecraft/minecraft_control.html:225
+msgid "Script nicht ausführbar!"
+msgstr ""
+
+#: templates/admin/minecraft/minecraft_control.html:232
 msgid ""
 "Hinweis: Die Scoreboards werden nur manuell befüllt (kein Auto-Sync beim "
 "Start)."
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:213
+#: templates/admin/minecraft/minecraft_control.html:236
 #, fuzzy
 #| msgid "Spiel starten"
 msgid "Worker starten"
 msgstr "Spiel starten"
 
-#: templates/admin/minecraft/minecraft_control.html:214
+#: templates/admin/minecraft/minecraft_control.html:237
 #, fuzzy
 #| msgid "Spiel stoppen"
 msgid "Worker stoppen"
 msgstr "Spiel stoppen"
 
-#: templates/admin/minecraft/minecraft_control.html:215
+#: templates/admin/minecraft/minecraft_control.html:238
 #, fuzzy
 #| msgid "Spiel starten"
 msgid "Snapshot Worker starten"
 msgstr "Spiel starten"
 
-#: templates/admin/minecraft/minecraft_control.html:216
+#: templates/admin/minecraft/minecraft_control.html:239
 #, fuzzy
 #| msgid "Spiel stoppen"
 msgid "Snapshot Worker stoppen"
 msgstr "Spiel stoppen"
 
-#: templates/admin/minecraft/minecraft_control.html:217
+#: templates/admin/minecraft/minecraft_control.html:240
 msgid "Scoreboards befüllen (manuell)"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:218
+#: templates/admin/minecraft/minecraft_control.html:241
 #, fuzzy
 #| msgid "id_tag erforderlich."
 msgid "Snapshot aktualisieren"
 msgstr "id_tag erforderlich."
 
-#: templates/admin/minecraft/minecraft_control.html:219
+#: templates/admin/minecraft/minecraft_control.html:242
 msgid "RCON Test"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:220
+#: templates/admin/minecraft/minecraft_control.html:243
 msgid "Postausgang bereinigen"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:222
+#: templates/admin/minecraft/minecraft_control.html:245
 msgid "Outbox ausblenden"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:224
+#: templates/admin/minecraft/minecraft_control.html:247
 #, fuzzy
 #| msgid "Auf Karte anzeigen"
 msgid "Outbox anzeigen"
 msgstr "Auf Karte anzeigen"
 
-#: templates/admin/minecraft/minecraft_control.html:231
+#: templates/admin/minecraft/minecraft_control.html:254
 msgid "Minecraft Player Überblick"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:235
-#: templates/admin/minecraft/minecraft_control.html:295
+#: templates/admin/minecraft/minecraft_control.html:258
+#: templates/admin/minecraft/minecraft_control.html:318
 msgid "Player"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:236
+#: templates/admin/minecraft/minecraft_control.html:259
 msgid "DB Coins Gesamt"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:237
+#: templates/admin/minecraft/minecraft_control.html:260
 msgid "DB Coins Ausgebbar"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:238
+#: templates/admin/minecraft/minecraft_control.html:261
 msgid "Scoreboard Gesamt"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:239
+#: templates/admin/minecraft/minecraft_control.html:262
 msgid "Scoreboard Ausgebbar"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:240
+#: templates/admin/minecraft/minecraft_control.html:263
 msgid "Snapshot Zeit"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:255
+#: templates/admin/minecraft/minecraft_control.html:278
 #, fuzzy
 #| msgid "Keine Daten gefunden."
 msgid "Keine Minecraft Player gefunden."
 msgstr "Keine Daten gefunden."
 
-#: templates/admin/minecraft/minecraft_control.html:262
+#: templates/admin/minecraft/minecraft_control.html:285
 msgid "Outbox Übersicht"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:264
+#: templates/admin/minecraft/minecraft_control.html:287
 #, fuzzy
 #| msgid "Letzter Bericht"
 msgid "Letzte Fehler"
 msgstr "Letzter Bericht"
 
-#: templates/admin/minecraft/minecraft_control.html:268
-#: templates/admin/minecraft/minecraft_control.html:292
+#: templates/admin/minecraft/minecraft_control.html:291
+#: templates/admin/minecraft/minecraft_control.html:315
 #, fuzzy
 #| msgid "Zeitpunkt"
 msgid "Zeit"
 msgstr "Zeitpunkt"
 
-#: templates/admin/minecraft/minecraft_control.html:269
-#: templates/admin/minecraft/minecraft_control.html:294
+#: templates/admin/minecraft/minecraft_control.html:292
+#: templates/admin/minecraft/minecraft_control.html:317
 #, fuzzy
 #| msgid "Type"
 msgid "Typ"
 msgstr "Typ"
 
-#: templates/admin/minecraft/minecraft_control.html:282
+#: templates/admin/minecraft/minecraft_control.html:305
 #, fuzzy
 #| msgid "Keine aktiven Gruppen gefunden."
 msgid "Keine Fehler vorhanden."
 msgstr "Keine aktiven Gruppen gefunden."
 
-#: templates/admin/minecraft/minecraft_control.html:288
+#: templates/admin/minecraft/minecraft_control.html:311
 msgid "Ausstehende Events (max. 50)"
 msgstr ""
 
-#: templates/admin/minecraft/minecraft_control.html:308
+#: templates/admin/minecraft/minecraft_control.html:331
 #, fuzzy
 #| msgid "Keine Daten gefunden."
 msgid "Keine ausstehenden Events."
 msgstr "Keine Daten gefunden."
 
-#: templates/base.html:29
+#: templates/base.html:31
 msgid "Language"
 msgstr "Sprache"
 
-#: templates/base.html:58 templates/privacy_policy.html:12
+#: templates/base.html:60 templates/privacy_policy.html:12
 #: templates/privacy_policy.html:16
 msgid "Privacy Policy"
 msgstr "Datenschutzerklärung"
@@ -6622,6 +7244,31 @@ msgstr ""
 "Wenn Sie Fragen zu dieser Datenschutzerklärung haben oder Ihre Rechte "
 "ausüben möchten, kontaktieren Sie uns bitte:"
 
+#, python-brace-format
+#~ msgid "{count} day(s)"
+#~ msgstr "{count} Tag(e)"
+
+#, python-brace-format
+#~ msgid "{count} hour(s)"
+#~ msgstr "{count} Stunde(n)"
+
+#, python-brace-format
+#~ msgid "{count} minute(s)"
+#~ msgstr "{count} Minute(n)"
+
+#~ msgid "Device Management Settings"
+#~ msgstr "Geräteverwaltungs-Einstellungen"
+
+#, fuzzy
+#~| msgid "View site"
+#~ msgid "View Type"
+#~ msgstr "View site"
+
+#, fuzzy
+#~| msgid "Apply Filters"
+#~ msgid "Track Filter"
+#~ msgstr "Filter anwenden"
+
 #, fuzzy
 #~| msgid "Information"
 #~ msgid "Basic Information"
@@ -6947,11 +7594,6 @@ msgstr ""
 #~ msgstr "Daten exportieren"
 
 #, fuzzy
-#~| msgid "Information"
-#~ msgid "Informationen"
-#~ msgstr "Informationen"
-
-#, fuzzy
 #~| msgid "All Groups"
 #~ msgid "All Logs"
 #~ msgstr "Alle Gruppen"
@@ -6998,9 +7640,6 @@ msgstr ""
 #~ "Willkommen zur Kilometer-Challenge! Wähle die Spieler und ihre "
 #~ "zugewiesenen Geräte aus, um zu sehen, wie viele Kilometer und MCC-Coins "
 #~ "du sammeln kannst."
-
-#~ msgid "Ziel-Einstellungen"
-#~ msgstr "Ziel-Einstellungen"
 
 #~ msgid "Session beenden / Zurücksetzen"
 #~ msgstr "Session beenden / Zurücksetzen"

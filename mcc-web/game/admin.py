@@ -52,6 +52,12 @@ class GameRoomAdmin(admin.ModelAdmin):
     
     ordering = ['-created_at']
     
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
+    
     readonly_fields = (
         'room_code',
         'created_at',
@@ -541,6 +547,12 @@ class GameSessionModelAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     
     ordering = ['-last_updated']
+    
+    def has_module_permission(self, request):
+        """Verstecke diese Admin-Klasse für Operatoren."""
+        if request.user.is_superuser:
+            return True
+        return False
     
     def session_key_short(self, obj):
         """Display shortened session key."""

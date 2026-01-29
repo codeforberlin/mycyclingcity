@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-29 14:08+0000\n"
+"POT-Creation-Date: 2026-01-29 23:23+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -103,9 +103,9 @@ msgstr ""
 "Transparency of the milestone popup (0.01 = almost transparent, 1.00 = fully "
 "opaque)"
 
-#: api/models.py:89 api/models.py:725 api/models.py:879 iot/models.py:235
+#: api/models.py:89 api/models.py:747 api/models.py:901 iot/models.py:235
 #: iot/models.py:521 iot/models.py:657 iot/models.py:739 iot/models.py:869
-#: kiosk/models.py:45 kiosk/models.py:139
+#: kiosk/models.py:56 kiosk/models.py:150
 msgid "Aktualisiert am"
 msgstr "Updated at"
 
@@ -125,16 +125,16 @@ msgstr ""
 msgid "Typ-Name"
 msgstr "Type name"
 
-#: api/models.py:111 api/models.py:509 api/models.py:872 iot/models.py:467
-#: iot/models.py:722 map/templates/map/dashboard.html:1725
-#: map/templates/map/map_mobile.html:1412
+#: api/models.py:111 api/models.py:520 api/models.py:894 iot/models.py:467
+#: iot/models.py:722 map/templates/map/dashboard.html:1727
+#: map/templates/map/map_mobile.html:1414
 #: templates/admin/mgmt/log_file_list.html:19
 msgid "Beschreibung"
 msgstr "Description"
 
-#: api/models.py:112 api/models.py:417 api/models.py:873 game/models.py:36
+#: api/models.py:112 api/models.py:417 api/models.py:895 game/models.py:36
 #: game/models.py:112 iot/models.py:510 iot/models.py:734 iot/models.py:864
-#: kiosk/models.py:35 kiosk/models.py:135 mgmt/models_performance.py:232
+#: kiosk/models.py:35 kiosk/models.py:146 mgmt/models_performance.py:232
 msgid "Aktiv"
 msgstr "Active"
 
@@ -166,7 +166,7 @@ msgstr "Total coins"
 msgid "Logo für Karte"
 msgstr "Logo for map"
 
-#: api/models.py:157 mgmt/admin.py:1008
+#: api/models.py:157 mgmt/admin.py:1473
 msgid "Übergeordnete Gruppe"
 msgstr "Parent group"
 
@@ -188,7 +188,7 @@ msgstr "Group"
 msgid "Groups"
 msgstr "Groups"
 
-#: api/models.py:189 api/models.py:383 api/models.py:874 iot/models.py:37
+#: api/models.py:189 api/models.py:383 api/models.py:896 iot/models.py:37
 #: templates/admin/api/bulk_create_school.html:214
 #: templates/admin/api/bulk_create_school.html:262
 msgid "In Map/Game anzeigen"
@@ -239,19 +239,17 @@ msgstr "Distributable coins"
 msgid "Coin-Faktor"
 msgstr "Coin factor"
 
-#: api/models.py:361 map/templates/map/dashboard.html:1604
-#: map/templates/map/map_mobile.html:1322 map/templates/map/mcc_map.html:177
+#: api/models.py:361 map/templates/map/dashboard.html:1606
+#: map/templates/map/map_mobile.html:1324 map/templates/map/mcc_map.html:179
 #: map/templates/map/table_data.html:77 map/templates/map/table_data.html:83
-#: mgmt/admin.py:1114 ranking/templates/ranking/table_data.html:82
+#: mgmt/admin.py:1626 ranking/templates/ranking/table_data.html:82
 #: ranking/templates/ranking/table_data.html:88
 msgid "Gruppen"
 msgstr "Groups"
 
-#: api/models.py:362 iot/models.py:23
-#: leaderboard/templates/leaderboard/leaderboard_page.html:614
-#: map/templates/map/dashboard.html:2282
-#: map/templates/map/kiosk_leaderboard.html:645
-#: map/templates/map/map_mobile.html:1665
+#: api/models.py:362 iot/models.py:23 map/templates/map/dashboard.html:2284
+#: map/templates/map/kiosk_leaderboard.html:647
+#: map/templates/map/map_mobile.html:1667
 msgid "Zuletzt aktiv"
 msgstr "Last active"
 
@@ -274,19 +272,18 @@ msgstr "Kilometer collection enabled"
 msgid "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
 msgstr "If disabled, no kilometers will be collected for this cyclist"
 
-#: api/models.py:390 api/models.py:402 game/admin.py:206
-#: game/session_admin.py:516 game/templates/game/mcc_game.html:656
+#: api/models.py:390 api/models.py:402 game/admin.py:212
+#: game/session_admin.py:516 game/templates/game/mcc_game.html:658
 #: iot/models.py:363 iot/models.py:395 iot/models.py:607 iot/models.py:770
-#: leaderboard/templates/leaderboard/leaderboard_page.html:612
-#: map/templates/map/dashboard.html:2280
-#: map/templates/map/kiosk_leaderboard.html:643
-#: map/templates/map/map_mobile.html:1663 map/templates/map/mcc_map.html:332
+#: map/templates/map/dashboard.html:2282
+#: map/templates/map/kiosk_leaderboard.html:645
+#: map/templates/map/map_mobile.html:1665 map/templates/map/mcc_map.html:334
 msgid "Gerät"
 msgstr "Device"
 
 #: api/models.py:391 api/models.py:401
 #: game/templates/admin/game/session_dashboard.html:199
-#: game/templates/game/mcc_game.html:655
+#: game/templates/game/mcc_game.html:657
 #: templates/admin/api/bulk_create_school_preview.html:19
 #: templates/admin/api/bulk_create_school_preview.html:36
 msgid "Radler"
@@ -300,13 +297,13 @@ msgstr "Timestamp"
 msgid "Intervall-Distanz (km)"
 msgstr "Interval distance (km)"
 
-#: api/models.py:394 api/models.py:542 api/models.py:612 api/models.py:762
-#: api/models.py:945 api/models.py:988 map/templates/map/dashboard.html:1715
-#: map/templates/map/map_mobile.html:1322
-#: map/templates/map/map_mobile.html:1402 map/templates/map/mcc_map.html:346
+#: api/models.py:394 api/models.py:564 api/models.py:634 api/models.py:784
+#: api/models.py:967 api/models.py:1010 map/templates/map/dashboard.html:1717
+#: map/templates/map/map_mobile.html:1324
+#: map/templates/map/map_mobile.html:1404 map/templates/map/mcc_map.html:348
 #: map/templates/map/table_data.html:77 map/templates/map/table_data.html:83
-#: mgmt/admin.py:1052 mgmt/admin.py:1320 mgmt/admin.py:1957
-#: ranking/templates/ranking/table_data.html:82
+#: mgmt/admin.py:1517 mgmt/admin.py:1922 mgmt/admin.py:2372 mgmt/admin.py:2678
+#: mgmt/admin.py:2854 ranking/templates/ranking/table_data.html:82
 #: ranking/templates/ranking/table_data.html:88
 msgid "Gruppe"
 msgstr "Group"
@@ -347,7 +344,7 @@ msgstr "GPX file"
 msgid "GeoJSON Daten"
 msgstr "GeoJSON data"
 
-#: api/models.py:416 mgmt/admin.py:1291
+#: api/models.py:416 mgmt/admin.py:1893
 msgid "Gesamtlänge (km)"
 msgstr "Total length (km)"
 
@@ -367,7 +364,7 @@ msgstr ""
 "If enabled, the trip starts automatically when the first kilometers arrive. "
 "If disabled, a start time must be defined."
 
-#: api/models.py:428 api/models.py:764 api/models.py:875 api/models.py:990
+#: api/models.py:428 api/models.py:786 api/models.py:897 api/models.py:1012
 msgid "Startzeitpunkt"
 msgstr "Start time"
 
@@ -379,7 +376,7 @@ msgstr ""
 "Optional: Defines the start time of the trip. Ignored if 'Automatic Start' "
 "is enabled."
 
-#: api/models.py:434 api/models.py:765 api/models.py:876 api/models.py:991
+#: api/models.py:434 api/models.py:787 api/models.py:898 api/models.py:1013
 msgid "Endzeitpunkt"
 msgstr "End time"
 
@@ -391,76 +388,96 @@ msgstr ""
 "Optional: Defines the end time of the trip. If not set, the trip runs "
 "indefinitely."
 
-#: api/models.py:439
+#: api/models.py:443 api/models.py:534 kiosk/models.py:50
+#, fuzzy
+#| msgid "Zugewiesene Firmware"
+msgid "Zugewiesene TOP-Gruppe"
+msgstr "Assigned TOP-Group"
+
+#: api/models.py:444
+msgid ""
+"TOP-Gruppe, der diese Reiseroute zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können die Route verwalten. Kann vom System-Admin gesetzt werden, "
+"bevor GroupTravelStatus Einträge erstellt werden."
+msgstr ""
+
+#: api/models.py:450
 msgid "Travels - Route"
 msgstr "Travels - Route"
 
-#: api/models.py:440
+#: api/models.py:451
 msgid "Travels - Routes"
 msgstr "Travels - Routes"
 
-#: api/models.py:507 api/models.py:554
+#: api/models.py:518 api/models.py:576
 msgid "Route"
 msgstr "Route"
 
-#: api/models.py:508
+#: api/models.py:519
 msgid "Bezeichnung"
 msgstr "Designation"
 
-#: api/models.py:510
+#: api/models.py:521
 msgid "Info-Link"
 msgstr "Info link"
 
-#: api/models.py:511 api/models.py:572 map/templates/map/dashboard.html:1719
-#: map/templates/map/dashboard.html:3321 map/templates/map/map_mobile.html:1406
-#: map/templates/map/map_mobile.html:2459 mgmt/admin.py:1946
+#: api/models.py:522 api/models.py:594 map/templates/map/dashboard.html:1721
+#: map/templates/map/dashboard.html:3323 map/templates/map/map_mobile.html:1408
+#: map/templates/map/map_mobile.html:2461 mgmt/admin.py:2740
 msgid "Belohnung"
 msgstr "Reward"
 
-#: api/models.py:512 mgmt/admin.py:1626
+#: api/models.py:523 mgmt/admin.py:2331
 msgid "KM-Marke"
 msgstr "KM marker"
 
-#: api/models.py:513 iot/models.py:21
+#: api/models.py:524 iot/models.py:21
 msgid "Breitengrad"
 msgstr "Latitude"
 
-#: api/models.py:514 iot/models.py:22
+#: api/models.py:525 iot/models.py:22
 msgid "Längengrad"
 msgstr "Longitude"
 
-#: api/models.py:515
+#: api/models.py:526 mgmt/admin.py:2224
 msgid "Gewinner"
 msgstr "Winner"
 
-#: api/models.py:516 api/models.py:557 map/templates/map/dashboard.html:2347
-#: map/templates/map/dashboard.html:3331 map/templates/map/map_mobile.html:1733
-#: map/templates/map/map_mobile.html:2473
+#: api/models.py:527 api/models.py:579 map/templates/map/dashboard.html:2349
+#: map/templates/map/dashboard.html:3333 map/templates/map/map_mobile.html:1735
+#: map/templates/map/map_mobile.html:2475
 msgid "Erreicht am"
 msgstr "Reached on"
 
-#: api/models.py:520
+#: api/models.py:535
+msgid ""
+"TOP-Gruppe, der dieser Meilenstein zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können den Meilenstein verwalten. Kann vom System-Admin gesetzt "
+"werden. Falls nicht gesetzt, wird die Zugehörigkeit über die Route bestimmt."
+msgstr ""
+
+#: api/models.py:542
 msgid "Travels - Milestone"
 msgstr "Travels - Milestone"
 
-#: api/models.py:521
+#: api/models.py:543
 msgid "Travels - Milestones"
 msgstr "Travels - Milestones"
 
-#: api/models.py:548 map/templates/map/dashboard.html:1701
-#: map/templates/map/dashboard.html:2328 map/templates/map/dashboard.html:3313
-#: map/templates/map/dashboard.html:3506 map/templates/map/map_mobile.html:1388
-#: map/templates/map/map_mobile.html:1714
-#: map/templates/map/map_mobile.html:2452
-#: map/templates/map/map_mobile.html:2616 mgmt/admin.py:1973 mgmt/admin.py:1981
+#: api/models.py:570 map/templates/map/dashboard.html:1703
+#: map/templates/map/dashboard.html:2330 map/templates/map/dashboard.html:3315
+#: map/templates/map/dashboard.html:3508 map/templates/map/map_mobile.html:1390
+#: map/templates/map/map_mobile.html:1716
+#: map/templates/map/map_mobile.html:2454
+#: map/templates/map/map_mobile.html:2618 mgmt/admin.py:2870 mgmt/admin.py:2878
 msgid "Meilenstein"
 msgstr "Milestone"
 
-#: api/models.py:565 mgmt/admin.py:228 mgmt/admin.py:2013
+#: api/models.py:587 mgmt/admin.py:310 mgmt/admin.py:2910
 msgid "Erreichte Distanz (km)"
 msgstr "Achieved distance (km)"
 
-#: api/models.py:573
+#: api/models.py:595
 msgid ""
 "Die Belohnung, die zum Zeitpunkt des Erreichens des Meilensteins definiert "
 "war. Diese bleibt unverändert, auch wenn die Meilenstein-Belohnung später "
@@ -469,11 +486,11 @@ msgstr ""
 "The reward that was defined at the time the milestone was reached. This "
 "remains unchanged, even if the milestone reward is changed later."
 
-#: api/models.py:579 mgmt/admin.py:2032
+#: api/models.py:601 mgmt/admin.py:2929
 msgid "Eingelöst"
 msgstr "Redeemed"
 
-#: api/models.py:580
+#: api/models.py:602
 msgid ""
 "Gibt an, ob die Belohnung bereits eingelöst wurde. Eine Belohnung kann nur "
 "einmal eingelöst werden."
@@ -481,190 +498,190 @@ msgstr ""
 "Indicates whether the reward has already been redeemed. A reward can only be "
 "redeemed once."
 
-#: api/models.py:585
+#: api/models.py:607
 msgid "Eingelöst am"
 msgstr "Redeemed on"
 
-#: api/models.py:586
+#: api/models.py:608
 msgid "Zeitpunkt, zu dem die Belohnung eingelöst wurde."
 msgstr "Time at which the reward was redeemed."
 
-#: api/models.py:591 api/models.py:592
+#: api/models.py:613 api/models.py:614
 msgid "Reisen - erreichte Meilensteine"
 msgstr "Travels - Achieved Milestones"
 
-#: api/models.py:619 api/models.py:714
+#: api/models.py:641 api/models.py:736
 msgid "Reisen-Track"
 msgstr "Travels track"
 
-#: api/models.py:625
+#: api/models.py:647
 msgid "Aktuelle Reisen-Distanz (km)"
 msgstr "Current travels distance (km)"
 
-#: api/models.py:631 api/models.py:963
+#: api/models.py:653 api/models.py:985
 msgid "Start-Offset (km)"
 msgstr "Start offset (km)"
 
-#: api/models.py:636
+#: api/models.py:658
 msgid "Ziel erreicht am"
 msgstr "Goal reached on"
 
-#: api/models.py:637
+#: api/models.py:659
 msgid ""
 "Zeitpunkt, zu dem die Gruppe das Ziel erreicht hat. Wird für die Sortierung "
 "am Ziel verwendet."
 msgstr ""
 
-#: api/models.py:641 api/models.py:642
+#: api/models.py:663 api/models.py:664
 msgid "Travels - Status"
 msgstr "Travels - Status"
 
-#: api/models.py:707 mgmt/admin.py:1692
+#: api/models.py:729 mgmt/admin.py:206 mgmt/admin.py:2457
 msgid "Leaf-Gruppe"
 msgstr "Leaf group"
 
-#: api/models.py:708
+#: api/models.py:730
 msgid "Die Leaf-Gruppe (z.B. Klasse), die Kilometer beiträgt"
 msgstr ""
 
-#: api/models.py:720 mgmt/admin.py:64 mgmt/admin.py:1743
+#: api/models.py:742 mgmt/admin.py:110 mgmt/admin.py:2508
 msgid "Aktuelle Reise-Distanz (km)"
 msgstr "Current travel distance (km)"
 
-#: api/models.py:721
+#: api/models.py:743
 msgid ""
 "Die von dieser Leaf-Gruppe während der aktuellen Reise zurückgelegte Distanz"
 msgstr ""
 
-#: api/models.py:729
+#: api/models.py:751
 msgid "Leaf-Gruppe Reise-Beitrag"
 msgstr ""
 
-#: api/models.py:730
+#: api/models.py:752
 msgid "Leaf-Gruppe Reise-Beiträge"
 msgstr ""
 
-#: api/models.py:745
+#: api/models.py:767
 msgid "Zuordnung"
 msgstr "Assignment"
 
-#: api/models.py:746
+#: api/models.py:768
 msgid "Abgebrochen"
 msgstr ""
 
-#: api/models.py:747 game/models.py:112 map/templates/map/map_mobile.html:1320
-#: map/templates/map/map_mobile.html:1333 map/templates/map/table_data.html:76
+#: api/models.py:769 game/models.py:112 map/templates/map/map_mobile.html:1322
+#: map/templates/map/map_mobile.html:1335 map/templates/map/table_data.html:76
 #: map/templates/map/table_data.html:95
 #: ranking/templates/ranking/table_data.html:81
 #: ranking/templates/ranking/table_data.html:100
 msgid "Beendet"
 msgstr ""
 
-#: api/models.py:748
+#: api/models.py:770
 msgid "Neu gestartet"
 msgstr "Restarted"
 
-#: api/models.py:749
+#: api/models.py:771
 msgid "Entfernt"
 msgstr "Removed"
 
-#: api/models.py:756
+#: api/models.py:778
 msgid "Reisen - Route"
 msgstr "Travels - Route"
 
-#: api/models.py:766 api/models.py:992 mgmt/admin.py:1909 mgmt/admin.py:2171
+#: api/models.py:788 api/models.py:1014 mgmt/admin.py:2703 mgmt/admin.py:3121
 msgid "Gesammelte Kilometer"
 msgstr "Collected kilometers"
 
-#: api/models.py:771
+#: api/models.py:793
 msgid "Aktionstyp"
 msgstr "Action type"
 
-#: api/models.py:772
+#: api/models.py:794
 msgid "Art der Aktion, die zu diesem Historieeintrag geführt hat"
 msgstr ""
 
-#: api/models.py:774 api/models.py:878 api/models.py:993 game/models.py:102
+#: api/models.py:796 api/models.py:900 api/models.py:1015 game/models.py:102
 #: game/models.py:180 iot/models.py:234 iot/models.py:377 iot/models.py:437
 #: iot/models.py:520 iot/models.py:738 iot/models.py:812 iot/models.py:868
-#: kiosk/models.py:44 kiosk/models.py:138
+#: kiosk/models.py:55 kiosk/models.py:149
 msgid "Erstellt am"
 msgstr "Created at"
 
-#: api/models.py:777
+#: api/models.py:799
 msgid "Travels - History"
 msgstr "Travels - History"
 
-#: api/models.py:778
+#: api/models.py:800
 msgid "Travels - Histories"
 msgstr "Travels - Histories"
 
-#: api/models.py:863
+#: api/models.py:885
 msgid "Schulfest"
 msgstr ""
 
-#: api/models.py:864
+#: api/models.py:886
 msgid "Feier"
 msgstr ""
 
-#: api/models.py:865
+#: api/models.py:887
 msgid "Spendensammeln"
 msgstr ""
 
-#: api/models.py:866
+#: api/models.py:888
 msgid "Wettbewerb"
 msgstr "Competition"
 
-#: api/models.py:867
+#: api/models.py:889
 msgid "Sonstiges"
 msgstr ""
 
-#: api/models.py:870
+#: api/models.py:892
 msgid "Event-Name"
 msgstr "Event name"
 
-#: api/models.py:871
+#: api/models.py:893
 msgid "Event-Typ"
 msgstr "Event type"
 
-#: api/models.py:877
+#: api/models.py:899
 msgid "Ab diesem Datum nicht mehr anzeigen"
 msgstr ""
 
-#: api/models.py:877
+#: api/models.py:899
 msgid ""
 "Events werden nach diesem Datum nicht mehr in der Karte angezeigt, auch wenn "
 "sie noch aktiv sind"
 msgstr ""
 
-#: api/models.py:882 api/models.py:951 api/models.py:982
+#: api/models.py:904 api/models.py:973 api/models.py:1004
 #: api/templates/admin/api/hierarchy_breakdown.html:140
 msgid "Event"
 msgstr ""
 
-#: api/models.py:883 iot/models.py:850 map/templates/map/map_mobile.html:1312
+#: api/models.py:905 iot/models.py:850 map/templates/map/map_mobile.html:1314
 #: map/templates/map/table_data.html:71
 #: ranking/templates/ranking/table_data.html:76
 msgid "Events"
 msgstr ""
 
-#: api/models.py:957 mgmt/admin.py:1254
+#: api/models.py:979 mgmt/admin.py:1784
 msgid "Aktuelle Distanz (km)"
 msgstr "Current distance (km)"
 
-#: api/models.py:965
+#: api/models.py:987
 msgid "Beigetreten am"
 msgstr ""
 
-#: api/models.py:968 api/models.py:969
+#: api/models.py:990 api/models.py:991
 msgid "Gruppen-Event-Status"
 msgstr "Group event status"
 
-#: api/models.py:996
+#: api/models.py:1018
 msgid "Events - History"
 msgstr "Events - History"
 
-#: api/models.py:997
+#: api/models.py:1019
 msgid "Events - Histories"
 msgstr "Events - Histories"
 
@@ -698,7 +715,7 @@ msgstr "Start Date"
 msgid "End Date"
 msgstr ""
 
-#: api/templates/admin/api/analytics_dashboard.html:216 kiosk/models.py:112
+#: api/templates/admin/api/analytics_dashboard.html:216
 msgid "Group Filter"
 msgstr ""
 
@@ -714,7 +731,7 @@ msgstr ""
 msgid "All Cyclists"
 msgstr ""
 
-#: api/templates/admin/api/analytics_dashboard.html:244 kiosk/models.py:103
+#: api/templates/admin/api/analytics_dashboard.html:244
 msgid "Event Filter"
 msgstr "Event Filter"
 
@@ -739,8 +756,8 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
-#: api/templates/admin/api/analytics_dashboard.html:273 mgmt/admin.py:3969
-#: mgmt/analytics.py:1286
+#: api/templates/admin/api/analytics_dashboard.html:273 mgmt/admin.py:5125
+#: mgmt/analytics.py:1302
 msgid "Hierarchy Breakdown"
 msgstr ""
 
@@ -836,7 +853,7 @@ msgid "Top Devices by Mileage"
 msgstr ""
 
 #: api/templates/admin/api/analytics_dashboard.html:387 iot/models.py:31
-#: iot/models.py:47 kiosk/models.py:48
+#: iot/models.py:47 kiosk/models.py:59
 msgid "Device"
 msgstr "Device"
 
@@ -865,8 +882,7 @@ msgid "Hourly Distance (km)"
 msgstr "Hourly Distance (km)"
 
 #: api/templates/admin/api/analytics_dashboard.html:823
-#: api/templates/admin/api/analytics_dashboard.html:844 mgmt/analytics.py:451
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:866
+#: api/templates/admin/api/analytics_dashboard.html:844 mgmt/analytics.py:459
 msgid "Unknown"
 msgstr ""
 
@@ -891,7 +907,7 @@ msgstr ""
 
 #: api/templates/admin/api/groupmilestoneachievement_redeem_confirmation.html:17
 #: api/templates/admin/api/groupmilestoneachievement_redeem_confirmation.html:22
-#: mgmt/admin.py:2085
+#: mgmt/admin.py:2989
 msgid "Belohnung einlösen"
 msgstr "Redeem reward"
 
@@ -939,7 +955,7 @@ msgstr ""
 
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:17
 #: api/templates/admin/api/grouptravelstatus_abort_confirmation.html:22
-#: mgmt/admin.py:77 mgmt/admin.py:1757 mgmt/admin.py:1830
+#: mgmt/admin.py:123 mgmt/admin.py:2522 mgmt/admin.py:2602
 msgid "Reise abbrechen"
 msgstr ""
 
@@ -970,7 +986,7 @@ msgstr ""
 msgid "Ja, Reise abbrechen"
 msgstr ""
 
-#: api/templates/admin/api/hierarchy_breakdown.html:123 mgmt/admin.py:3961
+#: api/templates/admin/api/hierarchy_breakdown.html:123 mgmt/admin.py:5117
 msgid "Analytics Dashboard"
 msgstr ""
 
@@ -1276,198 +1292,198 @@ msgstr "English"
 msgid "Deutsch"
 msgstr "German"
 
-#: game/admin.py:73 game/session_admin.py:308 mgmt/admin.py:1608
-#: mgmt/admin_performance.py:319
+#: game/admin.py:79 game/session_admin.py:308 mgmt/admin.py:2229
+#: mgmt/admin_performance.py:331
 msgid "Grundinformationen"
 msgstr "Basic Information"
 
-#: game/admin.py:76 game/admin.py:198 game/admin.py:324 game/admin.py:326
-#: game/admin.py:328 game/session_admin.py:557 game/session_admin.py:559
+#: game/admin.py:82 game/admin.py:204 game/admin.py:330 game/admin.py:332
+#: game/admin.py:334 game/session_admin.py:557 game/session_admin.py:559
 msgid "Spielstatus"
 msgstr "Game Status"
 
-#: game/admin.py:79
+#: game/admin.py:85
 msgid "Teilnehmer & Sitzungen"
 msgstr "Participants & Sessions"
 
-#: game/admin.py:82 game/admin.py:214 game/models.py:43
+#: game/admin.py:88 game/admin.py:220 game/models.py:43
 #: game/session_admin.py:528
 msgid "Gerätezuweisungen"
 msgstr "Device Assignments"
 
-#: game/admin.py:85
+#: game/admin.py:91
 msgid "Entfernungen"
 msgstr "Distances"
 
-#: game/admin.py:88 game/admin.py:334 game/session_admin.py:314
-#: game/session_admin.py:568 mgmt/admin.py:980
+#: game/admin.py:94 game/admin.py:340 game/session_admin.py:314
+#: game/session_admin.py:568 mgmt/admin.py:1390
 msgid "Statistiken"
 msgstr "Statistics"
 
-#: game/admin.py:106
+#: game/admin.py:112
 msgid "🟢 Aktiv"
 msgstr "Active"
 
-#: game/admin.py:109
+#: game/admin.py:115
 msgid "⚫ Beendet"
 msgstr "End"
 
-#: game/admin.py:114 iot/models.py:621 mgmt/admin.py:1615
-#: mgmt/admin_performance.py:57 mgmt/admin_performance.py:328
+#: game/admin.py:120 iot/models.py:621 mgmt/admin.py:2236
+#: mgmt/admin_performance.py:63 mgmt/admin_performance.py:340
 #: templates/admin/mgmt/log_file_list.html:21
 #: templates/admin/minecraft/minecraft_control.html:316
 msgid "Status"
 msgstr "Status"
 
-#: game/admin.py:121 game/admin.py:296 game/admin.py:306
+#: game/admin.py:127 game/admin.py:302 game/admin.py:312
 #: game/session_admin.py:429 game/session_dashboard.py:94
 #, fuzzy, python-brace-format
 #| msgid "{count} Tag(e)"
 msgid "{count} Tag(e)"
 msgstr "Day(s)"
 
-#: game/admin.py:124 game/admin.py:309 game/session_admin.py:432
+#: game/admin.py:130 game/admin.py:315 game/session_admin.py:432
 #: game/session_dashboard.py:97
 #, fuzzy, python-brace-format
 #| msgid "{count} Stunde(n)"
 msgid "{count} Stunde(n)"
 msgstr "Hour(s)"
 
-#: game/admin.py:127 game/admin.py:312 game/session_admin.py:435
+#: game/admin.py:133 game/admin.py:318 game/session_admin.py:435
 #: game/session_dashboard.py:100
 #, fuzzy, python-brace-format
 #| msgid "{count} Minute(n)"
 msgid "{count} Minute(n)"
 msgstr "Minute(s)"
 
-#: game/admin.py:129 game/session_admin.py:437
+#: game/admin.py:135 game/session_admin.py:437
 msgid "< 1 Minute"
 msgstr "< 1 minute"
 
-#: game/admin.py:130 game/admin.py:296 game/admin.py:300
+#: game/admin.py:136 game/admin.py:302 game/admin.py:306
 #: game/session_admin.py:438 game/templates/admin/game/dashboard.html:194
 #: game/templates/admin/game/session_dashboard.html:202
 msgid "Alter"
 msgstr "Age"
 
-#: game/admin.py:137 game/admin.py:316
+#: game/admin.py:143 game/admin.py:322
 #: game/templates/admin/game/dashboard.html:196
 msgid "Teilnehmer"
 msgstr "Participants"
 
-#: game/admin.py:160
+#: game/admin.py:166
 msgid "Teilnehmer (Radfahrer)"
 msgstr "Participants (Cyclists)"
 
-#: game/admin.py:165
+#: game/admin.py:171
 msgid "Raum beendet"
 msgstr "Room ended"
 
-#: game/admin.py:172 game/admin.py:174 game/session_admin.py:462
+#: game/admin.py:178 game/admin.py:180 game/session_admin.py:462
 #: game/templates/admin/game/session_dashboard.html:247
 msgid "Raum betreten"
 msgstr "Enter Room"
 
-#: game/admin.py:180 game/admin.py:320 game/session_admin.py:412
+#: game/admin.py:186 game/admin.py:326 game/session_admin.py:412
 #: game/session_admin.py:547 game/templates/admin/game/dashboard.html:197
 #: game/templates/admin/game/session_dashboard.html:201
 msgid "Zuweisungen"
 msgstr "Assignments"
 
-#: game/admin.py:187 game/session_admin.py:552
+#: game/admin.py:193 game/session_admin.py:552
 #: game/templates/admin/game/dashboard.html:198
 msgid "Ziel (km)"
 msgstr "Target (km)"
 
-#: game/admin.py:193 game/admin.py:324 game/dashboard.py:105
+#: game/admin.py:199 game/admin.py:330 game/dashboard.py:105
 #: game/session_admin.py:557
 msgid "Gestoppt"
 msgstr "Stopped"
 
-#: game/admin.py:195 game/admin.py:326 game/dashboard.py:108
+#: game/admin.py:201 game/admin.py:332 game/dashboard.py:108
 #: game/session_admin.py:559
 msgid "Läuft"
 msgstr "Running"
 
-#: game/admin.py:197 game/admin.py:328 game/dashboard.py:111
+#: game/admin.py:203 game/admin.py:334 game/dashboard.py:111
 msgid "Nicht gestartet"
 msgstr "Not Started"
 
-#: game/admin.py:206 game/admin.py:222 game/admin.py:238 game/admin.py:266
+#: game/admin.py:212 game/admin.py:228 game/admin.py:244 game/admin.py:272
 #: game/session_admin.py:388 game/session_admin.py:516
 msgid "Radfahrer"
 msgstr ""
 
-#: game/admin.py:222
+#: game/admin.py:228
 msgid "Startentfernung (km)"
 msgstr "Start offset (km)"
 
-#: game/admin.py:230 game/models.py:50
+#: game/admin.py:236 game/models.py:50
 msgid "Startentfernungen"
 msgstr "Start Distances"
 
-#: game/admin.py:238
+#: game/admin.py:244
 msgid "Stoppentfernung (km)"
 msgstr ""
 
-#: game/admin.py:246 game/models.py:57
+#: game/admin.py:252 game/models.py:57
 msgid "Stoppentfernungen"
 msgstr "Stop Distances"
 
-#: game/admin.py:258 game/models.py:83
+#: game/admin.py:264 game/models.py:83
 msgid "Aktive Sitzungen"
 msgstr "Active Sessions"
 
-#: game/admin.py:266 game/admin.py:548 game/models.py:147
+#: game/admin.py:272 game/admin.py:560 game/models.py:147
 #: game/session_admin.py:351
 #: game/templates/admin/game/edit_session_data.html:24
 #: game/templates/admin/game/session_dashboard.html:197
 msgid "Sitzungsschlüssel"
 msgstr "Session Key"
 
-#: game/admin.py:275
+#: game/admin.py:281
 msgid "Sitzung → Radfahrer Zuordnung"
 msgstr "Session → Cyclist Mapping"
 
-#: game/admin.py:287 game/models.py:70
+#: game/admin.py:293 game/models.py:70
 msgid "Bekanntgegebene Gewinner"
 msgstr "Announced Winners"
 
-#: game/admin.py:306 game/admin.py:309 game/admin.py:312
+#: game/admin.py:312 game/admin.py:315 game/admin.py:318
 msgid "Inaktiv seit"
 msgstr ""
 
-#: game/admin.py:349
+#: game/admin.py:355
 #, fuzzy, python-brace-format
 #| msgid "{count} Raum/Räume wurde(n) beendet."
 msgid "{count} Raum/Räume wurde(n) beendet."
 msgstr "{} room(s) ended."
 
-#: game/admin.py:351
+#: game/admin.py:357
 msgid "Ausgewählte Räume beenden"
 msgstr "End selected rooms"
 
-#: game/admin.py:364
+#: game/admin.py:370
 #, fuzzy, python-brace-format
 #| msgid "{count} Raum/Räume wurde(n) aktiviert."
 msgid "{count} Raum/Räume wurde(n) aktiviert."
 msgstr "{} room(s) activated."
 
-#: game/admin.py:366
+#: game/admin.py:372
 msgid "Ausgewählte Räume aktivieren"
 msgstr "Activate selected rooms"
 
-#: game/admin.py:377
+#: game/admin.py:383
 #, fuzzy, python-brace-format
 #| msgid "{count} Raum/Räume älter als 7 Tage wurde(n) gelöscht."
 msgid "{count} Raum/Räume älter als 7 Tage wurde(n) gelöscht."
 msgstr "{} room(s) older than 7 days deleted."
 
-#: game/admin.py:379
+#: game/admin.py:385
 msgid "Räume älter als 7 Tage löschen"
 msgstr "Delete rooms older than 7 days"
 
-#: game/admin.py:393
+#: game/admin.py:399
 #, fuzzy, python-brace-format
 #| msgid ""
 #| "{count} inaktive(r) Raum/Räume (keine Aktivität seit 24h) wurde(n) "
@@ -1476,11 +1492,11 @@ msgid ""
 "{count} inaktive(r) Raum/Räume (keine Aktivität seit 24h) wurde(n) gelöscht."
 msgstr "{} inactive rooms (no activity for 24h) deleted."
 
-#: game/admin.py:395
+#: game/admin.py:401
 msgid "Inaktive Räume löschen (>24h)"
 msgstr "Delete inactive rooms (>24h)"
 
-#: game/admin.py:432
+#: game/admin.py:438
 #, fuzzy, python-brace-format
 #| msgid ""
 #| "Sie werden automatisch als Spielleiter gesetzt, wenn Sie {count} Raum/"
@@ -1494,7 +1510,7 @@ msgstr ""
 "You will be automatically set as master when you enter {} room(s) via the "
 "'Enter room' link (only if no active master exists)."
 
-#: game/admin.py:434
+#: game/admin.py:440
 #, fuzzy, python-brace-format
 #| msgid ""
 #| "{count} Raum/Räume wurde(n) übersprungen, da bereits ein aktiver "
@@ -1504,15 +1520,15 @@ msgid ""
 "existiert."
 msgstr "{} room(s) skipped because an active master already exists."
 
-#: game/admin.py:441 game/admin.py:489
+#: game/admin.py:447 game/admin.py:495
 msgid "Keine aktiven Räume ausgewählt oder alle Räume sind bereits beendet."
 msgstr "No active rooms selected or all rooms are already ended."
 
-#: game/admin.py:444
+#: game/admin.py:450
 msgid "Als Spielleiter setzen (Admin, nur wenn kein Spielleiter existiert)"
 msgstr "Set as Master (Admin, only if no master exists)"
 
-#: game/admin.py:480
+#: game/admin.py:486
 #, fuzzy, python-brace-format
 #| msgid ""
 #| "Sie werden als Spielleiter gesetzt, wenn Sie {count} Raum/Räume über den "
@@ -1524,7 +1540,7 @@ msgstr ""
 "You will be set as master when you enter {} room(s) via the 'Enter room' "
 "link."
 
-#: game/admin.py:482
+#: game/admin.py:488
 #, fuzzy, python-brace-format
 #| msgid ""
 #| "⚠️ {count} Raum/Räume hatte(n) bereits einen aktiven Spielleiter, der "
@@ -1534,7 +1550,7 @@ msgid ""
 "wird."
 msgstr "⚠️ {} room(s) already had an active master, which will be replaced."
 
-#: game/admin.py:492
+#: game/admin.py:498
 msgid "Spielleiter-Rolle erzwingen (ersetzt aktuellen Spielleiter)"
 msgstr "Force Master Role (replaces current master)"
 
@@ -1576,7 +1592,7 @@ msgstr "Game Dashboard"
 
 #: game/models.py:22 game/models.py:156
 #: game/templates/admin/game/dashboard.html:193
-#: game/templates/game/mcc_game.html:1920
+#: game/templates/game/mcc_game.html:1922
 msgid "Raum-Code"
 msgstr "Room Code"
 
@@ -1678,7 +1694,7 @@ msgstr "Room code, if the session is in a room"
 #: game/session_admin.py:543
 #: game/templates/admin/game/session_dashboard.html:200
 #: game/templates/admin/game/session_dashboard.html:233
-#: game/templates/game/mcc_game.html:590
+#: game/templates/game/mcc_game.html:592
 msgid "Spielleiter"
 msgstr "Master"
 
@@ -1720,7 +1736,7 @@ msgstr "Cyclist not found"
 
 #: game/session_admin.py:373 game/session_admin.py:539
 #: game/templates/admin/game/session_dashboard.html:198
-#: game/templates/game/mcc_game.html:593
+#: game/templates/game/mcc_game.html:595
 msgid "Raum"
 msgstr "Room"
 
@@ -1732,13 +1748,13 @@ msgstr "Expiry"
 
 #: game/session_admin.py:452 game/templates/admin/game/dashboard.html:219
 #: game/templates/admin/game/session_dashboard.html:243 iot/models.py:801
-#: map/templates/map/dashboard.html:2618 mgmt/admin.py:3286
+#: map/templates/map/dashboard.html:2620 mgmt/admin.py:4439
 msgid "Details"
 msgstr "Details"
 
 #: game/session_admin.py:472 game/templates/admin/game/dashboard.html:200
-#: game/templates/admin/game/session_dashboard.html:204 mgmt/admin.py:83
-#: mgmt/admin.py:1760 mgmt/admin.py:2036
+#: game/templates/admin/game/session_dashboard.html:204 mgmt/admin.py:129
+#: mgmt/admin.py:2525 mgmt/admin.py:2933
 #: templates/admin/mgmt/log_file_list.html:22
 msgid "Aktionen"
 msgstr "Actions"
@@ -1844,7 +1860,7 @@ msgstr "Key '{}' has been removed from the session."
 msgid "Schlüssel nicht gefunden."
 msgstr "Key not found."
 
-#: game/session_dashboard.py:126 mgmt/admin.py:3986
+#: game/session_dashboard.py:126 mgmt/admin.py:5142
 msgid "Session Dashboard"
 msgstr "Session Dashboard"
 
@@ -1890,7 +1906,7 @@ msgid "Alle Räume anzeigen"
 msgstr "Show All Rooms"
 
 #: game/templates/admin/game/edit_session_data.html:19 iot/models.py:613
-#: mgmt/admin.py:1635
+#: mgmt/admin.py:2340
 msgid "Warnung"
 msgstr "Warning"
 
@@ -1980,7 +1996,7 @@ msgid "Alle Sitzungen anzeigen"
 msgstr "Show All Sessions"
 
 #: game/templates/game/join_room.html:16 game/templates/game/join_room.html:116
-#: game/templates/game/mcc_game.html:630
+#: game/templates/game/mcc_game.html:632
 msgid "Raum beitreten"
 msgstr "Join room"
 
@@ -2001,53 +2017,53 @@ msgstr "Back"
 msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Spielraum beizutreten."
 msgstr "Enter the 8-digit room code to join a game room."
 
-#: game/templates/game/mcc_game.html:576
+#: game/templates/game/mcc_game.html:578
 msgid "Logo links"
 msgstr "Left logo"
 
-#: game/templates/game/mcc_game.html:579
+#: game/templates/game/mcc_game.html:581
 #: game/templates/game/partials/info_modal.html:14
 msgid "Kilometer-Challenge"
 msgstr "Kilometer Challenge"
 
-#: game/templates/game/mcc_game.html:581
+#: game/templates/game/mcc_game.html:583
 msgid "Logo rechts"
 msgstr "Right logo"
 
-#: game/templates/game/mcc_game.html:584
+#: game/templates/game/mcc_game.html:586
 msgid "Radler und Geräte zuweisen → Spiel starten → Kilometer sammeln!"
 msgstr "Assign cyclists & devices → Start game → Collect kilometers!"
 
-#: game/templates/game/mcc_game.html:598
+#: game/templates/game/mcc_game.html:600
 msgid "QR-Code zum Beitreten"
 msgstr "QR code to join"
 
-#: game/templates/game/mcc_game.html:602
+#: game/templates/game/mcc_game.html:604
 msgid "Teilen"
 msgstr "Share"
 
-#: game/templates/game/mcc_game.html:605
+#: game/templates/game/mcc_game.html:607
 msgid "Verlassen"
 msgstr "Leave"
 
-#: game/templates/game/mcc_game.html:609
+#: game/templates/game/mcc_game.html:611
 msgid "Möchten Sie den Raum wirklich beenden? Alle Teilnehmer werden getrennt."
 msgstr ""
 "Do you really want to end the room? All participants will be disconnected."
 
-#: game/templates/game/mcc_game.html:612
+#: game/templates/game/mcc_game.html:614
 msgid "Beenden"
 msgstr "End"
 
-#: game/templates/game/mcc_game.html:618
+#: game/templates/game/mcc_game.html:620
 msgid "Tipp: 👑 neben Radlernamen = Spielleiter-Rolle übertragen"
 msgstr "Tip: 👑 next to cyclist name = Transfer master role"
 
-#: game/templates/game/mcc_game.html:623
+#: game/templates/game/mcc_game.html:625
 msgid "Gemeinsam spielen"
 msgstr "Play together"
 
-#: game/templates/game/mcc_game.html:624
+#: game/templates/game/mcc_game.html:626
 msgid ""
 "Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die "
 "gleiche Tabelle sehen können."
@@ -2055,141 +2071,141 @@ msgstr ""
 "Create a game room so other cyclists in different locations can see the same "
 "table."
 
-#: game/templates/game/mcc_game.html:627
+#: game/templates/game/mcc_game.html:629
 msgid "Raum erstellen"
 msgstr "Create room"
 
-#: game/templates/game/mcc_game.html:654
+#: game/templates/game/mcc_game.html:656
 #: map/templates/map/partials/ranking_devices.html:11
-#: map/templates/map/partials/ranking_players.html:11 mgmt/admin.py:163
-#: mgmt/admin.py:1319 mgmt/admin.py:1691
+#: map/templates/map/partials/ranking_players.html:11 mgmt/admin.py:245
+#: mgmt/admin.py:1921 mgmt/admin.py:2456
 #: ranking/templates/ranking/partials/ranking_devices.html:11
 #: ranking/templates/ranking/partials/ranking_players.html:11
 msgid "Rang"
 msgstr "Rank"
 
-#: game/templates/game/mcc_game.html:657
+#: game/templates/game/mcc_game.html:659
 msgid "Kilometer (km)"
 msgstr "Kilometers (km)"
 
-#: game/templates/game/mcc_game.html:658
+#: game/templates/game/mcc_game.html:660
 msgid "MCC-Coins"
 msgstr "MCC Coins"
 
-#: game/templates/game/mcc_game.html:659
+#: game/templates/game/mcc_game.html:661
 #: game/templates/game/results_table_fragment.html:126
 msgid "Entfernen"
 msgstr "Remove"
 
-#: game/templates/game/mcc_game.html:684
+#: game/templates/game/mcc_game.html:686
 msgid "Radler & Geräte zuweisen"
 msgstr "Assign cyclists & devices"
 
-#: game/templates/game/mcc_game.html:706
+#: game/templates/game/mcc_game.html:708
 msgid "Alle TOP-Gruppen"
 msgstr "All Top Groups"
 
-#: game/templates/game/mcc_game.html:716
+#: game/templates/game/mcc_game.html:718
 #: game/templates/game/partials/subgroup_options.html:2
 msgid "Alle Untergruppen"
 msgstr "All Groups"
 
-#: game/templates/game/mcc_game.html:724
+#: game/templates/game/mcc_game.html:726
 msgid "🔍 Radler suchen..."
 msgstr "🔍 Search cyclists..."
 
-#: game/templates/game/mcc_game.html:735
+#: game/templates/game/mcc_game.html:737
 msgid "🔍 Gerät suchen..."
 msgstr "🔍 Search device..."
 
-#: game/templates/game/mcc_game.html:747
+#: game/templates/game/mcc_game.html:749
 #: game/templates/game/partials/cyclist_options.html:2
 msgid "Wähle einen Radler"
 msgstr "Select a cyclist"
 
-#: game/templates/game/mcc_game.html:754
+#: game/templates/game/mcc_game.html:756
 msgid "Wähle ein Gerät"
 msgstr "Select a device"
 
-#: game/templates/game/mcc_game.html:760
+#: game/templates/game/mcc_game.html:762
 msgid "Zuweisung hinzufügen"
 msgstr "Add assignment"
 
-#: game/templates/game/mcc_game.html:769
+#: game/templates/game/mcc_game.html:771
 msgid "Sind Sie sicher, dass Sie alle Zuweisungen löschen möchten?"
 msgstr "Are you sure you want to remove this assignment?"
 
-#: game/templates/game/mcc_game.html:770
+#: game/templates/game/mcc_game.html:772
 msgid "Alle Zuweisungen löschen"
 msgstr "Delete all assignments"
 
-#: game/templates/game/mcc_game.html:777
+#: game/templates/game/mcc_game.html:779
 msgid "Zielkilometer (optional)"
 msgstr "Target kilometers (optional)"
 
-#: game/templates/game/mcc_game.html:833
+#: game/templates/game/mcc_game.html:835
 msgid "Oder manuell eingeben"
 msgstr "Or enter manually"
 
-#: game/templates/game/mcc_game.html:839
+#: game/templates/game/mcc_game.html:841
 msgid "Ziel-km eingeben"
 msgstr "Enter target km"
 
-#: game/templates/game/mcc_game.html:865
+#: game/templates/game/mcc_game.html:867
 #: game/templates/game/target_km_fragment.html:11
 msgid "Zielkilometer"
 msgstr "Kilometers"
 
-#: game/templates/game/mcc_game.html:872
+#: game/templates/game/mcc_game.html:874
 #: game/templates/game/target_km_fragment.html:18
 msgid "Kein Ziel gesetzt"
 msgstr "No target set"
 
-#: game/templates/game/mcc_game.html:876
+#: game/templates/game/mcc_game.html:878
 #: game/templates/game/target_km_fragment.html:22
 msgid "Nur der Spielleiter kann das Ziel ändern"
 msgstr "Only the master can change the target"
 
-#: game/templates/game/mcc_game.html:886 map/templates/map/map_mobile.html:1369
-#: mgmt/admin.py:3648 mgmt/admin.py:3728 mgmt/admin.py:3795
+#: game/templates/game/mcc_game.html:888 map/templates/map/map_mobile.html:1371
+#: mgmt/admin.py:4802 mgmt/admin.py:4882 mgmt/admin.py:4949
 #: templates/admin/mgmt/log_file_list.html:76
 #: templates/admin/mgmt/server_control.html:313
 #: templates/partials/info_hub.html:11
 msgid "Information"
 msgstr "Information"
 
-#: game/templates/game/mcc_game.html:896
+#: game/templates/game/mcc_game.html:898
 msgid "Kilometerweltmeister!"
 msgstr "Kilometer World Champion!"
 
-#: game/templates/game/mcc_game.html:898
+#: game/templates/game/mcc_game.html:900
 msgid "Foto des Gewinners"
 msgstr "Winner's photo"
 
-#: game/templates/game/mcc_game.html:948
+#: game/templates/game/mcc_game.html:950
 msgid "Möchten Sie die Spielleiter-Rolle wirklich an"
 msgstr "Do you really want to transfer the master role to"
 
-#: game/templates/game/mcc_game.html:948
+#: game/templates/game/mcc_game.html:950
 msgid "übertragen?"
 msgstr "?"
 
-#: game/templates/game/mcc_game.html:1018
+#: game/templates/game/mcc_game.html:1020
 msgid "Spielleiter-Rolle wurde übertragen. Die Buttons sind jetzt aktiv."
 msgstr "Master role has been transferred. The page will reload."
 
-#: game/templates/game/mcc_game.html:1020
-#: game/templates/game/mcc_game.html:1029
-#: game/templates/game/mcc_game.html:1037
-#: game/templates/game/mcc_game.html:1045
+#: game/templates/game/mcc_game.html:1022
+#: game/templates/game/mcc_game.html:1031
+#: game/templates/game/mcc_game.html:1039
+#: game/templates/game/mcc_game.html:1047
 msgid "Spielleiter-Rolle wurde übertragen."
 msgstr "Master role has been transferred."
 
-#: game/templates/game/mcc_game.html:1060
+#: game/templates/game/mcc_game.html:1062
 msgid "Fehler beim Übertragen der Spielleiter-Rolle"
 msgstr "Error transferring master role"
 
-#: game/templates/game/mcc_game.html:1103
+#: game/templates/game/mcc_game.html:1105
 #: game/templates/game/partials/game_buttons.html:27
 #: game/templates/game/partials/game_buttons.html:59
 msgid ""
@@ -2199,39 +2215,39 @@ msgstr ""
 "Warning! This will reset the current game state and all assignments. Are you "
 "sure?"
 
-#: game/templates/game/mcc_game.html:1628
+#: game/templates/game/mcc_game.html:1630
 msgid "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)."
 msgstr "Game could not be started (maybe no assignments are active)."
 
-#: game/templates/game/mcc_game.html:1660
+#: game/templates/game/mcc_game.html:1662
 msgid "Spiel konnte nicht gestoppt werden."
 msgstr "Game could not be stopped."
 
-#: game/templates/game/mcc_game.html:1794
+#: game/templates/game/mcc_game.html:1796
 msgid "Fehler: Funktion nicht verfügbar. Bitte Seite neu laden."
 msgstr "Error: Function not available. Please reload the page."
 
-#: game/templates/game/mcc_game.html:1854
-#: game/templates/game/mcc_game.html:1918
+#: game/templates/game/mcc_game.html:1856
+#: game/templates/game/mcc_game.html:1920
 msgid "Spiel-Raum beitreten"
 msgstr "Join Game Room"
 
-#: game/templates/game/mcc_game.html:1855
-#: game/templates/game/mcc_game.html:1919
+#: game/templates/game/mcc_game.html:1857
+#: game/templates/game/mcc_game.html:1921
 msgid "Tritt meinem Spiel-Raum bei!"
 msgstr "Join my game room!"
 
-#: game/templates/game/mcc_game.html:1882
-#: game/templates/game/mcc_game.html:1905
+#: game/templates/game/mcc_game.html:1884
+#: game/templates/game/mcc_game.html:1907
 msgid "Raum-URL wurde in die Zwischenablage kopiert!"
 msgstr "Room URL has been copied to clipboard!"
 
-#: game/templates/game/mcc_game.html:1907
-#: game/templates/game/mcc_game.html:1911
+#: game/templates/game/mcc_game.html:1909
+#: game/templates/game/mcc_game.html:1913
 msgid "Bitte kopieren Sie die URL manuell:"
 msgstr "Please copy the URL manually:"
 
-#: game/templates/game/mcc_game.html:1921
+#: game/templates/game/mcc_game.html:1923
 msgid "Link"
 msgstr "Info link"
 
@@ -2328,13 +2344,13 @@ msgid "Sprache"
 msgstr "Language"
 
 #: game/templates/game/partials/info_modal.html:91
-#: map/templates/map/mcc_map.html:230
+#: map/templates/map/mcc_map.html:232
 #: map/templates/map/partials/info_modal.html:106
 msgid "Impressum"
 msgstr "Legal Notice"
 
 #: game/templates/game/partials/info_modal.html:93
-#: map/templates/map/mcc_map.html:231
+#: map/templates/map/mcc_map.html:233
 #: map/templates/map/partials/info_modal.html:108
 msgid "Datenschutzerklärung"
 msgstr "Privacy Policy"
@@ -2473,7 +2489,7 @@ msgstr "Last interval (km)"
 msgid "Letzter Bericht"
 msgstr "Last report"
 
-#: iot/models.py:32 kiosk/models.py:49
+#: iot/models.py:32 kiosk/models.py:60
 msgid "Devices"
 msgstr "Devices"
 
@@ -2635,8 +2651,8 @@ msgid ""
 "Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen (WPA2-"
 "Anforderung)."
 msgstr ""
-"Password for the Config WiFi hotspot (MCC_XXXX). Minimum 8 characters "
-"(WPA2 requirement)."
+"Password for the Config WiFi hotspot (MCC_XXXX). Minimum 8 characters (WPA2 "
+"requirement)."
 
 #: iot/models.py:180
 msgid "Debug-Modus"
@@ -2730,7 +2746,7 @@ msgstr "Device Configurations"
 msgid "Configuration for"
 msgstr "Configuration"
 
-#: iot/models.py:367 mgmt/admin.py:2848
+#: iot/models.py:367 mgmt/admin.py:3989
 msgid "Gemeldete Konfiguration"
 msgstr ""
 
@@ -2766,7 +2782,7 @@ msgstr ""
 msgid "Name des Konfigurationsfelds mit Unterschied"
 msgstr ""
 
-#: iot/models.py:414 mgmt/admin.py:2888
+#: iot/models.py:414 mgmt/admin.py:4035
 msgid "Server-Wert"
 msgstr ""
 
@@ -2774,7 +2790,7 @@ msgstr ""
 msgid "Auf dem Server konfigurierter Wert"
 msgstr ""
 
-#: iot/models.py:421 mgmt/admin.py:2898
+#: iot/models.py:421 mgmt/admin.py:4045
 msgid "Geräte-Wert"
 msgstr "Device value"
 
@@ -2818,7 +2834,7 @@ msgstr ""
 msgid "Beschreibung der Änderungen und Features in dieser Version"
 msgstr ""
 
-#: iot/models.py:473 mgmt/admin.py:2927
+#: iot/models.py:473 mgmt/admin.py:4074
 msgid "Firmware-Datei"
 msgstr ""
 
@@ -2902,7 +2918,7 @@ msgstr ""
 msgid "Timestamp of the last notification email sent"
 msgstr ""
 
-#: iot/models.py:580 mgmt/admin.py:3198
+#: iot/models.py:580 mgmt/admin.py:4345
 msgid "IoT Device Shared API Key"
 msgstr ""
 
@@ -3000,7 +3016,7 @@ msgstr ""
 msgid "Beschreibung, wann dieses Template verwendet werden soll"
 msgstr ""
 
-#: iot/models.py:728 mgmt/admin.py:3264
+#: iot/models.py:728 mgmt/admin.py:4411
 msgid "Template-Konfiguration"
 msgstr ""
 
@@ -3052,7 +3068,7 @@ msgstr "Heartbeat received"
 msgid "Aktion"
 msgstr "Action"
 
-#: iot/models.py:794 map/templates/map/mcc_map.html:179
+#: iot/models.py:794 map/templates/map/mcc_map.html:181
 msgid "Benutzer"
 msgstr "User"
 
@@ -3145,110 +3161,138 @@ msgid "Kiosk Management"
 msgstr ""
 
 #: kiosk/models.py:19
-msgid "Human-readable name for this Kiosk device"
-msgstr ""
+msgid "Lesbarer Name für dieses Kiosk-Gerät"
+msgstr "Human-readable name for this Kiosk device"
 
 #: kiosk/models.py:24
-msgid "Unique ID"
-msgstr ""
+msgid "Eindeutige ID"
+msgstr "Unique ID"
 
 #: kiosk/models.py:25
-msgid "Unique identifier for this device (e.g., MAC address or serial number)"
+msgid ""
+"Eindeutige Kennung für dieses Gerät (z.B. MAC-Adresse oder Seriennummer)"
 msgstr ""
+"Unique identifier for this device (e.g., MAC address or serial number)"
 
 #: kiosk/models.py:30
-msgid "Brightness"
-msgstr ""
+msgid "Helligkeit"
+msgstr "Brightness"
 
 #: kiosk/models.py:31
-msgid "Display brightness level (0-100)"
-msgstr ""
+msgid "Helligkeitsstufe der Anzeige (0-100)"
+msgstr "Display brightness level (0-100)"
 
 #: kiosk/models.py:36
-msgid "Whether this device is currently active and should display content"
-msgstr ""
+msgid "Ob dieses Gerät derzeit aktiv ist und Inhalte anzeigen soll"
+msgstr "Whether this device is currently active and should display content"
 
 #: kiosk/models.py:41
-msgid "Command Queue"
-msgstr ""
+msgid "Befehls-Warteschlange"
+msgstr "Command Queue"
 
 #: kiosk/models.py:42
 msgid ""
-"JSON array of pending hardware commands (e.g., ['RELOAD', "
+"JSON-Array mit ausstehenden Hardware-Befehlen (z.B. ['RELOAD', "
 "'SET_BRIGHTNESS:50'])"
 msgstr ""
+"JSON array of pending hardware commands (e.g., ['RELOAD', "
+"'SET_BRIGHTNESS:50'])"
 
-#: kiosk/models.py:79 leaderboard/apps.py:26
+#: kiosk/models.py:51
+msgid ""
+"TOP-Gruppe, der dieses Kiosk-Gerät zugewiesen ist. Operatoren dieser TOP-"
+"Gruppe können das Gerät verwalten. Kann vom System-Admin gesetzt werden, "
+"bevor Playlist-Einträge erstellt werden."
+msgstr ""
+"TOP-Group to which this Kiosk device is assigned. Operators of this TOP-"
+"Group can manage the device. Can be set by the System Admin before playlist "
+"entries are created."
+
+#: kiosk/models.py:90 leaderboard/apps.py:26
 msgid "Leaderboard"
 msgstr ""
 
-#: kiosk/models.py:80
+#: kiosk/models.py:91
 msgid "Eventboard"
 msgstr "Eventboard"
 
-#: kiosk/models.py:81 map/templates/map/map_mobile.html:2697
+#: kiosk/models.py:92 map/templates/map/map_mobile.html:2699
 msgid "Map"
 msgstr "Map"
 
-#: kiosk/models.py:88
+#: kiosk/models.py:99
 msgid "Kiosk Device"
 msgstr ""
 
-#: kiosk/models.py:94
-msgid "View Type"
+#: kiosk/models.py:105
+msgid "Ansichtstyp"
 msgstr "View Type"
 
-#: kiosk/models.py:95
-msgid "Type of view to display"
-msgstr ""
+#: kiosk/models.py:106
+msgid "Art der anzuzeigenden Ansicht"
+msgstr "Type of view to display"
 
-#: kiosk/models.py:104
-msgid "Optional: Filter content by specific event"
-msgstr ""
+#: kiosk/models.py:114
+msgid "Event-Filter"
+msgstr "Event Filter"
 
-#: kiosk/models.py:113
+#: kiosk/models.py:115
+msgid "Optional: Inhalte nach spezifischem Event filtern"
+msgstr "Optional: Filter content by specific event"
+
+#: kiosk/models.py:123
+msgid "Gruppen-Filter"
+msgstr "Group Filter"
+
+#: kiosk/models.py:124
 msgid ""
+"Optional: Inhalte filtern, um nur Gruppen und Radler anzuzeigen, die zu "
+"dieser Hauptgruppe gehören"
+msgstr ""
 "Optional: Filter content to show only groups and cyclists belonging to this "
 "master group"
-msgstr ""
-
-#: kiosk/models.py:119
-msgid "Track Filter"
-msgstr ""
-
-#: kiosk/models.py:120
-msgid ""
-"Optional: Filter map view to show only selected tracks (leave empty to show "
-"all tracks)"
-msgstr ""
-
-#: kiosk/models.py:125
-msgid "Display Duration (seconds)"
-msgstr ""
-
-#: kiosk/models.py:126
-msgid "How long to display this view before rotating to the next"
-msgstr ""
 
 #: kiosk/models.py:130
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:484
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:491
-msgid "Order"
-msgstr ""
+msgid "Routen-Filter"
+msgstr "Track Filter"
 
 #: kiosk/models.py:131
-msgid "Display order in the playlist (lower numbers first, starts at 1)"
+msgid ""
+"Optional: Kartenansicht filtern, um nur ausgewählte Routen anzuzeigen (leer "
+"lassen, um alle Routen anzuzeigen)"
 msgstr ""
+"Optional: Filter map view to show only selected tracks (leave empty to show "
+"all tracks)"
 
 #: kiosk/models.py:136
-msgid "Whether this entry is active in the playlist"
-msgstr ""
+msgid "Anzeigedauer (Sekunden)"
+msgstr "Display Duration (seconds)"
 
-#: kiosk/models.py:142 mgmt/admin.py:2235
+#: kiosk/models.py:137
+msgid ""
+"Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt "
+"wird"
+msgstr "How long to display this view before rotating to the next"
+
+#: kiosk/models.py:141
+msgid "Reihenfolge"
+msgstr "Order"
+
+#: kiosk/models.py:142
+msgid ""
+"Anzeigereihenfolge in der Playlist (niedrigere Zahlen zuerst, beginnt bei 1)"
+msgstr ""
+"Display order in the playlist (lower numbers first, starts at 1)"
+
+#: kiosk/models.py:147
+msgid "Ob dieser Eintrag in der Playlist aktiv ist"
+msgstr "Whether this entry is active in the playlist"
+
+#: kiosk/models.py:153 mgmt/admin.py:3191
 msgid "Playlist Entry"
 msgstr ""
 
-#: kiosk/models.py:143 mgmt/admin.py:2236
+#: kiosk/models.py:154 mgmt/admin.py:3192
 msgid "Playlist Entries"
 msgstr ""
 
@@ -3256,19 +3300,19 @@ msgstr ""
 msgid "Maintenance"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:72
+#: kiosk/templates/kiosk/kiosk_maintenance.html:74
 msgid "Wartung"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:73
+#: kiosk/templates/kiosk/kiosk_maintenance.html:75
 msgid "Dieses Gerät wird derzeit gewartet."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:74
+#: kiosk/templates/kiosk/kiosk_maintenance.html:76
 msgid "Bitte versuchen Sie es später erneut."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_maintenance.html:76
+#: kiosk/templates/kiosk/kiosk_maintenance.html:78
 msgid "Geräte-ID"
 msgstr "Device ID"
 
@@ -3276,19 +3320,19 @@ msgstr "Device ID"
 msgid "Configuration Required"
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:84
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:86
 msgid "Konfiguration erforderlich"
 msgstr "Configuration required"
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:85
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:87
 msgid "Dieses Gerät ist aktiv, aber noch nicht konfiguriert."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:86
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:88
 msgid "Bitte kontaktieren Sie den Administrator, um die Anzeige zu aktivieren."
 msgstr ""
 
-#: kiosk/templates/kiosk/kiosk_no_playlist.html:89
+#: kiosk/templates/kiosk/kiosk_no_playlist.html:91
 msgid "E-Mail senden"
 msgstr ""
 
@@ -3298,7 +3342,7 @@ msgstr ""
 msgid "Kiosk-Anzeige"
 msgstr "Display"
 
-#: kiosk/templates/kiosk/kiosk_playlist.html:128
+#: kiosk/templates/kiosk/kiosk_playlist.html:130
 msgid "Playlist wird geladen..."
 msgstr ""
 
@@ -3319,24 +3363,15 @@ msgstr ""
 msgid "Kiosk-Rangliste"
 msgstr ""
 
-#: leaderboard/templates/leaderboard/leaderboard_page.html:612
 #: leaderboard/templates/leaderboard/partials/content.html:62
-#: map/templates/map/dashboard.html:2280
-#: map/templates/map/kiosk_leaderboard.html:643
-#: map/templates/map/map_mobile.html:1663
+#: map/templates/map/dashboard.html:2282
+#: map/templates/map/kiosk_leaderboard.html:645
+#: map/templates/map/map_mobile.html:1665
 #: map/templates/map/partials/kiosk_leaderboard_content.html:62
 #: map/templates/map/partials/ranking_devices.html:11
 #: ranking/templates/ranking/partials/ranking_devices.html:11
 msgid "Gesamt"
 msgstr "Total"
-
-#: leaderboard/templates/leaderboard/leaderboard_page.html:642
-#: map/templates/map/dashboard.html:2339 map/templates/map/dashboard.html:3327
-#: map/templates/map/kiosk_leaderboard.html:673
-#: map/templates/map/map_mobile.html:1725
-#: map/templates/map/map_mobile.html:2465
-msgid "Erreicht von"
-msgstr "Achieved by"
 
 #: leaderboard/templates/leaderboard/partials/content.html:73
 #: map/templates/map/partials/kiosk_leaderboard_content.html:73
@@ -3361,7 +3396,7 @@ msgstr "No active groups found."
 
 #: leaderboard/templates/leaderboard/partials/footer.html:12
 #: map/templates/map/partials/kiosk_leaderboard_footer.html:12
-#: mgmt/admin.py:1000 mgmt/admin.py:1122 mgmt/admin.py:2114 mgmt/admin.py:2802
+#: mgmt/admin.py:1465 mgmt/admin.py:1634 mgmt/admin.py:3044 mgmt/admin.py:3910
 msgid "Gesamtkilometer"
 msgstr "Total kilometers"
 
@@ -3396,142 +3431,149 @@ msgstr "MCC Live Map"
 msgid "Live-Map & Wettbewerb"
 msgstr "Live Map & Competition"
 
-#: map/templates/map/dashboard.html:1564
+#: map/templates/map/dashboard.html:1566
 msgid "Karte"
 msgstr "Map"
 
-#: map/templates/map/dashboard.html:1565 ranking/apps.py:26
+#: map/templates/map/dashboard.html:1567 ranking/apps.py:26
 #: ranking/templates/ranking/ranking_page.html:15
 msgid "Ranking"
 msgstr "Ranking"
 
-#: map/templates/map/dashboard.html:1570 map/templates/map/map_mobile.html:1183
+#: map/templates/map/dashboard.html:1572 map/templates/map/map_mobile.html:1185
 msgid "Ebenen anzeigen/verstecken"
 msgstr ""
 
-#: map/templates/map/dashboard.html:1579 map/templates/map/dashboard.html:1652
-#: map/templates/map/dashboard.html:3672 map/templates/map/map_mobile.html:1192
+#: map/templates/map/dashboard.html:1581 map/templates/map/dashboard.html:1654
+#: map/templates/map/dashboard.html:3674 map/templates/map/map_mobile.html:1194
 msgid "Routen"
 msgstr "Routes"
 
-#: map/templates/map/dashboard.html:1586 map/templates/map/dashboard.html:1654
-#: map/templates/map/dashboard.html:1660 map/templates/map/dashboard.html:3664
-#: map/templates/map/map_mobile.html:1199
+#: map/templates/map/dashboard.html:1588 map/templates/map/dashboard.html:1656
+#: map/templates/map/dashboard.html:1662 map/templates/map/dashboard.html:3666
+#: map/templates/map/map_mobile.html:1201
 msgid "Alle Routen"
 msgstr "All Routes"
 
-#: map/templates/map/dashboard.html:1611
+#: map/templates/map/dashboard.html:1613
 msgid "Alle Gruppen"
 msgstr "All Groups"
 
-#: map/templates/map/dashboard.html:1629 map/templates/map/mcc_map.html:168
+#: map/templates/map/dashboard.html:1631 map/templates/map/mcc_map.html:170
 msgid "Anzeige"
 msgstr "Display"
 
-#: map/templates/map/dashboard.html:1636
+#: map/templates/map/dashboard.html:1638
 msgid "Gewinner anzeigen"
 msgstr "Show winners"
 
-#: map/templates/map/dashboard.html:1644
+#: map/templates/map/dashboard.html:1646
 msgid "Steuerung anzeigen/verstecken"
 msgstr ""
 
-#: map/templates/map/dashboard.html:1692 map/templates/map/dashboard.html:2626
+#: map/templates/map/dashboard.html:1694 map/templates/map/dashboard.html:2628
 msgid "Weniger anzeigen"
 msgstr "Show less"
 
-#: map/templates/map/dashboard.html:1707 map/templates/map/map_mobile.html:1394
+#: map/templates/map/dashboard.html:1709 map/templates/map/map_mobile.html:1396
 msgid "Reiseroute"
 msgstr "Route"
 
-#: map/templates/map/dashboard.html:1711 map/templates/map/map_mobile.html:1398
-#: mgmt/admin.py:1204
+#: map/templates/map/dashboard.html:1713 map/templates/map/map_mobile.html:1400
+#: mgmt/admin.py:1722
 msgid "TOP Gruppe"
 msgstr "Top Group"
 
-#: map/templates/map/dashboard.html:1733 map/templates/map/map_mobile.html:1420
+#: map/templates/map/dashboard.html:1735 map/templates/map/map_mobile.html:1422
 #, fuzzy
 #| msgid "Geräte-Informationen"
 msgid "Weitere Informationen"
 msgstr "Device information"
 
-#: map/templates/map/dashboard.html:1746
+#: map/templates/map/dashboard.html:1748
 msgid "Filter:"
 msgstr "Filter:"
 
-#: map/templates/map/dashboard.html:1764 map/templates/map/map_mobile.html:1434
+#: map/templates/map/dashboard.html:1766 map/templates/map/map_mobile.html:1436
 msgid "Aktuell radelnd"
 msgstr "Currently cycling"
 
-#: map/templates/map/dashboard.html:1912 map/templates/map/dashboard.html:1914
-#: map/templates/map/map_mobile.html:1330
-#: map/templates/map/map_mobile.html:2213
-#: map/templates/map/map_mobile.html:2215 map/templates/map/table_data.html:92
+#: map/templates/map/dashboard.html:1914 map/templates/map/dashboard.html:1916
+#: map/templates/map/map_mobile.html:1332
+#: map/templates/map/map_mobile.html:2215
+#: map/templates/map/map_mobile.html:2217 map/templates/map/table_data.html:92
 #: ranking/templates/ranking/table_data.html:97
 msgid "Start"
 msgstr "Start"
 
-#: map/templates/map/dashboard.html:1925 map/templates/map/dashboard.html:1927
-#: map/templates/map/kiosk_leaderboard.html:580
+#: map/templates/map/dashboard.html:1927 map/templates/map/dashboard.html:1929
 #: map/templates/map/kiosk_leaderboard.html:582
-#: map/templates/map/map_mobile.html:2226
+#: map/templates/map/kiosk_leaderboard.html:584
 #: map/templates/map/map_mobile.html:2228
+#: map/templates/map/map_mobile.html:2230
 msgid "Ziel"
 msgstr "Goal"
 
-#: map/templates/map/dashboard.html:2332 map/templates/map/dashboard.html:3317
-#: map/templates/map/map_mobile.html:1718
-#: map/templates/map/map_mobile.html:2456
+#: map/templates/map/dashboard.html:2334 map/templates/map/dashboard.html:3319
+#: map/templates/map/map_mobile.html:1720
+#: map/templates/map/map_mobile.html:2458
 msgid "Ziel erreicht!"
 msgstr "Goal reached!"
 
-#: map/templates/map/dashboard.html:2366 map/templates/map/dashboard.html:3350
-#: map/templates/map/map_mobile.html:1752
-#: map/templates/map/map_mobile.html:2480
+#: map/templates/map/dashboard.html:2341 map/templates/map/dashboard.html:3329
+#: map/templates/map/kiosk_leaderboard.html:675
+#: map/templates/map/map_mobile.html:1727
+#: map/templates/map/map_mobile.html:2467
+msgid "Erreicht von"
+msgstr "Achieved by"
+
+#: map/templates/map/dashboard.html:2368 map/templates/map/dashboard.html:3352
+#: map/templates/map/map_mobile.html:1754
+#: map/templates/map/map_mobile.html:2482
 msgid "Details anzeigen"
 msgstr ""
 
-#: map/templates/map/dashboard.html:2465
+#: map/templates/map/dashboard.html:2467
 msgid "Platz"
 msgstr "Place"
 
-#: map/templates/map/dashboard.html:3036 map/templates/map/map_mobile.html:2064
+#: map/templates/map/dashboard.html:3038 map/templates/map/map_mobile.html:2066
 msgid "Fehler beim Laden der Avatar-Daten"
 msgstr "Error loading avatar data"
 
-#: map/templates/map/dashboard.html:3506 map/templates/map/map_mobile.html:2616
+#: map/templates/map/dashboard.html:3508 map/templates/map/map_mobile.html:2618
 msgid "Meilenstein erreicht!"
 msgstr "Milestone reached!"
 
-#: map/templates/map/dashboard.html:3514 map/templates/map/map_mobile.html:2623
+#: map/templates/map/dashboard.html:3516 map/templates/map/map_mobile.html:2625
 msgid "Herzlichen Glückwunsch!"
 msgstr "Congratulations!"
 
-#: map/templates/map/dashboard.html:3666
+#: map/templates/map/dashboard.html:3668
 msgid "Keine Routen"
 msgstr "No routes"
 
-#: map/templates/map/dashboard.html:4995 map/templates/map/dashboard.html:5215
+#: map/templates/map/dashboard.html:4997 map/templates/map/dashboard.html:5217
 msgid "Gruppe deaktivieren"
 msgstr ""
 
-#: map/templates/map/dashboard.html:4995 map/templates/map/dashboard.html:5228
+#: map/templates/map/dashboard.html:4997 map/templates/map/dashboard.html:5230
 #, fuzzy
 #| msgid "Gruppe stimmt nicht überein"
 msgid "Gruppe aktivieren"
 msgstr "Group does not match"
 
-#: map/templates/map/dashboard.html:5112
+#: map/templates/map/dashboard.html:5114
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Untergruppen"
 msgstr "No groups"
 
-#: map/templates/map/dashboard.html:5179 map/templates/map/dashboard.html:5339
+#: map/templates/map/dashboard.html:5181 map/templates/map/dashboard.html:5341
 msgid "Untergruppe deaktivieren"
 msgstr ""
 
-#: map/templates/map/dashboard.html:5179 map/templates/map/dashboard.html:5320
+#: map/templates/map/dashboard.html:5181 map/templates/map/dashboard.html:5322
 msgid "Untergruppe aktivieren"
 msgstr ""
 
@@ -3541,88 +3583,88 @@ msgstr ""
 msgid "Live-Map"
 msgstr "MCC Live Map"
 
-#: map/templates/map/map_mobile.html:1178
+#: map/templates/map/map_mobile.html:1180
 msgid "Tabelle"
 msgstr "Table"
 
-#: map/templates/map/map_mobile.html:1229
+#: map/templates/map/map_mobile.html:1231
 #, fuzzy
 #| msgid "Filter:"
 msgid "Filter"
 msgstr "Filter:"
 
-#: map/templates/map/map_mobile.html:1271
-#: map/templates/map/map_mobile.html:1295 map/templates/map/table_data.html:55
+#: map/templates/map/map_mobile.html:1273
+#: map/templates/map/map_mobile.html:1297 map/templates/map/table_data.html:55
 #: ranking/templates/ranking/table_data.html:60
 msgid "Session"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1284
+#: map/templates/map/map_mobile.html:1286
 msgid "Direkte Mitglieder"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1307 map/templates/map/table_data.html:66
+#: map/templates/map/map_mobile.html:1309 map/templates/map/table_data.html:66
 #: ranking/templates/ranking/table_data.html:71
 msgid "Keine aktiven Gruppen gefunden."
 msgstr "No active groups found."
 
-#: map/templates/map/map_mobile.html:1328 map/templates/map/table_data.html:90
+#: map/templates/map/map_mobile.html:1330 map/templates/map/table_data.html:90
 #: ranking/templates/ranking/table_data.html:95
 msgid "Zeitraum"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1333 map/templates/map/table_data.html:95
+#: map/templates/map/map_mobile.html:1335 map/templates/map/table_data.html:95
 #: ranking/templates/ranking/table_data.html:100
 msgid "Ende"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:1361
+#: map/templates/map/map_mobile.html:1363
 msgid "Listenansicht umschalten"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:2696
+#: map/templates/map/map_mobile.html:2698
 msgid "Table"
 msgstr "Table"
 
-#: map/templates/map/map_mobile.html:2836 map/templates/map/mcc_map.html:213
+#: map/templates/map/map_mobile.html:2838 map/templates/map/mcc_map.html:215
 #: map/templates/map/partials/item_row.html:16
 msgid "Lade Daten..."
 msgstr "Loading data..."
 
-#: map/templates/map/map_mobile.html:3198
+#: map/templates/map/map_mobile.html:3200
 msgid "Toast-Ansicht"
 msgstr ""
 
-#: map/templates/map/map_mobile.html:3207
+#: map/templates/map/map_mobile.html:3209
 msgid "Listenansicht"
 msgstr ""
 
-#: map/templates/map/mcc_map.html:16 map/templates/map/mcc_map.html:164
+#: map/templates/map/mcc_map.html:16 map/templates/map/mcc_map.html:166
 msgid "MCC Live Karte"
 msgstr "MCC Live Map"
 
-#: map/templates/map/mcc_map.html:178
+#: map/templates/map/mcc_map.html:180
 msgid "Geräte"
 msgstr "Devices"
 
-#: map/templates/map/mcc_map.html:183
+#: map/templates/map/mcc_map.html:185
 msgid "Gruppen-Typ"
 msgstr "Group type"
 
-#: map/templates/map/mcc_map.html:192
+#: map/templates/map/mcc_map.html:194
 msgid "Alle"
 msgstr "All"
 
-#: map/templates/map/mcc_map.html:200
+#: map/templates/map/mcc_map.html:202
 #: templates/admin/mgmt/log_file_viewer.html:92
 msgid "Suche"
 msgstr "Search"
 
-#: map/templates/map/mcc_map.html:208
+#: map/templates/map/mcc_map.html:210
 msgid "Suchen nach Name/ID..."
 msgstr "Search by name/ID..."
 
-#: map/templates/map/mcc_map.html:332 map/templates/map/mcc_map.html:346
+#: map/templates/map/mcc_map.html:334 map/templates/map/mcc_map.html:348
 #: map/templates/map/partials/ranking_players.html:11
 #: ranking/templates/ranking/partials/ranking_players.html:11
 msgid "Distanz"
@@ -3718,69 +3760,69 @@ msgstr "Coins"
 msgid "Keine Daten gefunden."
 msgstr "No data found."
 
-#: mgmt/admin.py:54 mgmt/admin.py:1211
+#: mgmt/admin.py:99 mgmt/admin.py:1729
 msgid "Teilnehmende Gruppe"
 msgstr "Participating group"
 
-#: mgmt/admin.py:55
+#: mgmt/admin.py:100
 msgid "Teilnehmende Gruppen"
 msgstr "Participating groups"
 
-#: mgmt/admin.py:76 mgmt/admin.py:1756
+#: mgmt/admin.py:122 mgmt/admin.py:2521
 msgid ""
 "Möchten Sie die Reise für diese Gruppe wirklich abbrechen? Die aktuellen "
 "Reisekilometer ({}) gehen verloren."
 msgstr ""
 
-#: mgmt/admin.py:103
+#: mgmt/admin.py:177
 msgid ""
 "Die Gruppe '{}' hat bereits {} Reisekilometer. Bitte verwenden Sie die "
 "'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen."
 msgstr ""
 
-#: mgmt/admin.py:122
+#: mgmt/admin.py:196
 msgid "Leaf-Gruppe Beitrag"
 msgstr ""
 
-#: mgmt/admin.py:123 mgmt/admin.py:1736
+#: mgmt/admin.py:197 mgmt/admin.py:2501
 msgid "Leaf-Gruppen Beiträge (Ranking)"
 msgstr "Leaf Group Contributions (Ranking)"
 
-#: mgmt/admin.py:170
+#: mgmt/admin.py:252
 msgid "Parent-Gruppe"
 msgstr "Parent group"
 
-#: mgmt/admin.py:182 mgmt/admin.py:1693
+#: mgmt/admin.py:264 mgmt/admin.py:2458
 msgid "Beitrag (km)"
 msgstr "Contribution (km)"
 
-#: mgmt/admin.py:203 mgmt/admin.py:1694
+#: mgmt/admin.py:285 mgmt/admin.py:2459
 msgid "Anteil"
 msgstr "Share"
 
-#: mgmt/admin.py:217
+#: mgmt/admin.py:299
 msgid "Erreichter Meilenstein"
 msgstr "Achieved milestone"
 
-#: mgmt/admin.py:218
+#: mgmt/admin.py:300
 msgid "Erreichte Meilensteine"
 msgstr "Achieved milestones"
 
-#: mgmt/admin.py:402 mgmt/admin.py:420 mgmt/admin.py:437
+#: mgmt/admin.py:523 mgmt/admin.py:541 mgmt/admin.py:558
 msgid ""
 "Die Datenbank ist derzeit ausgelastet. Bitte versuchen Sie es in ein paar "
 "Sekunden erneut."
 msgstr ""
 
-#: mgmt/admin.py:758
+#: mgmt/admin.py:1082
 msgid "ACHTUNG: Kilometerstand manuell ändern?"
 msgstr ""
 
-#: mgmt/admin.py:803 mgmt/admin.py:3336
+#: mgmt/admin.py:1137 mgmt/admin.py:4490
 msgid "API-Key-Verwaltung"
 msgstr "API Key Management"
 
-#: mgmt/admin.py:805
+#: mgmt/admin.py:1139
 msgid ""
 "Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein "
 "gerätespezifischer Key gesetzt ist, wird automatisch der IoT Device Shared "
@@ -3793,11 +3835,11 @@ msgstr ""
 "in Device Management Settings). Use 'Generate API Key' for immediate renewal "
 "or 'Test Rotation' to check automatic rotation."
 
-#: mgmt/admin.py:807 mgmt/admin.py:3340
+#: mgmt/admin.py:1141 mgmt/admin.py:4494
 msgid "Geräte-Identifikation"
 msgstr "Device Identification"
 
-#: mgmt/admin.py:809 mgmt/admin.py:3342
+#: mgmt/admin.py:1143 mgmt/admin.py:4496
 msgid ""
 "Der Gerätename wird vom Gerät gemeldet und ist schreibgeschützt. Der "
 "Standard-ID-Tag kann konfiguriert werden."
@@ -3805,21 +3847,21 @@ msgstr ""
 "The device name is reported by the device and is read-only. The default ID "
 "tag can be configured."
 
-#: mgmt/admin.py:811 mgmt/admin.py:3344
+#: mgmt/admin.py:1145 mgmt/admin.py:4498
 msgid "Kommunikation"
 msgstr "Communication"
 
-#: mgmt/admin.py:814 mgmt/admin.py:3347
+#: mgmt/admin.py:1148 mgmt/admin.py:4501
 msgid "WLAN-Einstellungen"
 msgstr "WiFi settings"
 
-#: mgmt/admin.py:818 mgmt/admin.py:3351
+#: mgmt/admin.py:1152 mgmt/admin.py:4505
 #, fuzzy
 #| msgid "WLAN-Einstellungen"
 msgid "Config-WLAN-Einstellungen"
 msgstr "WiFi settings"
 
-#: mgmt/admin.py:821
+#: mgmt/admin.py:1155
 msgid ""
 "Passwort für den Config-WLAN-Hotspot (MCC_XXXX). Minimum 8 Zeichen "
 "erforderlich (WPA2-Anforderung)."
@@ -3827,59 +3869,56 @@ msgstr ""
 "Password for the Config WiFi hotspot (MCC_XXXX). Minimum 8 characters "
 "required (WPA2 requirement)."
 
-#: mgmt/admin.py:823 mgmt/admin.py:3356
+#: mgmt/admin.py:1157 mgmt/admin.py:4510
 msgid "Geräte-Verhalten"
 msgstr "Device behavior"
 
-#: mgmt/admin.py:826 mgmt/admin.py:3359
+#: mgmt/admin.py:1160 mgmt/admin.py:4513
 msgid "Hardware"
 msgstr "Hardware"
 
-#: mgmt/admin.py:829 mgmt/admin.py:3362
+#: mgmt/admin.py:1163 mgmt/admin.py:4516
 msgid "Firmware"
 msgstr "Firmware"
 
-#: mgmt/admin.py:845 mgmt/admin.py:3440
-#| msgid ""
-#| "Speichern Sie zuerst die Gerätekonfiguration, um einen API-Key zu "
-#| "generieren"
+#: mgmt/admin.py:1249 mgmt/admin.py:4594
 msgid "Speichern Sie zuerst die Gerätekonfiguration, um die Rotation zu testen"
 msgstr "First save the device configuration to test rotation"
 
-#: mgmt/admin.py:846 mgmt/admin.py:3441
+#: mgmt/admin.py:1250 mgmt/admin.py:4595
 msgid "Rotation testen"
 msgstr "Test rotation"
 
-#: mgmt/admin.py:858 mgmt/admin.py:3453
+#: mgmt/admin.py:1262 mgmt/admin.py:4607
 msgid ""
 "Speichern Sie zuerst die Gerätekonfiguration, um die Rotation auszuführen"
 msgstr "First save the device configuration to execute rotation"
 
-#: mgmt/admin.py:859 mgmt/admin.py:3454
+#: mgmt/admin.py:1263 mgmt/admin.py:4608
 msgid "Rotation jetzt ausführen"
 msgstr "Execute rotation now"
 
-#: mgmt/admin.py:867 mgmt/admin.py:3373
+#: mgmt/admin.py:1271 mgmt/admin.py:4527
 msgid "Noch nicht vom Gerät gemeldet"
 msgstr "Not yet reported by device"
 
-#: mgmt/admin.py:869 mgmt/admin.py:3375
+#: mgmt/admin.py:1273 mgmt/admin.py:4529
 msgid "Gerätename (vom Gerät gemeldet)"
 msgstr "Device name (reported by device)"
 
-#: mgmt/admin.py:880 mgmt/admin.py:3386
+#: mgmt/admin.py:1284 mgmt/admin.py:4540
 msgid "Gerätespezifischer API-Key aktiv"
 msgstr "Device-specific API key active"
 
-#: mgmt/admin.py:881 mgmt/admin.py:3387
+#: mgmt/admin.py:1285 mgmt/admin.py:4541
 msgid "Das Gerät verwendet einen eindeutigen, gerätespezifischen API-Key."
 msgstr "The device uses a unique, device-specific API key."
 
-#: mgmt/admin.py:892 mgmt/admin.py:906 mgmt/admin.py:3398 mgmt/admin.py:3412
+#: mgmt/admin.py:1296 mgmt/admin.py:1310 mgmt/admin.py:4552 mgmt/admin.py:4566
 msgid "IoT Device Shared API Key wird verwendet"
 msgstr ""
 
-#: mgmt/admin.py:893 mgmt/admin.py:3399
+#: mgmt/admin.py:1297 mgmt/admin.py:4553
 msgid ""
 "Das Gerät verwendet den IoT Device Shared API Key (konfiguriert in "
 "Geräteverwaltungs-Einstellungen). Verwenden Sie \"API-Key generieren\", um "
@@ -3889,167 +3928,171 @@ msgstr ""
 "Management Settings). Use \"Generate API Key\" to assign a device-specific "
 "key."
 
-#: mgmt/admin.py:899 mgmt/admin.py:3405
+#: mgmt/admin.py:1303 mgmt/admin.py:4559
 msgid "Kein API-Key konfiguriert"
 msgstr ""
 
-#: mgmt/admin.py:900 mgmt/admin.py:3406
+#: mgmt/admin.py:1304 mgmt/admin.py:4560
 msgid ""
 "Weder ein gerätespezifischer Key noch ein IoT Device Shared API Key ist "
 "konfiguriert. Bitte konfigurieren Sie einen IoT Device Shared API Key in "
 "Geräteverwaltungs-Einstellungen oder generieren Sie einen gerätespezifischen "
 "Key."
 msgstr ""
-"Neither a device-specific key nor an IoT Device Shared API Key is configured. "
-"Please configure an IoT Device Shared API Key in Device Management Settings "
-"or generate a device-specific key."
+"Neither a device-specific key nor an IoT Device Shared API Key is "
+"configured. Please configure an IoT Device Shared API Key in Device "
+"Management Settings or generate a device-specific key."
 
-#: mgmt/admin.py:907 mgmt/admin.py:3413
+#: mgmt/admin.py:1311 mgmt/admin.py:4567
 msgid "Das Gerät verwendet den IoT Device Shared API Key (falls konfiguriert)."
 msgstr "The device uses the IoT Device Shared API Key (if configured)."
 
-#: mgmt/admin.py:909 mgmt/admin.py:3415
+#: mgmt/admin.py:1313 mgmt/admin.py:4569
 msgid "API-Key-Status"
 msgstr "API Key Status"
 
-#: mgmt/admin.py:921 mgmt/admin.py:3427
+#: mgmt/admin.py:1325 mgmt/admin.py:4581
 msgid ""
 "Speichern Sie zuerst die Gerätekonfiguration, um einen API-Key zu generieren"
 msgstr "First save the device configuration to generate an API key"
 
-#: mgmt/admin.py:922 mgmt/admin.py:3428
+#: mgmt/admin.py:1326 mgmt/admin.py:4582
 msgid "API-Key-Aktionen"
 msgstr "API Key Actions"
 
-#: mgmt/admin.py:971
+#: mgmt/admin.py:1381
 msgid "Gruppeninformationen"
 msgstr "Group information"
 
-#: mgmt/admin.py:974
+#: mgmt/admin.py:1384
 msgid "Darstellung"
 msgstr ""
 
-#: mgmt/admin.py:976
+#: mgmt/admin.py:1386
 msgid ""
 "Verwenden Sie einen <a href=\"https://htmlcolorcodes.com/color-picker/\" "
 "target=\"_blank\">Farbwähler</a> oder <a href=\"https://colorpicker.me/\" "
 "target=\"_blank\">Color Picker</a> um den Hex-Code zu ermitteln."
 msgstr ""
 
-#: mgmt/admin.py:983
+#: mgmt/admin.py:1393
 msgid "Verwaltung"
 msgstr ""
 
-#: mgmt/admin.py:1007
+#: mgmt/admin.py:1472
 msgid "Keine"
 msgstr ""
 
-#: mgmt/admin.py:1015
+#: mgmt/admin.py:1480
 msgid "Kein Logo"
 msgstr "No logo"
 
-#: mgmt/admin.py:1016
+#: mgmt/admin.py:1481
 msgid "Logo Vorschau"
 msgstr "Logo preview"
 
-#: mgmt/admin.py:1037 mgmt/admin.py:3138 mgmt/admin.py:3153 mgmt/admin.py:3168
+#: mgmt/admin.py:1502 mgmt/admin.py:4285 mgmt/admin.py:4300 mgmt/admin.py:4315
 msgid "Keine Farbe definiert"
 msgstr "No color defined"
 
-#: mgmt/admin.py:1038 mgmt/admin.py:3169
+#: mgmt/admin.py:1503 mgmt/admin.py:4316
 msgid "Farbvorschau"
 msgstr "Color preview"
 
-#: mgmt/admin.py:1053
+#: mgmt/admin.py:1518
 msgid ""
 "Wählen Sie eine Gruppe aus. Ein Radler darf nur einer Gruppe zugeordnet "
 "werden."
 msgstr ""
 
-#: mgmt/admin.py:1113
+#: mgmt/admin.py:1625
 msgid "Keine Gruppen"
 msgstr "No groups"
 
-#: mgmt/admin.py:1129
+#: mgmt/admin.py:1641
 msgid "Kein Avatar"
 msgstr "No avatar"
 
-#: mgmt/admin.py:1130
+#: mgmt/admin.py:1642
 msgid "Avatar Vorschau"
 msgstr "Avatar preview"
 
-#: mgmt/admin.py:1179
+#: mgmt/admin.py:1697
 msgid "Kumulative Kilometer"
 msgstr "Cumulative Kilometers"
 
-#: mgmt/admin.py:1297
+#: mgmt/admin.py:1899
 msgid ""
 "Speichern Sie zuerst die Reiseroute, um das Ranking der Top-Gruppen "
 "anzuzeigen."
 msgstr ""
 
-#: mgmt/admin.py:1305
+#: mgmt/admin.py:1907
 msgid "Noch keine Gruppen auf dieser Reiseroute."
 msgstr ""
 
-#: mgmt/admin.py:1321
+#: mgmt/admin.py:1923
 #, fuzzy
 #| msgid "Distance (km)"
 msgid "Distanz (km)"
 msgstr "Distance (km)"
 
-#: mgmt/admin.py:1322
+#: mgmt/admin.py:1924
 #, fuzzy
 #| msgid "Ziel erreicht!"
 msgid "Ziel erreicht"
 msgstr "Goal reached!"
 
-#: mgmt/admin.py:1323 mgmt/admin.py:1929
+#: mgmt/admin.py:1925 mgmt/admin.py:2723
 msgid "Reisezeit"
 msgstr "Travel time"
 
-#: mgmt/admin.py:1443
+#: mgmt/admin.py:2045
 msgid "Top-Gruppen Ranking"
 msgstr "Top Groups Ranking"
 
-#: mgmt/admin.py:1449
+#: mgmt/admin.py:2051
 msgid "Zugeordnete Gruppen"
 msgstr "Assigned groups"
 
-#: mgmt/admin.py:1558
+#: mgmt/admin.py:2086
+msgid "Sie haben keine Berechtigung, diese Reise neu zu starten."
+msgstr ""
+
+#: mgmt/admin.py:2171
 msgid "Restart trip(s) and save to history"
 msgstr ""
 
-#: mgmt/admin.py:1593
+#: mgmt/admin.py:2206
 msgid "Save trip progress to history"
 msgstr ""
 
-#: mgmt/admin.py:1611
+#: mgmt/admin.py:2232
 #, fuzzy
 #| msgid "Beschreibung"
 msgid "Beschreibung & Links"
 msgstr "Description"
 
-#: mgmt/admin.py:1613
+#: mgmt/admin.py:2234
 msgid ""
 "Beschreibung (max. 500 Zeichen) und externe Links werden in den Milestone-"
 "Details angezeigt. Die Beschreibung wird im Overlay mit maximal 200px Höhe "
 "angezeigt."
 msgstr ""
 
-#: mgmt/admin.py:1633
+#: mgmt/admin.py:2338
 msgid "In Reise verwendet"
 msgstr "Used in trip"
 
-#: mgmt/admin.py:1657
+#: mgmt/admin.py:2376
 msgid "Reisestatus"
 msgstr "Trip status"
 
-#: mgmt/admin.py:1660
+#: mgmt/admin.py:2379
 msgid "Leaf-Gruppen Beiträge"
 msgstr "Leaf Group Contributions"
 
-#: mgmt/admin.py:1662
+#: mgmt/admin.py:2381
 msgid ""
 "Ranking der Leaf-Gruppen basierend auf ihrem Beitrag zur Reise der Parent-"
 "Gruppe."
@@ -4057,45 +4100,49 @@ msgstr ""
 "Ranking of leaf groups based on their contribution to the parent group's "
 "trip."
 
-#: mgmt/admin.py:1669
+#: mgmt/admin.py:2434
 msgid ""
 "Speichern Sie zuerst den Reisestatus, um die Leaf-Gruppen Beiträge "
 "anzuzeigen."
 msgstr ""
 
-#: mgmt/admin.py:1677
+#: mgmt/admin.py:2442
 msgid "Diese Gruppe hat keine Leaf-Gruppen."
 msgstr ""
 
-#: mgmt/admin.py:1686
+#: mgmt/admin.py:2451
 msgid "Noch keine Beiträge von Leaf-Gruppen vorhanden."
 msgstr ""
 
-#: mgmt/admin.py:1781
+#: mgmt/admin.py:2546
 msgid "Reisestatus nicht gefunden."
 msgstr "Trip status not found."
 
-#: mgmt/admin.py:1824
+#: mgmt/admin.py:2553
+msgid "Sie haben keine Berechtigung, diese Reise abzubrechen."
+msgstr ""
+
+#: mgmt/admin.py:2596
 msgid ""
 "Reise für Gruppe '{}' wurde abgebrochen. Die Gruppe kann nun einer neuen "
 "Reise zugeordnet werden."
 msgstr ""
 
-#: mgmt/admin.py:1884
+#: mgmt/admin.py:2661
 msgid ""
 "{} Reise(n) wurde(n) abgebrochen. Die Gruppen können nun neuen Reisen "
 "zugeordnet werden."
 msgstr ""
 
-#: mgmt/admin.py:1886
+#: mgmt/admin.py:2663
 msgid "Ausgewählte Reisen abbrechen"
 msgstr ""
 
-#: mgmt/admin.py:1940
+#: mgmt/admin.py:2734
 msgid "Erreichung"
 msgstr "Achievement"
 
-#: mgmt/admin.py:1942
+#: mgmt/admin.py:2736
 msgid ""
 "Diese Informationen sind historische Daten und können nicht mehr geändert "
 "werden. Die 'Gruppe' ist die Leaf-Gruppe (z.B. Klasse), die den Meilenstein "
@@ -4107,7 +4154,7 @@ msgstr ""
 "Distance' is the travel distance of this leaf group at the time of "
 "achievement."
 
-#: mgmt/admin.py:1948
+#: mgmt/admin.py:2742
 msgid ""
 "Die Belohnung wurde zum Zeitpunkt des Erreichens des Meilensteins "
 "gespeichert und bleibt unverändert, auch wenn die Meilenstein-Belohnung "
@@ -4116,168 +4163,179 @@ msgstr ""
 "The reward was saved at the time the milestone was reached and remains "
 "unchanged, even if the milestone reward is changed later."
 
-#: mgmt/admin.py:1965
+#: mgmt/admin.py:2862
 msgid "Top-Gruppe"
 msgstr "Top group"
 
-#: mgmt/admin.py:2006
+#: mgmt/admin.py:2903
 msgid "Gruppen-Pfad"
 msgstr "Group path"
 
-#: mgmt/admin.py:2027
+#: mgmt/admin.py:2924
 #, fuzzy
 #| msgid "Möchten Sie die Spielleiter-Rolle wirklich an"
 msgid "Möchten Sie die Belohnung wirklich einlösen?"
 msgstr "Do you really want to transfer the master role to"
 
-#: mgmt/admin.py:2029
+#: mgmt/admin.py:2926
 msgid "Einlösen"
 msgstr ""
 
-#: mgmt/admin.py:2058
+#: mgmt/admin.py:2955
 msgid "Meilenstein-Erreichung nicht gefunden."
 msgstr "Milestone achievement not found."
 
-#: mgmt/admin.py:2064
+#: mgmt/admin.py:2962
+msgid "Sie haben keine Berechtigung, diese Belohnung einzulösen."
+msgstr ""
+
+#: mgmt/admin.py:2968
 msgid "Die Belohnung wurde bereits eingelöst."
 msgstr ""
 
-#: mgmt/admin.py:2069
+#: mgmt/admin.py:2973
 msgid "Keine Belohnung für diesen Meilenstein definiert."
 msgstr "No reward defined for this milestone."
 
-#: mgmt/admin.py:2078
+#: mgmt/admin.py:2982
 msgid "Belohnung erfolgreich eingelöst."
 msgstr ""
 
-#: mgmt/admin.py:2122
+#: mgmt/admin.py:3057
 msgid "{} Event(s) wurden in die Historie gespeichert und zurückgesetzt."
 msgstr ""
 
-#: mgmt/admin.py:2123
+#: mgmt/admin.py:3058
 msgid "Event(s) in Historie speichern und zurücksetzen"
 msgstr "Save event(s) to history and reset"
 
-#: mgmt/admin.py:2141
+#: mgmt/admin.py:3079
+msgid ""
+"Sie haben keine Berechtigung, dieses Event in die Historie zu speichern."
+msgstr ""
+
+#: mgmt/admin.py:3082
 msgid "Event wurde in die Historie gespeichert und zurückgesetzt."
 msgstr "Event has been saved to history and reset."
 
-#: mgmt/admin.py:2213
+#: mgmt/admin.py:3169
 msgid "Kilometer"
 msgstr "Kilometers"
 
-#: mgmt/admin.py:2357
+#: mgmt/admin.py:3348
 msgid ""
 "Die Order-Nummer {} ist bereits vergeben. Jede Order-Nummer darf nur einmal "
 "pro Gerät verwendet werden."
 msgstr ""
 
-#: mgmt/admin.py:2656
+#: mgmt/admin.py:3647
 msgid "Device Information"
 msgstr ""
 
-#: mgmt/admin.py:2659
+#: mgmt/admin.py:3650
 msgid "Hardware Control"
 msgstr ""
 
-#: mgmt/admin.py:2661
+#: mgmt/admin.py:3652
 msgid ""
+"Helligkeit: 0-100. Befehls-Warteschlange: JSON-Array mit ausstehenden "
+"Befehlen (z.B. ['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
+msgstr ""
 "Brightness: 0-100. Command Queue: JSON array of pending commands (e.g., "
 "['RELOAD', 'SET_BRIGHTNESS:50', 'REBOOT'])"
-msgstr ""
 
-#: mgmt/admin.py:2663
+#: mgmt/admin.py:3654
 msgid "Timestamps"
 msgstr ""
 
-#: mgmt/admin.py:2679
+#: mgmt/admin.py:3787
 msgid "Aktive Einträge"
 msgstr "Active Entries"
 
-#: mgmt/admin.py:2704
+#: mgmt/admin.py:3812
 msgid "Playlist URL"
 msgstr ""
 
-#: mgmt/admin.py:2711
+#: mgmt/admin.py:3819
 msgid "Ausstehende Befehle"
 msgstr "Pending Commands"
 
-#: mgmt/admin.py:2731
+#: mgmt/admin.py:3839
 msgid "Reload command queued for device '{}'."
 msgstr ""
 
-#: mgmt/admin.py:2741
+#: mgmt/admin.py:3849
 msgid "Reboot command queued for device '{}'."
 msgstr ""
 
-#: mgmt/admin.py:2751
+#: mgmt/admin.py:3859
 msgid "Set brightness command queued for device '{}' to {}%."
 msgstr ""
 
-#: mgmt/admin.py:2762
+#: mgmt/admin.py:3870
 msgid "Reload Device"
 msgstr ""
 
-#: mgmt/admin.py:2767
+#: mgmt/admin.py:3875
 msgid "Reboot Device"
 msgstr ""
 
-#: mgmt/admin.py:2772
+#: mgmt/admin.py:3880
 msgid "Set Brightness: 50%"
 msgstr ""
 
-#: mgmt/admin.py:2778
+#: mgmt/admin.py:3886
 msgid "Set Brightness: 100%"
 msgstr ""
 
-#: mgmt/admin.py:2818
+#: mgmt/admin.py:3926
 msgid "Konfigurationsstatus"
 msgstr "Configuration Status"
 
-#: mgmt/admin.py:2845
+#: mgmt/admin.py:3986
 msgid "Berichts-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:2860
+#: mgmt/admin.py:4001
 msgid "Offene Unterschiede"
 msgstr ""
 
-#: mgmt/admin.py:2872
+#: mgmt/admin.py:4019
 msgid "Unterschieds-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:2875
+#: mgmt/admin.py:4022
 msgid "Werte"
 msgstr ""
 
-#: mgmt/admin.py:2920
+#: mgmt/admin.py:4067
 msgid "Firmware-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:2923 mgmt/admin.py:2973 mgmt/admin.py:2995
+#: mgmt/admin.py:4070 mgmt/admin.py:4120 mgmt/admin.py:4142
 msgid "Zugewiesene Geräte"
 msgstr ""
 
-#: mgmt/admin.py:2925
+#: mgmt/admin.py:4072
 msgid "Liste aller Geräte, denen diese Firmware zugewiesen wurde."
 msgstr ""
 
-#: mgmt/admin.py:2930 mgmt/admin.py:3118 mgmt/admin.py:3206 mgmt/admin.py:3238
-#: mgmt/admin.py:3268 mgmt/admin.py:3313
+#: mgmt/admin.py:4077 mgmt/admin.py:4265 mgmt/admin.py:4353 mgmt/admin.py:4385
+#: mgmt/admin.py:4415 mgmt/admin.py:4466
 msgid "Zeitstempel"
 msgstr "Timestamp"
 
-#: mgmt/admin.py:2967
+#: mgmt/admin.py:4114
 msgid "Dateigröße"
 msgstr ""
 
-#: mgmt/admin.py:2978 mgmt/admin.py:2982 mgmt/admin.py:2994
+#: mgmt/admin.py:4125 mgmt/admin.py:4129 mgmt/admin.py:4141
 #, fuzzy
 #| msgid "Keine Geräte gefunden"
 msgid "Keine Geräte zugewiesen"
 msgstr "No data found."
 
-#: mgmt/admin.py:3005 mgmt/admin.py:3031
+#: mgmt/admin.py:4152 mgmt/admin.py:4178
 #, fuzzy
 #| msgid ""
 #| "Keine Sitzungen gelöscht. Ihre eigene Sitzung kann nicht gelöscht werden."
@@ -4286,35 +4344,35 @@ msgid ""
 "werden."
 msgstr "No sessions deleted. Your own session cannot be deleted."
 
-#: mgmt/admin.py:3044
+#: mgmt/admin.py:4191
 msgid ""
 "Firmware '{}' kann nicht gelöscht werden, da sie {} Gerät(en) zugewiesen "
 "ist. Bitte entfernen Sie die Zuweisung zuerst von den Geräten."
 msgstr ""
 
-#: mgmt/admin.py:3073
+#: mgmt/admin.py:4220
 msgid ""
 "{} Firmware-Image(s) werden von {} Gerät(en) verwendet und können nicht "
 "gelöscht werden."
 msgstr ""
 
-#: mgmt/admin.py:3084
+#: mgmt/admin.py:4231
 msgid "{} Firmware-Image(s) erfolgreich gelöscht."
 msgstr ""
 
-#: mgmt/admin.py:3100
+#: mgmt/admin.py:4247
 msgid "Popup-Dauer"
 msgstr "Popup Duration"
 
-#: mgmt/admin.py:3102
+#: mgmt/admin.py:4249
 msgid "Anzeigedauer der Popups in Sekunden (1-300)"
 msgstr "Display duration of popups in seconds (1-300)"
 
-#: mgmt/admin.py:3104
+#: mgmt/admin.py:4251
 msgid "Kilometer-Weltmeister Popup Styling"
 msgstr "Kilometer World Champion Popup Styling"
 
-#: mgmt/admin.py:3106
+#: mgmt/admin.py:4253
 msgid ""
 "Hintergrundfarbe und Transparenz des Kilometer-Weltmeister Popups. Verwenden "
 "Sie einen <a href='https://htmlcolorcodes.com/color-picker/' "
@@ -4326,11 +4384,11 @@ msgstr ""
 "picker</a> or <a href='https://colorpicker.me/' target='_blank'>Color "
 "Picker</a> to determine the hex code."
 
-#: mgmt/admin.py:3111
+#: mgmt/admin.py:4258
 msgid "Meilenstein Popup Styling"
 msgstr "Milestone Popup Styling"
 
-#: mgmt/admin.py:3113
+#: mgmt/admin.py:4260
 msgid ""
 "Hintergrundfarbe und Transparenz des Meilenstein Popups. Verwenden Sie einen "
 "<a href='https://htmlcolorcodes.com/color-picker/' "
@@ -4342,15 +4400,15 @@ msgstr ""
 "picker</a> or <a href='https://colorpicker.me/' target='_blank'>Color "
 "Picker</a> to determine the hex code."
 
-#: mgmt/admin.py:3139
+#: mgmt/admin.py:4286
 msgid "Farbvorschau (Start)"
 msgstr "Color Preview (Start)"
 
-#: mgmt/admin.py:3154
+#: mgmt/admin.py:4301
 msgid "Farbvorschau (Ende)"
 msgstr "Color Preview (End)"
 
-#: mgmt/admin.py:3200
+#: mgmt/admin.py:4347
 msgid ""
 "Dedizierter API-Key für IoT-Geräte, der von mehreren Geräten gleichzeitig "
 "verwendet werden kann. Wird als Standard-Key verwendet, bevor individuelle "
@@ -4358,62 +4416,62 @@ msgid ""
 "öffentliche API-Endpoints."
 msgstr ""
 
-#: mgmt/admin.py:3202
+#: mgmt/admin.py:4349
 msgid "E-Mail-Benachrichtigungen"
 msgstr "Email Notifications"
 
-#: mgmt/admin.py:3204
+#: mgmt/admin.py:4351
 msgid ""
 "Konfigurieren Sie tägliche E-Mail-Benachrichtigungen für "
 "Gerätekonfigurationsunterschiede."
 msgstr ""
 "Configure daily email notifications for device configuration differences."
 
-#: mgmt/admin.py:3229
+#: mgmt/admin.py:4376
 msgid "Geräte-Informationen"
 msgstr "Device information"
 
-#: mgmt/admin.py:3232
+#: mgmt/admin.py:4379
 msgid "Gesundheitsstatus"
 msgstr "Health status"
 
-#: mgmt/admin.py:3235 mgmt/admin.py:3309
+#: mgmt/admin.py:4382 mgmt/admin.py:4462
 msgid "Konfiguration"
 msgstr "Configuration"
 
-#: mgmt/admin.py:3249
+#: mgmt/admin.py:4396
 msgid "Online-Status"
 msgstr ""
 
-#: mgmt/admin.py:3261
+#: mgmt/admin.py:4408
 msgid "Template-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:3266
+#: mgmt/admin.py:4413
 msgid ""
 "JSON-Objekt mit Konfigurationswerten. Beispiel: {'send_interval_seconds': "
 "60, 'wheel_size': 26}"
 msgstr ""
 
-#: mgmt/admin.py:3283
+#: mgmt/admin.py:4436
 msgid "Protokoll-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:3306
+#: mgmt/admin.py:4459
 msgid "Webhook-Informationen"
 msgstr ""
 
-#: mgmt/admin.py:3311
+#: mgmt/admin.py:4464
 msgid ""
 "Wählen Sie Ereignisse aus, die diesen Webhook auslösen sollen. Geheimer "
 "Schlüssel ist optional für die Authentifizierung."
 msgstr ""
 
-#: mgmt/admin.py:3324
+#: mgmt/admin.py:4477
 msgid "Ereignisse"
 msgstr ""
 
-#: mgmt/admin.py:3338
+#: mgmt/admin.py:4492
 #, fuzzy
 #| msgid ""
 #| "Gerätespezifischer API-Key für sichere Authentifizierung. Wenn kein "
@@ -4434,19 +4492,19 @@ msgstr ""
 "in Device Management Settings). Use 'Generate API Key' for immediate renewal "
 "or 'Test Rotation' to check automatic rotation."
 
-#: mgmt/admin.py:3354
+#: mgmt/admin.py:4508
 msgid ""
 "Passwort für den Config-WLAN-Hotspot. Minimum 8 Zeichen erforderlich (WPA2-"
 "Anforderung)."
 msgstr ""
 
-#: mgmt/admin.py:3631
+#: mgmt/admin.py:4785
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Log Level Configuration"
 msgstr "Device Configuration"
 
-#: mgmt/admin.py:3634
+#: mgmt/admin.py:4788
 msgid ""
 "Select the minimum log level that will be written to log files. Only logs "
 "with this level or higher will be written to log files. Changes apply "
@@ -4454,26 +4512,26 @@ msgid ""
 "under \"Log File Viewer\"."
 msgstr ""
 
-#: mgmt/admin.py:3640 mgmt/admin.py:3681
+#: mgmt/admin.py:4794 mgmt/admin.py:4835
 msgid "Request Logging"
 msgstr ""
 
-#: mgmt/admin.py:3643
+#: mgmt/admin.py:4797
 msgid ""
 "Enable Request Logging to store all HTTP requests in the database "
 "(RequestLog). Disable this to avoid overloading the database. Changes apply "
 "immediately to new requests."
 msgstr ""
 
-#: mgmt/admin.py:3669 mgmt/models.py:32
+#: mgmt/admin.py:4823 mgmt/models.py:32
 msgid "Minimum Log Level"
 msgstr ""
 
-#: mgmt/admin.py:3710 mgmt/models.py:237
+#: mgmt/admin.py:4864 mgmt/models.py:237
 msgid "IP Whitelist"
 msgstr ""
 
-#: mgmt/admin.py:3713
+#: mgmt/admin.py:4867
 msgid ""
 "Geben Sie eine IP-Adresse oder einen CIDR-Block pro Zeile ein. Beispiele:\n"
 "192.168.1.100\n"
@@ -4482,35 +4540,35 @@ msgid ""
 "Diese IPs können während der Wartung auf die Website zugreifen."
 msgstr ""
 
-#: mgmt/admin.py:3721
+#: mgmt/admin.py:4875
 msgid "Admin Access"
 msgstr ""
 
-#: mgmt/admin.py:3724
+#: mgmt/admin.py:4878
 msgid ""
 "Wenn aktiviert, können Superuser auch ohne IP-Whitelist auf /admin/ "
 "zugreifen. Dies ist für Notfälle empfohlen."
 msgstr ""
 
-#: mgmt/admin.py:3774
+#: mgmt/admin.py:4928
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Gunicorn Log Level Configuration"
 msgstr "Device Configuration"
 
-#: mgmt/admin.py:3777
+#: mgmt/admin.py:4931
 msgid ""
 "Select the log level for the Gunicorn server. Changes require a server "
 "restart to take effect."
 msgstr ""
 
-#: mgmt/admin.py:3781
+#: mgmt/admin.py:4935
 #, fuzzy
 #| msgid "Device Configuration"
 msgid "Worker Configuration"
 msgstr "Device Configuration"
 
-#: mgmt/admin.py:3784
+#: mgmt/admin.py:4938
 msgid ""
 "Configure the number of workers and threads. <strong>Recommended "
 "combinations:</strong><br><ul><li><strong>Small servers (1-2 CPU):</strong> "
@@ -4521,70 +4579,70 @@ msgid ""
 "strong> Threads are only used when worker_class=\"gthread\"."
 msgstr ""
 
-#: mgmt/admin.py:3816 mgmt/models.py:118
+#: mgmt/admin.py:4970 mgmt/models.py:118
 #: templates/admin/mgmt/server_control.html:325
 msgid "Log Level"
 msgstr ""
 
-#: mgmt/admin.py:3821
+#: mgmt/admin.py:4975
 msgid "manual"
 msgstr ""
 
-#: mgmt/admin.py:3824
+#: mgmt/admin.py:4978
 msgid "automatic"
 msgstr ""
 
-#: mgmt/admin.py:3825 templates/admin/mgmt/server_control.html:241
+#: mgmt/admin.py:4979 templates/admin/mgmt/server_control.html:241
 #: templates/admin/mgmt/server_control.html:326
 msgid "Workers"
 msgstr ""
 
-#: mgmt/admin.py:3830
+#: mgmt/admin.py:4984
 msgid "Threads"
 msgstr ""
 
-#: mgmt/admin.py:3835 templates/admin/mgmt/server_control.html:334
+#: mgmt/admin.py:4989 templates/admin/mgmt/server_control.html:334
 #, fuzzy
 #| msgid "Verlassen"
 msgid "Worker Class"
 msgstr "Leave"
 
-#: mgmt/admin.py:3854
+#: mgmt/admin.py:5008
 msgid ""
 "Gunicorn-Konfiguration wurde aktualisiert. Bitte starten Sie den Server neu, "
 "damit die Änderungen wirksam werden. <a href=\"{}\">Server Control öffnen</a>"
 msgstr ""
 
-#: mgmt/admin.py:3901 mgmt/server_control.py:62
+#: mgmt/admin.py:5055 mgmt/server_control.py:62
 #: templates/admin/mgmt/server_control.html:183
 msgid "Server Control"
 msgstr ""
 
-#: mgmt/admin.py:3909 templates/admin/mgmt/maintenance_control.html:127
+#: mgmt/admin.py:5063 templates/admin/mgmt/maintenance_control.html:127
 #, fuzzy
 #| msgid "Minecraft Control"
 msgid "Maintenance Control"
 msgstr "Minecraft Control"
 
-#: mgmt/admin.py:3917
+#: mgmt/admin.py:5071
 #, fuzzy
 #| msgid "View site"
 msgid "View Application Logs"
 msgstr "View site"
 
-#: mgmt/admin.py:3925 mgmt/views_deployment.py:71
+#: mgmt/admin.py:5079 mgmt/views_deployment.py:71
 msgid "Backup Management"
 msgstr ""
 
-#: mgmt/admin.py:3939 minecraft/admin_views.py:158
+#: mgmt/admin.py:5093 minecraft/admin_views.py:158
 msgid "Minecraft Control"
 msgstr "Minecraft Control"
 
-#: mgmt/admin.py:3955 mgmt/analytics.py:69
+#: mgmt/admin.py:5111 mgmt/analytics.py:73
 msgid "Historical Reports & Analytics"
 msgstr ""
 
-#: mgmt/admin.py:3980
+#: mgmt/admin.py:5136
 #, fuzzy
 #| msgid "Session beenden"
 msgid "Session Management"
@@ -4675,43 +4733,43 @@ msgstr "Invalid track_id"
 msgid "Fehler beim Import: {}"
 msgstr "Error saving: {}"
 
-#: mgmt/admin_performance.py:40 mgmt/models_performance.py:40
+#: mgmt/admin_performance.py:46 mgmt/models_performance.py:40
 msgid "Path"
 msgstr ""
 
-#: mgmt/admin_performance.py:50 mgmt/models_performance.py:194
+#: mgmt/admin_performance.py:56 mgmt/models_performance.py:194
 msgid "Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:276
+#: mgmt/admin_performance.py:288
 msgid "Avg Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:281
+#: mgmt/admin_performance.py:293
 msgid "P95 Response Time"
 msgstr ""
 
-#: mgmt/admin_performance.py:299
+#: mgmt/admin_performance.py:311
 msgid "Generate hourly metrics from RequestLog data"
 msgstr ""
 
-#: mgmt/admin_performance.py:309
+#: mgmt/admin_performance.py:321
 msgid "Generate daily metrics from RequestLog data"
 msgstr ""
 
-#: mgmt/admin_performance.py:322
+#: mgmt/admin_performance.py:334
 #, fuzzy
 #| msgid "Warnung"
 msgid "Warnbedingungen"
 msgstr "Warning"
 
-#: mgmt/admin_performance.py:325
+#: mgmt/admin_performance.py:337
 #, fuzzy
 #| msgid "E-Mail-Benachrichtigungen"
 msgid "Benachrichtigungen"
 msgstr "Email Notifications"
 
-#: mgmt/admin_performance.py:345
+#: mgmt/admin_performance.py:363
 msgid "Schwellenwert"
 msgstr ""
 
@@ -4741,21 +4799,31 @@ msgstr ""
 msgid "Massenerstellung: Schule, Klassen und Spieler"
 msgstr ""
 
-#: mgmt/analytics.py:444 mgmt/analytics.py:482
+#: mgmt/analytics.py:48 mgmt/analytics.py:1155 mgmt/analytics.py:1284
+msgid ""
+"Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese "
+"Funktion."
+msgstr ""
+
+#: mgmt/analytics.py:99
+msgid "Zugriff verweigert"
+msgstr ""
+
+#: mgmt/analytics.py:452 mgmt/analytics.py:490
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Gruppe"
 msgstr "No groups"
 
-#: mgmt/analytics.py:1301
+#: mgmt/analytics.py:1317
 msgid "Event not found"
 msgstr ""
 
-#: mgmt/analytics.py:1330
+#: mgmt/analytics.py:1346
 msgid "Parent group not found"
 msgstr ""
 
-#: mgmt/analytics.py:1357
+#: mgmt/analytics.py:1373
 msgid "Group not found"
 msgstr ""
 
@@ -5561,24 +5629,24 @@ msgstr ""
 msgid "Save to History"
 msgstr ""
 
-#: templates/admin/base_site.html:16
+#: templates/admin/base_site.html:21
 msgid "Django administration"
 msgstr "Django administration"
 
-#: templates/admin/base_site.html:63
+#: templates/admin/base_site.html:68
 msgid "View site"
 msgstr "View site"
 
-#: templates/admin/base_site.html:68 templates/admin/base_site.html:92
-#: templates/admin/base_site.html:94
+#: templates/admin/base_site.html:73 templates/admin/base_site.html:97
+#: templates/admin/base_site.html:99
 msgid "Documentation"
 msgstr "Documentation"
 
-#: templates/admin/base_site.html:72
+#: templates/admin/base_site.html:77
 msgid "Change password"
 msgstr "Change password"
 
-#: templates/admin/base_site.html:98
+#: templates/admin/base_site.html:103
 msgid "Log out"
 msgstr "Log out"
 
@@ -6381,11 +6449,11 @@ msgstr "Pending Events (max. 50)"
 msgid "Keine ausstehenden Events."
 msgstr "No pending events."
 
-#: templates/base.html:29
+#: templates/base.html:31
 msgid "Language"
 msgstr "Language"
 
-#: templates/base.html:58 templates/privacy_policy.html:12
+#: templates/base.html:60 templates/privacy_policy.html:12
 #: templates/privacy_policy.html:16
 msgid "Privacy Policy"
 msgstr "Privacy Policy"
@@ -6426,7 +6494,6 @@ msgid ""
 msgstr ""
 
 #: templates/privacy_policy.html:38
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2219
 msgid "IP address"
 msgstr ""
 
@@ -6772,1536 +6839,87 @@ msgid ""
 "rights, please contact us:"
 msgstr ""
 
-#: venv/lib/python3.13/site-packages/_pytest/config/argparsing.py:499
-#, python-format
-msgid "ambiguous option: %(option)s could match %(matches)s"
-msgstr ""
+#~ msgid "View Type"
+#~ msgstr "View Type"
 
-#: venv/lib/python3.13/site-packages/click/_termui_impl.py:613
-#, python-brace-format
-msgid "{editor}: Editing failed"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/_termui_impl.py:617
-#, python-brace-format
-msgid "{editor}: Editing failed: {e}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1114
-#: venv/lib/python3.13/site-packages/click/core.py:1151
-#, python-brace-format
-msgid "{text} {deprecated_message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1170
 #, fuzzy
-#| msgid "Action"
-msgid "Options"
-msgstr "Action"
+#~| msgid "Action"
+#~ msgid "Options"
+#~ msgstr "Action"
 
-#: venv/lib/python3.13/site-packages/click/core.py:1245
-#, python-brace-format
-msgid "Got unexpected extra argument ({args})"
-msgid_plural "Got unexpected extra arguments ({args})"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1264
-msgid "DeprecationWarning: The command {name!r} is deprecated.{extra_message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1448
-msgid "Aborted!"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1822
-msgid "Commands"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1853
-msgid "Missing command."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:1931
-msgid "No such command {name!r}."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:2355
-msgid "Value must be an iterable."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:2378
-#, python-brace-format
-msgid "Takes {nargs} values but 1 was given."
-msgid_plural "Takes {nargs} values but {len} were given."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:2567
-msgid ""
-"DeprecationWarning: The {param_type} {name!r} is deprecated.{extra_message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:3015
-#, python-brace-format
-msgid "env var: {var}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:3018
-#, python-brace-format
-msgid "default: {default}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/core.py:3082
-#: venv/lib/python3.13/site-packages/rich_click/rich_help_rendering.py:595
-msgid "(dynamic)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/decorators.py:465
-#, python-format
-msgid "%(prog)s, version %(version)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/decorators.py:522
-msgid "Show the version and exit."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/decorators.py:548
-#: venv/lib/python3.13/site-packages/rich_click/cli.py:366
-#: venv/lib/python3.13/site-packages/rich_click/decorators.py:333
-msgid "Show this message and exit."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:50
-#: venv/lib/python3.13/site-packages/click/exceptions.py:89
-#, python-brace-format
-msgid "Error: {message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:81
-#, python-brace-format
-msgid "Try '{command} {option}' for help."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:130
-#, python-brace-format
-msgid "Invalid value: {message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:132
-#, python-brace-format
-msgid "Invalid value for {param_hint}: {message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:190
 #, fuzzy
-#| msgid "Session beenden"
-msgid "Missing argument"
-msgstr "End session"
+#~| msgid "Session beenden"
+#~ msgid "Missing argument"
+#~ msgstr "End session"
 
-#: venv/lib/python3.13/site-packages/click/exceptions.py:192
-msgid "Missing option"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:194
-msgid "Missing parameter"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:196
-#, python-brace-format
-msgid "Missing {param_type}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:203
-#, python-brace-format
-msgid "Missing parameter: {param_name}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:223
-#, python-brace-format
-msgid "No such option: {name}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:235
-#, python-brace-format
-msgid "Did you mean {possibility}?"
-msgid_plural "(Possible options: {possibilities})"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:282
-msgid "unknown error"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/exceptions.py:289
-msgid "Could not open file {filename!r}: {message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/formatting.py:156
-msgid "Usage:"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/parser.py:199
-msgid "Argument {name!r} takes {nargs} values."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/parser.py:381
-msgid "Option {name!r} does not take a value."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/parser.py:444
-msgid "Option {name!r} requires an argument."
-msgid_plural "Option {name!r} requires {nargs} arguments."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/shell_completion.py:332
-msgid "Shell completion is not supported for Bash versions older than 4.4."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/shell_completion.py:339
-msgid "Couldn't detect Bash version, shell completion is not supported."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/termui.py:165
 #, fuzzy
-#| msgid "Device Configuration"
-msgid "Repeat for confirmation"
-msgstr "Device Configuration"
+#~| msgid "Device Configuration"
+#~ msgid "Repeat for confirmation"
+#~ msgstr "Device Configuration"
 
-#: venv/lib/python3.13/site-packages/click/termui.py:181
-msgid "Error: The value you entered was invalid."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/termui.py:183
-#, python-brace-format
-msgid "Error: {e.message}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/termui.py:194
-msgid "Error: The two entered values do not match."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/termui.py:253
-msgid "Error: invalid input"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/termui.py:872
-msgid "Press any key to continue..."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:332
-#, python-brace-format
-msgid ""
-"Choose from:\n"
-"\t{choices}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:369
-msgid "{value!r} is not {choice}."
-msgid_plural "{value!r} is not one of {choices}."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:460
-msgid "{value!r} does not match the format {format}."
-msgid_plural "{value!r} does not match the formats {formats}."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:482
-msgid "{value!r} is not a valid {number_type}."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:538
-#, python-brace-format
-msgid "{value} is not in the range {range}."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:719
-msgid "{value!r} is not a valid boolean. Recognized values: {states}"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:747
-msgid "{value!r} is not a valid UUID."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:937
-msgid "file"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:939
-msgid "directory"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:941
-msgid "path"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:988
-msgid "{name} {filename!r} does not exist."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:997
-msgid "{name} {filename!r} is a file."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:1005
-msgid "{name} {filename!r} is a directory."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:1014
-msgid "{name} {filename!r} is not readable."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:1023
-msgid "{name} {filename!r} is not writable."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:1032
-msgid "{name} {filename!r} is not executable."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/click/types.py:1099
-#, python-brace-format
-msgid "{len_type} values are required, but {len_value} was given."
-msgid_plural "{len_type} values are required, but {len_value} were given."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/contrib/messages/apps.py:16
-msgid "Messages"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/contrib/sitemaps/apps.py:8
-msgid "Site Maps"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/contrib/staticfiles/apps.py:9
 #, fuzzy
-#| msgid "Statistics"
-msgid "Static Files"
-msgstr "Statistics"
+#~| msgid "Statistics"
+#~ msgid "Static Files"
+#~ msgstr "Statistics"
 
-#: venv/lib/python3.13/site-packages/django/contrib/syndication/apps.py:7
 #, fuzzy
-#| msgid "Station"
-msgid "Syndication"
-msgstr "Station"
+#~| msgid "Station"
+#~ msgid "Syndication"
+#~ msgstr "Station"
 
-#. Translators: String used to replace omitted page numbers in elided page
-#. range generated by paginators, e.g. [1, 2, '…', 5, 6, 7, '…', 9, 10].
-#: venv/lib/python3.13/site-packages/django/core/paginator.py:30
-msgid "…"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/paginator.py:32
-msgid "That page number is not an integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/paginator.py:33
-msgid "That page number is less than 1"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/paginator.py:34
-msgid "That page contains no results"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:22
-msgid "Enter a valid value."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:70
-msgid "Enter a valid domain name."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:153
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:775
-msgid "Enter a valid URL."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:200
-msgid "Enter a valid integer."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:211
-msgid "Enter a valid email address."
-msgstr ""
-
-#. Translators: "letters" means latin letters: a-z and A-Z.
-#: venv/lib/python3.13/site-packages/django/core/validators.py:289
-msgid ""
-"Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:297
-msgid ""
-"Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or "
-"hyphens."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:309
-#: venv/lib/python3.13/site-packages/django/core/validators.py:318
-#: venv/lib/python3.13/site-packages/django/core/validators.py:332
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2220
-#, python-format
-msgid "Enter a valid %(protocol)s address."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:311
-msgid "IPv4"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:320
-#: venv/lib/python3.13/site-packages/django/utils/ipv6.py:43
-msgid "IPv6"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:334
-msgid "IPv4 or IPv6"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:375
-msgid "Enter only digits separated by commas."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:381
-#, python-format
-msgid "Ensure this value is %(limit_value)s (it is %(show_value)s)."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:416
-#, python-format
-msgid "Ensure this value is less than or equal to %(limit_value)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:425
-#, python-format
-msgid "Ensure this value is greater than or equal to %(limit_value)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:434
-#, python-format
-msgid "Ensure this value is a multiple of step size %(limit_value)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:441
-#, python-format
-msgid ""
-"Ensure this value is a multiple of step size %(limit_value)s, starting from "
-"%(offset)s, e.g. %(offset)s, %(valid_value1)s, %(valid_value2)s, and so on."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:473
-#, python-format
-msgid ""
-"Ensure this value has at least %(limit_value)d character (it has "
-"%(show_value)d)."
-msgid_plural ""
-"Ensure this value has at least %(limit_value)d characters (it has "
-"%(show_value)d)."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:491
-#, python-format
-msgid ""
-"Ensure this value has at most %(limit_value)d character (it has "
-"%(show_value)d)."
-msgid_plural ""
-"Ensure this value has at most %(limit_value)d characters (it has "
-"%(show_value)d)."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:514
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:366
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:405
-msgid "Enter a number."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:516
-#, python-format
-msgid "Ensure that there are no more than %(max)s digit in total."
-msgid_plural "Ensure that there are no more than %(max)s digits in total."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:521
-#, python-format
-msgid "Ensure that there are no more than %(max)s decimal place."
-msgid_plural "Ensure that there are no more than %(max)s decimal places."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:526
-#, python-format
-msgid ""
-"Ensure that there are no more than %(max)s digit before the decimal point."
-msgid_plural ""
-"Ensure that there are no more than %(max)s digits before the decimal point."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:597
-#, python-format
-msgid ""
-"File extension “%(extension)s” is not allowed. Allowed extensions are: "
-"%(allowed_extensions)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/core/validators.py:659
-msgid "Null characters are not allowed."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/base.py:1600
-#: venv/lib/python3.13/site-packages/django/forms/models.py:908
-msgid "and"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/base.py:1602
-#, python-format
-msgid "%(model_name)s with this %(field_labels)s already exists."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/constraints.py:22
-#, python-format
-msgid "Constraint “%(name)s” is violated."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:134
-#, python-format
-msgid "Value %(value)r is not a valid choice."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:135
-msgid "This field cannot be null."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:136
-msgid "This field cannot be blank."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:137
-#, python-format
-msgid "%(model_name)s with this %(field_label)s already exists."
-msgstr ""
-
-#. Translators: The 'lookup_type' is one of 'date', 'year' or
-#. 'month'. Eg: "Title must be unique for pub_date year"
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:141
-#, python-format
-msgid ""
-"%(field_label)s must be unique for %(date_field_label)s %(lookup_type)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:180
-#, python-format
-msgid "Field of type: %(field_type)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1162
-#, python-format
-msgid "“%(value)s” value must be either True or False."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1163
-#, python-format
-msgid "“%(value)s” value must be either True, False, or None."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1165
-msgid "Boolean (Either True or False)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1215
-#, python-format
-msgid "String (up to %(max_length)s)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1217
-msgid "String (unlimited)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1326
-msgid "Comma-separated integers"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1427
-#, python-format
-msgid ""
-"“%(value)s” value has an invalid date format. It must be in YYYY-MM-DD "
-"format."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1431
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1566
-#, python-format
-msgid ""
-"“%(value)s” value has the correct format (YYYY-MM-DD) but it is an invalid "
-"date."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1435
-msgid "Date (without time)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1562
-#, python-format
-msgid ""
-"“%(value)s” value has an invalid format. It must be in YYYY-MM-DD "
-"HH:MM[:ss[.uuuuuu]][TZ] format."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1570
-#, python-format
-msgid ""
-"“%(value)s” value has the correct format (YYYY-MM-DD HH:MM[:ss[.uuuuuu]]"
-"[TZ]) but it is an invalid date/time."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1575
-msgid "Date (with time)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1702
-#, python-format
-msgid "“%(value)s” value must be a decimal number."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1704
-msgid "Decimal number"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1864
-#, python-format
-msgid ""
-"“%(value)s” value has an invalid format. It must be in [DD] "
-"[[HH:]MM:]ss[.uuuuuu] format."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1868
 #, fuzzy
-#| msgid "Storage Duration"
-msgid "Duration"
-msgstr "Storage Duration"
+#~| msgid "Storage Duration"
+#~ msgid "Duration"
+#~ msgstr "Storage Duration"
 
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1920
-msgid "Email address"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:1945
-msgid "File path"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2023
-#, python-format
-msgid "“%(value)s” value must be a float."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2025
-msgid "Floating point number"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2065
-#, python-format
-msgid "“%(value)s” value must be an integer."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2067
-msgid "Integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2163
-msgid "Big (8 byte) integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2180
-msgid "Small integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2188
-msgid "IPv4 address"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2310
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2311
-#, python-format
-msgid "“%(value)s” value must be either None, True or False."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2313
-msgid "Boolean (Either True, False or None)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2364
-msgid "Positive big integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2379
 #, fuzzy
-#| msgid "Aktive Einträge"
-msgid "Positive integer"
-msgstr "Active Entries"
+#~| msgid "Aktive Einträge"
+#~ msgid "Positive integer"
+#~ msgstr "Active Entries"
 
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2394
-msgid "Positive small integer"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2410
-#, python-format
-msgid "Slug (up to %(max_length)s)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2446
-msgid "Text"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2526
-#, python-format
-msgid ""
-"“%(value)s” value has an invalid format. It must be in HH:MM[:ss[.uuuuuu]] "
-"format."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2530
-#, python-format
-msgid ""
-"“%(value)s” value has the correct format (HH:MM[:ss[.uuuuuu]]) but it is an "
-"invalid time."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2534
-msgid "Time"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2642
-msgid "URL"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2666
-msgid "Raw binary data"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2731
-#, python-format
-msgid "“%(value)s” is not a valid UUID."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/__init__.py:2733
-msgid "Universally unique identifier"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/files.py:244
-msgid "File"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/files.py:420
-msgid "Image"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/json.py:24
-msgid "A JSON object"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/json.py:26
-msgid "Value must be valid JSON."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:979
-#, python-format
-msgid "%(model)s instance with %(field)s %(value)r is not a valid choice."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:982
-msgid "Foreign Key (type determined by related field)"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:1276
-msgid "One-to-one relationship"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:1333
-#, python-format
-msgid "%(from)s-%(to)s relationship"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:1335
-#, python-format
-msgid "%(from)s-%(to)s relationships"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/db/models/fields/related.py:1383
-msgid "Many-to-many relationship"
-msgstr ""
-
-#. Translators: If found as last label character, these punctuation
-#. characters will prevent the default label_suffix to be appended to the label
-#: venv/lib/python3.13/site-packages/django/forms/boundfield.py:185
-msgid ":?.!"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:95
-msgid "This field is required."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:315
-msgid "Enter a whole number."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:486
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1267
-msgid "Enter a valid date."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:509
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1268
-msgid "Enter a valid time."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:536
-msgid "Enter a valid date/time."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:570
 #, fuzzy
-#| msgid "Invalid action"
-msgid "Enter a valid duration."
-msgstr "Invalid action"
+#~| msgid "Invalid action"
+#~ msgid "Enter a valid duration."
+#~ msgstr "Invalid action"
 
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:571
-#, python-brace-format
-msgid "The number of days must be between {min_days} and {max_days}."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:640
-msgid "No file was submitted. Check the encoding type on the form."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:641
-msgid "No file was submitted."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:642
-msgid "The submitted file is empty."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:644
-#, python-format
-msgid "Ensure this filename has at most %(max)d character (it has %(length)d)."
-msgid_plural ""
-"Ensure this filename has at most %(max)d characters (it has %(length)d)."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:649
-msgid "Please either submit a file or check the clear checkbox, not both."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:717
-msgid ""
-"Upload a valid image. The file you uploaded was either not an image or a "
-"corrupted image."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:889
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:975
-#: venv/lib/python3.13/site-packages/django/forms/models.py:1592
-#, python-format
-msgid "Select a valid choice. %(value)s is not one of the available choices."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:977
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1096
-#: venv/lib/python3.13/site-packages/django/forms/models.py:1590
-msgid "Enter a list of values."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1097
-msgid "Enter a complete value."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1339
-msgid "Enter a valid UUID."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/fields.py:1369
-msgid "Enter a valid JSON."
-msgstr ""
-
-#. Translators: This is the default suffix added to form field labels
-#: venv/lib/python3.13/site-packages/django/forms/forms.py:97
-msgid ":"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/forms.py:239
-#, python-format
-msgid "(Hidden field %(name)s) %(error)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:61
-#, python-format
-msgid ""
-"ManagementForm data is missing or has been tampered with. Missing fields: "
-"%(field_names)s. You may need to file a bug report if the issue persists."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:65
-#, python-format
-msgid "Please submit at most %(num)d form."
-msgid_plural "Please submit at most %(num)d forms."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:70
-#, python-format
-msgid "Please submit at least %(num)d form."
-msgid_plural "Please submit at least %(num)d forms."
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/forms/formsets.py:499
-msgid "Delete"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:901
-#, python-format
-msgid "Please correct the duplicate data for %(field)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:906
-#, python-format
-msgid "Please correct the duplicate data for %(field)s, which must be unique."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:913
-#, python-format
-msgid ""
-"Please correct the duplicate data for %(field_name)s which must be unique "
-"for the %(lookup)s in %(date_field)s."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:922
-msgid "Please correct the duplicate values below."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:1359
-msgid "The inline value did not match the parent instance."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:1450
-msgid "Select a valid choice. That choice is not one of the available choices."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/models.py:1594
-#, python-format
-msgid "“%(pk)s” is not a valid value."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/utils.py:229
-#, python-format
-msgid ""
-"%(datetime)s couldn’t be interpreted in time zone %(current_timezone)s; it "
-"may be ambiguous or it may not exist."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:527
-msgid "Clear"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:528
-msgid "Currently"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:529
-msgid "Change"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:867
-msgid "Yes"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/forms/widgets.py:868
-msgid "No"
-msgstr ""
-
-#. Translators: Please do not add spaces around commas.
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:873
-msgid "yes,no,maybe"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:903
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:920
-#, python-format
-msgid "%(size)d byte"
-msgid_plural "%(size)d bytes"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:922
-#, python-format
-msgid "%s KB"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:924
-#, python-format
-msgid "%s MB"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:926
-#, python-format
-msgid "%s GB"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:928
-#, python-format
-msgid "%s TB"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/template/defaultfilters.py:930
-#, python-format
-msgid "%s PB"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:74
-msgid "p.m."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:75
-msgid "a.m."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:80
-msgid "PM"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:81
-msgid "AM"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:153
-msgid "midnight"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dateformat.py:155
-msgid "noon"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:7
-msgid "Monday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:8
-msgid "Tuesday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:9
-msgid "Wednesday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:10
-msgid "Thursday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:11
-msgid "Friday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:12
-msgid "Saturday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:13
-msgid "Sunday"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:16
-msgid "Mon"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:17
-msgid "Tue"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:18
-msgid "Wed"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:19
-msgid "Thu"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:20
-msgid "Fri"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:21
 #, fuzzy
-#| msgid "Start"
-msgid "Sat"
-msgstr "Start"
+#~| msgid "Start"
+#~ msgid "Sat"
+#~ msgstr "Start"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:22
 #, fuzzy
-#| msgid "Stunden"
-msgid "Sun"
-msgstr "Hours"
+#~| msgid "Stunden"
+#~ msgid "Sun"
+#~ msgstr "Hours"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:25
-msgid "January"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:26
-msgid "February"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:27
-msgid "March"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:28
-msgid "April"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:29
 #, fuzzy
-#| msgid "Map"
-msgid "May"
-msgstr "Map"
+#~| msgid "Map"
+#~ msgid "May"
+#~ msgstr "Map"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:30
-msgid "June"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:31
-msgid "July"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:32
-msgid "August"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:33
-msgid "September"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:34
-msgid "October"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:35
-msgid "November"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:36
-msgid "December"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:39
-msgid "jan"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:40
-msgid "feb"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:41
-msgid "mar"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:42
 #, fuzzy
-#| msgid "Map"
-msgid "apr"
-msgstr "Map"
+#~| msgid "Map"
+#~ msgid "apr"
+#~ msgstr "Map"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:43
-msgid "may"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:44
-msgid "jun"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:45
-msgid "jul"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:46
 #, fuzzy
-#| msgid "Warnung"
-msgid "aug"
-msgstr "Warning"
+#~| msgid "Warnung"
+#~ msgid "aug"
+#~ msgstr "Warning"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:47
-msgid "sep"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:48
-msgid "oct"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:49
-msgid "nov"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:50
-msgid "dec"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:53
-msgctxt "abbrev. month"
-msgid "Jan."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:54
-msgctxt "abbrev. month"
-msgid "Feb."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:55
-msgctxt "abbrev. month"
-msgid "March"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:56
-msgctxt "abbrev. month"
-msgid "April"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:57
 #, fuzzy
-#| msgid "Map"
-msgctxt "abbrev. month"
-msgid "May"
-msgstr "Map"
+#~| msgid "Map"
+#~ msgctxt "abbrev. month"
+#~ msgid "May"
+#~ msgstr "Map"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:58
-msgctxt "abbrev. month"
-msgid "June"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:59
-msgctxt "abbrev. month"
-msgid "July"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:60
-msgctxt "abbrev. month"
-msgid "Aug."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:61
-msgctxt "abbrev. month"
-msgid "Sept."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:62
-msgctxt "abbrev. month"
-msgid "Oct."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:63
-msgctxt "abbrev. month"
-msgid "Nov."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:64
-msgctxt "abbrev. month"
-msgid "Dec."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:67
-msgctxt "alt. month"
-msgid "January"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:68
-msgctxt "alt. month"
-msgid "February"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:69
-msgctxt "alt. month"
-msgid "March"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:70
-msgctxt "alt. month"
-msgid "April"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:71
 #, fuzzy
-#| msgid "Map"
-msgctxt "alt. month"
-msgid "May"
-msgstr "Map"
+#~| msgid "Map"
+#~ msgctxt "alt. month"
+#~ msgid "May"
+#~ msgstr "Map"
 
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:72
-msgctxt "alt. month"
-msgid "June"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:73
-msgctxt "alt. month"
-msgid "July"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:74
-msgctxt "alt. month"
-msgid "August"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:75
-msgctxt "alt. month"
-msgid "September"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:76
-msgctxt "alt. month"
-msgid "October"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:77
-msgctxt "alt. month"
-msgid "November"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/dates.py:78
-msgctxt "alt. month"
-msgid "December"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/ipv6.py:20
-msgid "This is not a valid IPv6 address."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/text.py:76
-#, python-format
-msgctxt "String to return when truncating text"
-msgid "%(truncated_text)s…"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/text.py:287
-msgid "or"
-msgstr ""
-
-#. Translators: This string is used as a separator between list elements
-#: venv/lib/python3.13/site-packages/django/utils/text.py:306
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:135
-msgid ", "
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:8
-#, python-format
-msgid "%(num)d year"
-msgid_plural "%(num)d years"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:9
-#, python-format
-msgid "%(num)d month"
-msgid_plural "%(num)d months"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:10
-#, python-format
-msgid "%(num)d week"
-msgid_plural "%(num)d weeks"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:11
-#, python-format
-msgid "%(num)d day"
-msgid_plural "%(num)d days"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:12
-#, python-format
-msgid "%(num)d hour"
-msgid_plural "%(num)d hours"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/utils/timesince.py:13
-#, python-format
-msgid "%(num)d minute"
-msgid_plural "%(num)d minutes"
-msgstr[0] ""
-msgstr[1] ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:29
-msgid "Forbidden"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:30
-msgid "CSRF verification failed. Request aborted."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:34
-msgid ""
-"You are seeing this message because this HTTPS site requires a “Referer "
-"header” to be sent by your web browser, but none was sent. This header is "
-"required for security reasons, to ensure that your browser is not being "
-"hijacked by third parties."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:40
-msgid ""
-"If you have configured your browser to disable “Referer” headers, please re-"
-"enable them, at least for this site, or for HTTPS connections, or for “same-"
-"origin” requests."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:45
-msgid ""
-"If you are using the <meta name=\"referrer\" content=\"no-referrer\"> tag or "
-"including the “Referrer-Policy: no-referrer” header, please remove them. The "
-"CSRF protection requires the “Referer” header to do strict referer checking. "
-"If you’re concerned about privacy, use alternatives like <a "
-"rel=\"noreferrer\" …> for links to third-party sites."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:54
-msgid ""
-"You are seeing this message because this site requires a CSRF cookie when "
-"submitting forms. This cookie is required for security reasons, to ensure "
-"that your browser is not being hijacked by third parties."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:60
-msgid ""
-"If you have configured your browser to disable cookies, please re-enable "
-"them, at least for this site, or for “same-origin” requests."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/csrf.py:66
-msgid "More information is available with DEBUG=True."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:44
-msgid "No year specified"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:64
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:115
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:214
-msgid "Date out of range"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:94
-msgid "No month specified"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:147
-msgid "No day specified"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:194
-msgid "No week specified"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:353
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:384
-#, python-format
-msgid "No %(verbose_name_plural)s available"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:680
-#, python-format
-msgid ""
-"Future %(verbose_name_plural)s not available because "
-"%(class_name)s.allow_future is False."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/dates.py:720
-#, python-format
-msgid "Invalid date string “%(datestr)s” given format “%(format)s”"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/detail.py:56
-#, python-format
-msgid "No %(verbose_name)s found matching the query"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/list.py:70
-msgid "Page is not “last”, nor can it be converted to an int."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/list.py:77
-#, python-format
-msgid "Invalid page (%(page_number)s): %(message)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/generic/list.py:173
-#, python-format
-msgid "Empty list and “%(class_name)s.allow_empty” is False."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/static.py:49
-msgid "Directory indexes are not allowed here."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/static.py:51
-#, python-format
-msgid "“%(path)s” does not exist"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/static.py:68
-#: venv/lib/python3.13/site-packages/django/views/templates/directory_index.html:8
-#: venv/lib/python3.13/site-packages/django/views/templates/directory_index.html:11
-#, python-format
-msgid "Index of %(directory)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:7
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:204
-msgid "The install worked successfully! Congratulations!"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:206
-#, python-format
-msgid ""
-"View <a href=\"https://docs.djangoproject.com/en/%(version)s/releases/\" "
-"target=\"_blank\" rel=\"noopener\">release notes</a> for Django %(version)s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:208
-#, python-format
-msgid ""
-"You are seeing this page because <a href=\"https://docs.djangoproject.com/en/"
-"%(version)s/ref/settings/#debug\" target=\"_blank\" "
-"rel=\"noopener\">DEBUG=True</a> is in your settings file and you have not "
-"configured any URLs."
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:217
 #, fuzzy
-#| msgid "Documentation"
-msgid "Django Documentation"
-msgstr "Documentation"
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:218
-msgid "Topics, references, &amp; how-to’s"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:226
-msgid "Tutorial: A Polling App"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:227
-msgid "Get started with Django"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:235
-msgid "Django Community"
-msgstr ""
-
-#: venv/lib/python3.13/site-packages/django/views/templates/default_urlconf.html:236
-msgid "Connect, get help, or contribute"
-msgstr ""
+#~| msgid "Documentation"
+#~ msgid "Django Documentation"
+#~ msgstr "Documentation"
