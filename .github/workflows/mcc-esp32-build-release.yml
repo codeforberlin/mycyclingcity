@@ -113,7 +113,7 @@ jobs:
           ENVIRONMENTS=("heltec_wifi_lora_32_V3" "heltec_wifi_lora_32_V2" "wemos_d1_mini32")
           
           for ENV in "${ENVIRONMENTS[@]}"; do
-            BIN_FILE=$(find "$BUILD_DIR/$ENV" -name "*.bin" -type f | head -1)
+            BIN_FILE=$(find "$BUILD_DIR/$ENV" -name "firmware.bin" -type f | head -1)
             if [ -n "$BIN_FILE" ] && [ -f "$BIN_FILE" ]; then
               NEW_NAME="mcc-esp32-${ENV}-${VERSION}.bin"
               cp "$BIN_FILE" "$RELEASE_DIR/$NEW_NAME"
