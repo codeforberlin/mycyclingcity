@@ -392,6 +392,11 @@ class HourlyMetric(models.Model):
     timestamp = models.DateTimeField(db_index=True, verbose_name=_("Zeitpunkt"))
     distance_km = models.DecimalField(max_digits=15, decimal_places=5, verbose_name=_("Intervall-Distanz (km)"))
     group_at_time = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Gruppe"))
+    last_session_start_time = models.DateTimeField(null=True, blank=True, verbose_name=_("Letzte Session Startzeit"), 
+                                                   help_text=_("Startzeit der zuletzt verarbeiteten Session für diese Stunde. Wird verwendet, um zu erkennen, ob eine Session bereits verarbeitet wurde."))
+    last_session_distance_km = models.DecimalField(max_digits=15, decimal_places=5, null=True, blank=True, 
+                                                   verbose_name=_("Letzte Session Distanz (km)"),
+                                                   help_text=_("Distanz der zuletzt verarbeiteten Session für diese Stunde. Wird verwendet, um zu erkennen, ob eine Session gewachsen ist."))
 
     class Meta:
         verbose_name = _("Hourly Metric")

@@ -374,7 +374,9 @@ void setup() {
     // ----------------------------------------------------------------------
     bool wasConfigExit = preferences.getBool("configExit", false);
     if (wasConfigExit) {
-        preferences.putBool("configExit", false); // Reset flag immediately
+        if (!preferences.putBool("configExit", false)) { // Reset flag immediately
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'configExit' to NVS\n");
+        }
         Serial.println("INFO: Previous restart was triggered to exit configuration mode.");
     }
 
@@ -405,20 +407,107 @@ void setup() {
         defaultIdTagCheck = preferences.getString("idTag", ""); // Fallback to legacy key
     }
     
-    bool criticalConfigMissing = (
-        wifi_ssid.length() == 0 ||
-        // wifi_password.length() == 0 || // Password can be empty, e.g. for Freifunk
-        defaultIdTagCheck.length() == 0 ||
-        wheel_size < 500.0 || wheel_size > 3000.0 ||  // Valid range: 500-3000 mm
-        sendInterval_sec == 0 ||
-        serverUrlCritical ||
-        apiKeyCritical
-    );
+    bool criticalConfigMissing = false;
+    String missingParameter = "";  // Store the first missing parameter for OLED display
+    
+    // Check each critical parameter individually and report which one is missing
+    if (wifi_ssid.length() == 0) {
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "wifi_ssid";
+        Serial.println("ERROR: getPreferences() - Critical parameter 'wifi_ssid' is missing!");
+    }
+    // wifi_password.length() == 0 || // Password can be empty, e.g. for Freifunk
+    if (defaultIdTagCheck.length() == 0) {
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "default_id_tag";
+        Serial.println("ERROR: getPreferences() - Critical parameter 'default_id_tag' (or 'idTag') is missing!");
+    }
+    if (wheel_size < 500.0 || wheel_size > 3000.0) {  // Valid range: 500-3000 mm
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "wheel_size";
+        Serial.printf("ERROR: getPreferences() - Critical parameter 'wheel_size' is invalid (value: %.1f mm, valid range: 500-3000 mm)!\n", wheel_size);
+    }
+    if (sendInterval_sec == 0) {
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "sendInterval";
+        Serial.println("ERROR: getPreferences() - Critical parameter 'sendInterval' is missing or zero!");
+    }
+    if (serverUrlCritical) {
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "serverUrl";
+        Serial.println("ERROR: getPreferences() - Critical parameter 'serverUrl' is missing!");
+    }
+    if (apiKeyCritical) {
+        criticalConfigMissing = true;
+        if (missingParameter.length() == 0) missingParameter = "apiKey";
+        Serial.println("ERROR: getPreferences() - Critical parameter 'apiKey' is missing!");
+    }
 
     if (criticalConfigMissing) {
         configMode = true;
         configModeForced = true;
         Serial.println("WARNING: Critical configurations missing! Forcing configuration mode.");
+        
+        // Display missing parameter on OLED
+        #ifdef ENABLE_OLED
+        display.clearBuffer();
+        display.setFont(u8g2_font_7x14_tf);
+        
+        textline = "Fehler:";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 12);
+        display.print(textline);
+        
+        // Format parameter name for display (replace underscores with spaces, capitalize)
+        String paramDisplay = missingParameter;
+        paramDisplay.replace("_", " ");
+        // Capitalize first letter
+        if (paramDisplay.length() > 0) {
+            paramDisplay.setCharAt(0, toupper(paramDisplay.charAt(0)));
+        }
+        
+        // Split long parameter names across two lines if needed
+        String paramLine1 = "";
+        String paramLine2 = "";
+        
+        if (missingParameter == "wifi_ssid") {
+            paramLine1 = "WiFi SSID";
+            paramLine2 = "fehlt";
+        } else if (missingParameter == "default_id_tag") {
+            paramLine1 = "ID-Tag";
+            paramLine2 = "fehlt";
+        } else if (missingParameter == "wheel_size") {
+            paramLine1 = "Raddurchmesser";
+            paramLine2 = "ungültig";
+        } else if (missingParameter == "sendInterval") {
+            paramLine1 = "Send-Intervall";
+            paramLine2 = "fehlt";
+        } else if (missingParameter == "serverUrl") {
+            paramLine1 = "Server-URL";
+            paramLine2 = "fehlt";
+        } else if (missingParameter == "apiKey") {
+            paramLine1 = "API-Key";
+            paramLine2 = "fehlt";
+        } else {
+            // Fallback: use formatted parameter name
+            paramLine1 = paramDisplay;
+            paramLine2 = "fehlt";
+        }
+        
+        textline = paramLine1.c_str();
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 28);
+        display.print(textline);
+        
+        if (paramLine2.length() > 0) {
+            textline = paramLine2.c_str();
+            textWidth = display.getStrWidth(textline);
+            display.setCursor((128 - textWidth) / 2, 44);
+            display.print(textline);
+        }
+        
+        display.sendBuffer();
+        #endif
     }
     
     // Initialize buzzer pin
@@ -1351,7 +1440,7 @@ void connectToWiFi() {
     
     WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
     int attempts = 0;
-    const int MAX_ATTEMPTS = 3;  // Maximum 3 connection attempts
+    const int MAX_ATTEMPTS = 20;  // Maximum 20 connection attempts (20 * 500ms = 10 seconds timeout)
     while (WiFi.status() != WL_CONNECTED && attempts < MAX_ATTEMPTS) {
         delay(500);
         if (debugEnabled) {
@@ -2064,7 +2153,9 @@ void getPreferences() {
     if (deviceName.length() == 0) {
         deviceName = String(DEFAULT_DEVICE_NAME);
         // Write default device name to NVS so it's available on next startup
-        preferences.putString("deviceName", deviceName);
+        if (!preferences.putString("deviceName", deviceName)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'deviceName' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.print("DEBUG: Using build flag DEFAULT_DEVICE_NAME as fallback and saving to NVS: ");
             Serial.println(deviceName);
@@ -2080,7 +2171,9 @@ void getPreferences() {
         defaultIdTag = preferences.getString("idTag", "");
         // If found in legacy key, migrate to new key
         if (defaultIdTag.length() > 0) {
-            preferences.putString("default_id_tag", defaultIdTag);
+            if (!preferences.putString("default_id_tag", defaultIdTag)) {
+                Serial.print("ERROR: getPreferences() - Failed to write parameter 'default_id_tag' to NVS\n");
+            }
         }
     }
     // Fallback to build flag DEFAULT_ID_TAG if NVS is empty
@@ -2088,7 +2181,9 @@ void getPreferences() {
     if (defaultIdTag.length() == 0) {
         defaultIdTag = String(DEFAULT_ID_TAG);
         // Write default ID tag to NVS so it's available on next startup
-        preferences.putString("default_id_tag", defaultIdTag);
+        if (!preferences.putString("default_id_tag", defaultIdTag)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'default_id_tag' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.print("DEBUG: Using build flag DEFAULT_ID_TAG as fallback and saving to NVS: ");
             Serial.println(defaultIdTag);
@@ -2114,7 +2209,9 @@ void getPreferences() {
     // If sendInterval is 0 or not set, use default value of 30 seconds and save to NVS
     if (sendInterval_sec == 0) {
         sendInterval_sec = 30;
-        preferences.putUInt("sendInterval", sendInterval_sec);
+        if (!preferences.putUInt("sendInterval", sendInterval_sec)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'sendInterval' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.print("DEBUG: Using default sendInterval (30 seconds) and saving to NVS: ");
             Serial.println(sendInterval_sec);
@@ -2147,7 +2244,9 @@ void getPreferences() {
     if (serverUrl.length() == 0) {
         serverUrl = String(DEFAULT_SERVER_URL);
         // Write default server URL to NVS so it's available on next startup
-        preferences.putString("serverUrl", serverUrl);
+        if (!preferences.putString("serverUrl", serverUrl)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'serverUrl' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.print("DEBUG: Using build flag DEFAULT_SERVER_URL as fallback and saving to NVS: ");
             Serial.println(serverUrl);
@@ -2159,7 +2258,9 @@ void getPreferences() {
     if (apiKey.length() == 0) {
         apiKey = String(DEFAULT_API_KEY);
         // Write default API key to NVS so it's available on next startup
-        preferences.putString("apiKey", apiKey);
+        if (!preferences.putString("apiKey", apiKey)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'apiKey' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.print("DEBUG: Using build flag DEFAULT_API_KEY as fallback and saving to NVS: ");
             Serial.println(apiKey);
@@ -2201,7 +2302,9 @@ void getPreferences() {
     // Since getFloat returns default if not found, we check if it's the default and save it
     // This ensures the value is always in NVS, even if it was never set before
     if (!preferences.isKey("testDistance")) {
-        preferences.putFloat("testDistance", testDistance);
+        if (!preferences.putFloat("testDistance", testDistance)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'testDistance' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.printf("DEBUG: Initialized testDistance in NVS: %.2f km\n", testDistance);
         }
@@ -2209,7 +2312,9 @@ void getPreferences() {
     
     // Same for testInterval_sec
     if (!preferences.isKey("testInterval")) {
-        preferences.putUInt("testInterval", testInterval_sec);
+        if (!preferences.putUInt("testInterval", testInterval_sec)) {
+            Serial.print("ERROR: getPreferences() - Failed to write parameter 'testInterval' to NVS\n");
+        }
         if (debugEnabled) {
             Serial.printf("DEBUG: Initialized testInterval in NVS: %u s\n", testInterval_sec);
         }

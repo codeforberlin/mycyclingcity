@@ -71,7 +71,10 @@ class Command(BaseCommand):
                     # IMPORTANT: cumulative_mileage is the distance since session start, not total distance
                     session_start_hour = sess.start_time.replace(minute=0, second=0, microsecond=0)
                     
-                    if session_start_hour == hour_timestamp:
+                    # Track if session started in current hour (needed for new session detection)
+                    session_started_in_current_hour = (session_start_hour == hour_timestamp)
+                    
+                    if session_started_in_current_hour:
                         # Session started in this hour, so cumulative_mileage is the distance for this hour
                         hourly_distance = sess.cumulative_mileage
                         logger.debug(f"Expired session started in this hour for {sess.cyclist.user_id}: "
@@ -108,13 +111,126 @@ class Command(BaseCommand):
                                    f"hourly_distance={hourly_distance}")
                     
                     # If an existing metric exists, we need to check if we should update it
+                    # CRITICAL: For expired sessions that started in the current hour, we need to distinguish
+                    # between a NEW session (should ADD to existing metric) and an UPDATE (should REPLACE if higher).
+                    # We use last_session_start_time to track which session was last processed to avoid double-counting.
                     if existing_metric:
-                        if hourly_distance <= existing_metric.distance_km:
-                            logger.debug(f"Hourly distance calculation for expired session {sess.cyclist.user_id}/{sess.device.id}: "
-                                       f"hourly_distance={hourly_distance}, "
-                                       f"existing_metric={existing_metric.distance_km}, "
-                                       f"no update needed (hourly_distance <= existing)")
-                            continue
+                        if session_started_in_current_hour:
+                            # Expired session started in current hour - check if it's a NEW session or UPDATE
+                            # Use last_session_start_time to determine if this session was already processed
+                            session_already_processed = (
+                                existing_metric.last_session_start_time is not None and
+                                sess.start_time == existing_metric.last_session_start_time
+                            )
+                            
+                            if hourly_distance < existing_metric.distance_km:
+                                # hourly_distance is smaller than existing metric
+                                if session_already_processed:
+                                    # This session was already processed - skip to avoid double-counting
+                                    logger.debug(f"Expired session already processed for {sess.cyclist.user_id}: "
+                                               f"start_time={sess.start_time}, "
+                                               f"last_session_start_time={existing_metric.last_session_start_time}, "
+                                               f"hourly_distance={hourly_distance}, "
+                                               f"existing_metric={existing_metric.distance_km}")
+                                    continue
+                                else:
+                                    # NEW SESSION: This expired session should be ADDED to existing metric
+                                    # (e.g., first session expired, second session started in same hour)
+                                    old_distance = existing_metric.distance_km
+                                    existing_metric.distance_km += hourly_distance  # ADDITION
+                                    existing_metric.last_session_start_time = sess.start_time  # Track this session
+                                    existing_metric.last_session_distance_km = hourly_distance  # Track session distance
+                                    # Update group if it changed
+                                    if existing_metric.group_at_time != primary_group:
+                                        existing_metric.group_at_time = primary_group
+                                    existing_metric.save()
+                                    logger.info(f"Added expired session to HourlyMetric for {sess.cyclist.user_id}: "
+                                              f"added {hourly_distance} km (total now: {existing_metric.distance_km} km, was {old_distance} km)")
+                                    self.stdout.write(f"  → Abgelaufene Session hinzugefügt zu HourlyMetric: "
+                                                    f"{sess.cyclist.user_id} auf {sess.device.name}, "
+                                                    f"+{hourly_distance} km (Gesamt: {existing_metric.distance_km} km)")
+                                    saved_count += 1
+                                    continue  # Skip to next session
+                            elif hourly_distance > existing_metric.distance_km:
+                                # hourly_distance is larger than existing metric
+                                if session_already_processed:
+                                    # Expired session was already processed and has grown
+                                    # Calculate difference based on last_session_distance_km if available
+                                    if existing_metric.last_session_distance_km is not None:
+                                        distance_delta = hourly_distance - existing_metric.last_session_distance_km
+                                    else:
+                                        # Fallback: use difference from total metric
+                                        distance_delta = hourly_distance - existing_metric.distance_km
+                                    old_distance = existing_metric.distance_km
+                                    existing_metric.distance_km += distance_delta  # Add only the difference
+                                    existing_metric.last_session_distance_km = hourly_distance  # Update tracking
+                                    existing_metric.last_session_start_time = sess.start_time  # Update tracking
+                                    # Update group if it changed
+                                    if existing_metric.group_at_time != primary_group:
+                                        existing_metric.group_at_time = primary_group
+                                    existing_metric.save()
+                                    logger.info(f"Updated HourlyMetric for expired session: {sess.cyclist.user_id}, "
+                                              f"added {distance_delta} km (total now: {hourly_distance} km, was {old_distance} km)")
+                                    self.stdout.write(f"  → HourlyMetric aktualisiert für abgelaufene Session: "
+                                                    f"{sess.cyclist.user_id} auf {sess.device.name}, "
+                                                    f"+{distance_delta} km (Gesamt: {hourly_distance} km, war {old_distance} km)")
+                                    saved_count += 1
+                                    continue  # Skip to next session
+                                else:
+                                    # This is a different session or the metric was reset
+                                    logger.warning(f"Unexpected case for expired session {sess.cyclist.user_id}: "
+                                                f"hourly_distance={hourly_distance} > existing={existing_metric.distance_km}, "
+                                                f"but session not tracked")
+                                    old_distance = existing_metric.distance_km
+                                    existing_metric.distance_km = hourly_distance
+                                    existing_metric.last_session_start_time = sess.start_time
+                                    existing_metric.last_session_distance_km = hourly_distance
+                                    if existing_metric.group_at_time != primary_group:
+                                        existing_metric.group_at_time = primary_group
+                                    existing_metric.save()
+                                    saved_count += 1
+                                    continue
+                            else:
+                                # hourly_distance == existing_metric.distance_km
+                                if session_already_processed:
+                                    # Session was already processed - check if it has changed
+                                    if existing_metric.last_session_distance_km is not None:
+                                        if hourly_distance > existing_metric.last_session_distance_km:
+                                            # Session has grown but total metric hasn't - update
+                                            distance_delta = hourly_distance - existing_metric.last_session_distance_km
+                                            old_distance = existing_metric.distance_km
+                                            existing_metric.distance_km += distance_delta
+                                            existing_metric.last_session_distance_km = hourly_distance
+                                            existing_metric.save()
+                                            saved_count += 1
+                                            logger.warning(f"Expired session grew but total didn't for {sess.cyclist.user_id}: "
+                                                         f"added {distance_delta} km")
+                                            continue
+                                        elif hourly_distance == existing_metric.last_session_distance_km:
+                                            # Session hasn't changed - skip
+                                            logger.debug(f"Expired session already processed with no change for {sess.cyclist.user_id}")
+                                            continue
+                                    else:
+                                        # No tracking info - skip
+                                        logger.debug(f"Expired session already processed with no change for {sess.cyclist.user_id}")
+                                        continue
+                                else:
+                                    # Update tracking but don't change distance
+                                    existing_metric.last_session_start_time = sess.start_time
+                                    existing_metric.last_session_distance_km = hourly_distance
+                                    existing_metric.save()
+                                    logger.debug(f"Updated tracking for expired session {sess.cyclist.user_id} "
+                                               f"without changing distance")
+                                    continue
+                        else:
+                            # Session started before this hour - hourly_distance is total for this hour
+                            if hourly_distance <= existing_metric.distance_km:
+                                logger.debug(f"Hourly distance calculation for expired session {sess.cyclist.user_id}/{sess.device.id}: "
+                                           f"hourly_distance={hourly_distance}, "
+                                           f"existing_metric={existing_metric.distance_km}, "
+                                           f"no update needed (hourly_distance <= existing)")
+                                continue
+                            # hourly_distance is higher, so we'll update the metric below
                     
                     if hourly_distance <= 0:
                         logger.warning(f"Hourly distance is {hourly_distance} for expired session {sess.cyclist.user_id}, skipping. "
@@ -134,24 +250,27 @@ class Command(BaseCommand):
                             timestamp=hour_timestamp,
                             defaults={
                                 'distance_km': hourly_distance,
-                                'group_at_time': primary_group
+                                'group_at_time': primary_group,
+                                'last_session_start_time': sess.start_time,  # Track the session that created this metric
+                                'last_session_distance_km': hourly_distance  # Track session distance
                             }
                         )
                     
                     if not created:
-                        # If metric already exists, it means we're updating it
-                        # The hourly_distance should replace the existing value, not be added
-                        # (unless there are multiple sessions in the same hour, then we sum)
-                        # Actually, if a metric exists, it means we already processed this session
-                        # So we should update it only if the new value is higher (session continued)
+                        # Update existing metric with current hourly distance
+                        # This branch is only reached for expired sessions from previous hours
+                        # (expired sessions in current hour are handled above)
+                        # For expired sessions from previous hours: hourly_distance is total for this hour
                         if hourly_distance > metric.distance_km:
                             old_distance = metric.distance_km
                             metric.distance_km = hourly_distance
+                            metric.last_session_start_time = sess.start_time  # Update tracking
+                            metric.last_session_distance_km = hourly_distance  # Update tracking
                             # Update group if it changed
                             if metric.group_at_time != primary_group:
                                 metric.group_at_time = primary_group
                             metric.save()
-                            logger.info(f"Updated HourlyMetric for expired session: {sess.cyclist.user_id}, "
+                            logger.info(f"Updated HourlyMetric for expired session from previous hour: {sess.cyclist.user_id}, "
                                       f"hourly distance: {hourly_distance} km (was {old_distance} km)")
                             self.stdout.write(f"  → HourlyMetric aktualisiert: {hourly_distance} km für diese Stunde "
                                             f"für {sess.cyclist.user_id} auf {sess.device.name}")
@@ -188,11 +307,15 @@ class Command(BaseCommand):
         if count > 0:
             saved_count = 0
             updated_count = 0
+            skipped_count = 0  # Count sessions that were skipped (already processed, no change)
+            sessions_with_mileage = 0  # Count sessions with mileage > 0
             
             for sess in active_sessions:
                 # Only process sessions with mileage > 0
                 if not sess.cumulative_mileage or sess.cumulative_mileage <= 0:
                     continue
+                
+                sessions_with_mileage += 1
                 
                 # Get the cyclist's primary group
                 primary_group = sess.cyclist.groups.first()
@@ -211,7 +334,10 @@ class Command(BaseCommand):
                 # If session started in this hour, the cumulative_mileage is the distance for this hour
                 session_start_hour = sess.start_time.replace(minute=0, second=0, microsecond=0)
                 
-                if session_start_hour == hour_timestamp:
+                # Track if session started in current hour (needed for new session detection)
+                session_started_in_current_hour = (session_start_hour == hour_timestamp)
+                
+                if session_started_in_current_hour:
                     # Session started in this hour, so cumulative_mileage is the distance for this hour
                     hourly_distance = sess.cumulative_mileage
                     logger.debug(f"Session started in this hour for {sess.cyclist.user_id}: "
@@ -251,38 +377,202 @@ class Command(BaseCommand):
                                f"hourly_distance={hourly_distance}")
                 
                 # If an existing metric exists, we need to check if we should update it
-                # The hourly_distance calculated above is the TOTAL distance for this hour
-                # If a metric already exists, we should update it if the new total is higher
+                # CRITICAL: For sessions that started in the current hour, we need to distinguish
+                # between a NEW session (should ADD to existing metric) and a CONTINUED session
+                # (should REPLACE if higher). We use last_session_start_time to track which session
+                # was last processed to avoid double-counting.
                 if existing_metric:
-                    if hourly_distance <= existing_metric.distance_km:
-                        logger.debug(f"Hourly distance calculation for {sess.cyclist.user_id}/{sess.device.id}: "
-                                   f"hourly_distance={hourly_distance}, "
-                                   f"existing_metric={existing_metric.distance_km}, "
-                                   f"no update needed (hourly_distance <= existing)")
-                        # Don't update if the calculated distance is not higher
-                        continue
-                    # hourly_distance is higher, so we'll update the metric below
+                    if session_started_in_current_hour:
+                        # Session started in current hour - check if it's a NEW session or UPDATE
+                        # Use last_session_start_time to determine if this session was already processed
+                        session_already_processed = (
+                            existing_metric.last_session_start_time is not None and
+                            sess.start_time == existing_metric.last_session_start_time
+                        )
+                        
+                        if hourly_distance < existing_metric.distance_km:
+                            # hourly_distance is smaller than existing metric
+                            if session_already_processed:
+                                # This session was already processed - check if it has grown
+                                if existing_metric.last_session_distance_km is not None:
+                                    if hourly_distance > existing_metric.last_session_distance_km:
+                                        # Session has grown - add the difference
+                                        distance_delta = hourly_distance - existing_metric.last_session_distance_km
+                                        old_distance = existing_metric.distance_km
+                                        existing_metric.distance_km += distance_delta  # Add only the difference
+                                        existing_metric.last_session_distance_km = hourly_distance  # Update tracking
+                                        # Update group if it changed
+                                        if existing_metric.group_at_time != primary_group:
+                                            existing_metric.group_at_time = primary_group
+                                        existing_metric.save()
+                                        updated_count += 1
+                                        logger.info(f"Updated HourlyMetric for grown session: {sess.cyclist.user_id}, "
+                                                  f"added {distance_delta} km (session: {hourly_distance} km, was {existing_metric.last_session_distance_km} km, "
+                                                  f"total now: {existing_metric.distance_km} km, was {old_distance} km)")
+                                        self.stdout.write(f"  → HourlyMetric aktualisiert für gewachsene Session: "
+                                                        f"{sess.cyclist.user_id} auf {sess.device.name}, "
+                                                        f"+{distance_delta} km (Session: {hourly_distance} km, Gesamt: {existing_metric.distance_km} km)")
+                                        continue
+                                    elif hourly_distance == existing_metric.last_session_distance_km:
+                                        # Session hasn't changed - skip to avoid double-counting
+                                        skipped_count += 1
+                                        logger.debug(f"Session already processed with no change for {sess.cyclist.user_id}: "
+                                                   f"start_time={sess.start_time}, "
+                                                   f"hourly_distance={hourly_distance}, "
+                                                   f"last_session_distance_km={existing_metric.last_session_distance_km}")
+                                        continue
+                                    else:
+                                        # hourly_distance < last_session_distance_km - shouldn't happen, but skip
+                                        skipped_count += 1
+                                        logger.warning(f"Session distance decreased for {sess.cyclist.user_id}: "
+                                                     f"hourly_distance={hourly_distance}, "
+                                                     f"last_session_distance_km={existing_metric.last_session_distance_km}")
+                                        continue
+                                else:
+                                    # last_session_distance_km is None - this shouldn't happen if session_already_processed
+                                    # But handle it by treating as unchanged
+                                    skipped_count += 1
+                                    logger.warning(f"Session already processed but last_session_distance_km is None for {sess.cyclist.user_id}")
+                                    continue
+                            else:
+                                # NEW SESSION: This is a new session that should be ADDED to existing metric
+                                # (e.g., old session expired, new session started in same hour)
+                                old_distance = existing_metric.distance_km
+                                existing_metric.distance_km += hourly_distance  # ADDITION
+                                existing_metric.last_session_start_time = sess.start_time  # Track this session
+                                existing_metric.last_session_distance_km = hourly_distance  # Track session distance
+                                # Update group if it changed
+                                if existing_metric.group_at_time != primary_group:
+                                    existing_metric.group_at_time = primary_group
+                                existing_metric.save()
+                                updated_count += 1
+                                logger.info(f"Added NEW session to HourlyMetric for {sess.cyclist.user_id}: "
+                                          f"added {hourly_distance} km (total now: {existing_metric.distance_km} km, was {old_distance} km)")
+                                self.stdout.write(f"  → Neue Session hinzugefügt zu HourlyMetric: "
+                                                f"{sess.cyclist.user_id} auf {sess.device.name}, "
+                                                f"+{hourly_distance} km (Gesamt: {existing_metric.distance_km} km)")
+                                continue  # Skip to next session
+                        elif hourly_distance > existing_metric.distance_km:
+                            # hourly_distance is larger than existing metric
+                            if session_already_processed:
+                                # Session was already processed and has grown
+                                # Calculate difference based on last_session_distance_km if available
+                                if existing_metric.last_session_distance_km is not None:
+                                    distance_delta = hourly_distance - existing_metric.last_session_distance_km
+                                else:
+                                    # Fallback: use difference from total metric
+                                    distance_delta = hourly_distance - existing_metric.distance_km
+                                old_distance = existing_metric.distance_km
+                                existing_metric.distance_km += distance_delta  # Add only the difference
+                                existing_metric.last_session_distance_km = hourly_distance  # Update tracking
+                                existing_metric.last_session_start_time = sess.start_time  # Update tracking
+                                # Update group if it changed
+                                if existing_metric.group_at_time != primary_group:
+                                    existing_metric.group_at_time = primary_group
+                                existing_metric.save()
+                                updated_count += 1
+                                logger.info(f"Updated HourlyMetric for active session: {sess.cyclist.user_id}, "
+                                          f"added {distance_delta} km (session: {hourly_distance} km, was {existing_metric.last_session_distance_km or existing_metric.distance_km} km, "
+                                          f"total now: {existing_metric.distance_km} km, was {old_distance} km)")
+                                self.stdout.write(f"  → HourlyMetric aktualisiert für aktive Session: "
+                                                f"{sess.cyclist.user_id} auf {sess.device.name}, "
+                                                f"+{distance_delta} km (Session: {hourly_distance} km, Gesamt: {existing_metric.distance_km} km)")
+                                continue  # Skip to next session
+                            else:
+                                # This is a different session or the metric was reset
+                                # This shouldn't happen normally, but handle it by replacing
+                                logger.warning(f"Unexpected case for {sess.cyclist.user_id}: "
+                                            f"hourly_distance={hourly_distance} > existing={existing_metric.distance_km}, "
+                                            f"but session not tracked (start_time={sess.start_time}, "
+                                            f"last_session_start_time={existing_metric.last_session_start_time})")
+                                old_distance = existing_metric.distance_km
+                                existing_metric.distance_km = hourly_distance
+                                existing_metric.last_session_start_time = sess.start_time
+                                existing_metric.last_session_distance_km = hourly_distance
+                                if existing_metric.group_at_time != primary_group:
+                                    existing_metric.group_at_time = primary_group
+                                existing_metric.save()
+                                updated_count += 1
+                                logger.info(f"Updated HourlyMetric (unexpected case) for {sess.cyclist.user_id}: "
+                                          f"set to {hourly_distance} km (was {old_distance} km)")
+                                continue
+                        else:
+                            # hourly_distance == existing_metric.distance_km
+                            if session_already_processed:
+                                # Session was already processed - check if it has changed
+                                if existing_metric.last_session_distance_km is not None:
+                                    if hourly_distance > existing_metric.last_session_distance_km:
+                                        # Session has grown but total metric hasn't - shouldn't happen, but update
+                                        distance_delta = hourly_distance - existing_metric.last_session_distance_km
+                                        old_distance = existing_metric.distance_km
+                                        existing_metric.distance_km += distance_delta
+                                        existing_metric.last_session_distance_km = hourly_distance
+                                        existing_metric.save()
+                                        updated_count += 1
+                                        logger.warning(f"Session grew but total didn't for {sess.cyclist.user_id}: "
+                                                     f"added {distance_delta} km")
+                                        continue
+                                    elif hourly_distance == existing_metric.last_session_distance_km:
+                                        # Session hasn't changed - skip
+                                        skipped_count += 1
+                                        logger.debug(f"Session already processed with no change for {sess.cyclist.user_id}")
+                                        continue
+                                else:
+                                    # No tracking info - skip
+                                    skipped_count += 1
+                                    logger.debug(f"Session already processed with no change for {sess.cyclist.user_id}")
+                                    continue
+                            else:
+                                # This shouldn't happen - same distance but different session
+                                # Could be a new session with same distance as existing total
+                                # For safety, update the tracking but don't change the distance
+                                existing_metric.last_session_start_time = sess.start_time
+                                existing_metric.last_session_distance_km = hourly_distance
+                                existing_metric.save()
+                                logger.debug(f"Updated tracking for {sess.cyclist.user_id} "
+                                           f"without changing distance (hourly_distance == existing)")
+                                continue
+                    else:
+                        # Session started before this hour - hourly_distance is total for this hour
+                        if hourly_distance <= existing_metric.distance_km:
+                            skipped_count += 1
+                            logger.debug(f"Hourly distance calculation for {sess.cyclist.user_id}/{sess.device.id}: "
+                                       f"hourly_distance={hourly_distance}, "
+                                       f"existing_metric={existing_metric.distance_km}, "
+                                       f"no update needed (hourly_distance <= existing)")
+                            # Don't update if the calculated distance is not higher
+                            continue
+                        # hourly_distance is higher, so we'll update the metric below
                 
                 if hourly_distance <= 0:
+                    skipped_count += 1
                     logger.debug(f"Hourly distance is {hourly_distance} for active session {sess.cyclist.user_id}/{sess.device.id}, skipping. "
                                f"cumulative_mileage={sess.cumulative_mileage}, "
                                f"session_start={sess.start_time}")
                     continue
                 
                 # Create or update metric entry for this hour
+                # Note: If existing_metric exists:
+                # - For sessions in current hour: Already handled above (new session addition or update with delta)
+                # - For sessions from previous hours: hourly_distance is total for this hour, handled below
+                # Here we handle:
+                # 1. No existing metric (create new)
+                # 2. Existing metric with hourly_distance > existing for sessions from previous hours (replace total)
                 if existing_metric:
                     metric = existing_metric
                     created = False
                 else:
-                    metric, created = HourlyMetric.objects.get_or_create(
-                        cyclist=sess.cyclist,
-                        device=sess.device,
-                        timestamp=hour_timestamp,
-                        defaults={
-                            'distance_km': hourly_distance,
-                            'group_at_time': primary_group
-                        }
-                    )
+                        metric, created = HourlyMetric.objects.get_or_create(
+                            cyclist=sess.cyclist,
+                            device=sess.device,
+                            timestamp=hour_timestamp,
+                            defaults={
+                                'distance_km': hourly_distance,
+                                'group_at_time': primary_group,
+                                'last_session_start_time': sess.start_time,  # Track the session that created this metric
+                                'last_session_distance_km': hourly_distance  # Track session distance
+                            }
+                        )
                 
                 if created:
                     saved_count += 1
@@ -293,24 +583,25 @@ class Command(BaseCommand):
                                     f"für {sess.cyclist.user_id} auf {sess.device.name}")
                 else:
                     # Update existing metric with current hourly distance
-                    # The hourly_distance is the NEW distance for this hour (not cumulative)
-                    # So we need to add it to the existing metric, or replace if it's higher
-                    # Actually, hourly_distance is the total distance for this hour based on cumulative_mileage
-                    # So we should replace the existing value if it's higher
+                    # This branch is only reached for sessions from previous hours
+                    # (sessions in current hour are handled above)
+                    # For sessions from previous hours: hourly_distance is total for this hour
                     if hourly_distance > metric.distance_km:
                         old_distance = metric.distance_km
                         metric.distance_km = hourly_distance
+                        metric.last_session_start_time = sess.start_time  # Update tracking
                         # Update group if it changed
                         if metric.group_at_time != primary_group:
                             metric.group_at_time = primary_group
                         metric.save()
                         updated_count += 1
-                        logger.info(f"Updated HourlyMetric for active session: {sess.cyclist.user_id}, "
+                        logger.info(f"Updated HourlyMetric for active session from previous hour: {sess.cyclist.user_id}, "
                                   f"hourly distance: {hourly_distance} km (was {old_distance} km)")
                         self.stdout.write(f"  → HourlyMetric aktualisiert für aktive Session: "
                                         f"{sess.cyclist.user_id} auf {sess.device.name}, "
                                         f"{hourly_distance} km für diese Stunde (war {old_distance} km)")
                     else:
+                        skipped_count += 1
                         logger.debug(f"HourlyMetric already has correct value for {sess.cyclist.user_id}")
             
             if saved_count > 0 or updated_count > 0:
@@ -319,7 +610,13 @@ class Command(BaseCommand):
                     f"{updated_count} aktualisiert für aktive Sessions."
                 ))
             else:
-                self.stdout.write("Keine aktiven Sessions mit Kilometer-Daten gefunden.")
+                if sessions_with_mileage > 0:
+                    # Sessions exist but were all skipped (already processed, no changes)
+                    self.stdout.write(f"{sessions_with_mileage} aktive Session(s) mit Kilometer-Daten gefunden, "
+                                    f"aber keine Änderungen seit letztem Worker-Lauf.")
+                else:
+                    # No sessions with mileage > 0
+                    self.stdout.write("Keine aktiven Sessions mit Kilometer-Daten gefunden.")
         else:
             self.stdout.write("Keine aktiven Sessions gefunden.")
 
