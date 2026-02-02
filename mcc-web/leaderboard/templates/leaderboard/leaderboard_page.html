@@ -33,30 +33,94 @@
             height: 2px;
             transition: width 0.1s linear;
         }
-        @keyframes marquee {
-            0% { transform: translateX(100vw); }
-            100% { transform: translateX(-100%); }
+        /* Activity Toast System (Activity Chips) */
+        .activity-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000 !important;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 300px;
+            pointer-events: none;
         }
-        .ticker-wrapper {
-            width: 100%;
-            overflow: hidden;
-            position: relative;
+
+        .activity-toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+            animation: toastSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transition: opacity 0.3s, transform 0.3s;
         }
-        .ticker-marquee {
-            display: inline-flex;
-            will-change: transform;
-            white-space: nowrap;
-            animation: marquee 30s linear infinite;
+
+        .activity-toast.fade-out {
+            animation: toastSlideOut 0.3s ease-in forwards;
         }
-        .ticker-marquee > * {
-            flex-shrink: 0;
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
-        .ticker-marquee:hover {
-            animation-play-state: paused;
+
+        @keyframes toastSlideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(400px);
+            }
         }
-        #ticker-content {
-            display: inline-flex;
-            white-space: nowrap;
+
+        .activity-toast-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .activity-toast-icon {
+            font-size: 18px;
+        }
+
+        .activity-toast-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #1a1a1a;
+        }
+
+        .activity-toast-body {
+            font-size: 12px;
+            color: #4a4a4a;
+            line-height: 1.4;
+        }
+
+        .activity-toast-cyclist {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .activity-toast-distance {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        /* Hidden ticker for data source */
+        #ticker-data-source {
+            display: none;
         }
 
         /* ============================================
@@ -97,14 +161,9 @@
                 overflow-x: hidden;
             }
 
-            /* Ticker: Adjust height for mobile */
-            .h-\[5vh\] {
-                min-height: 40px;
-            }
-
             /* Banner: Adjust height for mobile */
-            .h-\[15vh\] {
-                min-height: 80px;
+            .h-\[20vh\] {
+                min-height: 100px;
             }
 
             /* Main content: Better mobile layout */
@@ -126,9 +185,11 @@
                 font-size: 16px; /* Ensure readable text */
             }
 
-            /* Ticker text: Better mobile readability */
-            .ticker-marquee {
-                font-size: 16px; /* Increased from 14px for better readability */
+            /* Activity toasts: Better mobile visibility */
+            .activity-toast-container {
+                max-width: 280px;
+                top: 10px;
+                right: 10px;
             }
 
             /* Banner content: Better mobile padding */
@@ -147,23 +208,8 @@
 <body class="h-screen overflow-hidden bg-slate-900 text-white">
     <!-- Leaderboard View -->
     <div id="leaderboard-view" class="h-full w-full flex flex-col">
-            <!-- Top Layer: Ticker (5vh) -->
-            <div class="h-[5vh] bg-yellow-400 text-black border-b-2 border-yellow-600 overflow-hidden relative">
-                <div class="ticker-wrapper h-full">
-                    <div class="ticker-marquee whitespace-nowrap text-lg font-bold">
-                        <div id="ticker-content"
-                             hx-get="{% url 'leaderboard:leaderboard_page' %}?ticker_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
-                             hx-trigger="every {{ KIOSK_TICKER_UPDATE_INTERVAL }}s"
-                             hx-swap="innerHTML"
-                             hx-target="this">
-                            {% include 'leaderboard/partials/ticker.html' %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Header: Parent Group Banner (15vh) -->
-            <div class="h-[15vh] bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-center relative overflow-hidden px-6">
+            <!-- Header: Parent Group Banner (20vh) -->
+            <div class="h-[20vh] bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-center relative overflow-hidden px-6">
                 <div id="banner-content"
                      hx-get="{% url 'leaderboard:leaderboard_page' %}?banner_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
                      hx-trigger="every {{ KIOSK_BANNER_UPDATE_INTERVAL }}s"
@@ -176,7 +222,7 @@
             <!-- Main: Group Grid (75vh) -->
             <div id="leaderboard-content" class="flex-1 overflow-hidden" 
                  hx-get="{% url 'leaderboard:leaderboard_page' %}{% if current_filter %}?group={{ current_filter|urlencode }}{% endif %}{% if sort_by and sort_by != 'daily' %}{% if current_filter %}&{% else %}?{% endif %}sort={{ sort_by|urlencode }}{% endif %}" 
-                 hx-trigger="every {{ KIOSK_CONTENT_UPDATE_INTERVAL }}s, tickerCyclistCountChanged from:body" 
+                 hx-trigger="every {{ KIOSK_CONTENT_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body" 
                  hx-swap="innerHTML" 
                  hx-target="this">
                 {% include 'leaderboard/partials/content.html' %}
@@ -186,78 +232,231 @@
             <div class="h-[5vh] bg-slate-800 border-t border-slate-700"
                  id="leaderboard-footer"
                  hx-get="{% url 'leaderboard:leaderboard_page' %}?footer_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
-                 hx-trigger="every {{ KIOSK_FOOTER_UPDATE_INTERVAL }}s, tickerCyclistCountChanged from:body"
+                 hx-trigger="every {{ KIOSK_FOOTER_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body"
                  hx-swap="innerHTML"
                  hx-target="this">
                 {% include 'leaderboard/partials/footer.html' %}
             </div>
         </div>
+
+    <!-- Hidden ticker for data source (Activity Chips read from here) -->
+    <div id="ticker-data-source"
+         hx-get="{% url 'leaderboard:leaderboard_page' %}?ticker_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
+         hx-trigger="every {{ KIOSK_TICKER_UPDATE_INTERVAL }}s"
+         hx-swap="innerHTML"
+         hx-target="this">
+        {% include 'leaderboard/partials/ticker.html' %}
+    </div>
+
+    <!-- Activity Toast Container (Activity Chips) -->
+    <div class="activity-toast-container" id="activity-toast-container"></div>
     
     <script>
         
-        // Ticker animation - ensure seamless scrolling
-        function duplicateTickerContent() {
-            const tickerContent = document.getElementById('ticker-content');
-            const tickerMarquee = document.querySelector('.ticker-marquee');
-            if (tickerContent && tickerMarquee) {
-                // Remove all existing duplicates
-                const existingDuplicates = tickerMarquee.querySelectorAll('#ticker-content-duplicate');
-                existingDuplicates.forEach(dup => dup.remove());
+        // Activity Toast System (Activity Chips)
+        // ============================================
+        var maxToasts = 5; // Maximum number of toasts in toast mode
+        var toastDuration = 8000; // 8 seconds (auto-remove after this time)
+        var lastTickerData = {};
+        var previousActiveCyclistCount = -1;
+
+        // Format number in German format (e.g., 1234.56 -> "1.234,56")
+        function formatNumberDE(num, decimals) {
+            if (num === null || num === undefined || isNaN(num)) return '0,00';
+            var numStr = parseFloat(num).toFixed(decimals);
+            var parts = numStr.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return parts.join(',');
+        }
+
+        // Sort toasts by session_km (descending - highest first)
+        function sortActivityToasts() {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+
+            var toasts = Array.from(container.querySelectorAll('.activity-toast'));
+            if (toasts.length === 0) return;
+
+            // Sort by session_km (extract from distance span)
+            toasts.sort(function(a, b) {
+                var aDistanceSpan = a.querySelector('.activity-toast-distance');
+                var bDistanceSpan = b.querySelector('.activity-toast-distance');
                 
-                // Create duplicate to ensure seamless infinite scroll
-                const duplicate = tickerContent.cloneNode(true);
-                duplicate.id = 'ticker-content-duplicate';
-                duplicate.removeAttribute('hx-get');
-                duplicate.removeAttribute('hx-trigger');
-                duplicate.removeAttribute('hx-swap');
-                duplicate.removeAttribute('hx-target');
-                // Insert duplicate right after the original content
-                tickerMarquee.insertBefore(duplicate, tickerContent.nextSibling);
-            }
-        }
-        
-        // Track active cyclist count to detect changes
-        let previousActiveCyclistCount = -1;  // Use -1 to force initial update
-        
-        function countActiveCyclistsInTicker() {
-            const tickerContent = document.getElementById('ticker-content');
-            if (!tickerContent) return 0;
-            
-            // Count ticker items (each cyclist is in a ticker-item span)
-            const tickerItems = tickerContent.querySelectorAll('.ticker-item');
-            // Filter out the "Ready to start" message
-            let count = 0;
-            tickerItems.forEach(item => {
-                const text = item.textContent || '';
-                // If it contains "Ready to start" or similar, don't count it
-                // Also check if it contains a user_id (which would be in <strong> tags)
-                const hasUserId = item.querySelector('strong');
-                if (hasUserId && !text.includes('Ready to start') && !text.includes('Bereit zum Start')) {
-                    count++;
-                }
+                if (!aDistanceSpan || !bDistanceSpan) return 0;
+                
+                // Extract km value from text (format: "X.XX km")
+                var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
+                var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
+                
+                // Parse German number format (e.g., "1.234,56" -> 1234.56)
+                var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
+                var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
+                
+                // Sort descending (highest km first)
+                return bKm - aKm;
             });
-            return count;
+
+            // Re-append sorted toasts
+            toasts.forEach(function(toast) {
+                container.appendChild(toast);
+            });
         }
-        
-        // Initialize cyclist count on page load
-        previousActiveCyclistCount = countActiveCyclistsInTicker();
-        
-        // Duplicate content after HTMX updates to ensure seamless animation
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            if (event.target.id === 'ticker-content') {
-                // Wait a bit to ensure content is rendered
-                requestAnimationFrame(() => {
-                    duplicateTickerContent();
+
+        function createActivityToast(cyclist) {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+
+            // Create unique key for this cyclist
+            var cyclistKey = cyclist.user_id + '|' + (cyclist.group_short_name || '');
+            
+            // Check if a toast for this cyclist already exists
+            var existingToasts = container.querySelectorAll('.activity-toast');
+            var toastExists = false;
+            var existingToast = null;
+            for (var i = 0; i < existingToasts.length; i++) {
+                var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                    // Toast for this cyclist already exists - update it instead of creating new one
+                    existingToast = existingToasts[i];
+                    var distanceSpan = existingToast.querySelector('.activity-toast-distance');
+                    if (distanceSpan) {
+                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                    }
+                    toastExists = true;
+                    break;
+                }
+            }
+            
+            // If toast already exists, update and re-sort
+            if (toastExists) {
+                sortActivityToasts();
+                return;
+            }
+
+            // In toast mode, limit to maxToasts (remove lowest km if needed)
+            var currentToasts = container.querySelectorAll('.activity-toast');
+            if (currentToasts.length >= maxToasts) {
+                // Sort current toasts to find the one with lowest km
+                var toastsArray = Array.from(currentToasts);
+                toastsArray.sort(function(a, b) {
+                    var aDistanceSpan = a.querySelector('.activity-toast-distance');
+                    var bDistanceSpan = b.querySelector('.activity-toast-distance');
                     
-                    // Check if active cyclist count has changed
-                    const currentActiveCyclistCount = countActiveCyclistsInTicker();
+                    if (!aDistanceSpan || !bDistanceSpan) return 0;
+                    
+                    var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
+                    var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
+                    
+                    var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
+                    var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
+                    
+                    return aKm - bKm; // Ascending to find lowest
+                });
+                
+                // Remove the toast with lowest km
+                var lowestToast = toastsArray[0];
+                if (lowestToast) {
+                    // Only remove if new cyclist has more km
+                    var newKm = cyclist.session_km;
+                    var lowestKmText = lowestToast.querySelector('.activity-toast-distance').textContent.replace(' km', '').trim();
+                    var lowestKm = parseFloat(lowestKmText.replace(/\./g, '').replace(',', '.'));
+                    
+                    if (newKm > lowestKm) {
+                        lowestToast.classList.add('fade-out');
+                        setTimeout(function() {
+                            if (lowestToast.parentNode) {
+                                lowestToast.remove();
+                            }
+                        }, 300);
+                    } else {
+                        // New cyclist has fewer km, don't add
+                        return;
+                    }
+                }
+            }
+
+            var toast = document.createElement('div');
+            toast.className = 'activity-toast';
+            toast.setAttribute('data-cyclist-key', cyclistKey);
+            toast.setAttribute('data-session-km', cyclist.session_km);
+
+            var icon = '🚴';
+            var title = '{% trans "Aktuell radelnd" %}';
+            var body = cyclist.user_id;
+            if (cyclist.group_short_name) {
+                body += ' (' + cyclist.group_short_name + ')';
+            }
+            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+
+            toast.innerHTML =
+                '<div class="activity-toast-header">' +
+                '<span class="activity-toast-icon">' + icon + '</span>' +
+                '<span class="activity-toast-title">' + title + '</span>' +
+                '</div>' +
+                '<div class="activity-toast-body">' + body + '</div>';
+
+            container.appendChild(toast);
+            
+            // Sort after adding
+            sortActivityToasts();
+
+            // Auto-remove after duration
+            setTimeout(function() {
+                if (toast.parentNode) {
+                    toast.classList.add('fade-out');
+                    setTimeout(function() {
+                        if (toast.parentNode) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            }, toastDuration);
+        }
+
+        // Fetch ticker data and create Activity Toasts
+        function updateActivityToasts() {
+            // Fetch fresh data directly from server (like in map)
+            // Use the dedicated ticker endpoint for fresh session data
+            // This endpoint reads current session kilometers from the database
+            var url = "{% url 'leaderboard:leaderboard_ticker' %}";
+            {% if current_filter %}
+            // leaderboard_ticker accepts group_id (tries as ID first, then as name)
+            url += "?group_id={{ current_filter|urlencode }}";
+            {% endif %}
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    // Create a temporary DOM element to parse the HTML
+                    var tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    
+                    var tickerItems = tempDiv.querySelectorAll('span');
+                    var currentActiveCyclistCount = 0;
+                    var hasActiveCyclists = false;
+
+                    // Check if there are active cyclists (not just "Bereit zum Start" message)
+                    tickerItems.forEach(function(item) {
+                        var text = item.textContent || '';
+                        var hasUserId = item.querySelector('strong');
+                        if (hasUserId && !text.includes('Bereit zum Start')) {
+                            hasActiveCyclists = true;
+                            currentActiveCyclistCount++;
+                        }
+                    });
+
+                    // Update cyclist count and trigger event if changed
                     if (currentActiveCyclistCount !== previousActiveCyclistCount) {
-                        // Cyclist count changed - trigger immediate update of footer and content
-                        const oldCount = previousActiveCyclistCount;
+                        var oldCount = previousActiveCyclistCount;
                         previousActiveCyclistCount = currentActiveCyclistCount;
                         
                         // Dispatch custom event to trigger updates
-                        const updateEvent = new CustomEvent('tickerCyclistCountChanged', {
+                        var updateEvent = new CustomEvent('activityCyclistCountChanged', {
                             bubbles: true,
                             detail: { 
                                 previousCount: oldCount,
@@ -266,23 +465,132 @@
                         });
                         document.body.dispatchEvent(updateEvent);
                     }
+
+                    if (!hasActiveCyclists) {
+                        // No active cyclists - clear all toasts
+                        var container = document.getElementById('activity-toast-container');
+                        if (container) {
+                            var toasts = container.querySelectorAll('.activity-toast');
+                            toasts.forEach(function(toast) {
+                                toast.classList.add('fade-out');
+                                setTimeout(function() {
+                                    if (toast.parentNode) {
+                                        toast.remove();
+                                    }
+                                }, 300);
+                            });
+                        }
+                        return;
+                    }
+
+                    // Process each cyclist from ticker
+                    tickerItems.forEach(function(item) {
+                        var text = item.textContent || '';
+                        var hasUserId = item.querySelector('strong');
+                        
+                        // Skip if it's the "Bereit zum Start" message
+                        if (!hasUserId || text.includes('Bereit zum Start')) {
+                            return;
+                        }
+
+                        // Extract cyclist data
+                        var userId = hasUserId.textContent.trim();
+                        var groupShortName = null;
+                        var sessionKm = 0;
+
+                        // Extract group name if present (in parentheses)
+                        var groupMatch = text.match(/\(([^)]+)\)/);
+                        if (groupMatch) {
+                            groupShortName = groupMatch[1];
+                        }
+
+                        // Extract km value
+                        // Handle German format: "1.234,56 km" -> 1234.56
+                        var kmMatch = text.match(/([\d.,]+)\s*km/i);
+                        if (kmMatch) {
+                            var kmStr = kmMatch[1];
+                            // German format: dots are thousands, comma is decimal
+                            // Remove dots (thousands separators) and replace comma with dot
+                            sessionKm = parseFloat(kmStr.replace(/\./g, '').replace(',', '.'));
+                        }
+
+                        var cyclist = {
+                            user_id: userId,
+                            group_short_name: groupShortName,
+                            session_km: sessionKm
+                        };
+
+                        // Check if we should show/create a toast for this cyclist
+                        var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
+                        var lastKm = lastTickerData[key];
+                        var shouldShowToast = false;
+                        
+                        if (!lastKm) {
+                            // First time seeing this cyclist - always show toast
+                            shouldShowToast = true;
+                        } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
+                            // Kilometers have increased significantly - show toast
+                            shouldShowToast = true;
+                        } else {
+                            // Check if a toast for this cyclist is already visible
+                            var container = document.getElementById('activity-toast-container');
+                            if (container) {
+                                var existingToasts = container.querySelectorAll('.activity-toast');
+                                var toastVisible = false;
+                                for (var i = 0; i < existingToasts.length; i++) {
+                                    var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                                    if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                                        toastVisible = true;
+                                        break;
+                                    }
+                                }
+                                // If no toast is visible for this cyclist, show one even if km hasn't changed much
+                                // This ensures all active cyclists get a toast
+                                if (!toastVisible) {
+                                    shouldShowToast = true;
+                                }
+                            }
+                        }
+                        
+                        if (shouldShowToast) {
+                            createActivityToast(cyclist);
+                            lastTickerData[key] = cyclist.session_km;
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching ticker data:', error);
+                });
+        }
+
+        // Update Activity Toasts after HTMX updates
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.target.id === 'ticker-data-source') {
+                // Wait a bit to ensure content is rendered
+                requestAnimationFrame(function() {
+                    updateActivityToasts();
                 });
             }
         });
-        
-        // Initial duplicate on page load and initialize cyclist count
-        function initializeTicker() {
-            setTimeout(() => {
-                duplicateTickerContent();
-                // Initialize cyclist count after content is duplicated
-                previousActiveCyclistCount = countActiveCyclistsInTicker();
-            }, 100);
+
+        // Update Activity Toasts periodically (every 15 seconds)
+        // This is independent of HTMX updates and ensures frequent updates
+        // since kilometer updates come in every ~10 seconds
+        var activityToastRefreshInterval = 15; // 15 seconds
+        setInterval(updateActivityToasts, activityToastRefreshInterval * 1000);
+
+        // Initial update on page load
+        function initializeActivityToasts() {
+            setTimeout(function() {
+                updateActivityToasts();
+                previousActiveCyclistCount = 0; // Will be set correctly by updateActivityToasts
+            }, 2000); // Initial delay of 2 seconds (like in map)
         }
-        
+
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeTicker);
+            document.addEventListener('DOMContentLoaded', initializeActivityToasts);
         } else {
-            initializeTicker();
+            initializeActivityToasts();
         }
         
         // Dynamic banner group visibility based on viewport width
