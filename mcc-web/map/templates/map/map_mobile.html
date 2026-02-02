@@ -1602,23 +1602,77 @@
             var urlTrackIds = urlParams.get('track_ids');
             var visibleTrackIds = [];
             
-            if (urlTrackIds === 'none') {
+            console.log('Map: initializeTracks() called');
+            console.log('Map: window.kioskTrackFilterIds:', typeof window.kioskTrackFilterIds !== 'undefined' ? window.kioskTrackFilterIds : 'undefined', 'isArray:', Array.isArray(window.kioskTrackFilterIds));
+            
+            // Check global kiosk track filter variable (set by kiosk playlist before scripts execute)
+            // IMPORTANT: Check if it's defined (even if it's an empty array or null)
+            var kioskTrackFilterIds = null;
+            var kioskTrackFilterDefined = typeof window.kioskTrackFilterIds !== 'undefined';
+            
+            if (kioskTrackFilterDefined) {
+                // Variable is defined - use it (even if it's an empty array or null)
+                kioskTrackFilterIds = window.kioskTrackFilterIds;
+                console.log('Map: Found kioskTrackFilterIds (defined):', kioskTrackFilterIds, 'type:', Array.isArray(kioskTrackFilterIds) ? 'array' : typeof kioskTrackFilterIds, 'length:', Array.isArray(kioskTrackFilterIds) ? kioskTrackFilterIds.length : 'N/A');
+            }
+            
+            // Also check if track filter is set in a data attribute (for kiosk context)
+            if (!kioskTrackFilterDefined) {
+                var sectionMap = document.getElementById('section-map');
+                if (sectionMap) {
+                    var trackFilterFromData = sectionMap.getAttribute('data-track-filter-ids');
+                    console.log('Map: Checking data-track-filter-ids attribute:', trackFilterFromData);
+                    if (trackFilterFromData !== null && trackFilterFromData !== '') {
+                        kioskTrackFilterIds = trackFilterFromData.split(',').map(function(id) {
+                            return parseInt(id.trim());
+                        }).filter(function(id) { return !isNaN(id); });
+                        console.log('Map: Using track filter from data attribute:', kioskTrackFilterIds);
+                        kioskTrackFilterDefined = true; // Mark as defined so we use it
+                    }
+                }
+            }
+            
+            // Priority: kiosk filter > data attribute > URL parameter > show all
+            // In kiosk mode: if track_filter_ids is set (even if empty array), use it
+            // Empty array means show no tracks, null/undefined means use URL or show all
+            console.log('Map: kioskTrackFilterDefined:', kioskTrackFilterDefined, 'kioskTrackFilterIds:', kioskTrackFilterIds);
+            if (kioskTrackFilterDefined) {
+                // Kiosk filter is explicitly set - use it (even if empty array or null)
+                if (Array.isArray(kioskTrackFilterIds) && kioskTrackFilterIds.length > 0) {
+                    visibleTrackIds = kioskTrackFilterIds;
+                    console.log('Map: Using kiosk track filter (non-empty):', visibleTrackIds);
+                } else {
+                    // track_filter_ids is explicitly set to empty array or null - show no tracks
+                    visibleTrackIds = [];
+                    console.log('Map: Kiosk track filter is empty/null - showing NO tracks');
+                }
+            } else if (urlTrackIds === 'none') {
                 visibleTrackIds = [];
+                console.log('Map: URL says no tracks (track_ids=none)');
             } else if (urlTrackIds && urlTrackIds !== 'none') {
                 visibleTrackIds = urlTrackIds.split(',').map(function(id) { 
                     return parseInt(id.trim()); 
                 }).filter(function(id) { return !isNaN(id); });
+                console.log('Map: Using URL track filter:', visibleTrackIds);
             } else {
-                // No URL parameter - show all tracks by default
+                // No filter - show all tracks by default (only in non-kiosk mode)
                 visibleTrackIds = tracks.map(function(t) { 
                     return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
                 }).filter(function(id) { return !isNaN(id); });
+                console.log('Map: No filter - showing all tracks:', visibleTrackIds);
             }
+            
+            console.log('Map: Final visibleTrackIds:', visibleTrackIds);
             
             console.log('Initializing tracks with visibleTrackIds:', visibleTrackIds, 'from', tracks.length, 'total tracks');
             
             // Use updateTrackVisibility to handle tracks and milestones together
             updateTrackVisibility(visibleTrackIds);
+            
+            // Make initializeTracks globally available for kiosk mode
+            if (typeof window !== 'undefined') {
+                window.initializeTracks = initializeTracks;
+            }
             
             // Fit bounds on initial load
             if (visibleTrackIds.length > 0 && !map._initialBoundsSet) {
@@ -1673,6 +1727,48 @@
         // Display milestones as markers
         var milestoneMarkerMap = {};
         var milestonesByTrackId = {}; // Group milestones by track_id
+        
+        // Get visible track IDs from kiosk filter, data attribute, or URL
+        var visibleTrackIdsForMilestones = [];
+        if (typeof window.kioskTrackFilterIds !== 'undefined') {
+            if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                visibleTrackIdsForMilestones = window.kioskTrackFilterIds;
+            } else {
+                visibleTrackIdsForMilestones = [];
+            }
+        } else {
+            // Check data attribute
+            var sectionMap = document.getElementById('section-map');
+            if (sectionMap) {
+                var trackFilterFromData = sectionMap.getAttribute('data-track-filter-ids');
+                if (trackFilterFromData !== null && trackFilterFromData !== '') {
+                    visibleTrackIdsForMilestones = trackFilterFromData.split(',').map(function(id) {
+                        return parseInt(id.trim());
+                    }).filter(function(id) { return !isNaN(id); });
+                }
+            }
+            // If still empty, check URL
+            if (visibleTrackIdsForMilestones.length === 0) {
+                var urlParams = new URLSearchParams(window.location.search);
+                var urlTrackIds = urlParams.get('track_ids');
+                if (urlTrackIds === 'none') {
+                    visibleTrackIdsForMilestones = [];
+                } else if (urlTrackIds && urlTrackIds !== 'none') {
+                    visibleTrackIdsForMilestones = urlTrackIds.split(',').map(function(id) { 
+                        return parseInt(id.trim()); 
+                    }).filter(function(id) { return !isNaN(id); });
+                } else {
+                    // No filter - show all tracks
+                    if (typeof tracks !== 'undefined' && Array.isArray(tracks)) {
+                        visibleTrackIdsForMilestones = tracks.map(function(t) { 
+                            return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
+                        }).filter(function(id) { return !isNaN(id); });
+                    }
+                }
+            }
+        }
+        console.log('Map: Filtering initial milestones by visible tracks:', visibleTrackIdsForMilestones);
+        
         milestones.forEach(function(m) {
             if (m.lat && m.lon) {
                 // Store track_id for this milestone
@@ -1682,6 +1778,21 @@
                     if (!milestonesByTrackId[trackId]) {
                         milestonesByTrackId[trackId] = [];
                     }
+                }
+                
+                // Check if this milestone belongs to a visible track
+                // If no tracks are visible, hide ALL milestones (even those without track_id)
+                if (visibleTrackIdsForMilestones.length === 0) {
+                    // No tracks visible - hide all milestones
+                    console.log('Map: Skipping milestone', m.id || m.name, '- no tracks visible (initial load)');
+                    return; // Skip this milestone
+                }
+                
+                // If tracks are visible, check if this milestone belongs to a visible track
+                if (trackId && !visibleTrackIdsForMilestones.includes(trackId)) {
+                    // Milestone belongs to a hidden track - skip it
+                    console.log('Map: Skipping milestone', m.id || m.name, 'for hidden track', trackId, '(initial load)');
+                    return; // Skip this milestone
                 }
                 var isTarget = false;
                 if (m.name && (m.name.toLowerCase().includes('ziel') || m.name.toLowerCase().includes('target'))) {
@@ -3272,8 +3383,24 @@
         }
 
         function createActivityToast(cyclist) {
+            console.log('Map: createActivityToast() called for:', cyclist.user_id);
             var container = document.getElementById('activity-toast-container');
-            if (!container) return;
+            if (!container) {
+                // Try to find it in current-view (kiosk context)
+                var currentView = document.getElementById('current-view');
+                if (currentView) {
+                    container = currentView.querySelector('#activity-toast-container');
+                    if (container) {
+                        console.log('Map: Found activity-toast-container in current-view for toast creation');
+                    } else {
+                        console.warn('Map: activity-toast-container not found for toast creation');
+                        return;
+                    }
+                } else {
+                    console.warn('Map: activity-toast-container not found and current-view not found');
+                    return;
+                }
+            }
 
             // Don't show toasts in table view
             var tableView = document.getElementById('table-view');
@@ -3396,12 +3523,82 @@
 
         // Fetch ticker data and create Activity Toasts
         function updateActivityToasts() {
+            console.log('Map: updateActivityToasts() called');
+            
+            // Check if container exists
+            var container = document.getElementById('activity-toast-container');
+            if (!container) {
+                console.warn('Map: activity-toast-container not found!');
+                // Try to find it in current-view (kiosk context)
+                var currentView = document.getElementById('current-view');
+                if (currentView) {
+                    container = currentView.querySelector('#activity-toast-container');
+                    if (container) {
+                        console.log('Map: Found activity-toast-container in current-view');
+                    } else {
+                        console.warn('Map: activity-toast-container not found in current-view either');
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                console.log('Map: Found activity-toast-container');
+            }
+            
             var url = "{% url 'map:map_ticker' %}";
+            
+            // Get filter from URL parameters (works in both normal and kiosk context)
+            var urlParams = new URLSearchParams(window.location.search);
+            var groupId = urlParams.get('group_id');
+            var groupName = urlParams.get('group_name');
+            
+            // Check global kiosk filter variables (set by kiosk playlist before scripts execute)
+            if (!groupId && !groupName) {
+                if (typeof window.kioskGroupFilterId !== 'undefined' && window.kioskGroupFilterId) {
+                    groupId = window.kioskGroupFilterId;
+                    console.log('Map: Using kioskGroupFilterId:', groupId);
+                } else if (typeof window.kioskGroupFilterName !== 'undefined' && window.kioskGroupFilterName) {
+                    groupName = window.kioskGroupFilterName;
+                    console.log('Map: Using kioskGroupFilterName:', groupName);
+                }
+            }
+            
+            // Also check if filter is set in a data attribute (for kiosk context)
+            if (!groupId && !groupName) {
+                var sectionMap = document.getElementById('section-map');
+                if (sectionMap) {
+                    var filterFromData = sectionMap.getAttribute('data-group-filter');
+                    if (filterFromData) {
+                        console.log('Map: Using filter from data attribute:', filterFromData);
+                        // Try to determine if it's an ID or name
+                        if (/^\d+$/.test(filterFromData)) {
+                            groupId = filterFromData;
+                        } else {
+                            groupName = filterFromData;
+                        }
+                    }
+                }
+            }
+            
+            // Fallback to template variables (for initial page load)
             {% if group_id %}
-            url += "?group_id={{ group_id|urlencode }}";
+            if (!groupId && !groupName) {
+                groupId = "{{ group_id|urlencode }}";
+            }
             {% elif group_name %}
-            url += "?group_name={{ group_name|urlencode }}";
+            if (!groupId && !groupName) {
+                groupName = "{{ group_name|urlencode }}";
+            }
             {% endif %}
+            
+            if (groupId) {
+                url += "?group_id=" + encodeURIComponent(groupId);
+            } else if (groupName) {
+                url += "?group_name=" + encodeURIComponent(groupName);
+            }
+            
+            console.log('Map: Fetching ticker data from:', url);
 
             fetch(url)
                 .then(response => {
@@ -3411,11 +3608,14 @@
                     return response.text();
                 })
                 .then(html => {
+                    console.log('Map: Ticker data received, length:', html.length);
+                    
                     // Create a temporary DOM element to parse the HTML
                     var tempDiv = document.createElement('div');
                     tempDiv.innerHTML = html;
                     
                     var tickerItems = tempDiv.querySelectorAll('.ticker-item');
+                    console.log('Map: Found', tickerItems.length, 'ticker items');
                     var currentTime = Date.now();
 
                     // Only process if enough time has passed since last update (avoid duplicates)
@@ -3505,10 +3705,16 @@
 
         // Update Activity Toasts periodically
         var refreshInterval = {{ refresh_interval|default:5 }};
-        setInterval(updateActivityToasts, refreshInterval * 1000);
+        console.log('Map: Setting up activity toast refresh interval:', refreshInterval, 'seconds');
+        var intervalId = setInterval(updateActivityToasts, refreshInterval * 1000);
+        console.log('Map: Activity toast interval ID:', intervalId);
         
         // Initial call after a short delay
-        setTimeout(updateActivityToasts, 2000);
+        console.log('Map: Scheduling initial updateActivityToasts() call after 2s delay');
+        setTimeout(function() {
+            console.log('Map: Initial updateActivityToasts() call after 2s delay');
+            updateActivityToasts();
+        }, 2000);
     </script>
 </body>
 </html>

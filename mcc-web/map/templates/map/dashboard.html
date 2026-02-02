@@ -1999,32 +1999,81 @@
                 return;
             }
             
-            // Determine which tracks should be visible based on URL parameters
+            console.log('Map (dashboard): initializeTracks() called');
+            console.log('Map (dashboard): window.kioskTrackFilterIds:', typeof window.kioskTrackFilterIds !== 'undefined' ? window.kioskTrackFilterIds : 'undefined', 'isArray:', Array.isArray(window.kioskTrackFilterIds));
+            
+            // Determine which tracks should be visible based on URL parameters or kiosk filter
             var urlParams = new URLSearchParams(window.location.search);
             var urlTrackIds = urlParams.get('track_ids');
             var visibleTrackIds = [];
             
-            if (urlTrackIds === 'none') {
-                // No tracks should be visible
+            // Check global kiosk track filter variable (set by kiosk playlist before scripts execute)
+            // IMPORTANT: Check if it's defined (even if it's an empty array)
+            var kioskTrackFilterIds = null;
+            var kioskTrackFilterDefined = typeof window.kioskTrackFilterIds !== 'undefined';
+            
+            if (kioskTrackFilterDefined) {
+                // Variable is defined - use it (even if it's an empty array or null)
+                kioskTrackFilterIds = window.kioskTrackFilterIds;
+                console.log('Map (dashboard): Found kioskTrackFilterIds (defined):', kioskTrackFilterIds, 'type:', Array.isArray(kioskTrackFilterIds) ? 'array' : typeof kioskTrackFilterIds, 'length:', Array.isArray(kioskTrackFilterIds) ? kioskTrackFilterIds.length : 'N/A');
+            }
+            
+            // Also check if track filter is set in a data attribute (for kiosk context)
+            if (!kioskTrackFilterDefined) {
+                var sectionMap = document.getElementById('section-map');
+                if (sectionMap) {
+                    var trackFilterFromData = sectionMap.getAttribute('data-track-filter-ids');
+                    console.log('Map (dashboard): Checking data-track-filter-ids attribute:', trackFilterFromData);
+                    if (trackFilterFromData !== null && trackFilterFromData !== '') {
+                        kioskTrackFilterIds = trackFilterFromData.split(',').map(function(id) {
+                            return parseInt(id.trim());
+                        }).filter(function(id) { return !isNaN(id); });
+                        console.log('Map (dashboard): Using track filter from data attribute:', kioskTrackFilterIds);
+                        kioskTrackFilterDefined = true; // Mark as defined so we use it
+                    }
+                }
+            }
+            
+            // Priority: kiosk filter > data attribute > URL parameter > show all
+            // In kiosk mode: if track_filter_ids is set (even if empty array), use it
+            // Empty array means show no tracks, null/undefined means use URL or show all
+            console.log('Map (dashboard): kioskTrackFilterDefined:', kioskTrackFilterDefined, 'kioskTrackFilterIds:', kioskTrackFilterIds);
+            if (kioskTrackFilterDefined) {
+                // Kiosk filter is explicitly set - use it (even if empty array or null)
+                if (Array.isArray(kioskTrackFilterIds) && kioskTrackFilterIds.length > 0) {
+                    visibleTrackIds = kioskTrackFilterIds;
+                    console.log('Map (dashboard): Using kiosk track filter (non-empty):', visibleTrackIds);
+                } else {
+                    // track_filter_ids is explicitly set to empty array or null - show no tracks
+                    visibleTrackIds = [];
+                    console.log('Map (dashboard): Kiosk track filter is empty/null - showing NO tracks');
+                }
+            } else if (urlTrackIds === 'none') {
                 visibleTrackIds = [];
-                console.log('URL says no tracks should be visible');
+                console.log('Map (dashboard): URL says no tracks (track_ids=none)');
             } else if (urlTrackIds && urlTrackIds !== 'none') {
-                // Specific tracks selected
                 visibleTrackIds = urlTrackIds.split(',').map(function(id) { 
                     return parseInt(id.trim()); 
                 }).filter(function(id) { return !isNaN(id); });
-                console.log('URL specifies tracks:', visibleTrackIds);
+                console.log('Map (dashboard): Using URL track filter:', visibleTrackIds);
             } else {
-                // No filter - show all tracks
+                // No filter - show all tracks by default (only in non-kiosk mode)
                 visibleTrackIds = tracks.map(function(t) { 
                     return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
                 }).filter(function(id) { return !isNaN(id); });
-                console.log('No URL filter, showing all tracks:', visibleTrackIds);
+                console.log('Map (dashboard): No filter - showing all tracks:', visibleTrackIds);
             }
+            
+            console.log('Map (dashboard): Final visibleTrackIds:', visibleTrackIds);
             
             // Create and display tracks
             console.log('Calling updateTrackVisibility with:', visibleTrackIds);
             updateTrackVisibility(visibleTrackIds);
+            
+            // Make initializeTracks globally available for kiosk mode
+            if (typeof window !== 'undefined') {
+                window.initializeTracks = initializeTracks;
+            }
             
             // Fit bounds on initial load
             if (visibleTrackIds.length > 0 && !map._initialBoundsSet) {
@@ -2291,8 +2340,65 @@
         var milestoneMarkerMap = {};
 
         // Display milestones as markers on the map
+        // Get visible track IDs from kiosk filter, data attribute, or URL
+        var visibleTrackIdsForMilestones = [];
+        if (typeof window.kioskTrackFilterIds !== 'undefined') {
+            if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                visibleTrackIdsForMilestones = window.kioskTrackFilterIds;
+            } else {
+                visibleTrackIdsForMilestones = [];
+            }
+        } else {
+            // Check data attribute
+            var sectionMap = document.getElementById('section-map');
+            if (sectionMap) {
+                var trackFilterFromData = sectionMap.getAttribute('data-track-filter-ids');
+                if (trackFilterFromData !== null && trackFilterFromData !== '') {
+                    visibleTrackIdsForMilestones = trackFilterFromData.split(',').map(function(id) {
+                        return parseInt(id.trim());
+                    }).filter(function(id) { return !isNaN(id); });
+                }
+            }
+            // If still empty, check URL
+            if (visibleTrackIdsForMilestones.length === 0) {
+                var urlParams = new URLSearchParams(window.location.search);
+                var urlTrackIds = urlParams.get('track_ids');
+                if (urlTrackIds === 'none') {
+                    visibleTrackIdsForMilestones = [];
+                } else if (urlTrackIds && urlTrackIds !== 'none') {
+                    visibleTrackIdsForMilestones = urlTrackIds.split(',').map(function(id) { 
+                        return parseInt(id.trim()); 
+                    }).filter(function(id) { return !isNaN(id); });
+                } else {
+                    // No filter - show all tracks
+                    if (typeof tracks !== 'undefined' && Array.isArray(tracks)) {
+                        visibleTrackIdsForMilestones = tracks.map(function(t) { 
+                            return typeof t.id === 'string' ? parseInt(t.id) : t.id; 
+                        }).filter(function(id) { return !isNaN(id); });
+                    }
+                }
+            }
+        }
+        console.log('Map (dashboard): Filtering initial milestones by visible tracks:', visibleTrackIdsForMilestones);
+        
         milestones.forEach(function(m) {
             if (m.lat && m.lon) {
+                // Check if this milestone belongs to a visible track
+                var milestoneTrackId = m.track_id ? (typeof m.track_id === 'string' ? parseInt(m.track_id) : m.track_id) : null;
+                
+                // If no tracks are visible, hide ALL milestones (even those without track_id)
+                if (visibleTrackIdsForMilestones.length === 0) {
+                    // No tracks visible - hide all milestones
+                    console.log('Map (dashboard): Skipping milestone', m.id || m.name, '- no tracks visible (initial load)');
+                    return; // Skip this milestone
+                }
+                
+                // If tracks are visible, check if this milestone belongs to a visible track
+                if (milestoneTrackId && !visibleTrackIdsForMilestones.includes(milestoneTrackId)) {
+                    // Milestone belongs to a hidden track - skip it
+                    console.log('Map (dashboard): Skipping milestone', m.id || m.name, 'for hidden track', milestoneTrackId, '(initial load)');
+                    return; // Skip this milestone
+                }
                 // Check if this is the target/end point
                 var isTarget = false;
                 if (m.name && (m.name.toLowerCase().includes('ziel') || m.name.toLowerCase().includes('target'))) {

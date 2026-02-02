@@ -428,7 +428,15 @@
                                 content.style.position = 'relative';
                                 
                                 // Clone the leaderboard view
-                                content.appendChild(leaderboardView.cloneNode(true));
+                                const clonedLeaderboardView = leaderboardView.cloneNode(true);
+                                
+                                // Store group filter in data attribute for Activity Toasts
+                                // This allows the JavaScript to read the filter even if URL params are not available
+                                if (entry.group_filter_name) {
+                                    clonedLeaderboardView.setAttribute('data-group-filter', entry.group_filter_name);
+                                }
+                                
+                                content.appendChild(clonedLeaderboardView);
                                 
                                 // Also clone the Activity Toast Container (like in map views)
                                 const activityToastContainer = doc.querySelector('#activity-toast-container');
@@ -459,7 +467,26 @@
                                     // Look for section-map first (dashboard.html structure)
                                     const sectionMap = doc.querySelector('#section-map');
                                     if (sectionMap) {
-                                        content.appendChild(sectionMap.cloneNode(true));
+                                        const clonedSectionMap = sectionMap.cloneNode(true);
+                                        
+                                    // Store group filter in data attribute for Activity Toasts
+                                    // This allows the JavaScript to read the filter even if URL params are not available
+                                    if (entry.group_filter_id) {
+                                        clonedSectionMap.setAttribute('data-group-filter', entry.group_filter_id);
+                                    } else if (entry.group_filter_name) {
+                                        clonedSectionMap.setAttribute('data-group-filter', entry.group_filter_name);
+                                    }
+                                    
+                                    // Store track filter IDs in data attribute for map track filtering
+                                    if (entry.track_filter_ids && entry.track_filter_ids.length > 0) {
+                                        clonedSectionMap.setAttribute('data-track-filter-ids', entry.track_filter_ids.join(','));
+                                    } else {
+                                        // If no track filter, explicitly set to 'none' to show no tracks
+                                        // Or leave empty to show all tracks (depending on requirement)
+                                        // For now, leave empty to show all tracks if no filter is set
+                                    }
+                                        
+                                        content.appendChild(clonedSectionMap);
                                     } else {
                                         // Fallback: look for #map element
                                         const mapElement = doc.querySelector('#map');
@@ -575,6 +602,54 @@
                             }
                         } else {
                             console.log('Kiosk: Keeping existing shownMilestoneIds across view switch:', Array.from(window.kioskShownMilestoneIds));
+                        }
+                        
+                        // Store filter information globally for Activity Toasts (before scripts execute)
+                        // This allows updateActivityToasts() to access the filter even in kiosk context
+                        if (entry.view_type === 'leaderboard') {
+                            if (entry.group_filter_name) {
+                                window.kioskGroupFilter = entry.group_filter_name;
+                                console.log('Kiosk: Set kioskGroupFilter for leaderboard:', entry.group_filter_name);
+                            } else {
+                                window.kioskGroupFilter = null;
+                                console.log('Kiosk: Cleared kioskGroupFilter (no filter)');
+                            }
+                        } else if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                            if (entry.group_filter_id) {
+                                window.kioskGroupFilterId = entry.group_filter_id;
+                                window.kioskGroupFilterName = null;
+                                console.log('Kiosk: Set kioskGroupFilterId for map:', entry.group_filter_id);
+                            } else if (entry.group_filter_name) {
+                                window.kioskGroupFilterId = null;
+                                window.kioskGroupFilterName = entry.group_filter_name;
+                                console.log('Kiosk: Set kioskGroupFilterName for map:', entry.group_filter_name);
+                            } else {
+                                window.kioskGroupFilterId = null;
+                                window.kioskGroupFilterName = null;
+                                console.log('Kiosk: Cleared kiosk filter variables (no filter)');
+                            }
+                            
+                            // Store track filter IDs globally for map views
+                            // If track_filter_ids is null/undefined, it means no tracks should be shown
+                            // If track_filter_ids is an empty array [], it also means no tracks should be shown
+                            // Only if track_filter_ids has values should those tracks be shown
+                            console.log('Kiosk: Processing track_filter_ids for map view:', entry.track_filter_ids, 'type:', typeof entry.track_filter_ids, 'isArray:', Array.isArray(entry.track_filter_ids));
+                            if (entry.track_filter_ids && Array.isArray(entry.track_filter_ids) && entry.track_filter_ids.length > 0) {
+                                window.kioskTrackFilterIds = entry.track_filter_ids;
+                                console.log('Kiosk: Set kioskTrackFilterIds for map:', entry.track_filter_ids);
+                            } else {
+                                // No tracks selected - show no tracks (empty array)
+                                window.kioskTrackFilterIds = [];
+                                console.log('Kiosk: Set kioskTrackFilterIds to empty array (no tracks selected or null - show no tracks)');
+                            }
+                            console.log('Kiosk: window.kioskTrackFilterIds after setting:', window.kioskTrackFilterIds);
+                        } else {
+                            // Clear filter when switching to other view types
+                            window.kioskGroupFilter = null;
+                            window.kioskGroupFilterId = null;
+                            window.kioskGroupFilterName = null;
+                            window.kioskTrackFilterIds = null;
+                            console.log('Kiosk: Cleared all filter variables (other view type)');
                         }
                         
                         // Replace the current view content
@@ -788,6 +863,22 @@
                             setTimeout(() => {
                                 // Filter Chips are not displayed in Kiosk Map view
                                 // No need to call updateRankingFilterChips for map views
+                                
+                                // Re-initialize tracks with kiosk filter (if available)
+                                // This ensures that track filtering works correctly in kiosk mode
+                                // The kioskTrackFilterIds variable is set before scripts execute, so we can re-initialize tracks
+                                setTimeout(() => {
+                                    console.log('Kiosk: Checking for initializeTracks function, window.kioskTrackFilterIds:', typeof window.kioskTrackFilterIds !== 'undefined' ? window.kioskTrackFilterIds : 'undefined');
+                                    if (typeof window.initializeTracks === 'function') {
+                                        console.log('Kiosk: Re-initializing tracks with kiosk filter (window.initializeTracks)');
+                                        window.initializeTracks();
+                                    } else if (typeof initializeTracks === 'function') {
+                                        console.log('Kiosk: Re-initializing tracks with kiosk filter (local initializeTracks)');
+                                        initializeTracks();
+                                    } else {
+                                        console.warn('Kiosk: initializeTracks function not found');
+                                    }
+                                }, 500); // Wait a bit longer to ensure scripts have executed
                                 
                                 const mapElement = currentView.querySelector('#map');
                                 if (mapElement && typeof L !== 'undefined') {
@@ -1427,10 +1518,70 @@
                                                                             return integerWithSeparators + (decimalPart ? ',' + decimalPart : '');
                                                                         };
                                                                         
-                                                                        // Create or update milestone markers
+                                                                        // Get visible track IDs from kiosk filter or URL
+                                                                        let visibleTrackIds = [];
+                                                                        if (typeof window.kioskTrackFilterIds !== 'undefined') {
+                                                                            if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                                                                                visibleTrackIds = window.kioskTrackFilterIds;
+                                                                            } else {
+                                                                                // Empty array means no tracks visible
+                                                                                visibleTrackIds = [];
+                                                                            }
+                                                                        } else {
+                                                                            // Check URL parameter
+                                                                            const urlParams = new URLSearchParams(window.location.search);
+                                                                            const urlTrackIds = urlParams.get('track_ids');
+                                                                            if (urlTrackIds === 'none') {
+                                                                                visibleTrackIds = [];
+                                                                            } else if (urlTrackIds && urlTrackIds !== 'none') {
+                                                                                visibleTrackIds = urlTrackIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                                                                            } else {
+                                                                                // No filter - show all tracks (get from window.tracks if available)
+                                                                                if (typeof window.tracks !== 'undefined' && Array.isArray(window.tracks)) {
+                                                                                    visibleTrackIds = window.tracks.map(t => typeof t.id === 'string' ? parseInt(t.id) : t.id).filter(id => !isNaN(id));
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        
+                                                                        console.log('Kiosk: Filtering milestones by visible tracks:', visibleTrackIds);
+                                                                        
+                                                                        // Create or update milestone markers (only for visible tracks)
                                                                         if (data.milestones && Array.isArray(data.milestones)) {
                                                                             data.milestones.forEach(function(m) {
                                                                                 if (m.lat && m.lon) {
+                                                                                    // Check if this milestone belongs to a visible track
+                                                                                    const milestoneTrackId = m.track_id ? (typeof m.track_id === 'string' ? parseInt(m.track_id) : m.track_id) : null;
+                                                                                    
+                                                                                    // If no tracks are visible, hide ALL milestones (even those without track_id)
+                                                                                    if (visibleTrackIds.length === 0) {
+                                                                                        // No tracks visible - hide all milestones
+                                                                                        console.log('Kiosk: Skipping milestone', m.id || m.name, '- no tracks visible');
+                                                                                        // Remove marker if it exists
+                                                                                        if (m.id && window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                            if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                                window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                            }
+                                                                                            delete window.milestoneMarkerMap[m.id];
+                                                                                        }
+                                                                                        return; // Skip this milestone
+                                                                                    }
+                                                                                    
+                                                                                    // If tracks are visible, check if this milestone belongs to a visible track
+                                                                                    if (milestoneTrackId && !visibleTrackIds.includes(milestoneTrackId)) {
+                                                                                        // Milestone belongs to a hidden track - skip it
+                                                                                        console.log('Kiosk: Skipping milestone', m.id || m.name, 'for hidden track', milestoneTrackId);
+                                                                                        // Remove marker if it exists
+                                                                                        if (m.id && window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                            if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                                window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                            }
+                                                                                            delete window.milestoneMarkerMap[m.id];
+                                                                                        }
+                                                                                        return; // Skip this milestone
+                                                                                    }
+                                                                                    
+                                                                                    // Milestone is valid (belongs to visible track or has no track_id and tracks are visible)
+                                                                                    
                                                                                     const isReached = m.is_reached || false;
                                                                                     const bgColor = isReached ? '#28a745' : '#ffd700';
                                                                                     const borderColor = isReached ? '#1e7e34' : '#ff8c00';
@@ -1460,6 +1611,10 @@
                                                                                         window.milestoneMarkerMap[m.id].setLatLng([m.lat, m.lon]);
                                                                                         window.milestoneMarkerMap[m.id].setIcon(milestoneIcon);
                                                                                         window.milestoneMarkerMap[m.id].setPopupContent(popupContent);
+                                                                                        // Ensure marker is visible (track might have been hidden before)
+                                                                                        if (!window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                            window.milestoneMarkers.addLayer(window.milestoneMarkerMap[m.id]);
+                                                                                        }
                                                                                     } else {
                                                                                         // Create new marker
                                                                                         const marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(window.milestoneMarkers);
@@ -1660,6 +1815,29 @@
                                                                                     return;
                                                                                 }
                                                                                 
+                                                                                // Get visible track IDs from kiosk filter or URL
+                                                                                let visibleTrackIds = [];
+                                                                                if (typeof window.kioskTrackFilterIds !== 'undefined') {
+                                                                                    if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                                                                                        visibleTrackIds = window.kioskTrackFilterIds;
+                                                                                    } else {
+                                                                                        visibleTrackIds = [];
+                                                                                    }
+                                                                                } else {
+                                                                                    const urlParams = new URLSearchParams(window.location.search);
+                                                                                    const urlTrackIds = urlParams.get('track_ids');
+                                                                                    if (urlTrackIds === 'none') {
+                                                                                        visibleTrackIds = [];
+                                                                                    } else if (urlTrackIds && urlTrackIds !== 'none') {
+                                                                                        visibleTrackIds = urlTrackIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                                                                                    } else {
+                                                                                        if (typeof window.tracks !== 'undefined' && Array.isArray(window.tracks)) {
+                                                                                            visibleTrackIds = window.tracks.map(t => typeof t.id === 'string' ? parseInt(t.id) : t.id).filter(id => !isNaN(id));
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                                console.log('Kiosk: Filtering new milestones by visible tracks:', visibleTrackIds);
+                                                                                
                                                                                 // First pass: Identify new milestones and mark them as shown IMMEDIATELY (outside setTimeout)
                                                                                 // This prevents duplicate displays if the function is called multiple times quickly
                                                                                 // IMPORTANT: After a trip restart, milestones may have new reached_at values
@@ -1668,6 +1846,21 @@
                                                                                 console.log('Kiosk: Processing milestones, shownIds:', Array.from(window.kioskShownMilestoneIds || []), 'last_check:', window.kioskLastMilestoneCheck);
                                                                                 var newMilestoneIds = [];
                                                                                 data.milestones.forEach(function(ms) {
+                                                                                    // Check if this milestone belongs to a visible track
+                                                                                    const milestoneTrackId = ms.track_id ? (typeof ms.track_id === 'string' ? parseInt(ms.track_id) : ms.track_id) : null;
+                                                                                    if (milestoneTrackId && visibleTrackIds.length > 0 && !visibleTrackIds.includes(milestoneTrackId)) {
+                                                                                        // Milestone belongs to a hidden track - skip it
+                                                                                        console.log('Kiosk: Skipping milestone', ms.id || ms.name, 'for hidden track', milestoneTrackId, '(new milestones check)');
+                                                                                        // Also remove marker if it exists
+                                                                                        if (ms.id && window.milestoneMarkerMap && window.milestoneMarkerMap[ms.id]) {
+                                                                                            if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[ms.id])) {
+                                                                                                window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[ms.id]);
+                                                                                            }
+                                                                                            delete window.milestoneMarkerMap[ms.id];
+                                                                                        }
+                                                                                        return; // Skip this milestone
+                                                                                    }
+                                                                                    
                                                                                     var isAlreadyShown = window.kioskShownMilestoneIds.has(ms.id);
                                                                                     var isAfterLastCheck = false;
                                                                                     
@@ -1682,11 +1875,12 @@
                                                                                         }
                                                                                     }
                                                                                     
-                                                                                    console.log('Kiosk: Checking milestone:', ms.id, ms.name, 'already shown:', isAlreadyShown, 'reached_at:', ms.reached_at, 'isAfterLastCheck:', isAfterLastCheck);
+                                                                                    console.log('Kiosk: Checking milestone:', ms.id, ms.name, 'already shown:', isAlreadyShown, 'reached_at:', ms.reached_at, 'isAfterLastCheck:', isAfterLastCheck, 'track_id:', milestoneTrackId);
                                                                                     
                                                                                     // Show milestone if:
                                                                                     // 1. It's not already shown, OR
                                                                                     // 2. It was reached after last_check (trip restart scenario)
+                                                                                    // AND it belongs to a visible track (checked above)
                                                                                     if (!isAlreadyShown || isAfterLastCheck) {
                                                                                         // Mark as shown IMMEDIATELY to prevent duplicate displays
                                                                                         window.kioskShownMilestoneIds.add(ms.id);
@@ -2044,10 +2238,70 @@
                                                                         return integerWithSeparators + (decimalPart ? ',' + decimalPart : '');
                                                                     };
                                                                     
-                                                                    // Create or update milestone markers
+                                                                    // Get visible track IDs from kiosk filter or URL
+                                                                    let visibleTrackIds = [];
+                                                                    if (typeof window.kioskTrackFilterIds !== 'undefined') {
+                                                                        if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                                                                            visibleTrackIds = window.kioskTrackFilterIds;
+                                                                        } else {
+                                                                            // Empty array means no tracks visible
+                                                                            visibleTrackIds = [];
+                                                                        }
+                                                                    } else {
+                                                                        // Check URL parameter
+                                                                        const urlParams = new URLSearchParams(window.location.search);
+                                                                        const urlTrackIds = urlParams.get('track_ids');
+                                                                        if (urlTrackIds === 'none') {
+                                                                            visibleTrackIds = [];
+                                                                        } else if (urlTrackIds && urlTrackIds !== 'none') {
+                                                                            visibleTrackIds = urlTrackIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                                                                        } else {
+                                                                            // No filter - show all tracks (get from window.tracks if available)
+                                                                            if (typeof window.tracks !== 'undefined' && Array.isArray(window.tracks)) {
+                                                                                visibleTrackIds = window.tracks.map(t => typeof t.id === 'string' ? parseInt(t.id) : t.id).filter(id => !isNaN(id));
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    
+                                                                    console.log('Kiosk: Filtering milestones by visible tracks (delayed):', visibleTrackIds);
+                                                                    
+                                                                    // Create or update milestone markers (only for visible tracks)
                                                                     if (data.milestones && Array.isArray(data.milestones)) {
                                                                         data.milestones.forEach(function(m) {
                                                                             if (m.lat && m.lon) {
+                                                                                // Check if this milestone belongs to a visible track
+                                                                                const milestoneTrackId = m.track_id ? (typeof m.track_id === 'string' ? parseInt(m.track_id) : m.track_id) : null;
+                                                                                
+                                                                                // If no tracks are visible, hide ALL milestones (even those without track_id)
+                                                                                if (visibleTrackIds.length === 0) {
+                                                                                    // No tracks visible - hide all milestones
+                                                                                    console.log('Kiosk: Skipping milestone', m.id || m.name, '- no tracks visible (delayed)');
+                                                                                    // Remove marker if it exists
+                                                                                    if (m.id && window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                        if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                            window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                        }
+                                                                                        delete window.milestoneMarkerMap[m.id];
+                                                                                    }
+                                                                                    return; // Skip this milestone
+                                                                                }
+                                                                                
+                                                                                // If tracks are visible, check if this milestone belongs to a visible track
+                                                                                if (milestoneTrackId && !visibleTrackIds.includes(milestoneTrackId)) {
+                                                                                    // Milestone belongs to a hidden track - skip it
+                                                                                    console.log('Kiosk: Skipping milestone', m.id || m.name, 'for hidden track', milestoneTrackId, '(delayed)');
+                                                                                    // Remove marker if it exists
+                                                                                    if (m.id && window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                        if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                            window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                        }
+                                                                                        delete window.milestoneMarkerMap[m.id];
+                                                                                    }
+                                                                                    return; // Skip this milestone
+                                                                                }
+                                                                                
+                                                                                // Milestone is valid (belongs to visible track or has no track_id and tracks are visible)
+                                                                                
                                                                                 const isReached = m.is_reached || false;
                                                                                 const bgColor = isReached ? '#28a745' : '#ffd700';
                                                                                 const borderColor = isReached ? '#1e7e34' : '#ff8c00';
@@ -2077,6 +2331,10 @@
                                                                                     window.milestoneMarkerMap[m.id].setLatLng([m.lat, m.lon]);
                                                                                     window.milestoneMarkerMap[m.id].setIcon(milestoneIcon);
                                                                                     window.milestoneMarkerMap[m.id].setPopupContent(popupContent);
+                                                                                    // Ensure marker is visible (track might have been hidden before)
+                                                                                    if (!window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                        window.milestoneMarkers.addLayer(window.milestoneMarkerMap[m.id]);
+                                                                                    }
                                                                                 } else {
                                                                                     // Create new marker
                                                                                     const marker = L.marker([m.lat, m.lon], {icon: milestoneIcon}).addTo(window.milestoneMarkers);
@@ -2114,22 +2372,80 @@
                                                                     .then(response => response.json())
                                                                     .then(data => {
                                                                         if (data.milestones && Array.isArray(data.milestones) && window.map && window.milestoneMarkers) {
-                                                                            // Update milestone markers
+                                                                            // Get visible track IDs from kiosk filter or URL
+                                                                            let visibleTrackIds = [];
+                                                                            if (typeof window.kioskTrackFilterIds !== 'undefined') {
+                                                                                if (Array.isArray(window.kioskTrackFilterIds) && window.kioskTrackFilterIds.length > 0) {
+                                                                                    visibleTrackIds = window.kioskTrackFilterIds;
+                                                                                } else {
+                                                                                    visibleTrackIds = [];
+                                                                                }
+                                                                            } else {
+                                                                                const urlParams = new URLSearchParams(window.location.search);
+                                                                                const urlTrackIds = urlParams.get('track_ids');
+                                                                                if (urlTrackIds === 'none') {
+                                                                                    visibleTrackIds = [];
+                                                                                } else if (urlTrackIds && urlTrackIds !== 'none') {
+                                                                                    visibleTrackIds = urlTrackIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                                                                                } else {
+                                                                                    if (typeof window.tracks !== 'undefined' && Array.isArray(window.tracks)) {
+                                                                                        visibleTrackIds = window.tracks.map(t => typeof t.id === 'string' ? parseInt(t.id) : t.id).filter(id => !isNaN(id));
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            
+                                                                            // Update milestone markers (only for visible tracks)
                                                                             data.milestones.forEach(function(m) {
-                                                                                if (m.lat && m.lon && m.id && window.milestoneMarkerMap[m.id]) {
-                                                                                    const isReached = m.is_reached || false;
-                                                                                    const bgColor = isReached ? '#28a745' : '#ffd700';
-                                                                                    const borderColor = isReached ? '#1e7e34' : '#ff8c00';
-                                                                                    const iconEmoji = isReached ? '✅' : '🏆';
+                                                                                if (m.lat && m.lon && m.id) {
+                                                                                    // Check if this milestone belongs to a visible track
+                                                                                    const milestoneTrackId = m.track_id ? (typeof m.track_id === 'string' ? parseInt(m.track_id) : m.track_id) : null;
                                                                                     
-                                                                                    const milestoneIcon = L.divIcon({
-                                                                                        className: 'milestone-marker',
-                                                                                        html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">' + iconEmoji + '</div>',
-                                                                                        iconSize: [30, 30],
-                                                                                        iconAnchor: [15, 15]
-                                                                                    });
+                                                                                    // If no tracks are visible, hide ALL milestones (even those without track_id)
+                                                                                    if (visibleTrackIds.length === 0) {
+                                                                                        // No tracks visible - hide all milestones
+                                                                                        if (window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                            if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                                window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                            }
+                                                                                            delete window.milestoneMarkerMap[m.id];
+                                                                                        }
+                                                                                        return; // Skip this milestone
+                                                                                    }
                                                                                     
-                                                                                    window.milestoneMarkerMap[m.id].setIcon(milestoneIcon);
+                                                                                    // If tracks are visible, check if this milestone belongs to a visible track
+                                                                                    if (milestoneTrackId && !visibleTrackIds.includes(milestoneTrackId)) {
+                                                                                        // Milestone belongs to a hidden track - remove it
+                                                                                        if (window.milestoneMarkerMap && window.milestoneMarkerMap[m.id]) {
+                                                                                            if (window.milestoneMarkers && window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                                window.milestoneMarkers.removeLayer(window.milestoneMarkerMap[m.id]);
+                                                                                            }
+                                                                                            delete window.milestoneMarkerMap[m.id];
+                                                                                        }
+                                                                                        return; // Skip this milestone
+                                                                                    }
+                                                                                    
+                                                                                    // Milestone is valid (belongs to visible track or has no track_id and tracks are visible)
+                                                                                    
+                                                                                    // Update existing marker or create new one
+                                                                                    if (window.milestoneMarkerMap[m.id]) {
+                                                                                        const isReached = m.is_reached || false;
+                                                                                        const bgColor = isReached ? '#28a745' : '#ffd700';
+                                                                                        const borderColor = isReached ? '#1e7e34' : '#ff8c00';
+                                                                                        const iconEmoji = isReached ? '✅' : '🏆';
+                                                                                        
+                                                                                        const milestoneIcon = L.divIcon({
+                                                                                            className: 'milestone-marker',
+                                                                                            html: '<div style="background: ' + bgColor + '; border: 3px solid ' + borderColor + '; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">' + iconEmoji + '</div>',
+                                                                                            iconSize: [30, 30],
+                                                                                            iconAnchor: [15, 15]
+                                                                                        });
+                                                                                        
+                                                                                        window.milestoneMarkerMap[m.id].setIcon(milestoneIcon);
+                                                                                        // Ensure marker is visible if track is visible
+                                                                                        if (!window.milestoneMarkers.hasLayer(window.milestoneMarkerMap[m.id])) {
+                                                                                            window.milestoneMarkers.addLayer(window.milestoneMarkerMap[m.id]);
+                                                                                        }
+                                                                                    }
                                                                                 }
                                                                             });
                                                                         }

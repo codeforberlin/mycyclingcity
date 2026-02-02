@@ -1165,8 +1165,21 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         # Filtered view: use the parent group's total from HourlyMetric
         # This is the aggregated sum of all its descendants
         try:
-            parent_group = Group.objects.get(name=current_filter, is_visible=True)
-            total_km = total_km_by_group.get(parent_group.id, 0.0)
+            parent_group = Group.objects.get(name__iexact=current_filter, is_visible=True)
+            # Check if parent_group.id is in total_km_by_group
+            # If not, recalculate with include_descendants=True to get aggregated values
+            if parent_group.id in total_km_by_group:
+                total_km = total_km_by_group.get(parent_group.id, 0.0)
+            else:
+                # Parent group not in total_km_by_group - recalculate with include_descendants=True
+                # This ensures we get the aggregated sum of all descendants
+                parent_group_totals = _calculate_group_totals_from_metrics(
+                    [parent_group],
+                    now,
+                    use_cache=True,
+                    include_descendants=True
+                )
+                total_km = parent_group_totals.get(parent_group.id, {}).get('total', 0.0)
         except Group.DoesNotExist:
             # Fallback: use groups_data sum (already from HourlyMetric)
             total_km = sum(g['distance_total'] for g in groups_data)
@@ -1324,15 +1337,55 @@ def leaderboard_ticker(request: HttpRequest) -> HttpResponse:
         group_id = unquote(group_id)
         try:
             # Try first as numeric ID
-            target_group = Group.objects.get(id=int(group_id))
-            base_cyclists = base_cyclists.filter(groups__id=target_group.id)
+            target_group = Group.objects.get(id=int(group_id), is_visible=True)
         except (ValueError, Group.DoesNotExist):
-            # If no valid ID, try as name
+            # If no valid ID, try as name (case-insensitive)
             try:
-                target_group = Group.objects.get(name=group_id)
-                base_cyclists = base_cyclists.filter(groups__id=target_group.id)
+                target_group = Group.objects.get(name__iexact=group_id, is_visible=True)
             except Group.DoesNotExist:
                 pass
+        
+        # If target group found, filter cyclists by it and all its descendants
+        if target_group:
+            # Recursively find all descendant group IDs (same logic as _leaderboard_implementation)
+            def get_all_descendant_ids(ancestor_id: int, visited: set = None) -> set:
+                """Recursively get all descendant group IDs (only visible groups)."""
+                if visited is None:
+                    visited = set()
+                
+                descendant_ids = set()
+                # Start with direct children (only visible ones)
+                direct_children = Group.objects.filter(
+                    parent_id=ancestor_id,
+                    is_visible=True
+                ).values_list('id', flat=True)
+                descendant_ids.update(direct_children)
+                
+                # Recursively get children of children (prevent infinite loops)
+                for child_id in direct_children:
+                    if child_id not in visited:
+                        visited.add(child_id)
+                        descendant_ids.update(get_all_descendant_ids(child_id, visited))
+                
+                return descendant_ids
+            
+            # Get all descendant IDs (only visible groups)
+            # Include the target group itself if it's a leaf group (has no children)
+            subgroup_ids = get_all_descendant_ids(target_group.id)
+            
+            # Also check if target_group itself has cyclists (if it's a leaf group)
+            # If it has no children, include it in the filter
+            has_children = Group.objects.filter(parent_id=target_group.id, is_visible=True).exists()
+            if not has_children:
+                # Target group is a leaf group - include it in the filter
+                subgroup_ids.add(target_group.id)
+            
+            # Filter cyclists to only those in the filtered subgroups (or the target group itself)
+            if subgroup_ids:
+                base_cyclists = base_cyclists.filter(groups__id__in=subgroup_ids).distinct()
+            else:
+                # No subgroups found - filter by target group itself
+                base_cyclists = base_cyclists.filter(groups__id=target_group.id)
     
     ticker_data = []
     for cyclist in base_cyclists:

@@ -208,36 +208,36 @@
 <body class="h-screen overflow-hidden bg-slate-900 text-white">
     <!-- Leaderboard View -->
     <div id="leaderboard-view" class="h-full w-full flex flex-col">
-            <!-- Header: Parent Group Banner (20vh) -->
-            <div class="h-[20vh] bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-center relative overflow-hidden px-6">
-                <div id="banner-content"
-                     hx-get="{% url 'leaderboard:leaderboard_page' %}?banner_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
-                     hx-trigger="every {{ KIOSK_BANNER_UPDATE_INTERVAL }}s"
-                     hx-swap="innerHTML"
-                     hx-target="this">
-                    {% include 'leaderboard/partials/banner.html' %}
-                </div>
-            </div>
-            
-            <!-- Main: Group Grid (75vh) -->
-            <div id="leaderboard-content" class="flex-1 overflow-hidden" 
-                 hx-get="{% url 'leaderboard:leaderboard_page' %}{% if current_filter %}?group={{ current_filter|urlencode }}{% endif %}{% if sort_by and sort_by != 'daily' %}{% if current_filter %}&{% else %}?{% endif %}sort={{ sort_by|urlencode }}{% endif %}" 
-                 hx-trigger="every {{ KIOSK_CONTENT_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body" 
-                 hx-swap="innerHTML" 
-                 hx-target="this">
-                {% include 'leaderboard/partials/content.html' %}
-            </div>
-            
-            <!-- Footer: Statistics (5vh) -->
-            <div class="h-[5vh] bg-slate-800 border-t border-slate-700"
-                 id="leaderboard-footer"
-                 hx-get="{% url 'leaderboard:leaderboard_page' %}?footer_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
-                 hx-trigger="every {{ KIOSK_FOOTER_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body"
+        <!-- Header: Parent Group Banner (20vh) -->
+        <div class="h-[20vh] bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 flex items-center justify-center relative overflow-hidden px-6">
+            <div id="banner-content"
+                 hx-get="{% url 'leaderboard:leaderboard_page' %}?banner_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
+                 hx-trigger="every {{ KIOSK_BANNER_UPDATE_INTERVAL }}s"
                  hx-swap="innerHTML"
                  hx-target="this">
-                {% include 'leaderboard/partials/footer.html' %}
+                {% include 'leaderboard/partials/banner.html' %}
             </div>
         </div>
+        
+        <!-- Main: Group Grid (75vh) -->
+        <div id="leaderboard-content" class="flex-1 overflow-hidden" 
+             hx-get="{% url 'leaderboard:leaderboard_page' %}{% if current_filter %}?group={{ current_filter|urlencode }}{% endif %}{% if sort_by and sort_by != 'daily' %}{% if current_filter %}&{% else %}?{% endif %}sort={{ sort_by|urlencode }}{% endif %}" 
+             hx-trigger="every {{ KIOSK_CONTENT_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body" 
+             hx-swap="innerHTML" 
+             hx-target="this">
+            {% include 'leaderboard/partials/content.html' %}
+        </div>
+        
+        <!-- Footer: Statistics (5vh) -->
+        <div class="h-[5vh] bg-slate-800 border-t border-slate-700"
+             id="leaderboard-footer"
+             hx-get="{% url 'leaderboard:leaderboard_page' %}?footer_only=true{% if current_filter %}&group={{ current_filter|urlencode }}{% endif %}{% if sort_by %}&sort={{ sort_by|urlencode }}{% endif %}"
+             hx-trigger="every {{ KIOSK_FOOTER_UPDATE_INTERVAL }}s, activityCyclistCountChanged from:body"
+             hx-swap="innerHTML"
+             hx-target="this">
+            {% include 'leaderboard/partials/footer.html' %}
+        </div>
+    </div>
 
     <!-- Hidden ticker for data source (Activity Chips read from here) -->
     <div id="ticker-data-source"
@@ -303,8 +303,24 @@
         }
 
         function createActivityToast(cyclist) {
+            console.log('Leaderboard: createActivityToast() called for:', cyclist.user_id);
             var container = document.getElementById('activity-toast-container');
-            if (!container) return;
+            if (!container) {
+                // Try to find it in current-view (kiosk context)
+                var currentView = document.getElementById('current-view');
+                if (currentView) {
+                    container = currentView.querySelector('#activity-toast-container');
+                    if (container) {
+                        console.log('Leaderboard: Found activity-toast-container in current-view for toast creation');
+                    } else {
+                        console.warn('Leaderboard: activity-toast-container not found for toast creation');
+                        return;
+                    }
+                } else {
+                    console.warn('Leaderboard: activity-toast-container not found and current-view not found');
+                    return;
+                }
+            }
 
             // Create unique key for this cyclist
             var cyclistKey = cyclist.user_id + '|' + (cyclist.group_short_name || '');
@@ -415,14 +431,69 @@
 
         // Fetch ticker data and create Activity Toasts
         function updateActivityToasts() {
+            console.log('Leaderboard: updateActivityToasts() called');
+            
+            // Check if container exists
+            var container = document.getElementById('activity-toast-container');
+            if (!container) {
+                console.warn('Leaderboard: activity-toast-container not found!');
+                // Try to find it in current-view (kiosk context)
+                var currentView = document.getElementById('current-view');
+                if (currentView) {
+                    container = currentView.querySelector('#activity-toast-container');
+                    if (container) {
+                        console.log('Leaderboard: Found activity-toast-container in current-view');
+                    } else {
+                        console.warn('Leaderboard: activity-toast-container not found in current-view either');
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                console.log('Leaderboard: Found activity-toast-container');
+            }
+            
             // Fetch fresh data directly from server (like in map)
             // Use the dedicated ticker endpoint for fresh session data
             // This endpoint reads current session kilometers from the database
             var url = "{% url 'leaderboard:leaderboard_ticker' %}";
+            
+            // Get filter from URL parameters (works in both normal and kiosk context)
+            var urlParams = new URLSearchParams(window.location.search);
+            var groupFilter = urlParams.get('group');
+            
+            // Check global kiosk filter variable (set by kiosk playlist before scripts execute)
+            if (!groupFilter && typeof window.kioskGroupFilter !== 'undefined' && window.kioskGroupFilter) {
+                groupFilter = window.kioskGroupFilter;
+                console.log('Leaderboard: Using kioskGroupFilter:', groupFilter);
+            }
+            
+            // Also check if filter is set in a data attribute (for kiosk context)
+            if (!groupFilter) {
+                var leaderboardView = document.getElementById('leaderboard-view');
+                if (leaderboardView) {
+                    var filterFromData = leaderboardView.getAttribute('data-group-filter');
+                    if (filterFromData) {
+                        groupFilter = filterFromData;
+                        console.log('Leaderboard: Using filter from data attribute:', filterFromData);
+                    }
+                }
+            }
+            
+            // Fallback to template variable (for initial page load)
             {% if current_filter %}
-            // leaderboard_ticker accepts group_id (tries as ID first, then as name)
-            url += "?group_id={{ current_filter|urlencode }}";
+            if (!groupFilter) {
+                groupFilter = "{{ current_filter|urlencode }}";
+            }
             {% endif %}
+            
+            if (groupFilter) {
+                // leaderboard_ticker accepts group_id (tries as ID first, then as name)
+                url += "?group_id=" + encodeURIComponent(groupFilter);
+            }
+            
+            console.log('Leaderboard: Fetching ticker data from:', url);
 
             fetch(url)
                 .then(response => {
@@ -432,11 +503,17 @@
                     return response.text();
                 })
                 .then(html => {
+                    console.log('Leaderboard: Ticker data received, length:', html.length);
+                    console.log('Leaderboard: Ticker HTML preview:', html.substring(0, 200));
+                    
                     // Create a temporary DOM element to parse the HTML
                     var tempDiv = document.createElement('div');
                     tempDiv.innerHTML = html;
                     
-                    var tickerItems = tempDiv.querySelectorAll('span');
+                    // Only get the outer span elements (with class "inline-block mr-8")
+                    // These are the main ticker items, not the nested spans inside them
+                    var tickerItems = tempDiv.querySelectorAll('span.inline-block.mr-8');
+                    console.log('Leaderboard: Found', tickerItems.length, 'ticker items (outer spans)');
                     var currentActiveCyclistCount = 0;
                     var hasActiveCyclists = false;
 
@@ -444,9 +521,11 @@
                     tickerItems.forEach(function(item) {
                         var text = item.textContent || '';
                         var hasUserId = item.querySelector('strong');
-                        if (hasUserId && !text.includes('Bereit zum Start')) {
+                        console.log('Leaderboard: Ticker item text:', text.substring(0, 50), 'hasUserId:', !!hasUserId);
+                        if (hasUserId && !text.includes('Bereit zum Start') && !text.includes('Auf die Räder')) {
                             hasActiveCyclists = true;
                             currentActiveCyclistCount++;
+                            console.log('Leaderboard: Active cyclist found:', hasUserId.textContent);
                         }
                     });
 
@@ -467,10 +546,18 @@
                     }
 
                     if (!hasActiveCyclists) {
+                        console.log('Leaderboard: No active cyclists found');
                         // No active cyclists - clear all toasts
                         var container = document.getElementById('activity-toast-container');
+                        if (!container) {
+                            var currentView = document.getElementById('current-view');
+                            if (currentView) {
+                                container = currentView.querySelector('#activity-toast-container');
+                            }
+                        }
                         if (container) {
                             var toasts = container.querySelectorAll('.activity-toast');
+                            console.log('Leaderboard: Clearing', toasts.length, 'toasts');
                             toasts.forEach(function(toast) {
                                 toast.classList.add('fade-out');
                                 setTimeout(function() {
@@ -482,6 +569,8 @@
                         }
                         return;
                     }
+                    
+                    console.log('Leaderboard: Found', currentActiveCyclistCount, 'active cyclists');
 
                     // Process each cyclist from ticker
                     tickerItems.forEach(function(item) {
@@ -489,7 +578,7 @@
                         var hasUserId = item.querySelector('strong');
                         
                         // Skip if it's the "Bereit zum Start" message
-                        if (!hasUserId || text.includes('Bereit zum Start')) {
+                        if (!hasUserId || text.includes('Bereit zum Start') || text.includes('Auf die Räder')) {
                             return;
                         }
 
@@ -577,11 +666,15 @@
         // This is independent of HTMX updates and ensures frequent updates
         // since kilometer updates come in every ~10 seconds
         var activityToastRefreshInterval = 15; // 15 seconds
-        setInterval(updateActivityToasts, activityToastRefreshInterval * 1000);
+        console.log('Leaderboard: Setting up activity toast refresh interval:', activityToastRefreshInterval, 'seconds');
+        var intervalId = setInterval(updateActivityToasts, activityToastRefreshInterval * 1000);
+        console.log('Leaderboard: Activity toast interval ID:', intervalId);
 
         // Initial update on page load
         function initializeActivityToasts() {
+            console.log('Leaderboard: initializeActivityToasts() called');
             setTimeout(function() {
+                console.log('Leaderboard: Initial updateActivityToasts() call after 2s delay');
                 updateActivityToasts();
                 previousActiveCyclistCount = 0; // Will be set correctly by updateActivityToasts
             }, 2000); // Initial delay of 2 seconds (like in map)
