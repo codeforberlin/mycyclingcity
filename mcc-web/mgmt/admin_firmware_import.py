@@ -72,7 +72,7 @@ def calculate_checksum(file_data: bytes, algorithm: str = 'md5') -> str:
         return hashlib.md5(file_data).hexdigest()
     elif algorithm == 'sha256':
         return hashlib.sha256(file_data).hexdigest()
-            else:
+    else:
         raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 
@@ -209,12 +209,12 @@ def extract_firmware_files_from_assets(assets_dict: Dict[str, bytes]) -> List[Di
     }
     
     for bin_filename, bin_data in bin_files.items():
-                    # Parse filename
+        # Parse filename
         parsed = parse_filename(bin_filename)
         if not parsed:
             logger.warning(f"Invalid firmware filename: {bin_filename}")
-                        continue
-                    
+            continue
+        
         environment, version = parsed
                         
         # Get checksum files
@@ -534,8 +534,8 @@ def import_firmware_from_zip(request):
             for fw in checksum_errors:
                 for error in fw['checksum_errors']:
                     errors.append(f"{fw['filename']}: {error}")
-                        
-                        # Check for duplicates
+        
+        # Check for duplicates
         dup_warnings, files_to_import = check_duplicates(firmware_files, overwrite_duplicates)
         warnings.extend(dup_warnings)
         
@@ -553,7 +553,7 @@ def import_firmware_from_zip(request):
         # Import firmware images
         with transaction.atomic():
             for fw_info in files_to_import:
-                        # Create FirmwareImage
+                # Create FirmwareImage
                 firmware = FirmwareImage(
                     name=f"Firmware {fw_info['version']} ({fw_info['environment_display']})",
                     version=fw_info['version'],

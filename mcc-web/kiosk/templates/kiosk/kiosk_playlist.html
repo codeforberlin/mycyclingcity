@@ -421,7 +421,32 @@
                             // Priority 2: Look for leaderboard-view
                             const leaderboardView = doc.querySelector('#leaderboard-view');
                             if (leaderboardView) {
-                                content = leaderboardView.cloneNode(true);
+                                // Create a wrapper container for leaderboard view with Activity Toasts
+                                content = document.createElement('div');
+                                content.style.width = '100%';
+                                content.style.height = '100%';
+                                content.style.position = 'relative';
+                                
+                                // Clone the leaderboard view
+                                content.appendChild(leaderboardView.cloneNode(true));
+                                
+                                // Also clone the Activity Toast Container (like in map views)
+                                const activityToastContainer = doc.querySelector('#activity-toast-container');
+                                if (activityToastContainer) {
+                                    const clonedActivityToastContainer = activityToastContainer.cloneNode(true);
+                                    // Ensure it's positioned correctly for kiosk mode
+                                    clonedActivityToastContainer.style.position = 'fixed';
+                                    clonedActivityToastContainer.style.top = '20px';
+                                    clonedActivityToastContainer.style.right = '20px';
+                                    clonedActivityToastContainer.style.zIndex = '2000';
+                                    content.appendChild(clonedActivityToastContainer);
+                                }
+                                
+                                // Also clone the hidden ticker data source (needed for Activity Toasts)
+                                const tickerDataSource = doc.querySelector('#ticker-data-source');
+                                if (tickerDataSource) {
+                                    content.appendChild(tickerDataSource.cloneNode(true));
+                                }
                             } else {
                                 // Priority 3: For map view, look for #section-map or #map container
                                 if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
