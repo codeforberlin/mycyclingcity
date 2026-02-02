@@ -2376,6 +2376,75 @@ void display_ServerError(const char* errorType, int errorCode) {
     display.sendBuffer();
 }
 
+#ifdef ENABLE_OLED
+/**
+ * @brief Displays firmware update message on OLED display.
+ * 
+ * Shows centered message during firmware update process to inform user not to power off the device.
+ * 
+ * @note Hardware interaction: OLED display (I2C communication)
+ * @note Side effects: Updates OLED display buffer and sends to display
+ * @note Only compiled if ENABLE_OLED is defined
+ */
+void display_FirmwareUpdate() {
+    display.clearBuffer();
+    display.setFont(u8g2_font_7x14_tf);
+    
+    // First line: "Firmware update"
+    textline = "Firmware update";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 28);
+    display.print(textline);
+    
+    // Second line: "Nicht ausschalten!"
+    textline = "Nicht";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 44);
+    display.print(textline);
+    
+    textline = "ausschalten!";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 60);
+    display.print(textline);
+    
+    display.sendBuffer();
+}
+
+/**
+ * @brief Displays configuration check message on OLED display.
+ * 
+ * Shows centered message when device configuration is being sent to the system.
+ * 
+ * @note Hardware interaction: OLED display (I2C communication)
+ * @note Side effects: Updates OLED display buffer and sends to display
+ * @note Only compiled if ENABLE_OLED is defined
+ */
+void display_ConfigCheck() {
+    display.clearBuffer();
+    display.setFont(u8g2_font_7x14_tf);
+    
+    // First line: "Check"
+    textline = "Check";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 20);
+    display.print(textline);
+    
+    // Second line: "Konfiguration"
+    textline = "Konfiguration";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 36);
+    display.print(textline);
+    
+    // Third line: "MCC-Station"
+    textline = "MCC-Station";
+    textWidth = display.getStrWidth(textline);
+    display.setCursor((128 - textWidth) / 2, 52);
+    display.print(textline);
+    
+    display.sendBuffer();
+}
+#endif
+
 /**
  * @brief Displays ID tag name on OLED display.
  * 

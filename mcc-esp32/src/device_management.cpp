@@ -37,6 +37,8 @@ extern unsigned int configFetchInterval_sec;
 #include <U8g2lib.h>
 extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C display;
 extern void display_ServerError(const char* errorType, int errorCode);
+extern void display_FirmwareUpdate();
+extern void display_ConfigCheck();
 #endif
 extern unsigned long lastConfigFetchTime;
 extern Preferences preferences;
@@ -153,6 +155,10 @@ bool reportDeviceConfig() {
         }
         return false;
     }
+
+    #ifdef ENABLE_OLED
+    display_ConfigCheck();
+    #endif
 
     HTTPClient http;
     StaticJsonDocument<600> doc;
@@ -990,6 +996,10 @@ bool downloadFirmware() {
             }
             
             if (contentLength > 0) {
+                #ifdef ENABLE_OLED
+                display_FirmwareUpdate();
+                #endif
+                
                 // Begin update
                         if (!Update.begin(contentLength)) {
                             digitalWrite(LED_PIN, LOW);  // Turn off LED on error

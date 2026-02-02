@@ -10,6 +10,10 @@
 #include <WiFi.h>
 #include <Update.h>
 
+#ifdef ENABLE_OLED
+extern void display_FirmwareUpdate();
+#endif
+
 // --- Configuration ---
 // SSID and password for configuration access point
 // Default password (used if not set in NVS)
@@ -460,6 +464,9 @@ void handleUpdate() {
   
   if (upload.status == UPLOAD_FILE_START) {
     Serial.printf("Update start: %s\n", upload.filename.c_str());
+    #ifdef ENABLE_OLED
+    display_FirmwareUpdate();
+    #endif
     if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
       Update.printError(Serial);
       server.send(500, "text/plain", "Update failed to start");
