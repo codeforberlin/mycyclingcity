@@ -1360,6 +1360,7 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
     readonly_fields = ('logo_preview', 'color_preview')
     change_list_template = 'admin/api/group_change_list.html'
     inlines = [GroupMilestoneAchievementInline]
+    filter_horizontal = ('managers',)  # Verwende FilteredSelectMultiple Widget für managers-Feld
     
     def get_urls(self):
         urls = super().get_urls()
@@ -1432,8 +1433,71 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
             return False
         return True
     
+    def get_readonly_fields(self, request, obj=None):
+        """managers-Feld ist für Operatoren readonly, damit sie keine Manager hinzufügen oder entfernen können."""
+        readonly = list(self.readonly_fields)
+        if not request.user.is_superuser:
+            readonly.append('managers')
+        return readonly
+    
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """Handle managers field: Für Superuser alle User anzeigen, bereits zugewiesene Manager inkludieren."""
+        if db_field.name == 'managers':
+            from django.contrib.auth.models import User
+            
+            # Hole das aktuelle Objekt - versuche verschiedene Methoden
+            obj = getattr(self, '_obj', None)
+            
+            # Falls nicht verfügbar, versuche es aus der URL zu extrahieren
+            if not obj and hasattr(request, 'resolver_match'):
+                from django.urls import resolve
+                try:
+                    match = resolve(request.path)
+                    if 'object_id' in match.kwargs:
+                        obj_id = match.kwargs['object_id']
+                        if obj_id and obj_id != 'add':
+                            obj = Group.objects.filter(pk=obj_id).first()
+                except Exception:
+                    pass
+            
+            if request.user.is_superuser:
+                # Superuser sieht alle User und kann Manager zuweisen/entfernen
+                # Django Admin zeigt automatisch bereits zugewiesene Manager im FilteredSelectMultiple Widget an,
+                # auch wenn sie nicht im Queryset sind. Daher reicht es, alle User anzuzeigen.
+                kwargs['queryset'] = User.objects.all()
+            else:
+                # Für Operatoren: Das Feld ist readonly (siehe get_readonly_fields),
+                # aber wir müssen trotzdem ein Queryset setzen, das bereits zugewiesene Manager enthält,
+                # damit sie im Widget angezeigt werden können (auch wenn readonly)
+                if obj and obj.pk:
+                    # Nur bereits zugewiesene Manager anzeigen (für Anzeige, nicht zum Bearbeiten)
+                    existing_manager_ids = list(obj.managers.values_list('id', flat=True))
+                    if existing_manager_ids:
+                        kwargs['queryset'] = User.objects.filter(id__in=existing_manager_ids)
+                    else:
+                        kwargs['queryset'] = User.objects.none()
+                else:
+                    # Für neue Objekte: Leeres Queryset (Operatoren können keine Manager setzen)
+                    kwargs['queryset'] = User.objects.none()
+        
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+    
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        """Override change_view to store object for formfield_for_manytomany."""
+        # Hole das Objekt und speichere es für formfield_for_manytomany
+        try:
+            obj = self.get_object(request, object_id)
+            self._obj = obj
+        except Exception:
+            self._obj = None
+        
+        return super().change_view(request, object_id, form_url, extra_context)
+    
     def get_form(self, request, obj=None, **kwargs):
         """Override to use custom widget for short_name field and filter parent groups."""
+        # Speichere obj für formfield_for_manytomany
+        self._obj = obj
+        
         form = super().get_form(request, obj, **kwargs)
         if 'short_name' in form.base_fields:
             form.base_fields['short_name'].widget = ShortNameWidget()
@@ -1445,15 +1509,8 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
                 id__in=managed_group_ids
             )
         
-        # Filter managers field for operators
-        if not request.user.is_superuser and 'managers' in form.base_fields:
-            # Operators können nur sich selbst oder andere Operatoren als Manager setzen
-            # (System-Admin sollte nicht von Operatoren verwaltet werden)
-            from django.contrib.auth.models import User
-            form.base_fields['managers'].queryset = User.objects.filter(
-                is_staff=True,
-                is_superuser=False
-            )
+        # WICHTIG: managers-Feld wird nicht mehr hier gefiltert,
+        # sondern in formfield_for_manytomany() gehandhabt
         
         return form
 
@@ -1513,9 +1570,9 @@ class CyclistAdminForm(forms.ModelForm):
     # Replace ManyToMany groups field with single select
     group = forms.ModelChoiceField(
         queryset=Group.objects.filter(is_visible=True).order_by('name'),
-        required=False,
+        required=True,
         label=_("Gruppe"),
-        help_text=_("Wählen Sie eine Gruppe aus. Ein Radler darf nur einer Gruppe zugeordnet werden.")
+        help_text=_("Wählen Sie eine Gruppe aus. Ein Radler muss immer einer Gruppe zugeordnet werden. Ein Radler darf nur einer Gruppe zugeordnet werden.")
     )
     
     class Meta:
@@ -1555,6 +1612,14 @@ class CyclistAdminForm(forms.ModelForm):
     def clean(self):
         """Validate cyclist data."""
         cleaned_data = super().clean()
+        
+        # WICHTIG: Stelle sicher, dass immer eine Gruppe ausgewählt wird
+        group = cleaned_data.get('group')
+        if not group:
+            raise forms.ValidationError({
+                'group': _("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden.")
+            })
+        
         return cleaned_data
     
     def save(self, commit=True):
@@ -1646,10 +1711,16 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
         # Get the selected group from the form
         selected_group = form.cleaned_data.get('group')
         
+        # WICHTIG: Stelle sicher, dass immer eine Gruppe zugewiesen wird
+        if not selected_group:
+            # Falls keine Gruppe ausgewählt wurde (sollte durch clean() verhindert werden),
+            # aber als Fallback: Fehler werfen
+            from django.core.exceptions import ValidationError
+            raise ValidationError(_("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden."))
+        
         # Clear existing groups and add the selected group
         form.instance.groups.clear()
-        if selected_group:
-            form.instance.groups.add(selected_group)
+        form.instance.groups.add(selected_group)
         
         # Call parent save_related (though there are no other related objects to save)
         super().save_related(request, form, formsets, change)
@@ -1729,6 +1800,79 @@ class GroupEventStatusInline(admin.TabularInline):
     verbose_name = _("Teilnehmende Gruppe")
     fields = ('group', 'current_distance_km_display')
     readonly_fields = ('current_distance_km_display',)
+    
+    def has_view_permission(self, request, obj=None):
+        """Operator kann Gruppen-Event-Status anzeigen, wenn das Event bearbeitet werden kann."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.view_groupeventstatus')
+        # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
+        from api.models import GroupEventStatus
+        if isinstance(obj, GroupEventStatus):
+            # Für GroupEventStatus-Einträge: Immer True zurückgeben, wenn das Event bearbeitet werden kann
+            # Die Berechtigungen werden in has_change_permission() und has_delete_permission() geprüft
+            # Dies stellt sicher, dass alle Einträge angezeigt werden, auch wenn sie nicht zu verwalteten Gruppen gehören
+            return True
+        # Wenn es ein Event ist, erlaube Anzeige
+        return True
+    
+    def has_add_permission(self, request, obj=None):
+        """Operator kann Gruppen zu Events hinzufügen, wenn das Event bearbeitet werden kann."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.add_groupeventstatus')
+        # Prüfe, ob der Operator das Event bearbeiten kann
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Erlaube Hinzufügen, wenn:
+        # 1. Event hat noch keine Gruppen (neue Events) ODER
+        # 2. Event hat Gruppen aus verwalteten Gruppen
+        if not obj.group_statuses.exists():
+            return True  # Neue Events ohne Gruppen können bearbeitet werden
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    
+    def has_change_permission(self, request, obj=None):
+        """Operator kann Gruppen-Event-Status bearbeiten, wenn die Gruppe zu verwalteten Gruppen gehört."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.change_groupeventstatus')
+        # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
+        from api.models import GroupEventStatus
+        if isinstance(obj, GroupEventStatus):
+            # Wenn es ein GroupEventStatus ist, prüfe die Gruppe
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            return obj.group.id in managed_group_ids
+        # Wenn es ein Event ist, erlaube Bearbeitung (die Berechtigung wird pro Eintrag geprüft)
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        """Operator kann Gruppen-Event-Status löschen, wenn die Gruppe zu verwalteten Gruppen gehört."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.delete_groupeventstatus')
+        # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
+        from api.models import GroupEventStatus
+        if isinstance(obj, GroupEventStatus):
+            # Wenn es ein GroupEventStatus ist, prüfe die Gruppe
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            return obj.group.id in managed_group_ids
+        # Wenn es ein Event ist, erlaube Löschen (die Berechtigung wird pro Eintrag geprüft)
+        return True
+    
+    def get_queryset(self, request):
+        """Filter GroupEventStatus entries based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs.select_related('group', 'event')
+        # WICHTIG: Django Admin filtert automatisch nach dem Parent-Objekt (Event)
+        # Für Operatoren: Zeige alle Einträge für das Event an
+        # Die Berechtigungen werden pro Eintrag in has_change_permission() und has_delete_permission() geprüft
+        # Dies stellt sicher, dass neu hinzugefügte Gruppen sofort angezeigt werden
+        return qs.select_related('group', 'event')
 
     def get_formset(self, request, obj=None, **kwargs):
         """Customize formset to filter available groups for selection."""
@@ -1743,6 +1887,9 @@ class GroupEventStatusInline(admin.TabularInline):
         class GroupEventStatusFormSet(formset):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
+                # Import Group am Anfang, damit es im gesamten Scope verfügbar ist
+                from django.db.models import Q
+                
                 # Get available groups for selection
                 if obj and obj.pk:
                     # Exclude groups that already participate in this event
@@ -1758,21 +1905,45 @@ class GroupEventStatusInline(admin.TabularInline):
                         available_groups = available_groups.filter(id__in=managed_group_ids)
                     
                     available_groups = available_groups.order_by('name')
-                    
-                    for form in self.forms:
-                        # For new entries, customize the group field
-                        if not form.instance.pk:
-                            if 'group' in form.fields:
-                                # Filter the queryset to only show available groups
+                else:
+                    # Für neue Events: Alle verwalteten Gruppen anzeigen
+                    if managed_group_ids is not None:
+                        available_groups = Group.objects.filter(
+                            id__in=managed_group_ids,
+                            is_visible=True
+                        ).order_by('name')
+                    else:
+                        available_groups = Group.objects.filter(is_visible=True).order_by('name')
+                
+                for form in self.forms:
+                    # For new entries, customize the group field
+                    if not form.instance.pk:
+                        if 'group' in form.fields:
+                            # Filter the queryset to only show available groups
+                            form.fields['group'].queryset = available_groups
+                            # Use label_from_instance to show group name and type
+                            form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
+                    else:
+                        # For existing entries, make group readonly
+                        if 'group' in form.fields:
+                            # WICHTIG: Für bestehende Einträge muss das Queryset die zugewiesene Gruppe enthalten,
+                            # damit sie angezeigt werden kann, auch wenn sie nicht in available_groups ist
+                            if form.instance.group_id:
+                                # Erweitere das Queryset um die zugewiesene Gruppe
+                                assigned_group = Group.objects.filter(id=form.instance.group_id).first()
+                                if assigned_group:
+                                    # Kombiniere available_groups mit der zugewiesenen Gruppe
+                                    form.fields['group'].queryset = Group.objects.filter(
+                                        Q(id__in=available_groups.values_list('id', flat=True)) | Q(id=assigned_group.id)
+                                    ).distinct()
+                                else:
+                                    form.fields['group'].queryset = available_groups
+                            else:
                                 form.fields['group'].queryset = available_groups
-                                # Use label_from_instance to show group name and type
-                                form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
-                        else:
-                            # For existing entries, make group readonly
-                            if 'group' in form.fields:
-                                form.fields['group'].widget.attrs['readonly'] = True
-                                # Make it visually disabled but still submit the value
-                                form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
+                            
+                            form.fields['group'].widget.attrs['readonly'] = True
+                            # Make it visually disabled but still submit the value
+                            form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
         
         return GroupEventStatusFormSet
 
@@ -1783,34 +1954,91 @@ class GroupEventStatusInline(admin.TabularInline):
         return format_km_de(0)
     current_distance_km_display.short_description = _("Aktuelle Distanz (km)")
 
+class TravelTrackAdminForm(forms.ModelForm):
+    """Custom form for TravelTrack admin with required assigned_to_group for operators."""
+    
+    class Meta:
+        model = TravelTrack
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        # Extract request from kwargs if available (passed by admin)
+        self.request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        
+        # Für Operatoren: assigned_to_group ist required und nur TOP-Gruppen anzeigen
+        if self.request and not self.request.user.is_superuser and 'assigned_to_group' in self.fields:
+            # Hole die TOP-Gruppen des Operators (die direkt zugewiesenen Gruppen)
+            managed_top_groups = self.request.user.managed_groups.all()
+            if managed_top_groups.exists():
+                # Nur TOP-Gruppen anzeigen, die der Operator verwaltet
+                self.fields['assigned_to_group'].queryset = managed_top_groups.filter(
+                    is_visible=True
+                ).order_by('name')
+                # Feld als required setzen
+                self.fields['assigned_to_group'].required = True
+                self.fields['assigned_to_group'].help_text = _(
+                    "Wählen Sie eine TOP-Gruppe aus. Eine Reise muss immer einer TOP-Gruppe zugeordnet werden, "
+                    "damit Sie sie nach dem Speichern sehen können."
+                )
+            else:
+                # Falls der Operator keine TOP-Gruppen hat, leeres Queryset
+                self.fields['assigned_to_group'].queryset = Group.objects.none()
+                self.fields['assigned_to_group'].required = True
+        elif self.request and self.request.user.is_superuser and 'assigned_to_group' in self.fields:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            self.fields['assigned_to_group'].queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True
+            ).order_by('name')
+            # Für Superuser ist es optional (kann später gesetzt werden)
+            self.fields['assigned_to_group'].required = False
+    
+    def clean(self):
+        """Validate travel track data."""
+        cleaned_data = super().clean()
+        
+        # WICHTIG: Für Operatoren muss assigned_to_group immer gesetzt sein
+        if self.request and not self.request.user.is_superuser:
+            assigned_to_group = cleaned_data.get('assigned_to_group')
+            if not assigned_to_group:
+                raise forms.ValidationError({
+                    'assigned_to_group': _(
+                        "Eine TOP-Gruppe muss ausgewählt werden. Eine Reise muss immer einer TOP-Gruppe zugeordnet werden, "
+                        "damit Sie sie nach dem Speichern sehen können."
+                    )
+                })
+            
+            # Prüfe, ob die ausgewählte Gruppe tatsächlich eine TOP-Gruppe des Operators ist
+            managed_top_groups = self.request.user.managed_groups.all()
+            if assigned_to_group not in managed_top_groups:
+                raise forms.ValidationError({
+                    'assigned_to_group': _("Die ausgewählte Gruppe ist keine Ihrer verwalteten TOP-Gruppen.")
+                })
+        
+        return cleaned_data
+
+
 @admin.register(TravelTrack)
 class TravelTrackAdmin(admin.ModelAdmin):
+    form = TravelTrackAdminForm
     list_display = ('name', 'total_length_km_display', 'groups_count', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time')
     list_editable = ('is_active', 'is_visible_on_map', 'auto_start')
     inlines = [MilestoneInline, GroupTravelStatusInline, LeafGroupTravelContributionInline]
     fields = ('name', 'assigned_to_group', 'track_file', 'total_length_km', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time', 'geojson_data', 'top_groups_ranking_display')
     readonly_fields = ('total_length_km', 'top_groups_ranking_display')
     
-    def get_readonly_fields(self, request, obj=None):
-        """assigned_to_group ist nur für Superuser editierbar."""
-        readonly = list(self.readonly_fields)
-        if not request.user.is_superuser:
-            readonly.append('assigned_to_group')
-        return readonly
-    
     def get_form(self, request, obj=None, **kwargs):
-        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
-        form = super().get_form(request, obj, **kwargs)
-        
-        if request.user.is_superuser:
-            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
-            from api.models import Group
-            form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
-                parent__isnull=True,
-                is_visible=True
-            ).order_by('name')
-        
-        return form
+        """Override get_form to pass request to form."""
+        # Get the form class from super() first (without request in kwargs)
+        form_class = super().get_form(request, obj, **kwargs)
+        # Now wrap the form class to pass request to __init__
+        original_init = form_class.__init__
+        def __init__(self, *args, **form_kwargs):
+            form_kwargs['request'] = request
+            return original_init(self, *args, **form_kwargs)
+        form_class.__init__ = __init__
+        return form_class
     formfield_overrides = {models.TextField: {'widget': TrackMapWidget}}
     actions = ['restart_trip', 'save_trip_to_history']
     
@@ -3011,19 +3239,37 @@ class EventAdmin(admin.ModelAdmin):
             return qs
         # Nur Events, die zu verwalteten Gruppen gehören
         managed_group_ids = get_operator_managed_group_ids(request.user)
-        return qs.filter(group_statuses__group__id__in=managed_group_ids).distinct()
+        if not managed_group_ids:
+            return qs.none()
+        
+        # Zeige Events, die:
+        # 1. Gruppen aus verwalteten Gruppen haben ODER
+        # 2. Noch keine Gruppen haben (neue Events, die gerade erstellt wurden)
+        #    (Wichtig: Damit ein Operator sein neu erstelltes Event sofort sehen kann,
+        #     auch wenn noch keine Gruppen zugeordnet sind)
+        from django.db.models import Q
+        
+        return qs.filter(
+            Q(group_statuses__group__id__in=managed_group_ids) |
+            Q(group_statuses__isnull=True)  # Events ohne zugewiesene Gruppen (neue Events)
+        ).distinct()
     
     def has_add_permission(self, request):
         """Operator kann Events hinzufügen."""
         return request.user.has_perm('api.add_event')
     
     def has_change_permission(self, request, obj=None):
-        """Operator kann nur Events bearbeiten, die zu verwalteten Gruppen gehören."""
+        """Operator kann nur Events bearbeiten, die zu verwalteten Gruppen gehören oder noch keine Gruppen haben."""
         if obj is None:
             return request.user.has_perm('api.change_event')
         if request.user.is_superuser:
             return True
         managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Erlaube Bearbeitung, wenn:
+        # 1. Event hat Gruppen aus verwalteten Gruppen ODER
+        # 2. Event hat noch keine Gruppen (neue Events, damit Operatoren Gruppen hinzufügen können)
+        if not obj.group_statuses.exists():
+            return True  # Neue Events ohne Gruppen können bearbeitet werden
         return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
     
     def has_delete_permission(self, request, obj=None):
@@ -3638,8 +3884,74 @@ class KioskPlaylistEntryInline(admin.TabularInline):
         return super().get_formset(request, obj, **kwargs)
 
 
+class KioskDeviceAdminForm(forms.ModelForm):
+    """Custom form for KioskDevice admin with required assigned_to_group for operators."""
+    
+    class Meta:
+        model = KioskDevice
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        # Extract request from kwargs if available (passed by admin)
+        self.request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        
+        # Für Operatoren: assigned_to_group ist required und nur TOP-Gruppen anzeigen
+        if self.request and not self.request.user.is_superuser and 'assigned_to_group' in self.fields:
+            # Hole die TOP-Gruppen des Operators (die direkt zugewiesenen Gruppen)
+            managed_top_groups = self.request.user.managed_groups.all()
+            if managed_top_groups.exists():
+                # Nur TOP-Gruppen anzeigen, die der Operator verwaltet
+                self.fields['assigned_to_group'].queryset = managed_top_groups.filter(
+                    is_visible=True
+                ).order_by('name')
+                # Feld als required setzen
+                self.fields['assigned_to_group'].required = True
+                self.fields['assigned_to_group'].help_text = _(
+                    "Wählen Sie eine TOP-Gruppe aus. Ein Kiosk-Gerät muss immer einer TOP-Gruppe zugeordnet werden, "
+                    "damit Sie es nach dem Speichern sehen können."
+                )
+            else:
+                # Falls der Operator keine TOP-Gruppen hat, leeres Queryset
+                self.fields['assigned_to_group'].queryset = Group.objects.none()
+                self.fields['assigned_to_group'].required = True
+        elif self.request and self.request.user.is_superuser and 'assigned_to_group' in self.fields:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            self.fields['assigned_to_group'].queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True
+            ).order_by('name')
+            # Für Superuser ist es optional (kann später gesetzt werden)
+            self.fields['assigned_to_group'].required = False
+    
+    def clean(self):
+        """Validate kiosk device data."""
+        cleaned_data = super().clean()
+        
+        # WICHTIG: Für Operatoren muss assigned_to_group immer gesetzt sein
+        if self.request and not self.request.user.is_superuser:
+            assigned_to_group = cleaned_data.get('assigned_to_group')
+            if not assigned_to_group:
+                raise forms.ValidationError({
+                    'assigned_to_group': _(
+                        "Eine TOP-Gruppe muss ausgewählt werden. Ein Kiosk-Gerät muss immer einer TOP-Gruppe zugeordnet werden, "
+                        "damit Sie es nach dem Speichern sehen können."
+                    )
+                })
+            
+            # Prüfe, ob die ausgewählte Gruppe tatsächlich eine TOP-Gruppe des Operators ist
+            managed_top_groups = self.request.user.managed_groups.all()
+            if assigned_to_group not in managed_top_groups:
+                raise forms.ValidationError({
+                    'assigned_to_group': _("Die ausgewählte Gruppe ist keine Ihrer verwalteten TOP-Gruppen.")
+                })
+        
+        return cleaned_data
+
+
 @admin.register(KioskDevice)
 class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
+    form = KioskDeviceAdminForm
     list_display = ('name', 'uid', 'is_active', 'brightness', 'playlist_count', 'playlist_url', 'pending_commands_count', 'updated_at')
     list_editable = ('is_active', 'brightness')
     search_fields = ('name', 'uid')
@@ -3658,26 +3970,17 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     )
     readonly_fields = ('created_at', 'updated_at', 'command_queue')
     
-    def get_readonly_fields(self, request, obj=None):
-        """assigned_to_group ist nur für Superuser editierbar."""
-        readonly = list(self.readonly_fields)
-        if not request.user.is_superuser:
-            readonly.append('assigned_to_group')
-        return readonly
-    
     def get_form(self, request, obj=None, **kwargs):
-        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
-        form = super().get_form(request, obj, **kwargs)
-        
-        if request.user.is_superuser:
-            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
-            from api.models import Group
-            form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
-                parent__isnull=True,
-                is_visible=True
-            ).order_by('name')
-        
-        return form
+        """Override get_form to pass request to form."""
+        # Get the form class from super() first (without request in kwargs)
+        form_class = super().get_form(request, obj, **kwargs)
+        # Now wrap the form class to pass request to __init__
+        original_init = form_class.__init__
+        def __init__(self, *args, **form_kwargs):
+            form_kwargs['request'] = request
+            return original_init(self, *args, **form_kwargs)
+        form_class.__init__ = __init__
+        return form_class
     inlines = [KioskPlaylistEntryInline]
     
     def has_module_permission(self, request):
