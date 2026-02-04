@@ -20,6 +20,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="{% static 'js/timezone-converter.js' %}"></script>
     <style>
         /* Base Styles - Desktop First */
         * {
@@ -130,6 +131,18 @@
             margin-bottom: 2rem;
         }
         
+        .event-header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+        
+        .event-header-text {
+            flex: 1;
+            text-align: center;
+        }
+        
         .eventboard-header h1 {
             font-size: 2.5rem;
             font-weight: 700;
@@ -149,6 +162,248 @@
         .eventboard-header .event-time {
             font-size: 1.1rem;
             opacity: 0.9;
+        }
+        
+        .event-logo {
+            flex-shrink: 0;
+            max-width: 120px;
+            max-height: 120px;
+        }
+        
+        .event-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+        }
+        
+        .event-logo-left {
+            order: 1;
+        }
+        
+        .event-header-text {
+            order: 2;
+        }
+        
+        .event-logo-right {
+            order: 3;
+        }
+        
+        /* Progress to Target */
+        .eventboard-progress {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .progress-header h2 {
+            font-size: 1.5rem;
+            color: #333;
+            margin: 0;
+        }
+        
+        .progress-stats {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .progress-current {
+            color: #667eea;
+        }
+        
+        .progress-separator {
+            color: #999;
+        }
+        
+        .progress-target {
+            color: #666;
+        }
+        
+        .progress-percentage {
+            color: #667eea;
+            font-size: 1rem;
+        }
+        
+        .progress-bar-container {
+            height: 24px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-remaining {
+            text-align: center;
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        .progress-complete {
+            text-align: center;
+            color: #4caf50;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        /* Podium */
+        .eventboard-podium {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .eventboard-podium h2 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 1rem;
+            min-height: 300px;
+        }
+        
+        .podium-place {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 200px;
+        }
+        
+        .podium-place-1 {
+            order: 2;
+        }
+        
+        .podium-place-2 {
+            order: 1;
+        }
+        
+        .podium-place-3 {
+            order: 3;
+        }
+        
+        .podium-medal {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .podium-group-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+            border: 4px solid;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .podium-place-1 .podium-group-logo {
+            width: 120px;
+            height: 120px;
+            border-color: #ffd700;
+        }
+        
+        .podium-place-2 .podium-group-logo {
+            border-color: #c0c0c0;
+        }
+        
+        .podium-place-3 .podium-group-logo {
+            border-color: #cd7f32;
+        }
+        
+        .podium-group-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .podium-group-initials {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 2rem;
+        }
+        
+        .podium-place-1 .podium-group-initials {
+            font-size: 2.5rem;
+        }
+        
+        .podium-group-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .podium-place-1 .podium-group-name {
+            font-size: 1.25rem;
+        }
+        
+        .podium-group-distance {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+        
+        .podium-place-1 .podium-group-distance {
+            font-size: 1.75rem;
+        }
+        
+        .podium-rank {
+            font-size: 0.875rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         /* Groups Grid */
@@ -206,19 +461,28 @@
             margin: 1rem 0;
         }
         
+        .group-card-target {
+            font-size: 1.25rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
         .group-card-progress {
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
             overflow: hidden;
             margin-top: 1rem;
+            position: relative;
         }
         
         .group-card-progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 4px;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            border-radius: 10px;
             transition: width 0.3s ease;
+            min-height: 20px;
+            min-width: 0% !important;
         }
         
         /* Statistics Footer */
@@ -593,11 +857,11 @@
                     <h3>{{ event_item.name }}</h3>
                     <div class="event-card-time">
                         {% if event_item.start_time %}
-                            {{ event_item.start_time|date:"d.m.Y" }}
+                            <span data-utc-datetime="{{ event_item.start_time|date:"c" }}" data-datetime-format="d.m.Y">{{ event_item.start_time|date:"d.m.Y" }}</span>
                         {% endif %}
                         {% if event_item.start_time and event_item.end_time %} - {% endif %}
                         {% if event_item.end_time %}
-                            {{ event_item.end_time|date:"d.m.Y" }}
+                            <span data-utc-datetime="{{ event_item.end_time|date:"c" }}" data-datetime-format="d.m.Y">{{ event_item.end_time|date:"d.m.Y" }}</span>
                         {% endif %}
                     </div>
                     <div class="event-card-stats">
@@ -621,22 +885,82 @@
         {% elif event %}
             <!-- Event Header -->
             <header class="eventboard-header">
-                <h1>{{ event.name }}</h1>
-                <div class="event-type">
-                    {{ event.get_event_type_display }}
-                </div>
-                {% if event.start_time or event.end_time %}
-                <div class="event-time">
-                    {% if event.start_time %}
-                        {% trans "Start" %}: {{ event.start_time|date:"d.m.Y H:i" }}
+                <div class="event-header-content">
+                    {% if event.left_logo %}
+                    <div class="event-logo event-logo-left">
+                        <img src="{{ event.left_logo.url }}" alt="{% trans "Event Logo links" %}">
+                    </div>
                     {% endif %}
-                    {% if event.start_time and event.end_time %} | {% endif %}
-                    {% if event.end_time %}
-                        {% trans "Ende" %}: {{ event.end_time|date:"d.m.Y H:i" }}
+                    <div class="event-header-text">
+                        <h1>{{ event.name }}</h1>
+                        <div class="event-type">
+                            {{ event.get_event_type_display }}
+                        </div>
+                        {% if event.start_time or event.end_time %}
+                        <div class="event-time">
+                            {% if event.start_time %}
+                                {% trans "Start" %}: <span data-utc-datetime="{{ event.start_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.start_time|date:"d.m.Y H:i" }}</span>
+                            {% endif %}
+                            {% if event.start_time and event.end_time %} | {% endif %}
+                            {% if event.end_time %}
+                                {% trans "Ende" %}: <span data-utc-datetime="{{ event.end_time|date:"c" }}" data-datetime-format="d.m.Y H:i">{{ event.end_time|date:"d.m.Y H:i" }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if event.right_logo %}
+                    <div class="event-logo event-logo-right">
+                        <img src="{{ event.right_logo.url }}" alt="{% trans "Event Logo rechts" %}">
+                    </div>
                     {% endif %}
                 </div>
-                {% endif %}
             </header>
+            
+            <!-- Podium (Top 3 Groups) - Nur anzeigen, wenn mindestens eine Gruppe das Ziel erreicht hat -->
+            {% if podium %}
+            <div class="eventboard-podium">
+                <h2>{% trans "Podest" %}</h2>
+                <div class="podium-container">
+                    {% for group in podium %}
+                    <div class="podium-place podium-place-{{ group.rank }}" style="order: {% if group.rank == 1 %}2{% elif group.rank == 2 %}1{% else %}3{% endif %};">
+                        <div class="podium-medal">
+                            {% if group.rank == 1 %}
+                                🥇
+                            {% elif group.rank == 2 %}
+                                🥈
+                            {% else %}
+                                🥉
+                            {% endif %}
+                        </div>
+                        <div class="podium-group-logo">
+                            {% if group.logo_url %}
+                            <img src="{{ group.logo_url }}" alt="{{ group.name }}">
+                            {% else %}
+                            <div class="podium-group-initials" style="background: {% if group.color %}{{ group.color }}{% else %}#667eea{% endif %};">
+                                {{ group.short_name|default:group.name|slice:":2"|upper }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="podium-group-name">{{ group.name }}</div>
+                        <div class="podium-group-distance">{{ group.current_distance_km|floatformat:2 }} km</div>
+                        {% if group.best_leaf_group %}
+                        <div class="podium-leaf-group">
+                            <span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span>
+                            <span class="podium-leaf-name">{{ group.best_leaf_group.name }}</span>
+                            <span class="podium-leaf-distance">({{ group.best_leaf_group.contribution_km|floatformat:2 }} km)</span>
+                            {% if group.best_leaf_group.goal_reached_at %}
+                            <div class="podium-leaf-time">
+                                {% trans "Ziel erreicht" %}: <span data-utc-datetime="{{ group.best_leaf_group.goal_reached_at }}" data-datetime-format="d.m.Y H:i">{{ group.best_leaf_group.goal_reached_at|date:"d.m.Y H:i" }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="podium-rank">{% trans "Platz" %} {{ group.rank }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             
             <!-- Groups Grid -->
             <main class="eventboard-groups">
@@ -659,10 +983,23 @@
                     </div>
                     <div class="group-card-distance">
                         {{ group.current_distance_km|floatformat:2 }} km
+                        {% if event.target_distance_km %}
+                        <span class="group-card-target">/ {{ event.target_distance_km|floatformat:2 }} km</span>
+                        {% endif %}
                     </div>
-                    {% if statistics.total_distance_km > 0 %}
+                    {% if event.target_distance_km %}
                     <div class="group-card-progress">
-                        <div class="group-card-progress-bar" style="width: {{ group.progress_percentage|floatformat:1 }}%"></div>
+                        {% if group.progress_percentage > 100.0 %}
+                            <div class="group-card-progress-bar" style="width: 100% !important; max-width: 100% !important; background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%) !important;"></div>
+                        {% elif group.progress_percentage < 0.0 %}
+                            <div class="group-card-progress-bar" style="width: 0% !important; max-width: 0% !important; min-width: 0% !important;"></div>
+                        {% else %}
+                            <div class="group-card-progress-bar" style="width: {{ group.progress_percentage_str|default:"0.0" }}% !important; max-width: {{ group.progress_percentage_str|default:"0.0" }}% !important; min-width: 0% !important;"></div>
+                        {% endif %}
+                    </div>
+                    {% elif statistics.total_distance_km > 0 %}
+                    <div class="group-card-progress">
+                        <div class="group-card-progress-bar" style="width: {{ group.progress_percentage_str|default:"0.0" }}% !important; max-width: {{ group.progress_percentage_str|default:"0.0" }}% !important; min-width: 0% !important;"></div>
                     </div>
                     {% endif %}
                 </div>
@@ -809,10 +1146,13 @@
                     var shouldShowToast = false;
                     
                     if (!lastKm) {
+                        // First time seeing this cyclist - always show toast
                         shouldShowToast = true;
                     } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
+                        // Kilometers have increased significantly - show toast
                         shouldShowToast = true;
                     } else {
+                        // Check if a toast for this cyclist is already visible
                         var container = document.getElementById('activity-toast-container');
                         if (container) {
                             var existingToasts = container.querySelectorAll('.activity-toast');
@@ -821,13 +1161,11 @@
                                 var toastBody = existingToasts[i].querySelector('.activity-toast-body');
                                 if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
                                     toastVisible = true;
-                                    var distanceSpan = existingToasts[i].querySelector('.activity-toast-distance');
-                                    if (distanceSpan) {
-                                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
-                                    }
                                     break;
                                 }
                             }
+                            // If no toast is visible for this cyclist, show one even if km hasn't changed much
+                            // This ensures all active cyclists get a toast
                             if (!toastVisible) {
                                 shouldShowToast = true;
                             }
@@ -876,20 +1214,91 @@
             }
         });
         
-        // Auto-Update für Eventboard-Daten (alle 30 Sekunden)
+        // Auto-Update für Eventboard-Daten (konfigurierbar pro Event)
         {% if event_id %}
+        // Initiales Intervall aus Event-Objekt, falls verfügbar, sonst Standard: 30 Sekunden
+        var updateIntervalMs = {% if event and event.update_interval_seconds %}{{ event.update_interval_seconds }}000{% else %}30000{% endif %};
+        var updateIntervalId = null;
+        
         function updateEventboard() {
             var apiUrl = '{% url "eventboard:eventboard_api" %}?event_id={{ event_id }}{% if group_filter_id %}&group_filter_id={{ group_filter_id }}{% endif %}';
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(data => {
+                    // Aktualisiere Update-Intervall aus Event-Daten, falls vorhanden
+                    if (data.event && data.event.update_interval_seconds) {
+                        var newIntervalMs = data.event.update_interval_seconds * 1000;
+                        if (newIntervalMs !== updateIntervalMs) {
+                            console.log('Eventboard: Update-Intervall geändert von', updateIntervalMs / 1000, 'zu', data.event.update_interval_seconds, 'Sekunden');
+                            updateIntervalMs = newIntervalMs;
+                            // Starte neues Intervall mit aktualisierter Zeit
+                            if (updateIntervalId) {
+                                clearInterval(updateIntervalId);
+                            }
+                            updateIntervalId = setInterval(updateEventboard, updateIntervalMs);
+                        }
+                    }
+                    
+                    // Update Event Header mit Logos
+                    if (data.event) {
+                        var headerContent = document.querySelector('.event-header-content');
+                        if (headerContent) {
+                            // Prüfe, ob Logos vorhanden sind
+                            var leftLogo = headerContent.querySelector('.event-logo-left');
+                            var rightLogo = headerContent.querySelector('.event-logo-right');
+                            var headerText = headerContent.querySelector('.event-header-text');
+                            
+                            // Update oder erstelle linkes Logo
+                            if (data.event.left_logo_url) {
+                                if (!leftLogo) {
+                                    leftLogo = document.createElement('div');
+                                    leftLogo.className = 'event-logo event-logo-left';
+                                    headerContent.insertBefore(leftLogo, headerText);
+                                }
+                                var leftImg = leftLogo.querySelector('img');
+                                if (!leftImg) {
+                                    leftImg = document.createElement('img');
+                                    leftLogo.appendChild(leftImg);
+                                }
+                                leftImg.src = data.event.left_logo_url;
+                                leftImg.alt = '{% trans "Event Logo links" %}';
+                                leftLogo.style.display = 'block';
+                            } else if (leftLogo) {
+                                leftLogo.style.display = 'none';
+                            }
+                            
+                            // Update oder erstelle rechtes Logo
+                            if (data.event.right_logo_url) {
+                                if (!rightLogo) {
+                                    rightLogo = document.createElement('div');
+                                    rightLogo.className = 'event-logo event-logo-right';
+                                    headerContent.appendChild(rightLogo);
+                                }
+                                var rightImg = rightLogo.querySelector('img');
+                                if (!rightImg) {
+                                    rightImg = document.createElement('img');
+                                    rightLogo.appendChild(rightImg);
+                                }
+                                rightImg.src = data.event.right_logo_url;
+                                rightImg.alt = '{% trans "Event Logo rechts" %}';
+                                rightLogo.style.display = 'block';
+                            } else if (rightLogo) {
+                                rightLogo.style.display = 'none';
+                            }
+                        }
+                    }
+                    
                     if (data.groups && data.groups.length > 0) {
                         // Update groups
                         var groupsContainer = document.querySelector('.eventboard-groups');
                         if (groupsContainer) {
                             groupsContainer.innerHTML = '';
-                            var maxDistance = Math.max(...data.groups.map(g => g.current_distance_km));
-                            if (maxDistance === 0) maxDistance = 1.0;
+                            // WICHTIG: Verwende target_distance_km für Fortschrittsberechnung, falls vorhanden
+                            var targetDistance = null;
+                            if (data.event && data.event.target_distance_km !== null && data.event.target_distance_km !== undefined) {
+                                targetDistance = parseFloat(data.event.target_distance_km);
+                            }
+                            console.log('Eventboard Update: targetDistance =', targetDistance, 'event =', data.event);
                             
                             data.groups.forEach(function(group) {
                                 var groupCard = document.createElement('div');
@@ -907,7 +1316,51 @@
                                     logoHtml = '<div class="group-card-logo" style="background: ' + bgColor + '; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.5rem;">' + initials + '</div>';
                                 }
                                 
-                                var progressWidth = (group.current_distance_km / maxDistance) * 100;
+                                // Verwende progress_percentage_str aus der API (bereits korrekt formatiert)
+                                // Falls nicht vorhanden, berechne es neu
+                                var progressHtml = '';
+                                var progressWidthStr = group.progress_percentage_str || '0.0';
+                                var progressPercentage = parseFloat(group.progress_percentage) || 0.0;
+                                
+                                if (targetDistance && targetDistance > 0) {
+                                    // Verwende progress_percentage_str aus der API, falls vorhanden
+                                    if (!group.progress_percentage_str) {
+                                        // Fallback: Berechne neu
+                                        var progressWidth = Math.min((parseFloat(group.current_distance_km) / parseFloat(targetDistance)) * 100.0, 100.0);
+                                        progressWidthStr = progressWidth.toFixed(1);
+                                    }
+                                    
+                                    // Verwende !important wie im Template (wie in Game-App)
+                                    if (progressPercentage > 100.0) {
+                                        progressHtml = '<div class="group-card-progress">' +
+                                            '<div class="group-card-progress-bar" style="width: 100% !important; max-width: 100% !important; background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%) !important;"></div>' +
+                                            '</div>';
+                                    } else if (progressPercentage < 0.0) {
+                                        progressHtml = '<div class="group-card-progress">' +
+                                            '<div class="group-card-progress-bar" style="width: 0% !important; max-width: 0% !important; min-width: 0% !important;"></div>' +
+                                            '</div>';
+                                    } else {
+                                        progressHtml = '<div class="group-card-progress">' +
+                                            '<div class="group-card-progress-bar" style="width: ' + progressWidthStr + '% !important; max-width: ' + progressWidthStr + '% !important; min-width: 0% !important;"></div>' +
+                                            '</div>';
+                                    }
+                                } else {
+                                    // Fallback: Relativer Fortschritt zu anderen Gruppen
+                                    var maxDistance = Math.max(...data.groups.map(g => parseFloat(g.current_distance_km)));
+                                    if (maxDistance > 0) {
+                                        var progressWidth = (parseFloat(group.current_distance_km) / parseFloat(maxDistance)) * 100.0;
+                                        progressWidthStr = progressWidth.toFixed(1);
+                                        progressHtml = '<div class="group-card-progress">' +
+                                            '<div class="group-card-progress-bar" style="width: ' + progressWidthStr + '% !important; max-width: ' + progressWidthStr + '% !important; min-width: 0% !important;"></div>' +
+                                            '</div>';
+                                    }
+                                }
+                                
+                                var distanceHtml = '<div class="group-card-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km';
+                                if (targetDistance && targetDistance > 0) {
+                                    distanceHtml += '<span class="group-card-target"> / ' + formatNumberDE(targetDistance, 2) + ' km</span>';
+                                }
+                                distanceHtml += '</div>';
                                 
                                 groupCard.innerHTML = 
                                     '<div class="group-card-header">' +
@@ -917,10 +1370,8 @@
                                     (group.group_type ? '<div class="group-type">' + group.group_type + '</div>' : '') +
                                     '</div>' +
                                     '</div>' +
-                                    '<div class="group-card-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km</div>' +
-                                    '<div class="group-card-progress">' +
-                                    '<div class="group-card-progress-bar" style="width: ' + progressWidth + '%"></div>' +
-                                    '</div>';
+                                    distanceHtml +
+                                    progressHtml;
                                 groupsContainer.appendChild(groupCard);
                             });
                         }
@@ -934,6 +1385,112 @@
                                 statItems[2].textContent = formatNumberDE(data.statistics.average_distance_km, 2) + ' km';
                             }
                         }
+                        
+                        // Update Podest
+                        var podiumContainer = document.querySelector('.eventboard-podium');
+                        if (data.podium && data.podium.length > 0) {
+                            // Podest existiert oder muss erstellt werden
+                            if (!podiumContainer) {
+                                // Erstelle Podest-Container, falls nicht vorhanden
+                                // WICHTIG: Füge das Podest direkt nach dem Header ein (sofort unter der Überschrift)
+                                var header = document.querySelector('.eventboard-header');
+                                if (header) {
+                                    podiumContainer = document.createElement('div');
+                                    podiumContainer.className = 'eventboard-podium';
+                                    // Füge direkt nach dem Header ein (als erstes Element nach der Überschrift)
+                                    header.parentNode.insertBefore(podiumContainer, header.nextSibling);
+                                } else {
+                                    // Fallback: Suche nach Stats oder Groups
+                                    var statsSection = document.querySelector('.eventboard-stats');
+                                    var groupsSection = document.querySelector('.eventboard-groups');
+                                    
+                                    if (statsSection && statsSection.nextSibling) {
+                                        // Füge nach Stats ein
+                                        podiumContainer = document.createElement('div');
+                                        podiumContainer.className = 'eventboard-podium';
+                                        statsSection.parentNode.insertBefore(podiumContainer, statsSection.nextSibling);
+                                    } else if (groupsSection) {
+                                        // Füge vor Groups ein
+                                        podiumContainer = document.createElement('div');
+                                        podiumContainer.className = 'eventboard-podium';
+                                        groupsSection.parentNode.insertBefore(podiumContainer, groupsSection);
+                                    }
+                                }
+                            } else {
+                                // Podest existiert bereits - prüfe, ob es an der richtigen Stelle ist
+                                // Wenn nicht direkt nach dem Header, verschiebe es dorthin
+                                var header = document.querySelector('.eventboard-header');
+                                if (header && podiumContainer.previousElementSibling !== header) {
+                                    // Podest ist nicht direkt nach dem Header - verschiebe es
+                                    header.parentNode.insertBefore(podiumContainer, header.nextSibling);
+                                }
+                            }
+                            
+                            if (podiumContainer) {
+                                // Erstelle Podest-HTML
+                                var podiumHtml = '<h2>{% trans "Podest" %}</h2><div class="podium-container">';
+                                
+                                data.podium.forEach(function(group) {
+                                    var order = group.rank === 1 ? 2 : (group.rank === 2 ? 1 : 3);
+                                    var medal = group.rank === 1 ? '🥇' : (group.rank === 2 ? '🥈' : '🥉');
+                                    
+                                    var logoHtml = '';
+                                    if (group.logo_url) {
+                                        logoHtml = '<img src="' + group.logo_url + '" alt="' + group.name + '">';
+                                    } else {
+                                        var initials = (group.short_name || group.name || '').slice(0, 2).toUpperCase();
+                                        var bgColor = group.color || '#667eea';
+                                        logoHtml = '<div class="podium-group-initials" style="background: ' + bgColor + ';">' + initials + '</div>';
+                                    }
+                                    
+                                    var leafGroupHtml = '';
+                                    if (group.best_leaf_group) {
+                                        var leafGroup = group.best_leaf_group;
+                                        leafGroupHtml = '<div class="podium-leaf-group">' +
+                                            '<span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span> ' +
+                                            '<span class="podium-leaf-name">' + leafGroup.name + '</span> ' +
+                                            '<span class="podium-leaf-distance">(' + formatNumberDE(leafGroup.contribution_km, 2) + ' km)</span>';
+                                        if (leafGroup.goal_reached_at) {
+                                            var leafGoalTime = new Date(leafGroup.goal_reached_at);
+                                            var leafGoalTimeStr = leafGoalTime.toLocaleString('de-DE', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            });
+                                            leafGroupHtml += '<div class="podium-leaf-time">' +
+                                                '{% trans "Ziel erreicht" %}: <span data-utc-datetime="' + leafGroup.goal_reached_at + '" data-datetime-format="d.m.Y H:i">' + leafGoalTimeStr + '</span>' +
+                                                '</div>';
+                                        }
+                                        leafGroupHtml += '</div>';
+                                    }
+                                    
+                                    podiumHtml += 
+                                        '<div class="podium-place podium-place-' + group.rank + '" style="order: ' + order + ';">' +
+                                        '<div class="podium-medal">' + medal + '</div>' +
+                                        '<div class="podium-group-logo">' + logoHtml + '</div>' +
+                                        '<div class="podium-group-name">' + group.name + '</div>' +
+                                        '<div class="podium-group-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km</div>' +
+                                        leafGroupHtml +
+                                        '<div class="podium-rank">{% trans "Platz" %} ' + group.rank + '</div>' +
+                                        '</div>';
+                                });
+                                
+                                podiumHtml += '</div>';
+                                podiumContainer.innerHTML = podiumHtml;
+                                podiumContainer.style.display = 'block';
+                                // Konvertiere Zeiten nach dem Einfügen
+                                if (window.convertAllDatetimes) {
+                                    window.convertAllDatetimes();
+                                }
+                            }
+                        } else {
+                            // Kein Podest: Verstecke es, falls vorhanden
+                            if (podiumContainer) {
+                                podiumContainer.style.display = 'none';
+                            }
+                        }
                     }
                 })
                 .catch(error => {
@@ -941,8 +1498,10 @@
                 });
         }
         
-        // Starte Auto-Update (alle 30 Sekunden)
-        setInterval(updateEventboard, 30000);
+        // Starte Auto-Update (konfigurierbar pro Event)
+        // Initiales Intervall wird nach dem ersten API-Call aktualisiert
+        updateIntervalId = setInterval(updateEventboard, updateIntervalMs);
+        console.log('Eventboard: Initiales Update-Intervall =', updateIntervalMs / 1000, 'Sekunden');
         {% endif %}
         
         // Auto-Update für Event-Auswahlseite (alle 30 Sekunden)
@@ -1094,9 +1653,26 @@
                     '</span>';
             }
             
-            var startDate = event.start_time ? new Date(event.start_time).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
-            var endDate = event.end_time ? new Date(event.end_time).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
-            var timeRange = startDate + (startDate && endDate ? ' - ' : '') + endDate;
+            // Konvertiere UTC-Zeiten in lokale Zeitzone für Event-Auswahlkarten
+            var timeRange = '';
+            if (event.start_time || event.end_time) {
+                var startDate = '';
+                var endDate = '';
+                if (event.start_time) {
+                    var startDateObj = new Date(event.start_time);
+                    startDate = '<span data-utc-datetime="' + event.start_time + '" data-datetime-format="d.m.Y">' + startDateObj.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) + '</span>';
+                }
+                if (event.start_time && event.end_time) {
+                    timeRange += startDate + ' - ';
+                } else if (event.start_time) {
+                    timeRange += startDate;
+                }
+                if (event.end_time) {
+                    var endDateObj = new Date(event.end_time);
+                    endDate = '<span data-utc-datetime="' + event.end_time + '" data-datetime-format="d.m.Y">' + endDateObj.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) + '</span>';
+                    timeRange += endDate;
+                }
+            }
             
             card.innerHTML = 
                 '<div class="event-card-header">' +
@@ -1160,23 +1736,33 @@
                 }
             }
             
-            // Remove oldest toast if at max
-            if (container.children.length >= maxToasts) {
-                var toastsArray = Array.from(container.children);
+            // Remove lowest km toast if at max (same logic as Map/Leaderboard)
+            var currentToasts = container.querySelectorAll('.activity-toast');
+            if (currentToasts.length >= maxToasts) {
+                // Sort current toasts to find the one with lowest km
+                var toastsArray = Array.from(currentToasts);
                 toastsArray.sort(function(a, b) {
                     var aKm = parseFloat(a.dataset.sessionKm || 0);
                     var bKm = parseFloat(b.dataset.sessionKm || 0);
-                    return aKm - bKm;
+                    return aKm - bKm; // Ascending to find lowest
                 });
                 
+                // Remove the toast with lowest km
                 var lowestToast = toastsArray[0];
-                if (lowestToast && cyclist.session_km > parseFloat(lowestToast.dataset.sessionKm || 0)) {
-                    lowestToast.classList.add('fade-out');
-                    setTimeout(function() {
-                        if (lowestToast.parentNode) {
-                            lowestToast.remove();
-                        }
-                    }, 300);
+                if (lowestToast) {
+                    // Only remove if new cyclist has more km
+                    var lowestKm = parseFloat(lowestToast.dataset.sessionKm || 0);
+                    if (cyclist.session_km > lowestKm) {
+                        lowestToast.classList.add('fade-out');
+                        setTimeout(function() {
+                            if (lowestToast.parentNode) {
+                                lowestToast.remove();
+                            }
+                        }, 300);
+                    } else {
+                        // New cyclist has less or equal km - don't show toast
+                        return;
+                    }
                 } else {
                     return;
                 }

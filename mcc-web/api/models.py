@@ -902,6 +902,36 @@ class Event(models.Model):
     start_time = models.DateTimeField(null=True, blank=True, verbose_name=_("Startzeitpunkt"))
     end_time = models.DateTimeField(null=True, blank=True, verbose_name=_("Endzeitpunkt"))
     hide_after_date = models.DateTimeField(null=True, blank=True, verbose_name=_("Ab diesem Datum nicht mehr anzeigen"), help_text=_("Events werden nach diesem Datum nicht mehr in der Karte angezeigt, auch wenn sie noch aktiv sind"))
+    target_distance_km = models.DecimalField(
+        max_digits=15, 
+        decimal_places=5, 
+        null=True, 
+        blank=True, 
+        verbose_name=_("Kilometerziel"), 
+        help_text=_("Gesamtes Kilometerziel für dieses Event (optional). Wird für Fortschrittsanzeige verwendet.")
+    )
+    update_interval_seconds = models.IntegerField(
+        default=30,
+        validators=[MinValueValidator(5), MaxValueValidator(300)],
+        verbose_name=_("Update-Intervall (Sekunden)"),
+        help_text=_("Aktualisierungsintervall für das Eventboard in Sekunden (5-300). Standard: 30 Sekunden.")
+    )
+    left_logo = models.ImageField(
+        upload_to='event_logos/',
+        null=True,
+        blank=True,
+        validators=[validate_logo_size],
+        verbose_name=_("Logo links"),
+        help_text=_("Logo/Bild, das links neben dem Event-Titel angezeigt wird (max. 500x500px)")
+    )
+    right_logo = models.ImageField(
+        upload_to='event_logos/',
+        null=True,
+        blank=True,
+        validators=[validate_logo_size],
+        verbose_name=_("Logo rechts"),
+        help_text=_("Logo/Bild, das rechts neben dem Event-Titel angezeigt wird (max. 500x500px)")
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert am"))
 
@@ -952,19 +982,95 @@ class Event(models.Model):
     def save_event_to_history(self):
         """Save current event progress to history for all participating groups."""
         now = timezone.now()
-        for status in self.group_statuses.select_related('group').all():
-            EventHistory.objects.create(
+        for status in self.group_statuses.select_related('group', 'best_leaf_group').all():
+            # Use get_or_create to avoid duplicate entries
+            # If an entry with the same event, group, and start_time exists, update it instead
+            start_time = self.start_time or now
+            history_entry, created = EventHistory.objects.get_or_create(
                 event=self,
                 group=status.group,
-                start_time=self.start_time or now,
-                end_time=self.end_time or now,
-                total_distance_km=status.current_distance_km
+                start_time=start_time,
+                defaults={
+                    'end_time': now,
+                    'total_distance_km': status.current_distance_km,
+                    'best_leaf_group': status.best_leaf_group,
+                    'best_leaf_group_goal_reached_at': status.best_leaf_group_goal_reached_at
+                }
             )
+            # If entry already exists, update it with current data
+            if not created:
+                history_entry.end_time = now
+                history_entry.total_distance_km = status.current_distance_km
+                history_entry.best_leaf_group = status.best_leaf_group
+                history_entry.best_leaf_group_goal_reached_at = status.best_leaf_group_goal_reached_at
+                history_entry.save()
         # Reset event statuses after saving to history
         self.group_statuses.update(
             current_distance_km=Decimal('0.00000'),
-            start_km_offset=Decimal('0.00000')
+            start_km_offset=Decimal('0.00000'),
+            best_leaf_group=None,
+            best_leaf_group_goal_reached_at=None
         )
+        # Also reset leaf group contributions
+        LeafGroupEventContribution.objects.filter(event=self).update(
+            current_event_distance=Decimal('0.00000')
+        )
+    
+    def restart_event(self):
+        """
+        Reset all event statuses for this event.
+        
+        Note: This does NOT delete EventHistory records, so groups
+        keep their historical event achievements.
+        
+        Current progress is saved to history before resetting.
+        """
+        # Save current progress to history before resetting
+        self.save_event_to_history()
+        
+        # Reset all group event statuses
+        self.group_statuses.update(
+            current_distance_km=Decimal('0.00000'),
+            start_km_offset=Decimal('0.00000'),
+            goal_reached_at=None,
+            best_leaf_group=None,
+            best_leaf_group_goal_reached_at=None
+        )
+        # Also reset leaf group contributions
+        LeafGroupEventContribution.objects.filter(event=self).update(
+            current_event_distance=Decimal('0.00000')
+        )
+    
+    def get_progress_percentage(self):
+        """Calculate progress percentage towards target distance."""
+        if not self.target_distance_km:
+            return None
+        total = self.get_total_distance_km()
+        if total == 0:
+            return Decimal('0.00')
+        percentage = (total / self.target_distance_km) * Decimal('100.00')
+        return min(percentage, Decimal('100.00'))  # Cap at 100%
+    
+    def get_top_groups(self, limit=3):
+        """
+        Get top N groups that have reached the goal, sorted by goal_reached_at (who reached first).
+        Only returns groups that have reached the target_distance_km.
+        """
+        if not self.target_distance_km:
+            return self.group_statuses.none()
+        
+        # Filter groups that have reached the goal (current_distance_km >= target_distance_km)
+        # Sort by goal_reached_at (who reached first - earliest goal_reached_at = first place)
+        # If goal_reached_at is None, use a very late date to push them to the end
+        reached_groups = self.group_statuses.filter(
+            current_distance_km__gte=self.target_distance_km,
+            goal_reached_at__isnull=False
+        ).select_related('group', 'best_leaf_group').order_by(
+            'goal_reached_at',  # Who reached first (earliest goal_reached_at = first place)
+            '-current_distance_km'  # Fallback: higher distance if same time
+        )[:limit]
+        
+        return reached_groups
 
 
 class GroupEventStatus(models.Model):
@@ -993,6 +1099,27 @@ class GroupEventStatus(models.Model):
         default=Decimal('0.00000'),
         verbose_name=_("Start-Offset (km)")
     )
+    goal_reached_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Ziel erreicht am"),
+        help_text=_("Zeitpunkt, zu dem die Gruppe das Event-Ziel erreicht hat. Wird für die Sortierung auf dem Podest verwendet.")
+    )
+    best_leaf_group = models.ForeignKey(
+        Group,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='event_statuses_as_best_leaf',
+        verbose_name=_("Beste Leaf-Gruppe"),
+        help_text=_("Die Leaf-Gruppe (z.B. Klasse) mit den meisten gestrampelten Kilometern in dieser TOP-Gruppe")
+    )
+    best_leaf_group_goal_reached_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Ziel erreicht am (Beste Leaf-Gruppe)"),
+        help_text=_("Zeitpunkt, zu dem die beste Leaf-Gruppe das Event-Ziel erreicht hat")
+    )
     joined_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Beigetreten am"))
 
     class Meta:
@@ -1002,6 +1129,57 @@ class GroupEventStatus(models.Model):
 
     def __str__(self):
         return f"{self.group.name} - {self.event.name} ({self.current_distance_km:.5f} km)"
+
+
+class LeafGroupEventContribution(models.Model):
+    """
+    Tracks the event distance contribution of each leaf group during an event.
+    
+    This model allows tracking which leaf group (e.g., class) contributed the most
+    kilometers to a parent group's (e.g., school) event. This is used for:
+    - Podest display: The leaf group with the highest contribution is displayed
+    - Goal achievement: The leaf group with the highest contribution is shown when goal is reached
+    
+    IMPORTANT: This is separate from GroupEventStatus, which tracks the parent group's
+    total event distance. Leaf groups contribute to the parent's distance, but their
+    individual contributions are tracked here.
+    """
+    leaf_group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='event_contributions',
+        verbose_name=_("Leaf-Gruppe"),
+        help_text=_("Die Leaf-Gruppe (z.B. Klasse), die Kilometer beiträgt")
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='leaf_group_contributions',
+        verbose_name=_("Event")
+    )
+    current_event_distance = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Aktuelle Event-Distanz (km)"),
+        help_text=_("Die von dieser Leaf-Gruppe während des aktuellen Events zurückgelegte Distanz")
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_("Aktualisiert am")
+    )
+    
+    class Meta:
+        verbose_name = _("Leaf-Gruppe Event-Beitrag")
+        verbose_name_plural = _("Leaf-Gruppe Event-Beiträge")
+        unique_together = [['leaf_group', 'event']]
+        indexes = [
+            models.Index(fields=['leaf_group', 'event']),
+            models.Index(fields=['event', '-current_event_distance']),  # For finding highest contributor
+        ]
+    
+    def __str__(self):
+        return f"{self.leaf_group.name} - {self.event.name}: {self.current_event_distance} km"
 
 
 class EventHistory(models.Model):
@@ -1021,6 +1199,21 @@ class EventHistory(models.Model):
     start_time = models.DateTimeField(verbose_name=_("Startzeitpunkt"))
     end_time = models.DateTimeField(verbose_name=_("Endzeitpunkt"))
     total_distance_km = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Gesammelte Kilometer"))
+    best_leaf_group = models.ForeignKey(
+        Group,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='event_history_as_best_leaf',
+        verbose_name=_("Beste Leaf-Gruppe"),
+        help_text=_("Die Leaf-Gruppe (z.B. Klasse) mit den meisten gestrampelten Kilometern in dieser TOP-Gruppe")
+    )
+    best_leaf_group_goal_reached_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Ziel erreicht am (Beste Leaf-Gruppe)"),
+        help_text=_("Zeitpunkt, zu dem die beste Leaf-Gruppe das Event-Ziel erreicht hat")
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))
 
     class Meta:
@@ -1173,7 +1366,148 @@ def update_group_hierarchy_progress(group, delta_km):
     group.refresh_from_db()
     logger.debug(f"[update_group_hierarchy_progress] Updated Group distance_total for '{group.name}' - old: {old_group_distance}, new: {group.distance_total}")
 
-    # 2.5. Update Event statuses for active events
+    # 2.5. IMPORTANT: Track leaf group contributions for events
+    # This must be done BEFORE the event_statuses loop, because leaf groups might not have event_statuses themselves
+    # Two scenarios:
+    # 1. Leaf group is directly assigned to an event -> track its own contribution
+    # 2. Leaf group's parent (TOP-group) is assigned to an event -> track contribution to parent's event
+    if group.is_leaf_group():
+        # Scenario 1: Leaf group directly participates in events
+        leaf_event_statuses = group.event_statuses.select_related('event').all()
+        if leaf_event_statuses.exists():
+            logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' directly participates in {leaf_event_statuses.count()} event(s)")
+            for leaf_event_status in leaf_event_statuses:
+                event = leaf_event_status.event
+                if not event.is_currently_active():
+                    continue
+                
+                # Track this leaf group's own contribution to the event
+                # Check if leaf group has already reached the goal
+                leaf_goal_reached = (
+                    leaf_event_status.goal_reached_at is not None or
+                    (event.target_distance_km and event.target_distance_km > 0 and leaf_event_status.current_distance_km >= event.target_distance_km)
+                )
+                
+                if not leaf_goal_reached:
+                    # Get or create LeafGroupEventContribution for this leaf group's direct participation
+                    contribution, created = LeafGroupEventContribution.objects.get_or_create(
+                        leaf_group=group,
+                        event=event,
+                        defaults={'current_event_distance': delta_km}
+                    )
+                    
+                    if not created:
+                        old_contribution = contribution.current_event_distance
+                        new_contribution = old_contribution + delta_km
+                        
+                        # Cap at target_distance_km if goal is reached with this update
+                        if event.target_distance_km and event.target_distance_km > 0:
+                            if new_contribution >= event.target_distance_km and old_contribution < event.target_distance_km:
+                                # Goal is reached for the first time - cap at target
+                                new_contribution = event.target_distance_km
+                                logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' reached event goal in '{event.name}'! Capping contribution at {new_contribution:.5f} km")
+                            elif new_contribution > event.target_distance_km:
+                                # Goal was already reached, but new contribution exceeds it - cap it
+                                new_contribution = event.target_distance_km
+                                logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' already at goal in event '{event.name}', capping excess contribution at {new_contribution:.5f} km")
+                        
+                        LeafGroupEventContribution.objects.filter(pk=contribution.pk).update(
+                            current_event_distance=new_contribution
+                        )
+                        contribution.refresh_from_db()
+                        logger.debug(f"[update_group_hierarchy_progress] Updated LeafGroupEventContribution for direct participation: '{group.name}' on event '{event.name}' - old: {old_contribution}, new: {contribution.current_event_distance}")
+        
+        # Scenario 2: Leaf group's parent (TOP-group) participates in events
+        if group.parent:
+            logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' (parent: {group.parent.name}) - checking for parent event statuses")
+            # Get all events where the parent group participates
+            parent_event_statuses = GroupEventStatus.objects.filter(
+                group=group.parent
+            ).select_related('event')
+            
+            if parent_event_statuses.exists():
+                logger.debug(f"[update_group_hierarchy_progress] Parent group '{group.parent.name}' has {parent_event_statuses.count()} event status(es) - will track leaf contributions")
+                for parent_event_status in parent_event_statuses:
+                    event = parent_event_status.event
+                    logger.debug(f"[update_group_hierarchy_progress] Processing leaf contribution for event '{event.name}' (ID: {event.id})")
+                    
+                    # Check if event is currently active
+                    if not event.is_currently_active():
+                        logger.debug(f"[update_group_hierarchy_progress] Event '{event.name}' is not currently active - skipping leaf contribution tracking")
+                        continue
+                    
+                    # Check if parent group has already reached the goal
+                    parent_goal_reached = (
+                        parent_event_status.goal_reached_at is not None or
+                        (event.target_distance_km and event.target_distance_km > 0 and parent_event_status.current_distance_km >= event.target_distance_km)
+                    )
+                    logger.debug(f"[update_group_hierarchy_progress] Parent goal reached: {parent_goal_reached} (goal_reached_at: {parent_event_status.goal_reached_at}, current_distance: {parent_event_status.current_distance_km}, target: {event.target_distance_km})")
+                    
+                    # Always track leaf group contributions, even if parent has reached the goal
+                    # This ensures we can always identify the best leaf group
+                    # But if parent has reached the goal, don't add more kilometers to contributions
+                    contribution, created = LeafGroupEventContribution.objects.get_or_create(
+                        leaf_group=group,
+                        event=event,
+                        defaults={'current_event_distance': delta_km if not parent_goal_reached else Decimal('0.00000')}
+                    )
+                    
+                    if created:
+                        if not parent_goal_reached:
+                            logger.debug(f"[update_group_hierarchy_progress] Created LeafGroupEventContribution for '{group.name}' on event '{event.name}' with {delta_km} km")
+                        else:
+                            logger.debug(f"[update_group_hierarchy_progress] Created LeafGroupEventContribution for '{group.name}' on event '{event.name}' with 0 km (parent goal already reached)")
+                    else:
+                        if not parent_goal_reached:
+                            old_contribution = contribution.current_event_distance
+                            new_contribution = old_contribution + delta_km
+                            
+                            # Note: Leaf contributions to parent's event are not capped at parent's target_distance_km
+                            # because they contribute to the parent's total. The parent's current_distance_km will be capped separately above.
+                            
+                            LeafGroupEventContribution.objects.filter(pk=contribution.pk).update(
+                                current_event_distance=new_contribution
+                            )
+                            contribution.refresh_from_db()
+                            logger.debug(f"[update_group_hierarchy_progress] Updated LeafGroupEventContribution for '{group.name}' on event '{event.name}' - old: {old_contribution}, new: {contribution.current_event_distance}")
+                        else:
+                            logger.debug(f"[update_group_hierarchy_progress] Parent group '{group.parent.name}' has already reached the goal in event '{event.name}' - not updating LeafGroupEventContribution for '{group.name}'")
+                    
+                    # Update parent's best_leaf_group if this leaf group has the highest contribution
+                    # Find the leaf group with the highest contribution for this parent and event
+                    leaf_contributions = LeafGroupEventContribution.objects.filter(
+                        leaf_group__parent=group.parent,
+                        event=event
+                    ).select_related('leaf_group').order_by('-current_event_distance')
+                    
+                    logger.debug(f"[update_group_hierarchy_progress] Found {leaf_contributions.count()} leaf contributions for parent '{group.parent.name}' in event '{event.name}'")
+                    
+                    if leaf_contributions.exists():
+                        best_contribution = leaf_contributions.first()
+                        logger.debug(f"[update_group_hierarchy_progress] Best contribution: {best_contribution.leaf_group.name} with {best_contribution.current_event_distance} km")
+                        # Always update parent's best_leaf_group to the current best (even if it hasn't changed)
+                        # This ensures best_leaf_group is set even if it was None before
+                        parent_update_fields = {'best_leaf_group': best_contribution.leaf_group}
+                        
+                        # If the best leaf group just reached the goal, record its time
+                        # Check if this leaf group is the best AND parent just reached the goal
+                        if parent_goal_reached and best_contribution.leaf_group == group and not parent_event_status.best_leaf_group_goal_reached_at:
+                            parent_update_fields['best_leaf_group_goal_reached_at'] = timezone.now()
+                            logger.debug(f"[update_group_hierarchy_progress] Best leaf group '{group.name}' reached event goal at {parent_update_fields['best_leaf_group_goal_reached_at']}")
+                        
+                        # Update best_leaf_group (always, to ensure it's set)
+                        GroupEventStatus.objects.filter(pk=parent_event_status.pk).update(**parent_update_fields)
+                        parent_event_status.refresh_from_db()
+                        if parent_event_status.best_leaf_group != best_contribution.leaf_group:
+                            logger.debug(f"[update_group_hierarchy_progress] Updated best_leaf_group for '{group.parent.name}' in event '{event.name}' to '{best_contribution.leaf_group.name}'")
+                        else:
+                            logger.debug(f"[update_group_hierarchy_progress] Best leaf group for '{group.parent.name}' in event '{event.name}' is already '{best_contribution.leaf_group.name}'")
+                    else:
+                        logger.debug(f"[update_group_hierarchy_progress] No leaf contributions found for parent '{group.parent.name}' in event '{event.name}' - cannot set best_leaf_group")
+            else:
+                logger.debug(f"[update_group_hierarchy_progress] Parent group '{group.parent.name}' has no event statuses - skipping leaf contribution tracking")
+    
+    # 2.6. Update Event statuses for active events
     # Get all event statuses for this group
     event_statuses = group.event_statuses.select_related('event').all()
     if not event_statuses.exists():
@@ -1189,12 +1523,71 @@ def update_group_hierarchy_progress(group, delta_km):
         
         if event.is_currently_active():
             old_event_distance = event_status.current_distance_km
-            # Update event distance using F() expression for atomic update
-            GroupEventStatus.objects.filter(pk=event_status.pk).update(
-                current_distance_km=models.F('current_distance_km') + delta_km
+            
+            # Check if group has already reached the goal - if so, don't add more kilometers
+            goal_already_reached = (
+                event_status.goal_reached_at is not None or
+                (event.target_distance_km and event.target_distance_km > 0 and old_event_distance >= event.target_distance_km)
             )
-            event_status.refresh_from_db()
-            logger.info(f"[update_group_hierarchy_progress] ✅ Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
+            
+            if goal_already_reached:
+                logger.debug(f"[update_group_hierarchy_progress] Group '{group.name}' has already reached the goal in event '{event.name}' ({old_event_distance:.5f} km >= {event.target_distance_km:.5f} km) - skipping update")
+                # Skip adding kilometers, but continue with leaf group tracking (if applicable)
+                new_event_distance = old_event_distance
+                goal_reached = False
+            else:
+                new_event_distance = old_event_distance + delta_km
+                
+                # Check if group reached the event goal (target_distance_km) for the first time
+                goal_reached = False
+                if event.target_distance_km and event.target_distance_km > 0:
+                    if new_event_distance >= event.target_distance_km and old_event_distance < event.target_distance_km:
+                        # Goal is reached for the first time with this update
+                        goal_reached = True
+                        # Cap at target_distance_km to ensure all groups that reach the goal have the same final distance
+                        new_event_distance = event.target_distance_km
+                        logger.info(f"[update_group_hierarchy_progress] 🎉 Group '{group.name}' reached event goal in '{event.name}'! Capping at {new_event_distance:.5f} km (target: {event.target_distance_km:.5f} km)")
+                    elif new_event_distance > event.target_distance_km:
+                        # Goal was already reached, but new distance exceeds it - cap it
+                        new_event_distance = event.target_distance_km
+                        logger.debug(f"[update_group_hierarchy_progress] Group '{group.name}' already at goal in event '{event.name}', capping excess distance at {new_event_distance:.5f} km")
+                
+                # Update event distance using F() expression for atomic update
+                update_fields = {'current_distance_km': new_event_distance}
+                if goal_reached and not event_status.goal_reached_at:
+                    # Goal was just reached for the first time - record finish time
+                    update_fields['goal_reached_at'] = timezone.now()
+                    logger.info(f"[update_group_hierarchy_progress] Group '{group.name}' reached event goal at {update_fields['goal_reached_at']}")
+                
+                GroupEventStatus.objects.filter(pk=event_status.pk).update(**update_fields)
+                event_status.refresh_from_db()
+                logger.info(f"[update_group_hierarchy_progress] ✅ Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
+            
+            # Note: Leaf group contribution tracking is now done BEFORE the event_statuses loop (section 2.5)
+            # This ensures it works even if the leaf group itself has no event_statuses
+            
+            # 2.7. IMPORTANT: If this is a TOP group (not a leaf group) that has leaf groups, 
+            # update best_leaf_group based on existing contributions (if any)
+            # This handles the case where the TOP group collects kilometers directly
+            # but we still want to track which leaf group contributed the most
+            if not group.is_leaf_group() and event_status:
+                # Check if this group has leaf groups
+                leaf_groups = group.get_leaf_groups()
+                if leaf_groups.exists():
+                    # Find the leaf group with the highest contribution for this group and event
+                    leaf_contributions = LeafGroupEventContribution.objects.filter(
+                        leaf_group__parent=group,
+                        event=event
+                    ).select_related('leaf_group').order_by('-current_event_distance')
+                    
+                    if leaf_contributions.exists():
+                        best_contribution = leaf_contributions.first()
+                        # Update best_leaf_group if it's not set or if it changed
+                        if event_status.best_leaf_group != best_contribution.leaf_group:
+                            update_fields = {'best_leaf_group': best_contribution.leaf_group}
+                            GroupEventStatus.objects.filter(pk=event_status.pk).update(**update_fields)
+                            event_status.refresh_from_db()
+                            logger.info(f"[update_group_hierarchy_progress] Updated best_leaf_group for '{group.name}' in event '{event.name}' to '{best_contribution.leaf_group.name}'")
         else:
             logger.warning(f"[update_group_hierarchy_progress] ⚠️ Event '{event.name}' is not currently active (is_active={event.is_active}, start_time={event.start_time}, end_time={event.end_time}) - will skip event_status update for group '{group.name}'")
 

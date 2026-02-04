@@ -16,7 +16,7 @@ from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, TravelHistory, Event, GroupEventStatus, EventHistory,
-    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution
+    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution, LeafGroupEventContribution
 )
 from iot.models import (
     Device, DeviceConfiguration, DeviceConfigurationReport, DeviceConfigurationDiff,
@@ -1798,8 +1798,8 @@ class GroupEventStatusInline(admin.TabularInline):
     model = GroupEventStatus
     extra = 1
     verbose_name = _("Teilnehmende Gruppe")
-    fields = ('group', 'current_distance_km_display')
-    readonly_fields = ('current_distance_km_display',)
+    fields = ('group', 'current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
+    readonly_fields = ('current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
     
     def has_view_permission(self, request, obj=None):
         """Operator kann Gruppen-Event-Status anzeigen, wenn das Event bearbeitet werden kann."""
@@ -1867,12 +1867,12 @@ class GroupEventStatusInline(admin.TabularInline):
         """Filter GroupEventStatus entries based on operator permissions."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
-            return qs.select_related('group', 'event')
+            return qs.select_related('group', 'event', 'best_leaf_group')
         # WICHTIG: Django Admin filtert automatisch nach dem Parent-Objekt (Event)
         # Für Operatoren: Zeige alle Einträge für das Event an
         # Die Berechtigungen werden pro Eintrag in has_change_permission() und has_delete_permission() geprüft
         # Dies stellt sicher, dass neu hinzugefügte Gruppen sofort angezeigt werden
-        return qs.select_related('group', 'event')
+        return qs.select_related('group', 'event', 'best_leaf_group')
 
     def get_formset(self, request, obj=None, **kwargs):
         """Customize formset to filter available groups for selection."""
@@ -1953,6 +1953,32 @@ class GroupEventStatusInline(admin.TabularInline):
             return format_km_de(obj.current_distance_km)
         return format_km_de(0)
     current_distance_km_display.short_description = _("Aktuelle Distanz (km)")
+    
+    def best_leaf_group_display(self, obj):
+        """Display best leaf group with contribution."""
+        if obj and obj.best_leaf_group:
+            from api.models import LeafGroupEventContribution
+            try:
+                contribution = LeafGroupEventContribution.objects.get(
+                    leaf_group=obj.best_leaf_group,
+                    event=obj.event
+                )
+                return format_html(
+                    '<strong>{}</strong> ({} km)',
+                    obj.best_leaf_group.name,
+                    format_km_de(contribution.current_event_distance)
+                )
+            except LeafGroupEventContribution.DoesNotExist:
+                return obj.best_leaf_group.name
+        return _("Keine")
+    best_leaf_group_display.short_description = _("Beste Leaf-Gruppe")
+    
+    def best_leaf_group_goal_reached_at_display(self, obj):
+        """Display when best leaf group reached the goal."""
+        if obj and obj.best_leaf_group_goal_reached_at:
+            return obj.best_leaf_group_goal_reached_at.strftime('%d.%m.%Y %H:%M')
+        return _("Noch nicht erreicht")
+    best_leaf_group_goal_reached_at_display.short_description = _("Ziel erreicht am (Beste Leaf-Gruppe)")
 
 class TravelTrackAdminForm(forms.ModelForm):
     """Custom form for TravelTrack admin with required assigned_to_group for operators."""
@@ -3223,14 +3249,14 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
         return render(request, 'admin/api/groupmilestoneachievement_redeem_confirmation.html', context)
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     list_display = ('name', 'event_type', 'total_distance_km_display', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date')
     list_editable = ('is_active', 'is_visible_on_map')
     inlines = [GroupEventStatusInline]
-    fields = ('name', 'event_type', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date')
+    fields = ('name', 'event_type', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date', 'target_distance_km', 'update_interval_seconds', 'left_logo', 'right_logo')
     list_filter = ('event_type', 'is_active', 'is_visible_on_map')
     search_fields = ('name', 'description')
-    actions = ['save_event_to_history']
+    actions = ['restart_event', 'save_event_to_history']
     
     def get_queryset(self, request):
         """Filter events based on operator permissions."""
@@ -3304,14 +3330,50 @@ class EventAdmin(admin.ModelAdmin):
     save_event_to_history.short_description = _("Event(s) in Historie speichern und zurücksetzen")
 
     def get_urls(self):
-        """Add custom URLs for save_history action."""
+        """Add custom URLs for restart_event and save_history actions."""
         from django.urls import path
         urls = super().get_urls()
         custom_urls = [
+            path('<path:object_id>/restart/', self.admin_site.admin_view(self.restart_event_view), name='api_event_restart'),
             path('<path:object_id>/save_history/', self.admin_site.admin_view(self.save_history_view), name='api_event_save_history'),
         ]
         return custom_urls + urls
 
+    def restart_event(self, request, queryset):
+        """Restart selected events by resetting all event statuses."""
+        # Filter queryset for operators
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            queryset = queryset.filter(group_statuses__group__id__in=managed_group_ids).distinct()
+        
+        count = 0
+        for event in queryset:
+            # Save current state to history before restarting
+            event.save_event_to_history()
+            # Restart the event
+            event.restart_event()
+            count += 1
+        self.message_user(request, _("{} Event(s) wurden zurückgesetzt. Vorheriger Fortschritt wurde in die Historie gespeichert.").format(count), messages.SUCCESS)
+    restart_event.short_description = _("Event(s) zurücksetzen und in Historie speichern")
+    
+    def restart_event_view(self, request, object_id):
+        """Custom view to restart a single event from detail page."""
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        obj = self.get_object(request, object_id)
+        if obj:
+            # Check permission for operators
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
+                    messages.error(request, _("Sie haben keine Berechtigung, dieses Event zurückzusetzen."))
+                    return redirect('admin:api_event_changelist')
+            # Save to history and restart
+            obj.save_event_to_history()
+            obj.restart_event()
+            self.message_user(request, _("Event wurde zurückgesetzt. Vorheriger Fortschritt wurde in die Historie gespeichert."), messages.SUCCESS)
+        return redirect('admin:api_event_change', object_id)
+    
     def save_history_view(self, request, object_id):
         """Custom view to save event history from detail page."""
         from django.shortcuts import redirect
@@ -3332,11 +3394,25 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(EventHistory)
 class EventHistoryAdmin(admin.ModelAdmin):
-    list_display = ('event', 'group', 'start_time', 'end_time', 'total_distance_km_display', 'created_at')
+    list_display = ('event', 'group', 'start_time', 'end_time', 'total_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display', 'created_at')
     list_filter = ('event', 'group', 'start_time', 'end_time')
-    search_fields = ('event__name', 'group__name')
-    readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_distance_km', 'created_at')
+    search_fields = ('event__name', 'group__name', 'best_leaf_group__name')
+    readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_distance_km', 'best_leaf_group', 'best_leaf_group_goal_reached_at', 'created_at')
     date_hierarchy = 'end_time'
+    
+    def best_leaf_group_display(self, obj):
+        """Display best leaf group."""
+        if obj and obj.best_leaf_group:
+            return obj.best_leaf_group.name
+        return _("Keine")
+    best_leaf_group_display.short_description = _("Beste Leaf-Gruppe")
+    
+    def best_leaf_group_goal_reached_at_display(self, obj):
+        """Display when best leaf group reached the goal."""
+        if obj and obj.best_leaf_group_goal_reached_at:
+            return obj.best_leaf_group_goal_reached_at.strftime('%d.%m.%Y %H:%M')
+        return _("Noch nicht erreicht")
+    best_leaf_group_goal_reached_at_display.short_description = _("Ziel erreicht am (Beste Leaf-Gruppe)")
     
     def get_queryset(self, request):
         """Filter event history based on operator permissions."""
