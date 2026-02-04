@@ -28,9 +28,10 @@ from decimal import Decimal
 from api.models import (
     Group, Cyclist,
     HourlyMetric, CyclistDeviceCurrentMileage,
-    EventHistory, TravelHistory,
-    GroupTravelStatus, GroupEventStatus
+    TravelHistory,
+    GroupTravelStatus
 )
+from eventboard.models import EventHistory, GroupEventStatus
 from iot.models import Device
 import logging
 

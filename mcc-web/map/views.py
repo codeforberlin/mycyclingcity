@@ -29,9 +29,10 @@ from django.urls import reverse
 from api.models import (
     Group, TravelTrack, Cyclist, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, Milestone, TravelHistory, 
-    Event, GroupEventStatus, HourlyMetric, MapPopupSettings,
+    HourlyMetric, MapPopupSettings,
     LeafGroupTravelContribution
 )
+from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 from api.views import check_milestone_victory
 from mgmt.analytics import _get_descendant_group_ids

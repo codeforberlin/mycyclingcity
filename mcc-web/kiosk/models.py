@@ -106,7 +106,7 @@ class KioskPlaylistEntry(models.Model):
         help_text=_("Art der anzuzeigenden Ansicht")
     )
     event_filter = models.ForeignKey(
-        'api.Event',
+        'eventboard.Event',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -23,7 +23,8 @@ from decimal import Decimal
 
 from eventboard.views import eventboard_page, eventboard_ticker, eventboard_api
 from eventboard.utils import get_active_cyclists_for_eventboard, get_all_subgroup_ids
-from api.models import update_group_hierarchy_progress, GroupEventStatus
+from api.models import update_group_hierarchy_progress
+from eventboard.models import GroupEventStatus
 from api.tests.conftest import (
     GroupFactory, CyclistFactory, DeviceFactory, EventFactory,
     GroupEventStatusFactory, CyclistDeviceCurrentMileageFactory,

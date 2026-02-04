@@ -16,7 +16,8 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 
-from api.models import Cyclist, CyclistDeviceCurrentMileage, Event, GroupEventStatus, Group
+from api.models import Cyclist, CyclistDeviceCurrentMileage, Group
+from eventboard.models import Event, GroupEventStatus
 from eventboard.views import eventboard_ticker
 from eventboard.utils import get_active_cyclists_for_eventboard
 

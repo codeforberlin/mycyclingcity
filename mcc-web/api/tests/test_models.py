@@ -24,9 +24,9 @@ from datetime import timedelta
 
 from api.models import (
     Group, Cyclist, HourlyMetric, CyclistDeviceCurrentMileage,
-    TravelTrack, Milestone, GroupTravelStatus, Event, GroupEventStatus,
-    EventHistory, TravelHistory
+    TravelTrack, Milestone, GroupTravelStatus, TravelHistory
 )
+from eventboard.models import Event, GroupEventStatus, EventHistory
 from iot.models import Device
 from api.tests.conftest import (
     GroupFactory, CyclistFactory, DeviceFactory, HourlyMetricFactory,

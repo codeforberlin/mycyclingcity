@@ -13,7 +13,8 @@ Usage: python manage.py test_eventboard_ticker [event_id] [group_filter_id]
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Cyclist, Event, GroupEventStatus, Group, CyclistDeviceCurrentMileage
+from api.models import Cyclist, Group, CyclistDeviceCurrentMileage
+from eventboard.models import Event, GroupEventStatus
 
 
 class Command(BaseCommand):

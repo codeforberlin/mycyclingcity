@@ -6,7 +6,8 @@
 # @note    This code was developed with the assistance of AI (LLMs).
 
 from django.core.management.base import BaseCommand
-from api.models import Cyclist, Group, Event, GroupEventStatus
+from api.models import Cyclist, Group
+from eventboard.models import Event, GroupEventStatus
 from api.models import update_group_hierarchy_progress
 from decimal import Decimal
 import logging

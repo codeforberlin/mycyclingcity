@@ -32,8 +32,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 from api.models import (
-    HourlyMetric, EventHistory, Event, Group, Cyclist, CyclistDeviceCurrentMileage, TravelTrack
+    HourlyMetric, Group, Cyclist, CyclistDeviceCurrentMileage, TravelTrack
 )
+from eventboard.models import EventHistory, Event
 from iot.models import Device
 from leaderboard.views import _calculate_group_totals_from_metrics
 
@@ -95,7 +96,6 @@ def analytics_data_api(request):
     """API endpoint for chart data and aggregated statistics."""
     # Block access for operators
     if not request.user.is_superuser:
-        from django.http import JsonResponse
         return JsonResponse({'error': _("Zugriff verweigert")}, status=403)
     start_date = request.GET.get('start_date', '').strip()
     end_date = request.GET.get('end_date', '').strip()

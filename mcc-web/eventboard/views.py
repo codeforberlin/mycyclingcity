@@ -10,7 +10,8 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from datetime import timedelta, datetime
-from api.models import Event, GroupEventStatus, Group, Cyclist, CyclistDeviceCurrentMileage, LeafGroupEventContribution
+from eventboard.models import Event, GroupEventStatus, LeafGroupEventContribution
+from api.models import Group, Cyclist, CyclistDeviceCurrentMileage
 from .utils import get_active_cyclists_for_eventboard, get_all_subgroup_ids
 from decimal import Decimal
 import json

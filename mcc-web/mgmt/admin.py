@@ -15,9 +15,10 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
-    CyclistDeviceCurrentMileage, TravelHistory, Event, GroupEventStatus, EventHistory,
-    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution, LeafGroupEventContribution
+    CyclistDeviceCurrentMileage, TravelHistory,
+    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution
 )
+from eventboard.models import Event, GroupEventStatus, EventHistory, LeafGroupEventContribution
 from iot.models import (
     Device, DeviceConfiguration, DeviceConfigurationReport, DeviceConfigurationDiff,
     FirmwareImage, DeviceManagementSettings, DeviceHealth, ConfigTemplate,
@@ -1796,6 +1797,7 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
 class GroupEventStatusInline(admin.TabularInline):
     """Displays all groups participating in this event"""
     model = GroupEventStatus
+    fk_name = 'event'
     extra = 1
     verbose_name = _("Teilnehmende Gruppe")
     fields = ('group', 'current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
@@ -1806,9 +1808,9 @@ class GroupEventStatusInline(admin.TabularInline):
         if request.user.is_superuser:
             return True
         if obj is None:
-            return request.user.has_perm('api.view_groupeventstatus')
+            return request.user.has_perm('eventboard.view_groupeventstatus')
         # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
-        from api.models import GroupEventStatus
+        from eventboard.models import GroupEventStatus
         if isinstance(obj, GroupEventStatus):
             # Für GroupEventStatus-Einträge: Immer True zurückgeben, wenn das Event bearbeitet werden kann
             # Die Berechtigungen werden in has_change_permission() und has_delete_permission() geprüft
@@ -1822,7 +1824,7 @@ class GroupEventStatusInline(admin.TabularInline):
         if request.user.is_superuser:
             return True
         if obj is None:
-            return request.user.has_perm('api.add_groupeventstatus')
+            return request.user.has_perm('eventboard.add_groupeventstatus')
         # Prüfe, ob der Operator das Event bearbeiten kann
         managed_group_ids = get_operator_managed_group_ids(request.user)
         # Erlaube Hinzufügen, wenn:
@@ -1838,9 +1840,9 @@ class GroupEventStatusInline(admin.TabularInline):
         if request.user.is_superuser:
             return True
         if obj is None:
-            return request.user.has_perm('api.change_groupeventstatus')
+            return request.user.has_perm('eventboard.change_groupeventstatus')
         # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
-        from api.models import GroupEventStatus
+        from eventboard.models import GroupEventStatus
         if isinstance(obj, GroupEventStatus):
             # Wenn es ein GroupEventStatus ist, prüfe die Gruppe
             managed_group_ids = get_operator_managed_group_ids(request.user)
@@ -1853,9 +1855,9 @@ class GroupEventStatusInline(admin.TabularInline):
         if request.user.is_superuser:
             return True
         if obj is None:
-            return request.user.has_perm('api.delete_groupeventstatus')
+            return request.user.has_perm('eventboard.delete_groupeventstatus')
         # obj kann ein GroupEventStatus (Inline-Objekt) oder Event (Parent-Objekt) sein
-        from api.models import GroupEventStatus
+        from eventboard.models import GroupEventStatus
         if isinstance(obj, GroupEventStatus):
             # Wenn es ein GroupEventStatus ist, prüfe die Gruppe
             managed_group_ids = get_operator_managed_group_ids(request.user)
@@ -1957,7 +1959,7 @@ class GroupEventStatusInline(admin.TabularInline):
     def best_leaf_group_display(self, obj):
         """Display best leaf group with contribution."""
         if obj and obj.best_leaf_group:
-            from api.models import LeafGroupEventContribution
+            from eventboard.models import LeafGroupEventContribution
             try:
                 contribution = LeafGroupEventContribution.objects.get(
                     leaf_group=obj.best_leaf_group,
@@ -3257,6 +3259,7 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     list_filter = ('event_type', 'is_active', 'is_visible_on_map')
     search_fields = ('name', 'description')
     actions = ['restart_event', 'save_event_to_history']
+    change_form_template = 'admin/eventboard/event/change_form.html'
     
     def get_queryset(self, request):
         """Filter events based on operator permissions."""
@@ -3282,12 +3285,12 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     
     def has_add_permission(self, request):
         """Operator kann Events hinzufügen."""
-        return request.user.has_perm('api.add_event')
+        return request.user.has_perm('eventboard.add_event')
     
     def has_change_permission(self, request, obj=None):
         """Operator kann nur Events bearbeiten, die zu verwalteten Gruppen gehören oder noch keine Gruppen haben."""
         if obj is None:
-            return request.user.has_perm('api.change_event')
+            return request.user.has_perm('eventboard.change_event')
         if request.user.is_superuser:
             return True
         managed_group_ids = get_operator_managed_group_ids(request.user)
@@ -3301,7 +3304,7 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Operator kann nur Events löschen, die zu verwalteten Gruppen gehören."""
         if obj is None:
-            return request.user.has_perm('api.delete_event')
+            return request.user.has_perm('eventboard.delete_event')
         if request.user.is_superuser:
             return True
         managed_group_ids = get_operator_managed_group_ids(request.user)
@@ -3334,8 +3337,8 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
         from django.urls import path
         urls = super().get_urls()
         custom_urls = [
-            path('<path:object_id>/restart/', self.admin_site.admin_view(self.restart_event_view), name='api_event_restart'),
-            path('<path:object_id>/save_history/', self.admin_site.admin_view(self.save_history_view), name='api_event_save_history'),
+            path('<path:object_id>/restart/', self.admin_site.admin_view(self.restart_event_view), name='eventboard_event_restart'),
+            path('<path:object_id>/save_history/', self.admin_site.admin_view(self.save_history_view), name='eventboard_event_save_history'),
         ]
         return custom_urls + urls
 
@@ -3367,12 +3370,12 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
                 managed_group_ids = get_operator_managed_group_ids(request.user)
                 if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
                     messages.error(request, _("Sie haben keine Berechtigung, dieses Event zurückzusetzen."))
-                    return redirect('admin:api_event_changelist')
+                    return redirect('admin:eventboard_event_changelist')
             # Save to history and restart
             obj.save_event_to_history()
             obj.restart_event()
             self.message_user(request, _("Event wurde zurückgesetzt. Vorheriger Fortschritt wurde in die Historie gespeichert."), messages.SUCCESS)
-        return redirect('admin:api_event_change', object_id)
+        return redirect('admin:eventboard_event_change', object_id)
     
     def save_history_view(self, request, object_id):
         """Custom view to save event history from detail page."""
@@ -3385,10 +3388,10 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
                 managed_group_ids = get_operator_managed_group_ids(request.user)
                 if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
                     messages.error(request, _("Sie haben keine Berechtigung, dieses Event in die Historie zu speichern."))
-                    return redirect('admin:api_event_changelist')
+                    return redirect('admin:eventboard_event_changelist')
             obj.save_event_to_history()
             self.message_user(request, _("Event wurde in die Historie gespeichert und zurückgesetzt."), messages.SUCCESS)
-        return redirect('admin:api_event_change', object_id)
+        return redirect('admin:eventboard_event_change', object_id)
 
 # TravelHistory registration moved to after TravelTrack
 
@@ -3432,8 +3435,14 @@ class EventHistoryAdmin(admin.ModelAdmin):
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """Prevent deleting history entries."""
-        return False
+        """Allow deleting history entries (analog to TravelHistory)."""
+        if request.user.is_superuser:
+            return True
+        # Operators can delete history entries for their managed groups
+        if obj is None:
+            return request.user.has_perm('eventboard.delete_eventhistory')
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group.id in managed_group_ids
 
     def total_distance_km_display(self, obj):
         """Display total_distance_km with German format (comma decimal)."""
@@ -4077,7 +4086,7 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return qs.none()
         
         # Hole alle Events, die zu verwalteten Gruppen gehören
-        from api.models import Event
+        from eventboard.models import Event
         managed_event_ids = Event.objects.filter(
             group_statuses__group_id__in=managed_group_ids
         ).values_list('id', flat=True).distinct()
@@ -5427,6 +5436,18 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     
     app_dict = self._build_app_dict(request, app_label)
     
+    # Extract Travel-related models from api app to create separate "Reisen" menu
+    travel_models = []
+    if 'api' in app_dict:
+        api_models = app_dict['api']['models']
+        travel_model_names = ['TravelTrack', 'Milestone', 'GroupTravelStatus', 'TravelHistory', 'GroupMilestoneAchievement', 'LeafGroupTravelContribution']
+        # Separate travel models from other api models
+        travel_models = [m for m in api_models if m.get('object_name') in travel_model_names]
+        # Remove travel models from api app
+        app_dict['api']['models'] = [m for m in api_models if m.get('object_name') not in travel_model_names]
+    
+    # Keep Eventboard app in menu (will be reordered below)
+    
     # Add Server Management links to Mgmt app menu (only for superusers)
     if 'mgmt' in app_dict and request.user.is_superuser:
         server_management_models = [
@@ -5480,6 +5501,32 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         app_dict['minecraft']['models'] = minecraft_management_models + app_dict['minecraft']['models']
     
     app_list = list(app_dict.values())
+    
+    # Add custom menu item for "Reisen" (Travels) with travel-related models
+    # Show for superusers and operators (if they have permissions)
+    if travel_models:
+        try:
+            # Check if user has any travel-related permissions
+            has_travel_perms = (
+                request.user.is_superuser or
+                request.user.has_perm('api.view_traveltrack') or
+                request.user.has_perm('api.view_milestone') or
+                request.user.has_perm('api.view_grouptravelstatus') or
+                request.user.has_perm('api.view_travelhistory')
+            )
+            
+            if has_travel_perms:
+                travel_app = {
+                    'name': _('Reisen'),
+                    'app_label': 'travels',
+                    'app_url': reverse('admin:api_traveltrack_changelist'),
+                    'has_module_perms': has_travel_perms,
+                    'models': travel_models,
+                }
+                app_list.append(travel_app)
+        except Exception:
+            # Silently fail if URLs are not available
+            pass
     
     # Add custom menu items for "Historische Berichte & Analysen" and "Session Management"
     # These appear as separate apps in the admin menu, positioned above Mgmt
@@ -5538,15 +5585,18 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     # Apps with lower numbers appear first, higher numbers appear last
     app_ordering = {
         'MCC Core API & Models': 1,
-        'Historical Reports & Analytics': 2,
-        'Historische Berichte & Analysen': 2,  # German translation
-        'Session Management': 3,
+        'Reisen': 2,
+        'Eventboard': 3,
         'MCC Game Interface': 4,
-        'IOT Management': 5,
-        'Kiosk Management': 6,
-        'MCC Live Map': 7,
-        'Leaderboard': 8,
-        'Ranking': 9,
+        'MCC Spiel-Interface': 4,  # German translation
+        'Historical Reports & Analytics': 5,
+        'Historische Berichte & Analysen': 5,  # German translation
+        'Session Management': 6,
+        'IOT Management': 7,
+        'Kiosk Management': 8,
+        'MCC Live Map': 9,
+        'Leaderboard': 10,
+        'Ranking': 11,
         # Minecraft Verwaltung and Mgmt at the end
         'Minecraft Verwaltung': 98,
         'Mgmt': 99,

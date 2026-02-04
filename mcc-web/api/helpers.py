@@ -17,7 +17,8 @@ Used by map, ranking, and leaderboard apps.
 from typing import List, Dict, Any, Optional
 from django.db.models import QuerySet, Sum
 from django.utils import timezone
-from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, Event, GroupEventStatus, HourlyMetric
+from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, HourlyMetric
+from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 
 
@@ -388,7 +389,7 @@ def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
         List of dictionaries containing event data.
     """
     from django.utils import timezone
-    from api.models import Event
+    # Event is already imported at top of file from eventboard.models
     
     now = timezone.now()
     active_events = Event.objects.filter(is_active=True, is_visible_on_map=True)

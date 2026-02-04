@@ -24,8 +24,9 @@ from django.db.models import Sum
 from api.models import (
     Group, TravelTrack, Cyclist, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, Milestone, TravelHistory, 
-    Event, GroupEventStatus, HourlyMetric
+    HourlyMetric
 )
+from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 from api.helpers import are_all_parents_visible
 from decimal import Decimal

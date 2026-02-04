@@ -25,9 +25,9 @@ from django.contrib.auth import get_user_model
 
 from api.models import (
     Group, Cyclist, GroupType, HourlyMetric, CyclistDeviceCurrentMileage,
-    TravelTrack, Milestone, GroupTravelStatus, Event, GroupEventStatus,
-    EventHistory, TravelHistory
+    TravelTrack, Milestone, GroupTravelStatus, TravelHistory
 )
+from eventboard.models import Event, GroupEventStatus, EventHistory
 from iot.models import Device, DeviceConfiguration
 from kiosk.models import KioskDevice, KioskPlaylistEntry
 

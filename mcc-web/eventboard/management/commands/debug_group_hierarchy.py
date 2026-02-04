@@ -6,7 +6,8 @@
 # @note    This code was developed with the assistance of AI (LLMs).
 
 from django.core.management.base import BaseCommand
-from api.models import Event, GroupEventStatus, Group, Cyclist
+from api.models import Group, Cyclist
+from eventboard.models import Event, GroupEventStatus
 from eventboard.utils import get_all_subgroup_ids
 
 

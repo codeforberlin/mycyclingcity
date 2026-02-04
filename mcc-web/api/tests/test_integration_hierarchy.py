@@ -23,13 +23,15 @@ from django.db import connection
 from datetime import timedelta
 
 from api.models import (
-    Cyclist, Group, Event, GroupEventStatus,
+    Cyclist, Group,
     TravelTrack, GroupTravelStatus, HourlyMetric
 )
+from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 from api.tests.conftest import (
-    CyclistFactory, DeviceFactory, GroupFactory, EventFactory,
-    GroupEventStatusFactory, TravelTrackFactory, GroupTravelStatusFactory,
+    CyclistFactory, DeviceFactory, GroupFactory,
+    TravelTrackFactory, GroupTravelStatusFactory,
+    EventFactory, GroupEventStatusFactory,
     HourlyMetricFactory
 )
 

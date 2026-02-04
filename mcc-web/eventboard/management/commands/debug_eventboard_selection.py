@@ -8,7 +8,8 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Event, GroupEventStatus, Group, Cyclist
+from api.models import Group, Cyclist
+from eventboard.models import Event, GroupEventStatus
 from eventboard.utils import get_all_subgroup_ids
 
 

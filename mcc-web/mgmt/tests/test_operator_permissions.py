@@ -25,9 +25,9 @@ from django.contrib.admin.sites import AdminSite
 
 from api.models import (
     Group, Cyclist, TravelTrack, Milestone, GroupTravelStatus,
-    TravelHistory, GroupMilestoneAchievement, Event, EventHistory,
-    GroupType
+    TravelHistory, GroupMilestoneAchievement, GroupType
 )
+from eventboard.models import Event, EventHistory
 from api.tests.conftest import (
     GroupFactory, CyclistFactory, TravelTrackFactory, MilestoneFactory,
     GroupTravelStatusFactory, EventFactory, GroupEventStatusFactory
@@ -264,7 +264,7 @@ class TestOperatorPermissions:
         top_group.managers.add(operator_user)
         
         # Create events
-        from api.models import GroupEventStatus
+        from eventboard.models import GroupEventStatus
         event1 = EventFactory()
         GroupEventStatusFactory(event=event1, group=child1)
         

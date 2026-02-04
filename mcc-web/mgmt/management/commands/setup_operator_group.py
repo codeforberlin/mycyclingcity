@@ -21,8 +21,9 @@ from django.contrib.auth.models import Group as AuthGroup, Permission
 from django.contrib.contenttypes.models import ContentType
 from api.models import (
     Group as ApiGroup, Cyclist, TravelTrack, Milestone, GroupTravelStatus,
-    TravelHistory, GroupMilestoneAchievement, Event, EventHistory
+    TravelHistory, GroupMilestoneAchievement
 )
+from eventboard.models import Event, EventHistory, GroupEventStatus
 from kiosk.models import KioskDevice, KioskPlaylistEntry
 import logging
 
@@ -108,9 +109,18 @@ class Command(BaseCommand):
             Permission.objects.get(codename='view_event', content_type=ContentType.objects.get_for_model(Event)),
         ])
         
-        # EventHistory permissions (view only)
+        # GroupEventStatus permissions
+        permissions_to_assign.extend([
+            Permission.objects.get(codename='add_groupeventstatus', content_type=ContentType.objects.get_for_model(GroupEventStatus)),
+            Permission.objects.get(codename='change_groupeventstatus', content_type=ContentType.objects.get_for_model(GroupEventStatus)),
+            Permission.objects.get(codename='delete_groupeventstatus', content_type=ContentType.objects.get_for_model(GroupEventStatus)),
+            Permission.objects.get(codename='view_groupeventstatus', content_type=ContentType.objects.get_for_model(GroupEventStatus)),
+        ])
+        
+        # EventHistory permissions (view and delete)
         permissions_to_assign.extend([
             Permission.objects.get(codename='view_eventhistory', content_type=ContentType.objects.get_for_model(EventHistory)),
+            Permission.objects.get(codename='delete_eventhistory', content_type=ContentType.objects.get_for_model(EventHistory)),
         ])
         
         # KioskDevice permissions

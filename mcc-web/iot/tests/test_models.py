@@ -311,11 +311,20 @@ class TestFirmwareImage:
         assert "1.0.0" in str(firmware)
     
     def test_firmware_unique_version(self):
-        """Test that firmware version must be unique."""
-        FirmwareImage.objects.create(name="Firmware 1", version="1.0.0")
+        """Test that firmware version must be unique per environment."""
+        from django.db import IntegrityError, transaction
         
-        with pytest.raises(Exception):  # IntegrityError
-            FirmwareImage.objects.create(name="Firmware 2", version="1.0.0")
+        # Version is unique together with environment, not globally unique
+        FirmwareImage.objects.create(name="Firmware 1", version="1.0.0", environment="production")
+        
+        # Same version in same environment should raise IntegrityError
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                FirmwareImage.objects.create(name="Firmware 2", version="1.0.0", environment="production")
+        
+        # Same version in different environment should be allowed
+        firmware3 = FirmwareImage.objects.create(name="Firmware 3", version="1.0.0", environment="development")
+        assert firmware3 is not None
 
 
 @pytest.mark.unit

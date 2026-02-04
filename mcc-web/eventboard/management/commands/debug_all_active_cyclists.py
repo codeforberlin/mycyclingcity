@@ -8,7 +8,8 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Event, GroupEventStatus, Cyclist
+from api.models import Cyclist
+from eventboard.models import Event, GroupEventStatus
 
 
 class Command(BaseCommand):

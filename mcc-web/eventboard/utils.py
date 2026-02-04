@@ -7,7 +7,8 @@
 
 from django.utils import timezone
 from datetime import timedelta
-from api.models import Cyclist, GroupEventStatus, Group, CyclistDeviceCurrentMileage
+from eventboard.models import GroupEventStatus
+from api.models import Cyclist, Group, CyclistDeviceCurrentMileage
 
 
 def get_all_subgroup_ids(top_group):
