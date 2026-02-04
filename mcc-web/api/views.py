@@ -872,20 +872,13 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
                     break
             
             # The delta is propagated recursively upward for all groups of the cyclist
-            # IMPORTANT: Skip groups that have already reached the goal to prevent unnecessary updates
+            # IMPORTANT: Always call update_group_hierarchy_progress, even if the group has reached the travel goal.
+            # This ensures that:
+            # - distance_total is still updated (for statistics/leaderboard)
+            # - Event statuses are still updated (events are independent of travel goals)
+            # - Parent groups are still updated (they might not have reached the goal)
+            # The function itself will skip travel distance updates if the goal is reached.
             for group in cyclist_obj.groups.all():
-                # Check if this group has already reached the goal before updating
-                try:
-                    travel_status = group.travel_status
-                    if travel_status.track.total_length_km > 0:
-                        current_distance = travel_status.current_travel_distance or Decimal('0.00000')
-                        if current_distance >= travel_status.track.total_length_km:
-                            logger.debug(f"[update_data] Group '{group.name}' has already reached the goal ({current_distance:.5f} km >= {travel_status.track.total_length_km:.5f} km) - skipping update")
-                            continue
-                except GroupTravelStatus.DoesNotExist:
-                    # No travel_status - continue with update (group might not be on a track)
-                    pass
-                
                 old_group_distance = group.distance_total
                 update_group_hierarchy_progress(group, distance_delta)
                 group.refresh_from_db()

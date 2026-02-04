@@ -1,0 +1,21 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    ticker.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% load i18n %}
+<script>
+    // Update ticker data source with active cyclists data
+    (function() {
+        var tickerDiv = document.getElementById('ticker-data-source');
+        if (tickerDiv) {
+            // Verwende JSON.stringify direkt, um sicherzustellen, dass Zahlen korrekt formatiert werden
+            var activeCyclists = {{ active_cyclists_json|safe }};
+            // Setze das dataset direkt mit dem JSON-String
+            tickerDiv.dataset.cyclists = JSON.stringify(activeCyclists);
+        }
+    })();
+</script>

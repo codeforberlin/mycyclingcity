@@ -915,6 +915,10 @@ class Event(models.Model):
 
     def is_currently_active(self):
         """Check if the event is currently active and should collect kilometers."""
+        # First check if event is active (enabled)
+        if not self.is_active:
+            return False
+        # Then check time constraints
         now = timezone.now()
         if self.start_time and now < self.start_time:
             return False  # Not started yet
@@ -1048,6 +1052,8 @@ def update_group_hierarchy_progress(group, delta_km):
     if not group or delta_km <= 0:
         logger.debug(f"[update_group_hierarchy_progress] Skipping - group={group}, delta_km={delta_km}")
         return
+    
+    logger.info(f"[update_group_hierarchy_progress] Processing group '{group.name}' (ID: {group.id}) with delta_km={delta_km}")
 
     # Get the group's travel status (if exists)
     travel_status = None
@@ -1170,8 +1176,17 @@ def update_group_hierarchy_progress(group, delta_km):
     # 2.5. Update Event statuses for active events
     # Get all event statuses for this group
     event_statuses = group.event_statuses.select_related('event').all()
+    if not event_statuses.exists():
+        logger.debug(f"[update_group_hierarchy_progress] Group '{group.name}' has no event statuses - skipping event updates")
+    else:
+        logger.info(f"[update_group_hierarchy_progress] Group '{group.name}' has {event_statuses.count()} event status(es) - checking for updates")
+    
     for event_status in event_statuses:
+        # Refresh event from database to ensure we have the latest is_active status
+        event_status.event.refresh_from_db()
         event = event_status.event
+        logger.info(f"[update_group_hierarchy_progress] Checking event '{event.name}' (ID: {event.id}) for group '{group.name}': is_active={event.is_active}, is_currently_active()={event.is_currently_active()}")
+        
         if event.is_currently_active():
             old_event_distance = event_status.current_distance_km
             # Update event distance using F() expression for atomic update
@@ -1179,9 +1194,9 @@ def update_group_hierarchy_progress(group, delta_km):
                 current_distance_km=models.F('current_distance_km') + delta_km
             )
             event_status.refresh_from_db()
-            logger.debug(f"[update_group_hierarchy_progress] Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
+            logger.info(f"[update_group_hierarchy_progress] ✅ Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
         else:
-            logger.debug(f"[update_group_hierarchy_progress] Event '{event.name}' is not currently active - will skip event_status update for group '{group.name}'")
+            logger.warning(f"[update_group_hierarchy_progress] ⚠️ Event '{event.name}' is not currently active (is_active={event.is_active}, start_time={event.start_time}, end_time={event.end_time}) - will skip event_status update for group '{group.name}'")
 
     # 3. RECURSION: Also update parent group
     # IMPORTANT: Propagate to parent even if THIS group reached the goal,

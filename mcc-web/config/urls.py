@@ -56,6 +56,7 @@ urlpatterns += i18n_patterns(
     path('ranking/', include('ranking.urls')),   # Ranking tables
     path('leaderboard/', include('leaderboard.urls')),  # Leaderboard tiles
     path('kiosk/', include('kiosk.urls')),      # Kiosk device management
+    path('eventboard/', include('eventboard.urls')),  # Eventboard
 
     # Privacy policy
     path('privacy/', privacy_policy, name='privacy_policy'),

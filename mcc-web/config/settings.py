@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     'map',
     'ranking',
     'leaderboard',
+    'eventboard',
 ]
 
 ASGI_APPLICATION = 'config.asgi.application'

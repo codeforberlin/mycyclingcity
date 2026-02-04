@@ -1,0 +1,1261 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    eventboard_page.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% load i18n %}
+{% load static %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{% trans "Eventboard" %} - MyCyclingCity</title>
+    {% url 'favicon' as favicon_url %}
+    <link rel="icon" type="image/png" href="{{ favicon_url }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        /* Base Styles - Desktop First */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .eventboard-container {
+            width: 100%;
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative;
+        }
+        
+        /* Activity Toast Container - Desktop */
+        .activity-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 380px;
+            pointer-events: none;
+        }
+        
+        /* Activity Toast Styles */
+        .activity-toast {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 14px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            pointer-events: auto;
+            animation: toastSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .activity-toast.fade-out {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+        
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes toastSlideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+        }
+        
+        .activity-toast-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .activity-toast-icon {
+            font-size: 20px;
+        }
+        
+        .activity-toast-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a1a;
+        }
+        
+        .activity-toast-body {
+            font-size: 13px;
+            color: #4a4a4a;
+            line-height: 1.5;
+        }
+        
+        .activity-toast-distance {
+            font-weight: 600;
+            color: #28a745;
+        }
+        
+        /* Eventboard Header */
+        .eventboard-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+        }
+        
+        .eventboard-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .eventboard-header .event-type {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .eventboard-header .event-time {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Groups Grid */
+        .eventboard-groups {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .group-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .group-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .group-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .group-card-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .group-card-info h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+        
+        .group-card-info .group-type {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        .group-card-distance {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 1rem 0;
+        }
+        
+        .group-card-progress {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .group-card-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Statistics Footer */
+        .eventboard-stats {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .eventboard-stats h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            padding: 1rem;
+        }
+        
+        .stat-item-label {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-item-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        /* Empty State */
+        .eventboard-empty {
+            text-align: center;
+            color: white;
+            padding: 4rem 2rem;
+            grid-column: 1 / -1;
+        }
+        
+        .eventboard-empty h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .eventboard-empty p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Event Selection Grid */
+        .event-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            padding: 0 1rem;
+        }
+        
+        .event-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: block;
+            border: 2px solid transparent;
+        }
+        
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+        
+        .event-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .event-type-badge {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .event-status-badge {
+            background: #e0e0e0;
+            color: #666;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .event-status-badge.active {
+            background: #28a745;
+            color: white;
+        }
+        
+        /* Live Badge für Events mit aktiven Radlern */
+        .event-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .live-indicator {
+            font-size: 0.7rem;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        
+        .live-text {
+            font-weight: 700;
+        }
+        
+        .active-count {
+            font-size: 0.7rem;
+            opacity: 0.95;
+        }
+        
+        /* Glow-Effekt für Events mit aktiven Radlern */
+        .event-card[data-has-active-cyclists="true"] {
+            position: relative;
+            animation: card-glow 3s ease-in-out infinite;
+        }
+        
+        .event-card[data-has-active-cyclists="true"]::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.3), rgba(238, 90, 111, 0.3));
+            border-radius: 14px;
+            z-index: -1;
+            animation: border-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 16px rgba(255, 107, 107, 0.8);
+            }
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        @keyframes card-glow {
+            0%, 100% {
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 10px rgba(255, 107, 107, 0.3);
+            }
+            50% {
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 20px rgba(255, 107, 107, 0.6);
+            }
+        }
+        
+        @keyframes border-glow {
+            0%, 100% {
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+        
+        .event-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 700;
+        }
+        
+        .event-card-time {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .event-card-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .event-card-stats .stat {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .event-card-stats .stat-value {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .event-card-stats .stat-label {
+            display: block;
+            font-size: 0.875rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        
+        /* Mobile Optimizations */
+        @media screen and (max-width: 1023px) {
+            .eventboard-container {
+                padding: 1rem;
+            }
+            
+            .eventboard-header h1 {
+                font-size: 1.75rem;
+            }
+            
+            .event-selection-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 0;
+            }
+            
+            .event-card {
+                padding: 1rem;
+            }
+            
+            .event-card h3 {
+                font-size: 1.25rem;
+            }
+            
+            .eventboard-groups {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .group-card {
+                padding: 1rem;
+            }
+            
+            .group-card-distance {
+                font-size: 1.5rem;
+            }
+            
+            /* Activity Toast Container - Mobile (links) */
+            .activity-toast-container {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            @keyframes toastSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(-400px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            
+            @keyframes toastSlideOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(-400px);
+                }
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Kiosk Mode - Fullscreen, no scrolling */
+        {% if is_kiosk %}
+        .eventboard-container {
+            height: 100vh;
+            overflow: hidden;
+            padding: 1rem;
+        }
+        
+        .activity-toast-container {
+            top: 20px;
+            right: 50%;
+            transform: translateX(50%);
+            max-width: 500px;
+        }
+        {% endif %}
+    </style>
+</head>
+<body>
+    <div class="eventboard-container" id="eventboard-container">
+        {% if not show_event_selection %}
+        <!-- Activity Toast Container - Nur wenn Event ausgewählt -->
+        <div class="activity-toast-container" id="activity-toast-container"></div>
+        
+        <!-- Hidden Ticker Target für HTMX-Updates -->
+        <div id="ticker-data-source" 
+             hx-get="{% url 'eventboard:eventboard_ticker' %}?{% if event_id %}event_id={{ event_id }}&{% endif %}{% if group_filter_id %}group_filter_id={{ group_filter_id }}{% endif %}"
+             hx-trigger="load, every 5s"
+             hx-swap="innerHTML"
+             style="display: none;"
+             data-cyclists="[]">
+        </div>
+        {% endif %}
+        
+        {% if show_event_selection %}
+            <!-- Event-Auswahl-Ansicht -->
+            <header class="eventboard-header">
+                <h1>{% trans "Eventboard" %}</h1>
+                <p>{% trans "Wählen Sie ein Event aus" %}</p>
+            </header>
+            
+            <main class="event-selection-grid" id="event-selection-grid">
+                {% for event_item in events %}
+                <a href="?event_id={{ event_item.id }}{% if group_filter_id %}&group_filter_id={{ group_filter_id }}{% endif %}" 
+                   class="event-card" 
+                   data-event-id="{{ event_item.id }}"
+                   {% if event_item.has_active_cyclists %}data-has-active-cyclists="true"{% endif %}>
+                    <div class="event-card-header">
+                        <span class="event-type-badge">{{ event_item.event_type }}</span>
+                        {% if event_item.is_currently_active %}
+                        <span class="event-status-badge active">{% trans "Aktiv" %}</span>
+                        {% else %}
+                        <span class="event-status-badge">{% trans "Beendet" %}</span>
+                        {% endif %}
+                        {% if event_item.has_active_cyclists %}
+                        <span class="event-live-badge">
+                            <span class="live-indicator">🔴</span>
+                            <span class="live-text">{% trans "Live" %}</span>
+                            <span class="active-count">({{ event_item.active_cyclists_count }} {% trans "Radler" %})</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h3>{{ event_item.name }}</h3>
+                    <div class="event-card-time">
+                        {% if event_item.start_time %}
+                            {{ event_item.start_time|date:"d.m.Y" }}
+                        {% endif %}
+                        {% if event_item.start_time and event_item.end_time %} - {% endif %}
+                        {% if event_item.end_time %}
+                            {{ event_item.end_time|date:"d.m.Y" }}
+                        {% endif %}
+                    </div>
+                    <div class="event-card-stats">
+                        <div class="stat">
+                            <span class="stat-value" data-stat="distance">{{ event_item.total_distance_km|floatformat:2 }} km</span>
+                            <span class="stat-label">{% trans "Gesamt" %}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" data-stat="groups">{{ event_item.group_count }}</span>
+                            <span class="stat-label">{% trans "Gruppen" %}</span>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="eventboard-empty">
+                    <h2>{% trans "Keine Events gefunden" %}</h2>
+                    <p>{% trans "Es sind derzeit keine Events verfügbar." %}</p>
+                </div>
+                {% endfor %}
+            </main>
+        {% elif event %}
+            <!-- Event Header -->
+            <header class="eventboard-header">
+                <h1>{{ event.name }}</h1>
+                <div class="event-type">
+                    {{ event.get_event_type_display }}
+                </div>
+                {% if event.start_time or event.end_time %}
+                <div class="event-time">
+                    {% if event.start_time %}
+                        {% trans "Start" %}: {{ event.start_time|date:"d.m.Y H:i" }}
+                    {% endif %}
+                    {% if event.start_time and event.end_time %} | {% endif %}
+                    {% if event.end_time %}
+                        {% trans "Ende" %}: {{ event.end_time|date:"d.m.Y H:i" }}
+                    {% endif %}
+                </div>
+                {% endif %}
+            </header>
+            
+            <!-- Groups Grid -->
+            <main class="eventboard-groups">
+                {% for group in groups %}
+                <div class="group-card" style="{% if group.color %}border-left: 4px solid {{ group.color }};{% endif %}">
+                    <div class="group-card-header">
+                        {% if group.logo_url %}
+                        <img src="{{ group.logo_url }}" alt="{{ group.name }}" class="group-card-logo">
+                        {% else %}
+                        <div class="group-card-logo" style="background: {% if group.color %}{{ group.color }}{% else %}#667eea{% endif %}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.5rem;">
+                            {{ group.short_name|default:group.name|slice:":2"|upper }}
+                        </div>
+                        {% endif %}
+                        <div class="group-card-info">
+                            <h3>{{ group.name }}</h3>
+                            {% if group.group_type %}
+                            <div class="group-type">{{ group.group_type }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="group-card-distance">
+                        {{ group.current_distance_km|floatformat:2 }} km
+                    </div>
+                    {% if statistics.total_distance_km > 0 %}
+                    <div class="group-card-progress">
+                        <div class="group-card-progress-bar" style="width: {{ group.progress_percentage|floatformat:1 }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="eventboard-empty">
+                    <h2>{% trans "Keine Gruppen gefunden" %}</h2>
+                    <p>{% trans "Für dieses Event sind noch keine Gruppen registriert." %}</p>
+                </div>
+                {% endfor %}
+            </main>
+            
+            <!-- Statistics Footer -->
+            <footer class="eventboard-stats">
+                <h2>{% trans "Statistiken" %}</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-item-label">{% trans "Gesamtkilometer" %}</div>
+                        <div class="stat-item-value">{{ statistics.total_distance_km|floatformat:2 }} km</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">{% trans "Teilnehmende Gruppen" %}</div>
+                        <div class="stat-item-value">{{ statistics.group_count }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">{% trans "Durchschnitt" %}</div>
+                        <div class="stat-item-value">{{ statistics.average_distance_km|floatformat:2 }} km</div>
+                    </div>
+                </div>
+            </footer>
+        {% else %}
+            <!-- Empty State - No Event Selected -->
+            <div class="eventboard-empty">
+                <h2>{% trans "Eventboard" %}</h2>
+                <p>{% trans "Bitte wählen Sie ein Event aus, um die Übersicht anzuzeigen." %}</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- JavaScript für Eventboard -->
+    <script>
+        console.log('Eventboard: Script block loaded, show_event_selection = {% if show_event_selection %}true{% else %}false{% endif %}');
+        // Activity Toast System
+        var maxToasts = 5;
+        var toastDuration = 5000;
+        var lastTickerData = {};
+        
+        // HTMX Event Listener für Ticker-Updates
+        // Extrahiere Daten direkt aus dem HTMX-Response, da Scripts in innerHTML nicht ausgeführt werden
+        function processTickerData() {
+            var tickerDiv = document.getElementById('ticker-data-source');
+            if (!tickerDiv) {
+                console.log('Eventboard: ticker-data-source nicht gefunden');
+                return;
+            }
+            
+            console.log('Eventboard: processTickerData() aufgerufen');
+            
+            // Versuche, Daten aus dataset zu lesen
+            var cyclistsJson = tickerDiv.dataset.cyclists;
+            if (!cyclistsJson || cyclistsJson === '[]') {
+                // Falls keine Daten im dataset, versuche aus dem innerHTML zu extrahieren
+                var scriptTag = tickerDiv.querySelector('script');
+                if (scriptTag) {
+                    // Script wurde eingefügt, aber nicht ausgeführt - extrahiere Daten manuell
+                    var scriptContent = scriptTag.textContent || scriptTag.innerHTML;
+                    
+                    // Versuche, das activeCyclists Array zu extrahieren
+                    // Prüfe zuerst, ob das Array leer ist
+                    if (scriptContent.includes('var activeCyclists') && 
+                        (scriptContent.includes('activeCyclists = []') || 
+                         scriptContent.match(/activeCyclists\s*=\s*\[\s*\]/))) {
+                        // Leeres Array
+                        cyclistsJson = '[]';
+                        tickerDiv.dataset.cyclists = cyclistsJson;
+                        console.log('Eventboard: Empty cyclists array detected');
+                    } else {
+                        // Suche nach dem Array-Inhalt zwischen den eckigen Klammern
+                        // Verwende einen non-greedy Match, der bis zum schließenden ] geht
+                        var arrayMatch = scriptContent.match(/var activeCyclists\s*=\s*(\[[\s\S]*?\]);/);
+                        if (arrayMatch && arrayMatch[1]) {
+                            try {
+                                cyclistsJson = arrayMatch[1].trim();
+                                // Bereinige mögliche Probleme
+                                cyclistsJson = cyclistsJson.replace(/,\s*\]/g, ']'); // Entferne trailing commas
+                                cyclistsJson = cyclistsJson.replace(/,\s*,/g, ','); // Entferne doppelte Kommas
+                                
+                                // Validiere, dass es gültiges JSON ist
+                                var testParse = JSON.parse(cyclistsJson);
+                                tickerDiv.dataset.cyclists = cyclistsJson;
+                                console.log('Eventboard: Successfully extracted cyclists data from script');
+                            } catch (e) {
+                                console.error('Error parsing extracted JSON:', e);
+                                console.error('Extracted JSON string (first 200 chars):', cyclistsJson.substring(0, 200));
+                                
+                                // Versuche, das Array direkt aus dem dataset zu lesen, falls das Script es bereits gesetzt hat
+                                // Das Script sollte tickerDiv.dataset.cyclists setzen, wenn es ausgeführt wird
+                                if (tickerDiv.dataset.cyclists && tickerDiv.dataset.cyclists !== '[]') {
+                                    cyclistsJson = tickerDiv.dataset.cyclists;
+                                    console.log('Eventboard: Using dataset.cyclists from executed script');
+                                } else {
+                                    // Keine Daten verfügbar
+                                    cyclistsJson = '[]';
+                                    tickerDiv.dataset.cyclists = cyclistsJson;
+                                    console.log('Eventboard: No valid data found, using empty array');
+                                }
+                            }
+                        } else {
+                            // Kein Array gefunden - prüfe ob dataset bereits gesetzt ist
+                            if (tickerDiv.dataset.cyclists) {
+                                cyclistsJson = tickerDiv.dataset.cyclists;
+                                console.log('Eventboard: Using existing dataset.cyclists');
+                            } else {
+                                // Keine Daten verfügbar
+                                cyclistsJson = '[]';
+                                tickerDiv.dataset.cyclists = cyclistsJson;
+                                console.log('Eventboard: No data found, using empty array');
+                            }
+                        }
+                    }
+                } else {
+                    // Kein Script-Tag gefunden
+                    return;
+                }
+            }
+            
+            if (!cyclistsJson || cyclistsJson === '[]') {
+                return; // Keine Daten verfügbar
+            }
+            
+            try {
+                var activeCyclists = JSON.parse(cyclistsJson);
+                console.log('Eventboard: Verarbeite', activeCyclists.length, 'aktive Radler');
+                if (activeCyclists.length > 0) {
+                    console.log('Eventboard: Erste 3 Radler:', activeCyclists.slice(0, 3));
+                } else {
+                    console.log('Eventboard: KEINE aktiven Radler gefunden!');
+                    console.log('Eventboard: tickerDiv.dataset.cyclists =', tickerDiv.dataset.cyclists);
+                    console.log('Eventboard: tickerDiv.innerHTML =', tickerDiv.innerHTML.substring(0, 500));
+                }
+                
+                activeCyclists.forEach(function(cyclist) {
+                    var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
+                    var lastKm = lastTickerData[key];
+                    var shouldShowToast = false;
+                    
+                    if (!lastKm) {
+                        shouldShowToast = true;
+                    } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
+                        shouldShowToast = true;
+                    } else {
+                        var container = document.getElementById('activity-toast-container');
+                        if (container) {
+                            var existingToasts = container.querySelectorAll('.activity-toast');
+                            var toastVisible = false;
+                            for (var i = 0; i < existingToasts.length; i++) {
+                                var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                                if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                                    toastVisible = true;
+                                    var distanceSpan = existingToasts[i].querySelector('.activity-toast-distance');
+                                    if (distanceSpan) {
+                                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                                    }
+                                    break;
+                                }
+                            }
+                            if (!toastVisible) {
+                                shouldShowToast = true;
+                            }
+                        }
+                    }
+                    
+                    if (shouldShowToast) {
+                        createActivityToast(cyclist);
+                        lastTickerData[key] = cyclist.session_km;
+                    }
+                });
+            } catch (e) {
+                console.error('Error parsing ticker data:', e);
+            }
+        }
+        
+        // Event Listener für HTMX-Updates
+        // HTMX führt Scripts in innerHTML nicht automatisch aus, daher müssen wir sie manuell ausführen
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target && event.detail.target.id === 'ticker-data-source') {
+                var tickerDiv = event.detail.target;
+                
+                // Führe Scripts im eingefügten HTML aus
+                var scripts = tickerDiv.querySelectorAll('script');
+                scripts.forEach(function(script) {
+                    try {
+                        // Erstelle neues Script-Element und führe es aus
+                        var newScript = document.createElement('script');
+                        newScript.textContent = script.textContent || script.innerHTML;
+                        document.body.appendChild(newScript);
+                        document.body.removeChild(newScript);
+                    } catch (e) {
+                        console.error('Error executing script:', e);
+                    }
+                });
+                
+                // Verarbeite Daten nach Script-Ausführung
+                setTimeout(processTickerData, 100);
+            }
+        });
+        
+        // Zusätzlicher Listener für afterSettle (Fallback)
+        document.body.addEventListener('htmx:afterSettle', function(event) {
+            if (event.detail.target && event.detail.target.id === 'ticker-data-source') {
+                setTimeout(processTickerData, 150);
+            }
+        });
+        
+        // Auto-Update für Eventboard-Daten (alle 30 Sekunden)
+        {% if event_id %}
+        function updateEventboard() {
+            var apiUrl = '{% url "eventboard:eventboard_api" %}?event_id={{ event_id }}{% if group_filter_id %}&group_filter_id={{ group_filter_id }}{% endif %}';
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.groups && data.groups.length > 0) {
+                        // Update groups
+                        var groupsContainer = document.querySelector('.eventboard-groups');
+                        if (groupsContainer) {
+                            groupsContainer.innerHTML = '';
+                            var maxDistance = Math.max(...data.groups.map(g => g.current_distance_km));
+                            if (maxDistance === 0) maxDistance = 1.0;
+                            
+                            data.groups.forEach(function(group) {
+                                var groupCard = document.createElement('div');
+                                groupCard.className = 'group-card';
+                                if (group.color) {
+                                    groupCard.style.borderLeft = '4px solid ' + group.color;
+                                }
+                                
+                                var logoHtml = '';
+                                if (group.logo_url) {
+                                    logoHtml = '<img src="' + group.logo_url + '" alt="' + group.name + '" class="group-card-logo">';
+                                } else {
+                                    var initials = (group.short_name || group.name || '').slice(0, 2).toUpperCase();
+                                    var bgColor = group.color || '#667eea';
+                                    logoHtml = '<div class="group-card-logo" style="background: ' + bgColor + '; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.5rem;">' + initials + '</div>';
+                                }
+                                
+                                var progressWidth = (group.current_distance_km / maxDistance) * 100;
+                                
+                                groupCard.innerHTML = 
+                                    '<div class="group-card-header">' +
+                                    logoHtml +
+                                    '<div class="group-card-info">' +
+                                    '<h3>' + group.name + '</h3>' +
+                                    (group.group_type ? '<div class="group-type">' + group.group_type + '</div>' : '') +
+                                    '</div>' +
+                                    '</div>' +
+                                    '<div class="group-card-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km</div>' +
+                                    '<div class="group-card-progress">' +
+                                    '<div class="group-card-progress-bar" style="width: ' + progressWidth + '%"></div>' +
+                                    '</div>';
+                                groupsContainer.appendChild(groupCard);
+                            });
+                        }
+                        
+                        // Update statistics
+                        if (data.statistics) {
+                            var statItems = document.querySelectorAll('.stat-item-value');
+                            if (statItems.length >= 3) {
+                                statItems[0].textContent = formatNumberDE(data.statistics.total_distance_km, 2) + ' km';
+                                statItems[1].textContent = data.statistics.group_count;
+                                statItems[2].textContent = formatNumberDE(data.statistics.average_distance_km, 2) + ' km';
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating eventboard:', error);
+                });
+        }
+        
+        // Starte Auto-Update (alle 30 Sekunden)
+        setInterval(updateEventboard, 30000);
+        {% endif %}
+        
+        // Auto-Update für Event-Auswahlseite (alle 30 Sekunden)
+        {% if show_event_selection %}
+        console.log('Eventboard: Defining updateEventSelection function');
+        function updateEventSelection() {
+            var apiUrl = '{% url "eventboard:eventboard_selection_api" %}{% if group_filter_id %}?group_filter_id={{ group_filter_id }}{% endif %}';
+            console.log('Eventboard: Updating event selection from', apiUrl);
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Eventboard: Received', data.events ? data.events.length : 0, 'events');
+                    if (data.events && data.events.length > 0) {
+                        var grid = document.getElementById('event-selection-grid');
+                        if (!grid) {
+                            console.warn('Eventboard: event-selection-grid not found');
+                            return;
+                        }
+                        
+                        // Erstelle eine Map der aktuellen Event-Karten
+                        var existingCards = {};
+                        var cards = grid.querySelectorAll('.event-card');
+                        cards.forEach(function(card) {
+                            var eventId = card.getAttribute('data-event-id');
+                            if (eventId) {
+                                existingCards[eventId] = card;
+                            }
+                        });
+                        
+                        // Aktualisiere bestehende Karten oder erstelle neue
+                        data.events.forEach(function(event) {
+                            var card = existingCards[event.id];
+                            if (card) {
+                                // Aktualisiere bestehende Karte
+                                updateEventCard(card, event);
+                            } else {
+                                // Erstelle neue Karte
+                                var newCard = createEventCard(event);
+                                grid.appendChild(newCard);
+                            }
+                        });
+                        
+                        // Entferne Karten, die nicht mehr in der Liste sind
+                        var currentEventIds = new Set(data.events.map(e => e.id.toString()));
+                        cards.forEach(function(card) {
+                            var eventId = card.getAttribute('data-event-id');
+                            if (eventId && !currentEventIds.has(eventId)) {
+                                card.remove();
+                            }
+                        });
+                        
+                        // Sortiere Karten im Grid (Events mit aktiven Radlern zuerst)
+                        var sortedCards = Array.from(grid.querySelectorAll('.event-card'));
+                        sortedCards.sort(function(a, b) {
+                            var aHasActive = a.getAttribute('data-has-active-cyclists') === 'true';
+                            var bHasActive = b.getAttribute('data-has-active-cyclists') === 'true';
+                            if (aHasActive !== bHasActive) {
+                                return bHasActive - aHasActive;
+                            }
+                            if (aHasActive && bHasActive) {
+                                var aCount = parseInt(a.querySelector('.active-count')?.textContent.match(/\d+/) || [0])[0];
+                                var bCount = parseInt(b.querySelector('.active-count')?.textContent.match(/\d+/) || [0])[0];
+                                return bCount - aCount;
+                            }
+                            return 0;
+                        });
+                        sortedCards.forEach(function(card) {
+                            grid.appendChild(card);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating event selection:', error);
+                });
+        }
+        
+        function updateEventCard(card, event) {
+            // Aktualisiere Kilometer
+            var distanceStat = card.querySelector('[data-stat="distance"]');
+            if (distanceStat) {
+                var oldValue = distanceStat.textContent;
+                var newValue = formatNumberDE(event.total_distance_km, 2) + ' km';
+                distanceStat.textContent = newValue;
+                if (oldValue !== newValue) {
+                    console.log('Eventboard: Updated distance for event', event.id, 'from', oldValue, 'to', newValue);
+                }
+            } else {
+                console.warn('Eventboard: distance stat not found for event', event.id);
+            }
+            
+            // Aktualisiere Gruppen-Anzahl
+            var groupsStat = card.querySelector('[data-stat="groups"]');
+            if (groupsStat) {
+                groupsStat.textContent = event.group_count;
+            }
+            
+            // Aktualisiere Live-Badge
+            var header = card.querySelector('.event-card-header');
+            if (header) {
+                var existingBadge = header.querySelector('.event-live-badge');
+                
+                if (event.has_active_cyclists) {
+                    if (!existingBadge) {
+                        // Erstelle Live-Badge
+                        var badge = document.createElement('span');
+                        badge.className = 'event-live-badge';
+                        badge.innerHTML = 
+                            '<span class="live-indicator">🔴</span>' +
+                            '<span class="live-text">{% trans "Live" %}</span>' +
+                            '<span class="active-count">(' + event.active_cyclists_count + ' {% trans "Radler" %})</span>';
+                        header.appendChild(badge);
+                    } else {
+                        // Aktualisiere Anzahl
+                        var countSpan = existingBadge.querySelector('.active-count');
+                        if (countSpan) {
+                            countSpan.textContent = '(' + event.active_cyclists_count + ' {% trans "Radler" %})';
+                        }
+                    }
+                    card.setAttribute('data-has-active-cyclists', 'true');
+                } else {
+                    // Entferne Live-Badge
+                    if (existingBadge) {
+                        existingBadge.remove();
+                    }
+                    card.removeAttribute('data-has-active-cyclists');
+                }
+            }
+        }
+        
+        function createEventCard(event) {
+            var card = document.createElement('a');
+            card.href = '?event_id=' + event.id + '{% if group_filter_id %}&group_filter_id={{ group_filter_id }}{% endif %}';
+            card.className = 'event-card';
+            card.setAttribute('data-event-id', event.id);
+            if (event.has_active_cyclists) {
+                card.setAttribute('data-has-active-cyclists', 'true');
+            }
+            
+            var statusBadge = event.is_currently_active ? 
+                '<span class="event-status-badge active">{% trans "Aktiv" %}</span>' :
+                '<span class="event-status-badge">{% trans "Beendet" %}</span>';
+            
+            var liveBadge = '';
+            if (event.has_active_cyclists) {
+                liveBadge = '<span class="event-live-badge">' +
+                    '<span class="live-indicator">🔴</span>' +
+                    '<span class="live-text">{% trans "Live" %}</span>' +
+                    '<span class="active-count">(' + event.active_cyclists_count + ' {% trans "Radler" %})</span>' +
+                    '</span>';
+            }
+            
+            var startDate = event.start_time ? new Date(event.start_time).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
+            var endDate = event.end_time ? new Date(event.end_time).toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
+            var timeRange = startDate + (startDate && endDate ? ' - ' : '') + endDate;
+            
+            card.innerHTML = 
+                '<div class="event-card-header">' +
+                '<span class="event-type-badge">' + event.event_type + '</span>' +
+                statusBadge +
+                liveBadge +
+                '</div>' +
+                '<h3>' + event.name + '</h3>' +
+                '<div class="event-card-time">' + timeRange + '</div>' +
+                '<div class="event-card-stats">' +
+                '<div class="stat">' +
+                '<span class="stat-value" data-stat="distance">' + formatNumberDE(event.total_distance_km, 2) + ' km</span>' +
+                '<span class="stat-label">{% trans "Gesamt" %}</span>' +
+                '</div>' +
+                '<div class="stat">' +
+                '<span class="stat-value" data-stat="groups">' + event.group_count + '</span>' +
+                '<span class="stat-label">{% trans "Gruppen" %}</span>' +
+                '</div>' +
+                '</div>';
+            
+            return card;
+        }
+        
+        // Starte Auto-Update (alle 30 Sekunden)
+        // WICHTIG: Rufe die Funktion sofort beim Laden auf, nicht nur alle 30 Sekunden
+        // Warte, bis das DOM vollständig geladen ist
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Eventboard: DOM loaded, starting updateEventSelection');
+                updateEventSelection();
+                setInterval(updateEventSelection, 30000);
+            });
+        } else {
+            // DOM ist bereits geladen
+            console.log('Eventboard: DOM already loaded, starting updateEventSelection');
+            updateEventSelection();
+            setInterval(updateEventSelection, 30000);
+        }
+        {% endif %}
+        
+        function createActivityToast(cyclist) {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+            
+            // Check if toast already exists
+            var existingToasts = container.querySelectorAll('.activity-toast');
+            var toastExists = false;
+            var existingToast = null;
+            
+            for (var i = 0; i < existingToasts.length; i++) {
+                var toastBody = existingToasts[i].querySelector('.activity-toast-body');
+                if (toastBody && toastBody.textContent.includes(cyclist.user_id)) {
+                    existingToast = existingToasts[i];
+                    var distanceSpan = existingToast.querySelector('.activity-toast-distance');
+                    if (distanceSpan) {
+                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                    }
+                    toastExists = true;
+                    sortActivityToasts();
+                    return;
+                }
+            }
+            
+            // Remove oldest toast if at max
+            if (container.children.length >= maxToasts) {
+                var toastsArray = Array.from(container.children);
+                toastsArray.sort(function(a, b) {
+                    var aKm = parseFloat(a.dataset.sessionKm || 0);
+                    var bKm = parseFloat(b.dataset.sessionKm || 0);
+                    return aKm - bKm;
+                });
+                
+                var lowestToast = toastsArray[0];
+                if (lowestToast && cyclist.session_km > parseFloat(lowestToast.dataset.sessionKm || 0)) {
+                    lowestToast.classList.add('fade-out');
+                    setTimeout(function() {
+                        if (lowestToast.parentNode) {
+                            lowestToast.remove();
+                        }
+                    }, 300);
+                } else {
+                    return;
+                }
+            }
+            
+            var toast = document.createElement('div');
+            toast.className = 'activity-toast';
+            toast.setAttribute('data-cyclist-key', cyclist.user_id + '|' + (cyclist.group_short_name || ''));
+            toast.setAttribute('data-session-km', cyclist.session_km);
+            
+            var icon = '🚴';
+            var title = '{% trans "Aktuell radelnd" %}';
+            var body = cyclist.user_id;
+            if (cyclist.group_short_name) {
+                body += ' (' + cyclist.group_short_name + ')';
+            }
+            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+            
+            toast.innerHTML = 
+                '<div class="activity-toast-header">' +
+                '<span class="activity-toast-icon">' + icon + '</span>' +
+                '<span class="activity-toast-title">' + title + '</span>' +
+                '</div>' +
+                '<div class="activity-toast-body">' + body + '</div>';
+            
+            container.appendChild(toast);
+            sortActivityToasts();
+            
+            setTimeout(function() {
+                if (toast.parentNode) {
+                    toast.classList.add('fade-out');
+                    setTimeout(function() {
+                        if (toast.parentNode) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            }, toastDuration);
+        }
+        
+        function sortActivityToasts() {
+            var container = document.getElementById('activity-toast-container');
+            if (!container) return;
+            
+            var toasts = Array.from(container.children);
+            toasts.sort(function(a, b) {
+                var aKm = parseFloat(a.dataset.sessionKm || 0);
+                var bKm = parseFloat(b.dataset.sessionKm || 0);
+                return bKm - aKm;
+            });
+            
+            toasts.forEach(function(toast) {
+                container.appendChild(toast);
+            });
+        }
+        
+        function formatNumberDE(num, decimals) {
+            return num.toFixed(decimals).replace('.', ',');
+        }
+        
+        // Debug: Prüfe, ob updateEventSelection definiert ist und rufe sie auf
+        {% if show_event_selection %}
+        console.log('Eventboard: Checking if updateEventSelection is defined:', typeof updateEventSelection);
+        if (typeof updateEventSelection === 'function') {
+            console.log('Eventboard: updateEventSelection is defined, calling it now');
+            // Rufe die Funktion sofort auf, falls sie bereits definiert ist
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Eventboard: DOM loaded, calling updateEventSelection');
+                    updateEventSelection();
+                });
+            } else {
+                console.log('Eventboard: DOM already loaded, calling updateEventSelection');
+                updateEventSelection();
+            }
+        } else {
+            console.error('Eventboard: updateEventSelection is NOT defined!');
+        }
+        {% endif %}
+    </script>
+</body>
+</html>

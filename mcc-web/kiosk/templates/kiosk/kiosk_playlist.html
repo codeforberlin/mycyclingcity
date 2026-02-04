@@ -321,19 +321,15 @@
                     }
                 } else if (entry.view_type === 'eventboard') {
                     // Use Django URL reverse to get correct URL with language prefix
-                    url = '{% url "map:map_page" %}';
+                    url = '{% url "eventboard:eventboard_page" %}';
+                    // Add kiosk parameter
+                    params.push('kiosk=true');
                     if (entry.event_filter_id) {
                         params.push('event_id=' + entry.event_filter_id);
                     }
-                    // Use group_id if available, otherwise fall back to group_name
+                    // Use group_filter_id for eventboard (TOP-Gruppe)
                     if (entry.group_filter_id) {
-                        params.push('group_id=' + encodeURIComponent(entry.group_filter_id));
-                    } else if (entry.group_filter_name) {
-                        params.push('group_name=' + encodeURIComponent(entry.group_filter_name));
-                    }
-                    // Add track filter if available
-                    if (entry.track_filter_ids && entry.track_filter_ids.length > 0) {
-                        params.push('track_ids=' + encodeURIComponent(entry.track_filter_ids.join(',')));
+                        params.push('group_filter_id=' + encodeURIComponent(entry.group_filter_id));
                     }
                 } else if (entry.view_type === 'map') {
                     // Use Django URL reverse to get correct URL with language prefix
@@ -358,17 +354,22 @@
                     url += '?' + params.join('&');
                 }
                 
-                console.log('Fetching URL:', url);
+                console.log('Kiosk: Fetching URL:', url);
                 
                 // Use fetch to load the view and manually insert it
                 fetch(url)
                     .then(response => {
+                        console.log('Kiosk: Response status:', response.status, response.statusText);
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
                         return response.text();
                     })
                     .then(html => {
+                        console.log('Kiosk: Received HTML, length:', html.length, 'chars');
+                        if (html.length < 100) {
+                            console.warn('Kiosk: HTML response seems too short:', html.substring(0, 200));
+                        }
                         // Parse the HTML and extract both head and body content
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
@@ -413,14 +414,73 @@
                         // Get the body content (or the main container)
                         let content = null;
                         
-                        // Priority 1: Look for view-container
+                        console.log('Kiosk: Loading view type:', entry.view_type);
+                        
+                        // Priority 1: Look for view-container (but skip for eventboard, leaderboard, and map - they have specific handlers)
                         const viewContainer = doc.querySelector('#view-container');
-                        if (viewContainer) {
+                        if (viewContainer && entry.view_type !== 'eventboard' && entry.view_type !== 'leaderboard' && entry.view_type !== 'map') {
+                            console.log('Kiosk: Found #view-container');
                             content = viewContainer.cloneNode(true);
                         } else {
-                            // Priority 2: Look for leaderboard-view
+                            // Priority 2: Look for eventboard-container (for eventboard view)
+                            if (entry.view_type === 'eventboard') {
+                                console.log('Kiosk: Looking for eventboard container...');
+                                const eventboardContainer = doc.querySelector('#eventboard-container, .eventboard-container');
+                                console.log('Kiosk: Eventboard container found:', !!eventboardContainer);
+                                if (eventboardContainer) {
+                                    console.log('Kiosk: Creating eventboard wrapper...');
+                                    // Create a wrapper container for eventboard view with Activity Toasts
+                                    content = document.createElement('div');
+                                    content.style.width = '100%';
+                                    content.style.height = '100%';
+                                    content.style.position = 'relative';
+                                    
+                                    // Clone the eventboard container
+                                    const clonedEventboardContainer = eventboardContainer.cloneNode(true);
+                                    
+                                    // Store event and group filter in data attributes for Activity Toasts
+                                    if (entry.event_filter_id) {
+                                        clonedEventboardContainer.setAttribute('data-event-filter', entry.event_filter_id);
+                                    }
+                                    if (entry.group_filter_id) {
+                                        clonedEventboardContainer.setAttribute('data-group-filter-id', entry.group_filter_id);
+                                    }
+                                    
+                                    content.appendChild(clonedEventboardContainer);
+                                    
+                                    // Also clone the Activity Toast Container (if present)
+                                    const activityToastContainer = doc.querySelector('#activity-toast-container');
+                                    if (activityToastContainer) {
+                                        const clonedActivityToastContainer = activityToastContainer.cloneNode(true);
+                                        // Ensure it's positioned correctly for kiosk mode
+                                        clonedActivityToastContainer.style.position = 'fixed';
+                                        clonedActivityToastContainer.style.top = '20px';
+                                        clonedActivityToastContainer.style.right = '20px';
+                                        clonedActivityToastContainer.style.zIndex = '2000';
+                                        content.appendChild(clonedActivityToastContainer);
+                                    }
+                                    
+                                    // Also clone the hidden ticker data source (needed for Activity Toasts)
+                                    const tickerDataSource = doc.querySelector('#ticker-data-source');
+                                    if (tickerDataSource) {
+                                        content.appendChild(tickerDataSource.cloneNode(true));
+                                    }
+                                    console.log('Kiosk: Eventboard content created successfully');
+                                } else {
+                                    console.error('Kiosk: Eventboard container not found in HTML!');
+                                    console.log('Kiosk: Available elements:', {
+                                        body: !!doc.body,
+                                        bodyChildren: doc.body ? doc.body.children.length : 0,
+                                        eventboardById: !!doc.querySelector('#eventboard-container'),
+                                        eventboardByClass: !!doc.querySelector('.eventboard-container'),
+                                        allContainers: Array.from(doc.querySelectorAll('[class*="eventboard"], [id*="eventboard"]')).map(el => ({id: el.id, class: el.className}))
+                                    });
+                                }
+                            }
+                            
+                            // Priority 3: Look for leaderboard-view
                             const leaderboardView = doc.querySelector('#leaderboard-view');
-                            if (leaderboardView) {
+                            if (leaderboardView && !content) {
                                 // Create a wrapper container for leaderboard view with Activity Toasts
                                 content = document.createElement('div');
                                 content.style.width = '100%';
@@ -455,9 +515,9 @@
                                 if (tickerDataSource) {
                                     content.appendChild(tickerDataSource.cloneNode(true));
                                 }
-                            } else {
-                                // Priority 3: For map view, look for #section-map or #map container
-                                if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                            } else if (!content) {
+                                // Priority 4: For map view, look for #section-map or #map container
+                                if (entry.view_type === 'map') {
                                     // Create a wrapper container for map view with overlays and chips
                                     content = document.createElement('div');
                                     content.style.width = '100%';
@@ -542,8 +602,8 @@
                                     if (activityToastContainer) {
                                         content.appendChild(activityToastContainer.cloneNode(true));
                                     }
-                                } else {
-                                    // Priority 4: Use body content for other views
+                                } else if (!content) {
+                                    // Priority 5: Use body content for other views
                                     content = document.createElement('div');
                                     if (doc.body) {
                                         while (doc.body.firstChild) {
@@ -614,7 +674,7 @@
                                 window.kioskGroupFilter = null;
                                 console.log('Kiosk: Cleared kioskGroupFilter (no filter)');
                             }
-                        } else if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                        } else if (entry.view_type === 'map') {
                             if (entry.group_filter_id) {
                                 window.kioskGroupFilterId = entry.group_filter_id;
                                 window.kioskGroupFilterName = null;
@@ -643,6 +703,9 @@
                                 console.log('Kiosk: Set kioskTrackFilterIds to empty array (no tracks selected or null - show no tracks)');
                             }
                             console.log('Kiosk: window.kioskTrackFilterIds after setting:', window.kioskTrackFilterIds);
+                        } else if (entry.view_type === 'eventboard') {
+                            // Eventboard doesn't need map-specific filter variables
+                            console.log('Kiosk: Eventboard view - no map filters needed');
                         } else {
                             // Clear filter when switching to other view types
                             window.kioskGroupFilter = null;
@@ -655,7 +718,11 @@
                         // Replace the current view content
                         currentView.innerHTML = '';
                         if (content) {
+                            console.log('Kiosk: Appending content to current-view, content type:', content.constructor.name);
                             currentView.appendChild(content);
+                        } else {
+                            console.error('Kiosk: No content found for view type:', entry.view_type);
+                            console.log('Kiosk: Document body HTML (first 500 chars):', doc.body ? doc.body.innerHTML.substring(0, 500) : 'No body');
                         }
                         
                         // Re-initialize HTMX on the new content
@@ -681,7 +748,7 @@
                                         scriptExecutionPromises.push(leafletPromise);
                                         newScript.onload = function() {
                                             // Re-initialize map if it's a map view
-                                            if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                                            if (entry.view_type === 'map') {
                                                 setTimeout(() => {
                                                     // Check if map needs to be re-initialized
                                                     const mapElement = currentView.querySelector('#map');
@@ -709,7 +776,7 @@
                                     let scriptContent = script.textContent;
                                     
                                     // For map views, modify script to use the correct container and preserve map reference
-                                    if ((entry.view_type === 'map' || entry.view_type === 'eventboard') && scriptContent.includes("L.map('map')")) {
+                                    if (entry.view_type === 'map' && scriptContent.includes("L.map('map')")) {
                                         // Replace L.map('map') with a reference to the actual element in currentView
                                         const mapElement = currentView.querySelector('#map');
                                         if (mapElement) {
@@ -745,7 +812,7 @@
                                     newScript.textContent = scriptContent;
                                     
                                     // For map views, wrap script execution to ensure functions are available globally
-                                    if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                                    if (entry.view_type === 'map') {
                                         // Don't wrap in IIFE - execute directly so functions are in global scope
                                         // But ensure variables are still available globally
                                         const wrappedScript = `
@@ -859,7 +926,7 @@
                         });
                         
                         // For map views, ensure map is initialized after content is loaded
-                        if (entry.view_type === 'map' || entry.view_type === 'eventboard') {
+                        if (entry.view_type === 'map') {
                             setTimeout(() => {
                                 // Filter Chips are not displayed in Kiosk Map view
                                 // No need to call updateRankingFilterChips for map views
