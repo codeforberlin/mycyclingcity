@@ -1800,8 +1800,10 @@ class GroupEventStatusInline(admin.TabularInline):
     fk_name = 'event'
     extra = 1
     verbose_name = _("Teilnehmende Gruppe")
+    verbose_name_plural = _("Teilnehmende Gruppen")
     fields = ('group', 'current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
     readonly_fields = ('current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
+    template = 'admin/eventboard/groupeventstatus_inline.html'
     
     def has_view_permission(self, request, obj=None):
         """Operator kann Gruppen-Event-Status anzeigen, wenn das Event bearbeitet werden kann."""
@@ -1916,36 +1918,36 @@ class GroupEventStatusInline(admin.TabularInline):
                         ).order_by('name')
                     else:
                         available_groups = Group.objects.filter(is_visible=True).order_by('name')
-                
-                for form in self.forms:
-                    # For new entries, customize the group field
-                    if not form.instance.pk:
-                        if 'group' in form.fields:
-                            # Filter the queryset to only show available groups
-                            form.fields['group'].queryset = available_groups
-                            # Use label_from_instance to show group name and type
-                            form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
-                    else:
-                        # For existing entries, make group readonly
-                        if 'group' in form.fields:
-                            # WICHTIG: Für bestehende Einträge muss das Queryset die zugewiesene Gruppe enthalten,
-                            # damit sie angezeigt werden kann, auch wenn sie nicht in available_groups ist
-                            if form.instance.group_id:
-                                # Erweitere das Queryset um die zugewiesene Gruppe
-                                assigned_group = Group.objects.filter(id=form.instance.group_id).first()
-                                if assigned_group:
-                                    # Kombiniere available_groups mit der zugewiesenen Gruppe
-                                    form.fields['group'].queryset = Group.objects.filter(
-                                        Q(id__in=available_groups.values_list('id', flat=True)) | Q(id=assigned_group.id)
-                                    ).distinct()
+                    
+                    for form in self.forms:
+                        # For new entries, customize the group field
+                        if not form.instance.pk:
+                            if 'group' in form.fields:
+                                # Filter the queryset to only show available groups
+                                form.fields['group'].queryset = available_groups
+                                # Use label_from_instance to show group name and type
+                                form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
+                        else:
+                            # For existing entries, make group readonly
+                            if 'group' in form.fields:
+                                # WICHTIG: Für bestehende Einträge muss das Queryset die zugewiesene Gruppe enthalten,
+                                # damit sie angezeigt werden kann, auch wenn sie nicht in available_groups ist
+                                if form.instance.group_id:
+                                    # Erweitere das Queryset um die zugewiesene Gruppe
+                                    assigned_group = Group.objects.filter(id=form.instance.group_id).first()
+                                    if assigned_group:
+                                        # Kombiniere available_groups mit der zugewiesenen Gruppe
+                                        form.fields['group'].queryset = Group.objects.filter(
+                                            Q(id__in=available_groups.values_list('id', flat=True)) | Q(id=assigned_group.id)
+                                        ).distinct()
+                                    else:
+                                        form.fields['group'].queryset = available_groups
                                 else:
                                     form.fields['group'].queryset = available_groups
-                            else:
-                                form.fields['group'].queryset = available_groups
-                            
-                            form.fields['group'].widget.attrs['readonly'] = True
-                            # Make it visually disabled but still submit the value
-                            form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
+                                
+                                form.fields['group'].widget.attrs['readonly'] = True
+                                # Make it visually disabled but still submit the value
+                                form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
         
         return GroupEventStatusFormSet
 
@@ -3376,7 +3378,7 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             obj.restart_event()
             self.message_user(request, _("Event wurde zurückgesetzt. Vorheriger Fortschritt wurde in die Historie gespeichert."), messages.SUCCESS)
         return redirect('admin:eventboard_event_change', object_id)
-    
+
     def save_history_view(self, request, object_id):
         """Custom view to save event history from detail page."""
         from django.shortcuts import redirect

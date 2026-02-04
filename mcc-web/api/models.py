@@ -1227,8 +1227,8 @@ def update_group_hierarchy_progress(group, delta_km):
                     logger.info(f"[update_group_hierarchy_progress] Group '{group.name}' reached event goal at {update_fields['goal_reached_at']}")
                 
                 GroupEventStatus.objects.filter(pk=event_status.pk).update(**update_fields)
-                event_status.refresh_from_db()
-                logger.info(f"[update_group_hierarchy_progress] ✅ Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
+            event_status.refresh_from_db()
+            logger.info(f"[update_group_hierarchy_progress] ✅ Updated GroupEventStatus for '{group.name}' in event '{event.name}' - old: {old_event_distance}, new: {event_status.current_distance_km}")
             
             # Note: Leaf group contribution tracking is now done BEFORE the event_statuses loop (section 2.5)
             # This ensures it works even if the leaf group itself has no event_statuses

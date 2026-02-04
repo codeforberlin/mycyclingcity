@@ -1,0 +1,180 @@
+{% load i18n admin_urls static %}
+
+<div class="inline-group" id="{{ inline_admin_formset.formset.prefix }}-group">
+<style>
+    /* Hide first column header text, but keep column visible for checkbox */
+    #{{ inline_admin_formset.formset.prefix }}-group table thead th:first-child,
+    .inline-group table thead th:first-child {
+        width: 20px !important;
+        min-width: 20px !important;
+        padding: 8px 4px !important;
+    }
+    
+    /* Hide object representation text in first cell, but keep checkbox visible with standard alignment */
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child,
+    .inline-group table tbody td:first-child {
+        width: 20px !important;
+        min-width: 20px !important;
+        padding: 4px !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+    
+    /* Show checkbox with standard styling */
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child input[type="checkbox"],
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child label input[type="checkbox"],
+    .inline-group table tbody td:first-child input[type="checkbox"],
+    .inline-group table tbody td:first-child label input[type="checkbox"] {
+        margin: 0 !important;
+    }
+    
+    /* Hide all text, strong, a tags in first cell */
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child strong,
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child a,
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child span:not(:has(input)),
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child .inline-related,
+    .inline-group table tbody td:first-child strong,
+    .inline-group table tbody td:first-child a,
+    .inline-group table tbody td:first-child span:not(:has(input)),
+    .inline-group table tbody td:first-child .inline-related {
+        display: none !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
+    }
+    
+    /* Hide any text content directly in first cell */
+    #{{ inline_admin_formset.formset.prefix }}-group table tbody td:first-child:not(:has(input)),
+    .inline-group table tbody td:first-child:not(:has(input)) {
+        color: transparent !important;
+    }
+</style>
+
+{% include "admin/edit_inline/tabular.html" %}
+
+<script>
+(function() {
+    var formsetPrefix = '{{ inline_admin_formset.formset.prefix }}';
+    
+    // Function to hide object representation text
+    function hideObjectRepresentation() {
+        var formsetContainer = document.getElementById(formsetPrefix + '-group');
+        if (!formsetContainer) {
+            // Fallback: try to find by other means
+            formsetContainer = document.querySelector('[id*="groupeventstatus"][id*="-group"]') ||
+                               document.querySelector('.inline-group');
+        }
+        
+        if (!formsetContainer) return;
+        
+        var rows = formsetContainer.querySelectorAll('tbody tr');
+        if (rows.length === 0) {
+            rows = formsetContainer.querySelectorAll('.form-row');
+        }
+        
+        rows.forEach(function(row) {
+            var firstCell = row.querySelector('td:first-child');
+            if (firstCell) {
+                // Remove all child nodes except checkboxes and their labels
+                var children = Array.from(firstCell.childNodes);
+                children.forEach(function(child) {
+                    if (child.nodeType === Node.ELEMENT_NODE) {
+                        var tagName = child.tagName;
+                        // Keep only input[type="checkbox"] and their labels
+                        if (tagName === 'INPUT' && child.type === 'checkbox') {
+                            return; // Keep checkbox
+                        }
+                        if (tagName === 'LABEL' && child.querySelector('input[type="checkbox"]')) {
+                            return; // Keep label with checkbox
+                        }
+                        // Remove everything else
+                        child.remove();
+                    } else if (child.nodeType === Node.TEXT_NODE) {
+                        // Remove text nodes
+                        var text = (child.textContent || child.nodeValue || '').trim();
+                        if (text && !text.match(/^\s*$/)) {
+                            child.remove();
+                        }
+                    }
+                });
+                
+                // Remove all text nodes but keep structure intact for checkbox
+                var checkbox = firstCell.querySelector('input[type="checkbox"]');
+                var label = firstCell.querySelector('label');
+                
+                // If we have a label with checkbox, keep only that
+                if (label && checkbox && label.contains(checkbox)) {
+                    firstCell.innerHTML = '';
+                    firstCell.appendChild(label);
+                } else if (checkbox) {
+                    // If checkbox exists without label, keep it
+                    firstCell.innerHTML = '';
+                    firstCell.appendChild(checkbox);
+                } else if (label) {
+                    // If only label exists, keep it
+                    firstCell.innerHTML = '';
+                    firstCell.appendChild(label);
+                } else {
+                    // No checkbox found, clear everything
+                    firstCell.innerHTML = '';
+                }
+            }
+        });
+        
+        // Hide the first header column text
+        var table = formsetContainer.querySelector('table');
+        if (table) {
+            var firstHeader = table.querySelector('thead th:first-child');
+            if (firstHeader) {
+                // Clear header text but keep column visible
+                var headerText = firstHeader.textContent || firstHeader.innerText || '';
+                if (headerText.trim()) {
+                    firstHeader.innerHTML = '';
+                }
+            }
+        }
+    }
+    
+    // Run immediately
+    hideObjectRepresentation();
+    
+    // Run on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hideObjectRepresentation);
+    } else {
+        setTimeout(hideObjectRepresentation, 100);
+    }
+    
+    // Run after HTMX swaps (if HTMX is used)
+    if (typeof htmx !== 'undefined') {
+        document.body.addEventListener('htmx:afterSwap', function() {
+            setTimeout(hideObjectRepresentation, 50);
+        });
+        document.body.addEventListener('htmx:afterSettle', function() {
+            setTimeout(hideObjectRepresentation, 50);
+        });
+    }
+    
+    // Run after Django admin inline formset changes
+    if (typeof django !== 'undefined' && django.jQuery) {
+        django.jQuery(document).on('formset:added', function() {
+            setTimeout(hideObjectRepresentation, 100);
+        });
+    }
+    
+    // Also run periodically to catch any late-rendered content
+    var intervalId = setInterval(function() {
+        hideObjectRepresentation();
+    }, 500);
+    
+    // Stop interval after 10 seconds
+    setTimeout(function() {
+        clearInterval(intervalId);
+    }, 10000);
+})();
+</script>
+</div>

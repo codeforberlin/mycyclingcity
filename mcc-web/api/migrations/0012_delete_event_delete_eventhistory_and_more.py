@@ -34,17 +34,17 @@ class Migration(migrations.Migration):
             ],
             state_operations=[
                 # Remove models from api app state (tables already renamed to eventboard_*)
-                migrations.DeleteModel(
-                    name='Event',
-                ),
-                migrations.DeleteModel(
-                    name='EventHistory',
-                ),
-                migrations.DeleteModel(
-                    name='GroupEventStatus',
-                ),
-                migrations.DeleteModel(
-                    name='LeafGroupEventContribution',
+        migrations.DeleteModel(
+            name='Event',
+        ),
+        migrations.DeleteModel(
+            name='EventHistory',
+        ),
+        migrations.DeleteModel(
+            name='GroupEventStatus',
+        ),
+        migrations.DeleteModel(
+            name='LeafGroupEventContribution',
                 ),
             ],
         ),
