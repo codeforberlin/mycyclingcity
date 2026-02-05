@@ -12,14 +12,20 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('api', '0010_eventhistory_best_leaf_group_and_more'),
+        ('api', '0012_delete_event_delete_eventhistory_and_more'),
     ]
 
     operations = [
         # Tables already exist (renamed from api_* to eventboard_* in api.0012)
         # We only update the Django state here, no database operations
         migrations.SeparateDatabaseAndState(
-            database_operations=[],  # No database operations - tables already exist
+            database_operations=[
+                # No database operations needed - tables already exist (renamed from api_* to eventboard_* in api.0012)
+                migrations.RunSQL(
+                    sql=migrations.RunSQL.noop,
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
             state_operations=[
         migrations.CreateModel(
             name='Event',

@@ -8,7 +8,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0010_eventhistory_best_leaf_group_and_more'),
+        ('api', '0012_delete_event_delete_eventhistory_and_more'),
+        ('eventboard', '0001_initial'),
         ('kiosk', '0002_kioskdevice_assigned_to_group_and_more'),
     ]
 
@@ -43,10 +44,25 @@ class Migration(migrations.Migration):
             name='display_duration',
             field=models.IntegerField(default=30, help_text='Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt wird', validators=[django.core.validators.MinValueValidator(1)], verbose_name='Anzeigedauer (Sekunden)'),
         ),
-        migrations.AlterField(
-            model_name='kioskplaylistentry',
-            name='event_filter',
-            field=models.ForeignKey(blank=True, help_text='Optional: Inhalte nach spezifischem Event filtern', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='kiosk_playlist_entries', to='eventboard.event', verbose_name='Event-Filter'),
+        # Use SeparateDatabaseAndState for event_filter because the table was already renamed
+        # in api.0012, so the database FK reference is already correct, we just need to update state
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                # No database operations needed - the table was already renamed from api_event to eventboard_event
+                # in api.0012, so the foreign key constraint already points to the correct table.
+                # Use RunSQL with empty SQL to satisfy the requirement for database_operations
+                migrations.RunSQL(
+                    sql=migrations.RunSQL.noop,
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='kioskplaylistentry',
+                    name='event_filter',
+                    field=models.ForeignKey(blank=True, help_text='Optional: Inhalte nach spezifischem Event filtern', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='kiosk_playlist_entries', to='eventboard.event', verbose_name='Event-Filter'),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='kioskplaylistentry',

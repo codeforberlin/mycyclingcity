@@ -7,8 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('api', '0010_eventhistory_best_leaf_group_and_more'),
-        ('kiosk', '0003_alter_kioskdevice_brightness_and_more'),
-        ('eventboard', '0001_initial'),
+        ('kiosk', '0002_kioskdevice_assigned_to_group_and_more'),
     ]
 
     operations = [
