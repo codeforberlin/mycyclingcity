@@ -1799,10 +1799,13 @@ class GroupEventStatusInline(admin.TabularInline):
     model = GroupEventStatus
     fk_name = 'event'
     extra = 1
+    can_delete = True  # Allow deletion of group entries
     verbose_name = _("Teilnehmende Gruppe")
     verbose_name_plural = _("Teilnehmende Gruppen")
     fields = ('group', 'current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
     readonly_fields = ('current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
+    # Exclude fields that are not shown but have defaults - they will be set automatically
+    exclude = ('current_distance_km', 'start_km_offset')
     template = 'admin/eventboard/groupeventstatus_inline.html'
     
     def has_view_permission(self, request, obj=None):
@@ -1877,6 +1880,34 @@ class GroupEventStatusInline(admin.TabularInline):
         # Die Berechtigungen werden pro Eintrag in has_change_permission() und has_delete_permission() geprüft
         # Dies stellt sicher, dass neu hinzugefügte Gruppen sofort angezeigt werden
         return qs.select_related('group', 'event', 'best_leaf_group')
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter groups to only show managed groups for operators and customize display."""
+        if db_field.name == 'group':
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                queryset = Group.objects.filter(
+                    id__in=managed_group_ids,
+                    is_visible=True
+                ).order_by('name')
+            else:
+                queryset = Group.objects.filter(
+                    is_visible=True
+                ).order_by('name')
+            
+            kwargs['queryset'] = queryset
+            
+            # Get the form field from super()
+            field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+            
+            # Override label_from_instance to show group name and type
+            def label_from_instance(obj):
+                """Return group name with type."""
+                return f"{obj.name} ({obj.group_type})"
+            
+            field.label_from_instance = label_from_instance
+            return field
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_formset(self, request, obj=None, **kwargs):
         """Customize formset to filter available groups for selection."""
@@ -1893,6 +1924,42 @@ class GroupEventStatusInline(admin.TabularInline):
                 super().__init__(*args, **kwargs)
                 # Import Group am Anfang, damit es im gesamten Scope verfügbar ist
                 from django.db.models import Q
+                from eventboard.models import GroupEventStatus
+                
+                # Store managed_group_ids from outer scope in a local variable to avoid closure issues
+                formset_managed_group_ids = managed_group_ids
+                
+                # WICHTIG: Binde bestehende Instanzen an Formulare, wenn instance.pk None ist
+                # Dies ist notwendig, wenn Django die Instanzen nicht automatisch bindet
+                if obj and obj.pk and hasattr(self, 'data') and self.data:
+                    for form in self.forms:
+                        if form.instance and not form.instance.pk:
+                            # Versuche, die bestehende Instanz anhand von group und event zu finden
+                            group_id = form.data.get(form.add_prefix('group'), '') if hasattr(form, 'data') else None
+                            if group_id:
+                                try:
+                                    existing_instance = GroupEventStatus.objects.get(
+                                        event=obj,
+                                        group_id=group_id
+                                    )
+                                    # Binde die bestehende Instanz an das Formular
+                                    form.instance = existing_instance
+                                    # Setze auch das id-Feld im Formular, damit Django es erkennt
+                                    id_key = form.add_prefix('id')
+                                    if hasattr(self.data, '_mutable'):
+                                        self.data._mutable = True
+                                    self.data[id_key] = existing_instance.pk
+                                    logger.debug(f"[GroupEventStatusFormSet.__init__] Bound existing instance pk={existing_instance.pk} to form {form.prefix}")
+                                except GroupEventStatus.DoesNotExist:
+                                    logger.debug(f"[GroupEventStatusFormSet.__init__] No existing instance found for group_id={group_id}, event_id={obj.pk}")
+                                except (ValueError, TypeError):
+                                    # group_id ist möglicherweise kein gültiger Integer
+                                    logger.debug(f"[GroupEventStatusFormSet.__init__] Invalid group_id={group_id}")
+                
+                # WICHTIG: Setze group.required = False für ALLE Formulare (auch bestehende)
+                for form in self.forms:
+                    if 'group' in form.fields:
+                        form.fields['group'].required = False
                 
                 # Get available groups for selection
                 if obj and obj.pk:
@@ -1904,31 +1971,15 @@ class GroupEventStatusInline(admin.TabularInline):
                         is_visible=True
                     )
                     
-                    # Filter for operators
-                    if managed_group_ids is not None:
-                        available_groups = available_groups.filter(id__in=managed_group_ids)
+                    # Filter for operators (use formset_managed_group_ids from local variable)
+                    if formset_managed_group_ids is not None:
+                        available_groups = available_groups.filter(id__in=formset_managed_group_ids)
                     
                     available_groups = available_groups.order_by('name')
-                else:
-                    # Für neue Events: Alle verwalteten Gruppen anzeigen
-                    if managed_group_ids is not None:
-                        available_groups = Group.objects.filter(
-                            id__in=managed_group_ids,
-                            is_visible=True
-                        ).order_by('name')
-                    else:
-                        available_groups = Group.objects.filter(is_visible=True).order_by('name')
                     
+                    # Für bestehende Einträge: Gruppe readonly machen
                     for form in self.forms:
-                        # For new entries, customize the group field
-                        if not form.instance.pk:
-                            if 'group' in form.fields:
-                                # Filter the queryset to only show available groups
-                                form.fields['group'].queryset = available_groups
-                                # Use label_from_instance to show group name and type
-                                form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
-                        else:
-                            # For existing entries, make group readonly
+                        if form.instance and form.instance.pk:
                             if 'group' in form.fields:
                                 # WICHTIG: Für bestehende Einträge muss das Queryset die zugewiesene Gruppe enthalten,
                                 # damit sie angezeigt werden kann, auch wenn sie nicht in available_groups ist
@@ -1948,6 +1999,166 @@ class GroupEventStatusInline(admin.TabularInline):
                                 form.fields['group'].widget.attrs['readonly'] = True
                                 # Make it visually disabled but still submit the value
                                 form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
+                else:
+                    # Für neue Events: Alle verwalteten Gruppen anzeigen
+                    if formset_managed_group_ids is not None:
+                        available_groups = Group.objects.filter(
+                            id__in=formset_managed_group_ids,
+                            is_visible=True
+                        ).order_by('name')
+                    else:
+                        available_groups = Group.objects.filter(is_visible=True).order_by('name')
+                    
+                    # Für neue Einträge: Gruppenauswahl konfigurieren
+                    for form in self.forms:
+                        if not form.instance.pk:
+                            if 'group' in form.fields:
+                                # Filter the queryset to only show available groups
+                                form.fields['group'].queryset = available_groups
+                                # Use label_from_instance to show group name and type
+                                form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
+            
+            def clean(self):
+                """Validate formset and handle empty forms and excluded fields."""
+                cleaned_data = super().clean()
+                
+                logger.debug(f"[GroupEventStatusFormSet.clean] Starting clean - {len(self.forms)} forms")
+                
+                # WICHTIG: Binde bestehende Instanzen, wenn sie noch nicht gebunden sind
+                # Dies muss vor der Validierung passieren
+                if obj and obj.pk:
+                    from eventboard.models import GroupEventStatus
+                    for i, form in enumerate(self.forms):
+                        if form.instance and not form.instance.pk and form.cleaned_data:
+                            group = form.cleaned_data.get('group')
+                            if group:
+                                try:
+                                    existing_instance = GroupEventStatus.objects.get(
+                                        event=obj,
+                                        group=group
+                                    )
+                                    form.instance = existing_instance
+                                    # Setze id in cleaned_data, damit Django es erkennt
+                                    form.cleaned_data['id'] = existing_instance.pk
+                                    logger.debug(f"[GroupEventStatusFormSet.clean] Bound existing instance pk={existing_instance.pk} to form {i} in clean()")
+                                except GroupEventStatus.DoesNotExist:
+                                    logger.debug(f"[GroupEventStatusFormSet.clean] No existing instance found for form {i}, group={group}")
+                                except GroupEventStatus.MultipleObjectsReturned:
+                                    # Sollte nicht passieren, aber falls doch, nimm den ersten
+                                    existing_instance = GroupEventStatus.objects.filter(
+                                        event=obj,
+                                        group=group
+                                    ).first()
+                                    if existing_instance:
+                                        form.instance = existing_instance
+                                        form.cleaned_data['id'] = existing_instance.pk
+                                        logger.debug(f"[GroupEventStatusFormSet.clean] Bound first existing instance pk={existing_instance.pk} to form {i} (multiple found)")
+                
+                for i, form in enumerate(self.forms):
+                    logger.debug(f"[GroupEventStatusFormSet.clean] Form {i}: instance.pk={form.instance.pk if form.instance else None}, errors={form.errors}, cleaned_data={form.cleaned_data}")
+                    
+                    # Entferne unique_together Fehler für bestehende Einträge
+                    if form.instance and form.instance.pk and form.errors:
+                        # Entferne unique_together Fehler, wenn es ein bestehender Eintrag ist
+                        if '__all__' in form.errors:
+                            # Prüfe, ob es ein unique_together Fehler ist
+                            all_errors = form.errors['__all__']
+                            form.errors['__all__'] = [
+                                error for error in all_errors
+                                if 'existiert bereits' not in str(error) or 'unique' not in str(error).lower()
+                            ]
+                            # Wenn keine Fehler mehr übrig sind, entferne den Key
+                            if not form.errors['__all__']:
+                                del form.errors['__all__']
+                    
+                    # Entferne id-Fehler für bestehende Einträge, wenn id gesetzt ist
+                    if form.instance and form.instance.pk and 'id' in form.errors:
+                        # Setze id in cleaned_data, wenn es fehlt
+                        if form.cleaned_data and 'id' not in form.cleaned_data:
+                            form.cleaned_data['id'] = form.instance.pk
+                        form.errors.pop('id', None)
+                        logger.debug(f"[GroupEventStatusFormSet.clean] Removed id error for form {i}, set id={form.instance.pk}")
+                    
+                    # Handle forms with errors first (before cleaned_data is available)
+                    if form.errors:
+                        # Check if form is empty (no group selected, not deleted)
+                        group_value = form.data.get(form.add_prefix('group'), '') if hasattr(form, 'data') else None
+                        delete_value = form.data.get(form.add_prefix('DELETE'), False) if hasattr(form, 'data') else False
+                        
+                        logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} has errors. group_value={group_value}, delete_value={delete_value}")
+                        
+                        # If form is empty (no group, not deleted), mark it for deletion and clear errors
+                        if not group_value and not delete_value:
+                            logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} is empty - marking for deletion and clearing errors")
+                            form.errors.clear()
+                            # Set DELETE in form data so Django knows to skip this form
+                            if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
+                                delete_key = form.add_prefix('DELETE')
+                                # Create a mutable copy of form.data if needed
+                                if hasattr(form.data, '_mutable'):
+                                    form.data._mutable = True
+                                form.data[delete_key] = True
+                    
+                    # Handle empty forms in cleaned_data (after validation)
+                    if form.cleaned_data:
+                        group = form.cleaned_data.get('group')
+                        delete = form.cleaned_data.get('DELETE', False)
+                        
+                        logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} cleaned_data: group={group}, DELETE={delete}")
+                        
+                        # If form is empty (no group, not deleted), mark it for deletion to skip validation
+                        if not group and not delete:
+                            logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} is empty in cleaned_data - marking for deletion")
+                            form.cleaned_data['DELETE'] = True
+                            # Clear any errors for empty forms
+                            if form.errors:
+                                form.errors.clear()
+                    
+                    # Set default values for excluded fields if they're missing
+                    if form.instance and form.instance.pk and form.cleaned_data:
+                        # For existing entries, ensure excluded fields have values
+                        if 'current_distance_km' not in form.cleaned_data:
+                            form.cleaned_data['current_distance_km'] = form.instance.current_distance_km or 0
+                        if 'start_km_offset' not in form.cleaned_data:
+                            form.cleaned_data['start_km_offset'] = form.instance.start_km_offset or 0
+                    elif form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                        # For new entries, set default values for excluded fields
+                        if 'current_distance_km' not in form.cleaned_data:
+                            form.cleaned_data['current_distance_km'] = 0
+                        if 'start_km_offset' not in form.cleaned_data:
+                            form.cleaned_data['start_km_offset'] = 0
+                
+                logger.debug(f"[GroupEventStatusFormSet.clean] Finished clean")
+                return cleaned_data
+            
+            def save(self, commit=True):
+                """Override save to ensure excluded fields are set correctly and handle deletions."""
+                # WICHTIG: Handle deletions first, before calling super().save()
+                if commit:
+                    for form in self.deleted_forms:
+                        if form.instance and form.instance.pk:
+                            logger.debug(f"[GroupEventStatusFormSet.save] Deleting instance pk={form.instance.pk}")
+                            form.instance.delete()
+                
+                # Now save the remaining instances
+                instances = super().save(commit=False)
+                
+                logger.debug(f"[GroupEventStatusFormSet.save] Saving {len(instances)} instances, commit={commit}")
+                
+                for instance in instances:
+                    # Ensure excluded fields have default values if not set
+                    if instance.current_distance_km is None:
+                        instance.current_distance_km = 0
+                    if instance.start_km_offset is None:
+                        instance.start_km_offset = 0
+                    logger.debug(f"[GroupEventStatusFormSet.save] Instance {instance.pk}: current_distance_km={instance.current_distance_km}, start_km_offset={instance.start_km_offset}")
+                
+                if commit:
+                    for instance in instances:
+                        instance.save()
+                    self.save_m2m()
+                
+                return instances
         
         return GroupEventStatusFormSet
 
@@ -3252,16 +3463,109 @@ class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
         }
         return render(request, 'admin/api/groupmilestoneachievement_redeem_confirmation.html', context)
 
+class EventAdminForm(forms.ModelForm):
+    """Custom form for Event admin with required top_group for operators."""
+    
+    class Meta:
+        model = Event
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        # Extract request from kwargs if available (passed by admin)
+        self.request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        instance = kwargs.get('instance', None)
+        
+        # Für Operatoren: top_group ist required und nur TOP-Gruppen anzeigen
+        if self.request and not self.request.user.is_superuser and 'top_group' in self.fields:
+            # Hole die TOP-Gruppen des Operators (die direkt zugewiesenen Gruppen)
+            managed_top_groups = self.request.user.managed_groups.all()
+            if managed_top_groups.exists():
+                # Nur TOP-Gruppen anzeigen, die der Operator verwaltet
+                queryset = managed_top_groups.filter(is_visible=True).order_by('name')
+                # Für bestehende Events: Stelle sicher, dass die aktuelle top_group im Queryset ist
+                if instance and instance.pk and instance.top_group_id:
+                    if not queryset.filter(id=instance.top_group_id).exists():
+                        from django.db.models import Q
+                        queryset = queryset | Group.objects.filter(id=instance.top_group_id)
+                self.fields['top_group'].queryset = queryset
+                self.fields['top_group'].required = True
+                self.fields['top_group'].help_text = _(
+                    "Wählen Sie eine TOP-Gruppe aus. Ein Event muss immer einer TOP-Gruppe zugeordnet werden, "
+                    "damit Sie es nach dem Speichern sehen können."
+                )
+            else:
+                # Falls der Operator keine TOP-Gruppen hat, leeres Queryset
+                # Aber für bestehende Events: Zeige die aktuelle top_group an
+                if instance and instance.pk and instance.top_group_id:
+                    self.fields['top_group'].queryset = Group.objects.filter(id=instance.top_group_id)
+                else:
+                    self.fields['top_group'].queryset = Group.objects.none()
+                self.fields['top_group'].required = True
+        elif self.request and self.request.user.is_superuser and 'top_group' in self.fields:
+            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
+            queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True
+            ).order_by('name')
+            # Für bestehende Events: Stelle sicher, dass die aktuelle top_group im Queryset ist
+            if instance and instance.pk and instance.top_group_id:
+                if not queryset.filter(id=instance.top_group_id).exists():
+                    from django.db.models import Q
+                    queryset = queryset | Group.objects.filter(id=instance.top_group_id)
+            self.fields['top_group'].queryset = queryset
+            self.fields['top_group'].required = True
+    
+    def clean(self):
+        """Validate event data."""
+        cleaned_data = super().clean()
+        
+        # WICHTIG: Für Operatoren muss top_group immer gesetzt sein
+        if self.request and not self.request.user.is_superuser:
+            top_group = cleaned_data.get('top_group')
+            if not top_group:
+                raise forms.ValidationError({
+                    'top_group': _(
+                        "Eine TOP-Gruppe muss ausgewählt werden. Ein Event muss immer einer TOP-Gruppe zugeordnet werden, "
+                        "damit Sie es nach dem Speichern sehen können."
+                    )
+                })
+            
+            # Prüfe, ob die ausgewählte Gruppe tatsächlich eine TOP-Gruppe des Operators ist
+            managed_top_groups = self.request.user.managed_groups.all()
+            if top_group not in managed_top_groups:
+                raise forms.ValidationError({
+                    'top_group': _("Die ausgewählte Gruppe ist keine Ihrer verwalteten TOP-Gruppen.")
+                })
+        
+        return cleaned_data
+
+
 @admin.register(Event)
 class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
-    list_display = ('name', 'event_type', 'total_distance_km_display', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date')
+    form = EventAdminForm
+    list_display = ('name', 'event_type', 'total_distance_km_display', 'groups_count', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date')
     list_editable = ('is_active', 'is_visible_on_map')
     inlines = [GroupEventStatusInline]
-    fields = ('name', 'event_type', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date', 'target_distance_km', 'update_interval_seconds', 'left_logo', 'right_logo')
+    fields = ('name', 'event_type', 'top_group', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date', 'target_distance_km', 'update_interval_seconds', 'left_logo', 'right_logo')
     list_filter = ('event_type', 'is_active', 'is_visible_on_map')
     search_fields = ('name', 'description')
     actions = ['restart_event', 'save_event_to_history']
     change_form_template = 'admin/eventboard/event/change_form.html'
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Override get_form to pass request to form."""
+        # Get the form class from super() first (without request in kwargs)
+        form_class = super().get_form(request, obj, **kwargs)
+        # Now wrap the form class to pass request to __init__
+        original_init = form_class.__init__
+        
+        def new_init(self, *args, **kwargs):
+            kwargs['request'] = request
+            return original_init(self, *args, **kwargs)
+        
+        form_class.__init__ = new_init
+        return form_class
     
     def get_queryset(self, request):
         """Filter events based on operator permissions."""
@@ -3273,15 +3577,23 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
         if not managed_group_ids:
             return qs.none()
         
+        # Hole die TOP-Gruppen-IDs des Operators (nur direkt zugewiesene, nicht Untergruppen)
+        managed_top_group_ids = list(
+            request.user.managed_groups.filter(parent__isnull=True, is_visible=True)
+            .values_list('id', flat=True)
+        )
+        
         # Zeige Events, die:
-        # 1. Gruppen aus verwalteten Gruppen haben ODER
-        # 2. Noch keine Gruppen haben (neue Events, die gerade erstellt wurden)
+        # 1. top_group in managed_top_group_ids haben ODER
+        # 2. GroupEventStatus Einträge mit group in managed_group_ids haben ODER
+        # 3. Noch keine GroupEventStatus Einträge haben (neue Events)
         #    (Wichtig: Damit ein Operator sein neu erstelltes Event sofort sehen kann,
         #     auch wenn noch keine Gruppen zugeordnet sind)
         from django.db.models import Q
         
         return qs.filter(
-            Q(group_statuses__group__id__in=managed_group_ids) |
+            Q(top_group_id__in=managed_top_group_ids) |  # Event ist TOP-Gruppe zugeordnet
+            Q(group_statuses__group__id__in=managed_group_ids) |  # Event hat Gruppen aus verwalteten Gruppen
             Q(group_statuses__isnull=True)  # Events ohne zugewiesene Gruppen (neue Events)
         ).distinct()
     
@@ -3295,10 +3607,18 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return request.user.has_perm('eventboard.change_event')
         if request.user.is_superuser:
             return True
+        # Hole die TOP-Gruppen-IDs des Operators (nur direkt zugewiesene, nicht Untergruppen)
+        managed_top_group_ids = list(
+            request.user.managed_groups.filter(parent__isnull=True, is_visible=True)
+            .values_list('id', flat=True)
+        )
         managed_group_ids = get_operator_managed_group_ids(request.user)
         # Erlaube Bearbeitung, wenn:
-        # 1. Event hat Gruppen aus verwalteten Gruppen ODER
-        # 2. Event hat noch keine Gruppen (neue Events, damit Operatoren Gruppen hinzufügen können)
+        # 1. Event hat top_group in managed_top_group_ids ODER
+        # 2. Event hat Gruppen aus verwalteten Gruppen ODER
+        # 3. Event hat noch keine Gruppen (neue Events, damit Operatoren Gruppen hinzufügen können)
+        if obj.top_group_id and obj.top_group_id in managed_top_group_ids:
+            return True  # Event ist TOP-Gruppe zugeordnet
         if not obj.group_statuses.exists():
             return True  # Neue Events ohne Gruppen können bearbeitet werden
         return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
@@ -3309,7 +3629,17 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return request.user.has_perm('eventboard.delete_event')
         if request.user.is_superuser:
             return True
+        # Hole die TOP-Gruppen-IDs des Operators (nur direkt zugewiesene, nicht Untergruppen)
+        managed_top_group_ids = list(
+            request.user.managed_groups.filter(parent__isnull=True, is_visible=True)
+            .values_list('id', flat=True)
+        )
         managed_group_ids = get_operator_managed_group_ids(request.user)
+        # Erlaube Löschen, wenn:
+        # 1. Event hat top_group in managed_top_group_ids ODER
+        # 2. Event hat Gruppen aus verwalteten Gruppen
+        if obj.top_group_id and obj.top_group_id in managed_top_group_ids:
+            return True  # Event ist TOP-Gruppe zugeordnet
         return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
 
     def total_distance_km_display(self, obj):
@@ -3319,6 +3649,13 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return format_km_de(0)
         return format_km_de(total)
     total_distance_km_display.short_description = _("Gesamtkilometer")
+    
+    def groups_count(self, obj):
+        """Display the number of groups assigned to this event."""
+        count = obj.group_statuses.count()
+        return count
+    groups_count.short_description = _("Zugeordnete Gruppen")
+    groups_count.admin_order_field = 'group_statuses'
 
     def save_event_to_history(self, request, queryset):
         """Save event progress to history and reset event statuses."""
@@ -3545,12 +3882,12 @@ class KioskPlaylistEntryInline(admin.TabularInline):
             if not request.user.is_superuser:
                 managed_group_ids = get_operator_managed_group_ids(request.user)
                 if managed_group_ids:
-                    from api.models import Event
+                    from eventboard.models import Event
                     kwargs['queryset'] = Event.objects.filter(
                         group_statuses__group_id__in=managed_group_ids
                     ).distinct()
                 else:
-                    from api.models import Event
+                    from eventboard.models import Event
                     kwargs['queryset'] = Event.objects.none()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
@@ -4127,7 +4464,6 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return True
         
         # Prüfe, ob Playlist-Einträge zur TOP-Gruppe gehören
-        from api.models import Event
         managed_event_ids = Event.objects.filter(
             group_statuses__group_id__in=managed_group_ids
         ).values_list('id', flat=True).distinct()
@@ -4155,7 +4491,6 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
             return True
         
         # Prüfe, ob Playlist-Einträge zur TOP-Gruppe gehören
-        from api.models import Event
         managed_event_ids = Event.objects.filter(
             group_statuses__group_id__in=managed_group_ids
         ).values_list('id', flat=True).distinct()

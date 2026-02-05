@@ -19,8 +19,8 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: api/apps.py:18
-msgid "MCC Core API & Models"
-msgstr "MCC Core API & Models"
+msgid "Gruppen & Radler"
+msgstr "Groups & Cyclists"
 
 #: api/models.py:29
 #, python-format

@@ -38,6 +38,13 @@ class Event(models.Model):
     ]
     
     name = models.CharField(max_length=200, verbose_name=_("Event-Name"))
+    top_group = models.ForeignKey(
+        'api.Group',
+        on_delete=models.CASCADE,
+        related_name='events',
+        verbose_name=_("TOP-Gruppe"),
+        help_text=_("Die TOP-Gruppe (Hauptgruppe ohne übergeordnete Gruppe), der dieses Event zugeordnet ist. Operatoren können nur Events ihrer verwalteten TOP-Gruppen erstellen und bearbeiten.")
+    )
     event_type = models.CharField(max_length=50, choices=EVENT_TYPES, default='other', verbose_name=_("Event-Typ"))
     description = models.TextField(blank=True, null=True, verbose_name=_("Beschreibung"))
     is_active = models.BooleanField(default=True, verbose_name=_("Aktiv"))

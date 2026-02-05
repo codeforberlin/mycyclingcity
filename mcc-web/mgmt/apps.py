@@ -28,6 +28,15 @@ class MgmtConfig(AppConfig):
         # Import here to avoid circular dependencies
         from django.db.models.signals import post_save, post_migrate
         
+        # Import admin module to ensure all admin registrations are loaded
+        # This is especially important for cross-app registrations (e.g., Event from eventboard)
+        try:
+            from . import admin  # noqa: F401
+        except Exception:
+            # Silently ignore import errors during app initialization
+            # Admin registrations will be loaded when admin is accessed
+            pass
+        
         # Connect signal to update logger levels when LoggingConfig is saved
         # This avoids database access during app initialization
         def connect_signal():

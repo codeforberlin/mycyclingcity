@@ -266,10 +266,24 @@ class TestOperatorPermissions:
         # Create events
         from eventboard.models import GroupEventStatus
         event1 = EventFactory()
+        event1.top_group = top_group
+        event1.save()
         GroupEventStatusFactory(event=event1, group=child1)
         
         event2 = EventFactory()
+        event2.top_group = other_top_group
+        event2.save()
         GroupEventStatusFactory(event=event2, group=other_top_group)
+        
+        # Event with top_group but no GroupEventStatus entries (should be visible)
+        event3 = EventFactory()
+        event3.top_group = top_group
+        event3.save()
+        
+        # Event with other top_group and no GroupEventStatus entries (should NOT be visible)
+        event4 = EventFactory()
+        event4.top_group = other_top_group
+        event4.save()
         
         request = RequestFactory().get('/admin/api/event/')
         request.user = operator_user
@@ -277,10 +291,14 @@ class TestOperatorPermissions:
         admin = EventAdmin(Event, AdminSite())
         qs = admin.get_queryset(request)
         
-        # Should see event1
+        # Should see event1 (has top_group and GroupEventStatus with child1)
         assert event1 in qs
-        # Should NOT see event2
+        # Should see event3 (has top_group, even without GroupEventStatus entries)
+        assert event3 in qs
+        # Should NOT see event2 (other top_group)
         assert event2 not in qs
+        # Should NOT see event4 (other top_group, no GroupEventStatus)
+        assert event4 not in qs
     
     def test_hidden_admin_classes(self, operator_user):
         """Test that hidden admin classes are not visible to operators."""

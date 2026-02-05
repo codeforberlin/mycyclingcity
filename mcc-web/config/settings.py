@@ -93,13 +93,13 @@ INSTALLED_APPS = [
     'api',
     'kiosk',
     'iot',
+    'eventboard',  # Must be before mgmt so Event models are available when mgmt/admin.py imports them
     'mgmt',
     'minecraft',
     'game',
     'map',
     'ranking',
     'leaderboard',
-    'eventboard',
 ]
 
 ASGI_APPLICATION = 'config.asgi.application'

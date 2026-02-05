@@ -15,5 +15,5 @@ class ApiConfig(AppConfig):
     
     name = 'api'
     
-    verbose_name = _('MCC Core API & Models')
+    verbose_name = _('Gruppen & Radler')
 
