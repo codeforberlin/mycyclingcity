@@ -1977,28 +1977,27 @@ class GroupEventStatusInline(admin.TabularInline):
                     
                     available_groups = available_groups.order_by('name')
                     
-                    # Für bestehende Einträge: Gruppe readonly machen
+                    # Für bestehende Einträge: Gruppe-Feld komplett deaktivieren (nicht editierbar)
                     for form in self.forms:
                         if form.instance and form.instance.pk:
                             if 'group' in form.fields:
-                                # WICHTIG: Für bestehende Einträge muss das Queryset die zugewiesene Gruppe enthalten,
-                                # damit sie angezeigt werden kann, auch wenn sie nicht in available_groups ist
+                                # Für bestehende Einträge: Nur die zugewiesene Gruppe im Queryset
                                 if form.instance.group_id:
-                                    # Erweitere das Queryset um die zugewiesene Gruppe
                                     assigned_group = Group.objects.filter(id=form.instance.group_id).first()
                                     if assigned_group:
-                                        # Kombiniere available_groups mit der zugewiesenen Gruppe
-                                        form.fields['group'].queryset = Group.objects.filter(
-                                            Q(id__in=available_groups.values_list('id', flat=True)) | Q(id=assigned_group.id)
-                                        ).distinct()
+                                        form.fields['group'].queryset = Group.objects.filter(id=assigned_group.id)
                                     else:
-                                        form.fields['group'].queryset = available_groups
+                                        form.fields['group'].queryset = Group.objects.none()
                                 else:
-                                    form.fields['group'].queryset = available_groups
+                                    form.fields['group'].queryset = Group.objects.none()
                                 
-                                form.fields['group'].widget.attrs['readonly'] = True
-                                # Make it visually disabled but still submit the value
-                                form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef;'
+                                # Feld komplett deaktivieren - nicht editierbar
+                                form.fields['group'].widget.attrs['disabled'] = 'disabled'
+                                form.fields['group'].widget.attrs['readonly'] = 'readonly'
+                                form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef; color: #6c757d; cursor: not-allowed;'
+                                form.fields['group'].widget.attrs['class'] = 'readonly-group-field'
+                                # WICHTIG: Speichere die group-Instanz für später in clean()
+                                form._group_instance = form.instance.group
                 else:
                     # Für neue Events: Alle verwalteten Gruppen anzeigen
                     if formset_managed_group_ids is not None:
@@ -2113,6 +2112,16 @@ class GroupEventStatusInline(admin.TabularInline):
                             # Clear any errors for empty forms
                             if form.errors:
                                 form.errors.clear()
+                    
+                    # WICHTIG: Für disabled group-Felder den Wert aus der Instanz setzen
+                    # Django sendet disabled Felder nicht mit, daher müssen wir den Wert manuell setzen
+                    if form.instance and form.instance.pk and form.cleaned_data:
+                        # Wenn group-Feld disabled ist, setze den Wert aus der Instanz
+                        if hasattr(form, '_group_instance'):
+                            # Setze group aus der Instanz, wenn es nicht in cleaned_data ist
+                            if 'group' not in form.cleaned_data or form.cleaned_data.get('group') is None:
+                                form.cleaned_data['group'] = form._group_instance
+                                logger.debug(f"[GroupEventStatusFormSet.clean] Set group from instance for form {i}: {form._group_instance}")
                     
                     # Set default values for excluded fields if they're missing
                     if form.instance and form.instance.pk and form.cleaned_data:
@@ -3777,9 +3786,13 @@ class EventHistoryAdmin(admin.ModelAdmin):
         """Allow deleting history entries (analog to TravelHistory)."""
         if request.user.is_superuser:
             return True
-        # Operators can delete history entries for their managed groups
+        # First check if user has the generic delete permission
+        if not request.user.has_perm('eventboard.delete_eventhistory'):
+            return False
+        # If obj is None, return True if user has permission
         if obj is None:
-            return request.user.has_perm('eventboard.delete_eventhistory')
+            return True
+        # For specific objects, also check if group is in managed groups
         managed_group_ids = get_operator_managed_group_ids(request.user)
         return obj.group.id in managed_group_ids
 
@@ -3883,8 +3896,20 @@ class KioskPlaylistEntryInline(admin.TabularInline):
                 managed_group_ids = get_operator_managed_group_ids(request.user)
                 if managed_group_ids:
                     from eventboard.models import Event
+                    from django.db.models import Q
+                    # Hole die TOP-Gruppen-IDs des Operators (nur direkt zugewiesene, nicht Untergruppen)
+                    managed_top_group_ids = list(
+                        request.user.managed_groups.filter(parent__isnull=True, is_visible=True)
+                        .values_list('id', flat=True)
+                    )
+                    # Zeige Events, die:
+                    # 1. top_group in managed_top_group_ids haben ODER
+                    # 2. GroupEventStatus Einträge mit group in managed_group_ids haben ODER
+                    # 3. Noch keine GroupEventStatus Einträge haben (neue Events)
                     kwargs['queryset'] = Event.objects.filter(
-                        group_statuses__group_id__in=managed_group_ids
+                        Q(top_group_id__in=managed_top_group_ids) |  # Event ist TOP-Gruppe zugeordnet
+                        Q(group_statuses__group_id__in=managed_group_ids) |  # Event hat Gruppen aus verwalteten Gruppen
+                        Q(group_statuses__isnull=True)  # Events ohne zugewiesene Gruppen (neue Events)
                     ).distinct()
                 else:
                     from eventboard.models import Event
@@ -5921,7 +5946,8 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     # Define custom ordering
     # Apps with lower numbers appear first, higher numbers appear last
     app_ordering = {
-        'MCC Core API & Models': 1,
+        'Gruppen & Radler': 0,  # Ganz oben
+        'MCC Core API & Models': 0,  # Alte Bezeichnung (für Kompatibilität)
         'Reisen': 2,
         'Eventboard': 3,
         'MCC Game Interface': 4,
