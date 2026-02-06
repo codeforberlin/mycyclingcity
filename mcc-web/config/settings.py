@@ -113,7 +113,10 @@ except Exception:
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-
+    
+    # Timezone middleware for admin interface (after SessionMiddleware to access cookies)
+    'config.middleware.TimezoneMiddleware',
+    
     # IMPORTANT for i18n/L10n
     'django.middleware.locale.LocaleMiddleware',
     
@@ -275,7 +278,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'de'  # Fallback language (default: German)
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Berlin'
 USE_I18N = True
 USE_TZ = True
 
@@ -518,6 +521,12 @@ LOGGING = {
         'mgmt': {
             'handlers': ['mgmt_file'],
             'level': 'INFO',  # Log INFO and above
+            'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
+        },
+        # Config application logger (includes middleware) - writes to mgmt.log
+        'config': {
+            'handlers': ['mgmt_file'],
+            'level': 'DEBUG',  # Log DEBUG and above (for middleware debugging)
             'propagate': False,  # CRITICAL: Don't propagate to root - prevents Gunicorn output
         },
         # IoT application logger - writes to iot.log

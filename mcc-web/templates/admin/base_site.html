@@ -29,6 +29,97 @@
 {{ block.super }}
 {% load static %}
 <script src="{% static 'js/timezone-converter.js' %}"></script>
+<script>
+/**
+ * Timezone Cookie Setup for Django Admin
+ * 
+ * This script detects the browser's timezone and stores it in a cookie
+ * named 'django_timezone' so the backend middleware can use it.
+ */
+(function() {
+    'use strict';
+    
+    const COOKIE_NAME = 'django_timezone';
+    const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+    const COOKIE_PATH = '/'; // Use root path so cookie is available for all admin paths including /de/admin/
+    
+    /**
+     * Set a cookie with the given name, value, and options
+     */
+    function setCookie(name, value, maxAge, path) {
+        // Get secure flag from current page protocol
+        const isSecure = window.location.protocol === 'https:';
+        const secureFlag = isSecure ? '; Secure' : '';
+        
+        // Set SameSite attribute (Lax for better compatibility)
+        const sameSite = '; SameSite=Lax';
+        
+        document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=${path}${secureFlag}${sameSite}`;
+    }
+    
+    /**
+     * Get cookie value by name
+     */
+    function getCookie(name) {
+        const nameEQ = name + '=';
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i];
+            while (cookie.charAt(0) === ' ') {
+                cookie = cookie.substring(1, cookie.length);
+            }
+            if (cookie.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(cookie.substring(nameEQ.length, cookie.length));
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Get browser's timezone
+     */
+    function getBrowserTimezone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (e) {
+            console.warn('Could not detect browser timezone:', e);
+            return null;
+        }
+    }
+    
+    /**
+     * Initialize timezone cookie
+     */
+    function initTimezoneCookie() {
+        const browserTimezone = getBrowserTimezone();
+        if (!browserTimezone) {
+            return; // Cannot detect timezone, skip
+        }
+        
+        const currentCookie = getCookie(COOKIE_NAME);
+        
+        // Set cookie if not present or if timezone has changed
+        if (!currentCookie || currentCookie !== browserTimezone) {
+            setCookie(COOKIE_NAME, browserTimezone, COOKIE_MAX_AGE, COOKIE_PATH);
+            
+            // If timezone changed, reload page to apply new timezone immediately
+            if (currentCookie && currentCookie !== browserTimezone) {
+                // Small delay to ensure cookie is set before reload
+                setTimeout(function() {
+                    window.location.reload();
+                }, 100);
+            }
+        }
+    }
+    
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTimezoneCookie);
+    } else {
+        initTimezoneCookie();
+    }
+})();
+</script>
 <style>
     .language-switcher {
         display: inline-block;

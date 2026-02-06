@@ -2200,7 +2200,21 @@ class GroupEventStatusInline(admin.TabularInline):
     def best_leaf_group_goal_reached_at_display(self, obj):
         """Display when best leaf group reached the goal."""
         if obj and obj.best_leaf_group_goal_reached_at:
-            return obj.best_leaf_group_goal_reached_at.strftime('%d.%m.%Y %H:%M')
+            # Convert to current timezone for display
+            from django.utils import timezone as tz_utils
+            from datetime import timezone as dt_timezone
+            
+            goal_reached_dt = obj.best_leaf_group_goal_reached_at
+            # If naive, assume it's UTC (as stored in DB)
+            if goal_reached_dt.tzinfo is None:
+                goal_reached_dt = tz_utils.make_aware(goal_reached_dt, dt_timezone.utc)
+            
+            # Convert to current timezone
+            current_tz = tz_utils.get_current_timezone()
+            if goal_reached_dt.tzinfo != current_tz:
+                goal_reached_dt = goal_reached_dt.astimezone(current_tz)
+            
+            return goal_reached_dt.strftime('%d.%m.%Y %H:%M')
         return _("Noch nicht erreicht")
     best_leaf_group_goal_reached_at_display.short_description = _("Ziel erreicht am (Beste Leaf-Gruppe)")
 
@@ -2215,6 +2229,59 @@ class TravelTrackAdminForm(forms.ModelForm):
         # Extract request from kwargs if available (passed by admin)
         self.request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
+        
+        # Ensure DateTimeFields use the activated timezone
+        # Convert datetime values to the current timezone for display
+        from django.utils import timezone as tz_utils
+        
+        current_tz = tz_utils.get_current_timezone()
+        
+        for field_name in ['start_time', 'end_time']:
+            if field_name in self.fields:
+                # Get the field
+                field = self.fields[field_name]
+                
+                # Django Admin uses AdminSplitDateTime for DateTimeFields by default
+                # which automatically respects the activated timezone when USE_TZ=True
+                # However, we need to ensure the values are properly converted
+                
+                # Override the field's prepare_value method to convert from UTC to current timezone
+                from datetime import timezone as dt_timezone
+                original_prepare_value = field.prepare_value
+                
+                def make_prepare_value(field_name, current_tz):
+                    def prepare_value(value):
+                        if value is None:
+                            return value
+                        
+                        logger.debug(f"[TravelTrackAdminForm.prepare_value] {field_name} received: {value} (type: {type(value)}, tzinfo: {getattr(value, 'tzinfo', 'N/A')})")
+                        
+                        # If it's already a datetime object
+                        if hasattr(value, 'astimezone'):
+                            # Make timezone-aware if naive (assume UTC)
+                            if value.tzinfo is None:
+                                value_utc = tz_utils.make_aware(value, dt_timezone.utc)
+                                logger.debug(f"[TravelTrackAdminForm.prepare_value] {field_name} made aware as UTC: {value_utc}")
+                            else:
+                                value_utc = value
+                            
+                            # Convert to current timezone
+                            if value_utc.tzinfo != current_tz:
+                                converted = value_utc.astimezone(current_tz)
+                                logger.debug(f"[TravelTrackAdminForm.prepare_value] {field_name} converted to {current_tz}: {converted}")
+                                return converted
+                            logger.debug(f"[TravelTrackAdminForm.prepare_value] {field_name} already in current timezone: {value_utc}")
+                            return value_utc
+                        
+                        # If it's a string, let the original method handle it
+                        result = original_prepare_value(value)
+                        logger.debug(f"[TravelTrackAdminForm.prepare_value] {field_name} original_prepare_value returned: {result}")
+                        return result
+                    
+                    return prepare_value
+                
+                # Set the custom prepare_value method
+                field.prepare_value = make_prepare_value(field_name, current_tz)
         
         # Für Operatoren: assigned_to_group ist required und nur TOP-Gruppen anzeigen
         if self.request and not self.request.user.is_superuser and 'assigned_to_group' in self.fields:
@@ -2245,8 +2312,49 @@ class TravelTrackAdminForm(forms.ModelForm):
             self.fields['assigned_to_group'].required = False
     
     def clean(self):
-        """Validate travel track data."""
+        """Validate travel track data and convert timezone-aware datetimes."""
         cleaned_data = super().clean()
+        
+        # Convert datetime fields from local timezone back to UTC for storage
+        # Django Admin sends datetimes in the activated timezone, but we need to store them in UTC
+        from django.utils import timezone as tz_utils
+        from datetime import timezone as dt_timezone
+        
+        current_tz = tz_utils.get_current_timezone()
+        logger.debug(f"[TravelTrackAdminForm.clean] Current timezone: {current_tz}")
+        
+        for field_name in ['start_time', 'end_time']:
+            if field_name in cleaned_data and cleaned_data[field_name]:
+                dt = cleaned_data[field_name]
+                logger.debug(f"[TravelTrackAdminForm.clean] {field_name} from form (before conversion): {dt} (type: {type(dt)}, tzinfo: {getattr(dt, 'tzinfo', 'N/A')})")
+                
+                if hasattr(dt, 'astimezone'):
+                    # Django AdminSplitDateTime sends naive datetimes that are already in the activated timezone
+                    # We need to interpret them as being in the current timezone and convert to UTC
+                    if dt.tzinfo is not None:
+                        # Already timezone-aware - convert directly to UTC
+                        dt_utc = dt.astimezone(dt_timezone.utc)
+                        dt_naive = dt_utc.replace(tzinfo=None)
+                        logger.debug(f"[TravelTrackAdminForm.clean] {field_name} was timezone-aware ({dt.tzinfo}), converted to UTC: {dt_utc}, then naive: {dt_naive}")
+                    else:
+                        # Naive datetime - Django AdminSplitDateTime sends these in the activated timezone
+                        # Make it aware in the current timezone, then convert to UTC
+                        logger.debug(f"[TravelTrackAdminForm.clean] {field_name} is naive, interpreting as {current_tz}")
+                        dt_aware = tz_utils.make_aware(dt, current_tz)
+                        logger.debug(f"[TravelTrackAdminForm.clean] {field_name} made aware in {current_tz}: {dt_aware}")
+                        dt_utc = dt_aware.astimezone(dt_timezone.utc)
+                        logger.debug(f"[TravelTrackAdminForm.clean] {field_name} converted to UTC: {dt_utc}")
+                        # CRITICAL: When USE_TZ=True, Django stores naive datetimes as UTC
+                        # We need to ensure the naive datetime represents the UTC time
+                        dt_naive = dt_utc.replace(tzinfo=None)
+                        logger.debug(f"[TravelTrackAdminForm.clean] {field_name} made naive for DB (should be UTC): {dt_naive}")
+                    
+                    # Store the naive UTC datetime
+                    # Django with USE_TZ=True will interpret this naive datetime as UTC when saving
+                    cleaned_data[field_name] = dt_naive
+                    logger.debug(f"[TravelTrackAdminForm.clean] {field_name} FINAL value to save to DB (naive UTC): {cleaned_data[field_name]}")
+                else:
+                    logger.warning(f"[TravelTrackAdminForm.clean] {field_name} is not a datetime object: {type(dt)}")
         
         # WICHTIG: Für Operatoren muss assigned_to_group immer gesetzt sein
         if self.request and not self.request.user.is_superuser:
@@ -2279,7 +2387,37 @@ class TravelTrackAdmin(admin.ModelAdmin):
     readonly_fields = ('total_length_km', 'top_groups_ranking_display')
     
     def get_form(self, request, obj=None, **kwargs):
-        """Override get_form to pass request to form."""
+        """Override get_form to pass request to form and convert datetime values."""
+        # Convert datetime values from UTC to current timezone before form creation
+        if obj and obj.pk:
+            from django.utils import timezone as tz_utils
+            from datetime import timezone as dt_timezone
+            
+            current_tz = tz_utils.get_current_timezone()
+            logger.debug(f"[TravelTrackAdmin.get_form] Current timezone: {current_tz}")
+            
+            # Convert start_time and end_time from UTC to current timezone
+            for field_name in ['start_time', 'end_time']:
+                value = getattr(obj, field_name, None)
+                if value:
+                    logger.debug(f"[TravelTrackAdmin.get_form] {field_name} from obj: {value} (tzinfo: {value.tzinfo})")
+                    
+                    # Make timezone-aware if naive (assume UTC)
+                    if value.tzinfo is None:
+                        value_utc = tz_utils.make_aware(value, dt_timezone.utc)
+                        logger.debug(f"[TravelTrackAdmin.get_form] {field_name} made aware as UTC: {value_utc}")
+                    else:
+                        value_utc = value
+                    
+                    # Convert to current timezone
+                    if value_utc.tzinfo != current_tz:
+                        converted_value = value_utc.astimezone(current_tz)
+                        logger.debug(f"[TravelTrackAdmin.get_form] {field_name} converted to {current_tz}: {converted_value}")
+                        # Temporarily set on instance for form rendering
+                        setattr(obj, field_name, converted_value)
+                    else:
+                        logger.debug(f"[TravelTrackAdmin.get_form] {field_name} already in current timezone: {value_utc}")
+        
         # Get the form class from super() first (without request in kwargs)
         form_class = super().get_form(request, obj, **kwargs)
         # Now wrap the form class to pass request to __init__
@@ -2289,6 +2427,22 @@ class TravelTrackAdmin(admin.ModelAdmin):
             return original_init(self, *args, **form_kwargs)
         form_class.__init__ = __init__
         return form_class
+    
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """Override to ensure DateTimeFields use the activated timezone."""
+        from django.utils import timezone as tz_utils
+        
+        if isinstance(db_field, models.DateTimeField):
+            # Get the field from parent
+            # Django Admin automatically uses AdminSplitDateTime for DateTimeFields
+            # which respects timezone.get_current_timezone() when USE_TZ=True
+            field = super().formfield_for_dbfield(db_field, request, **kwargs)
+            
+            # The widget should automatically use timezone.get_current_timezone()
+            # which is set by our middleware - no need to change the widget
+            return field
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+    
     formfield_overrides = {models.TextField: {'widget': TrackMapWidget}}
     actions = ['restart_trip', 'save_trip_to_history']
     
@@ -2337,10 +2491,46 @@ class TravelTrackAdmin(admin.ModelAdmin):
         return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
     
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
-        """Override to inject groups with travel status data for JavaScript."""
+        """Override to inject groups with travel status data for JavaScript and convert datetime values."""
         extra_context = extra_context or {}
         from api.models import GroupTravelStatus
         import json
+        
+        # Convert datetime values from UTC to current timezone if object exists
+        if object_id:
+            try:
+                obj = self.get_object(request, object_id)
+                if obj:
+                    from django.utils import timezone as tz_utils
+                    from datetime import timezone as dt_timezone
+                    
+                    current_tz = tz_utils.get_current_timezone()
+                    logger.debug(f"[TravelTrackAdmin.changeform_view] Current timezone: {current_tz}")
+                    
+                    # Convert start_time and end_time from UTC to current timezone
+                    for field_name in ['start_time', 'end_time']:
+                        value = getattr(obj, field_name, None)
+                        if value:
+                            # Log original value from database
+                            logger.debug(f"[TravelTrackAdmin.changeform_view] {field_name} from DB (naive): {value} (tzinfo: {value.tzinfo})")
+                            
+                            # Make timezone-aware if naive (assume UTC)
+                            if value.tzinfo is None:
+                                value_utc = tz_utils.make_aware(value, dt_timezone.utc)
+                                logger.debug(f"[TravelTrackAdmin.changeform_view] {field_name} made aware as UTC: {value_utc}")
+                            else:
+                                value_utc = value
+                            
+                            # Convert to current timezone
+                            if value_utc.tzinfo != current_tz:
+                                converted_value = value_utc.astimezone(current_tz)
+                                logger.debug(f"[TravelTrackAdmin.changeform_view] {field_name} converted to {current_tz}: {converted_value}")
+                                # Set on instance for form rendering
+                                setattr(obj, field_name, converted_value)
+                            else:
+                                logger.debug(f"[TravelTrackAdmin.changeform_view] {field_name} already in current timezone: {value_utc}")
+            except Exception as e:
+                logger.warning(f"Error converting datetime values in changeform_view: {e}", exc_info=True)
         
         # Get all groups with existing travel status for JavaScript
         if request.user.is_superuser:
@@ -2429,7 +2619,21 @@ class TravelTrackAdmin(admin.ModelAdmin):
                 end_time = status.goal_reached_at if status.goal_reached_at else timezone.now()
                 
                 if status.goal_reached_at:
-                    goal_reached += f"<br><small style='color: #666;'>{status.goal_reached_at.strftime('%d.%m.%Y %H:%M:%S')}</small>"
+                    # Convert to current timezone for display
+                    from django.utils import timezone as tz_utils
+                    from datetime import timezone as dt_timezone
+                    
+                    goal_reached_dt = status.goal_reached_at
+                    # If naive, assume it's UTC (as stored in DB)
+                    if goal_reached_dt.tzinfo is None:
+                        goal_reached_dt = tz_utils.make_aware(goal_reached_dt, dt_timezone.utc)
+                    
+                    # Convert to current timezone
+                    current_tz = tz_utils.get_current_timezone()
+                    if goal_reached_dt.tzinfo != current_tz:
+                        goal_reached_dt = goal_reached_dt.astimezone(current_tz)
+                    
+                    goal_reached += f"<br><small style='color: #666;'>{goal_reached_dt.strftime('%d.%m.%Y %H:%M:%S')}</small>"
                 
                 # Calculate travel duration from start to goal
                 # IMPORTANT: Use the same logic as map/views.py to ensure consistency
@@ -2530,16 +2734,129 @@ class TravelTrackAdmin(admin.ModelAdmin):
     groups_count.admin_order_field = 'group_statuses'
 
     def save_model(self, request, obj, form, change):
-        if obj.track_file and (not obj.geojson_data or 'track_file' in form.changed_data):
+        # Log datetime values before saving
+        for field_name in ['start_time', 'end_time']:
+            value = getattr(obj, field_name, None)
+            if value:
+                logger.debug(f"[TravelTrackAdmin.save_model] {field_name} on obj before save: {value} (type: {type(value)}, tzinfo: {getattr(value, 'tzinfo', 'N/A')})")
+        
+        # CRITICAL FIX: Django with activated timezone interprets naive datetimes as local time
+        # When USE_TZ=True and a timezone is activated, Django converts naive datetimes
+        # from the current timezone to UTC. But we want to store UTC directly.
+        # Solution: Temporarily deactivate timezone, set the naive UTC values, then reactivate
+        from django.utils import timezone as tz_utils
+        from datetime import timezone as dt_timezone
+        
+        # Get the cleaned values from the form (these are already naive UTC from clean())
+        original_tz = None
+        timezone_was_deactivated = False
+        
+        if hasattr(form, 'cleaned_data'):
+            # Store current timezone
+            original_tz = tz_utils.get_current_timezone()
+            
+            # Check if we need to set datetime values
+            needs_timezone_fix = any(
+                field_name in form.cleaned_data and form.cleaned_data[field_name]
+                for field_name in ['start_time', 'end_time']
+            )
+            
+            if needs_timezone_fix:
+                # Temporarily deactivate timezone so Django treats naive as UTC
+                tz_utils.deactivate()
+                timezone_was_deactivated = True
+                logger.debug(f"[TravelTrackAdmin.save_model] Timezone deactivated to set naive UTC values")
+            
             try:
-                gpx = gpxpy.parse(obj.track_file.open())
-                from decimal import Decimal
-                obj.total_length_km = Decimal(str(round(gpx.length_3d() / 1000.0, 5)))
-                points = [[p.latitude, p.longitude] for t in gpx.tracks for s in t.segments for p in s.points]
-                obj.geojson_data = json.dumps(points[::5])
+                for field_name in ['start_time', 'end_time']:
+                    if field_name in form.cleaned_data and form.cleaned_data[field_name]:
+                        naive_utc = form.cleaned_data[field_name]
+                        logger.debug(f"[TravelTrackAdmin.save_model] {field_name} from cleaned_data (naive UTC): {naive_utc}")
+                        
+                        # Set the naive UTC value directly (timezone is deactivated)
+                        setattr(obj, field_name, naive_utc)
+                        logger.debug(f"[TravelTrackAdmin.save_model] {field_name} set as naive UTC: {naive_utc}")
+                
+                # Process GPX file if needed (while timezone is still deactivated)
+                if obj.track_file and (not obj.geojson_data or 'track_file' in form.changed_data):
+                    try:
+                        gpx = gpxpy.parse(obj.track_file.open())
+                        from decimal import Decimal
+                        obj.total_length_km = Decimal(str(round(gpx.length_3d() / 1000.0, 5)))
+                        points = [[p.latitude, p.longitude] for t in gpx.tracks for s in t.segments for p in s.points]
+                        obj.geojson_data = json.dumps(points[::5])
+                    except Exception as e:
+                        self.message_user(request, f"GPX Fehler: {e}", level='ERROR')
+                
+                # CRITICAL: Save with timezone STILL deactivated
+                # This ensures Django treats the naive datetime as UTC
+                super().save_model(request, obj, form, change)
+                
+                # DOUBLE-CHECK: After save, verify the values were saved correctly
+                # If Django still converted them, we need to update them directly in the DB
+                obj.refresh_from_db()
+                for field_name in ['start_time', 'end_time']:
+                    if field_name in form.cleaned_data and form.cleaned_data[field_name]:
+                        expected_naive_utc = form.cleaned_data[field_name]
+                        actual_value = getattr(obj, field_name, None)
+                        
+                        if actual_value:
+                            # Make timezone-aware to compare
+                            if actual_value.tzinfo is None:
+                                actual_aware = tz_utils.make_aware(actual_value, dt_timezone.utc)
+                            else:
+                                actual_aware = actual_value
+                            
+                            expected_aware = tz_utils.make_aware(expected_naive_utc, dt_timezone.utc)
+                            
+                            # If they don't match, Django converted it - fix it directly in DB
+                            if actual_aware != expected_aware:
+                                logger.warning(
+                                    f"[TravelTrackAdmin.save_model] {field_name} was converted by Django! "
+                                    f"Expected {expected_aware} UTC, got {actual_aware} UTC. Fixing directly in DB."
+                                )
+                                # Update directly in database using raw SQL to bypass Django's conversion
+                                from django.db import connection
+                                with connection.cursor() as cursor:
+                                    # Django uses %s as placeholder for all databases (it handles conversion internally)
+                                    cursor.execute(
+                                        f"UPDATE api_traveltrack SET {field_name} = %s WHERE id = %s",
+                                        [expected_naive_utc, obj.pk]
+                                    )
+                                # Refresh object to get the corrected value
+                                obj.refresh_from_db()
+                                logger.debug(f"[TravelTrackAdmin.save_model] {field_name} fixed directly in DB: {expected_naive_utc}")
+                
             except Exception as e:
-                self.message_user(request, f"GPX Fehler: {e}", level='ERROR')
-        super().save_model(request, obj, form, change)
+                # Ensure timezone is reactivated even if there's an error
+                if timezone_was_deactivated and original_tz:
+                    tz_utils.activate(original_tz)
+                logger.error(f"[TravelTrackAdmin.save_model] Error saving: {e}", exc_info=True)
+                raise
+            finally:
+                # Reactivate timezone AFTER saving
+                if timezone_was_deactivated and original_tz:
+                    tz_utils.activate(original_tz)
+                    logger.debug(f"[TravelTrackAdmin.save_model] Timezone reactivated: {original_tz}")
+        else:
+            # No datetime fields to fix - proceed normally
+            if obj.track_file and (not obj.geojson_data or 'track_file' in form.changed_data):
+                try:
+                    gpx = gpxpy.parse(obj.track_file.open())
+                    from decimal import Decimal
+                    obj.total_length_km = Decimal(str(round(gpx.length_3d() / 1000.0, 5)))
+                    points = [[p.latitude, p.longitude] for t in gpx.tracks for s in t.segments for p in s.points]
+                    obj.geojson_data = json.dumps(points[::5])
+                except Exception as e:
+                    self.message_user(request, f"GPX Fehler: {e}", level='ERROR')
+            super().save_model(request, obj, form, change)
+        
+        # Log datetime values after saving (reload from DB to see what was actually saved)
+        obj.refresh_from_db()
+        for field_name in ['start_time', 'end_time']:
+            value = getattr(obj, field_name, None)
+            if value:
+                logger.debug(f"[TravelTrackAdmin.save_model] {field_name} on obj after save (from DB): {value} (type: {type(value)}, tzinfo: {getattr(value, 'tzinfo', 'N/A')})")
 
     def get_urls(self):
         """Add custom URLs for restart and save_history actions."""
@@ -3761,7 +4078,21 @@ class EventHistoryAdmin(admin.ModelAdmin):
     def best_leaf_group_goal_reached_at_display(self, obj):
         """Display when best leaf group reached the goal."""
         if obj and obj.best_leaf_group_goal_reached_at:
-            return obj.best_leaf_group_goal_reached_at.strftime('%d.%m.%Y %H:%M')
+            # Convert to current timezone for display
+            from django.utils import timezone as tz_utils
+            from datetime import timezone as dt_timezone
+            
+            goal_reached_dt = obj.best_leaf_group_goal_reached_at
+            # If naive, assume it's UTC (as stored in DB)
+            if goal_reached_dt.tzinfo is None:
+                goal_reached_dt = tz_utils.make_aware(goal_reached_dt, dt_timezone.utc)
+            
+            # Convert to current timezone
+            current_tz = tz_utils.get_current_timezone()
+            if goal_reached_dt.tzinfo != current_tz:
+                goal_reached_dt = goal_reached_dt.astimezone(current_tz)
+            
+            return goal_reached_dt.strftime('%d.%m.%Y %H:%M')
         return _("Noch nicht erreicht")
     best_leaf_group_goal_reached_at_display.short_description = _("Ziel erreicht am (Beste Leaf-Gruppe)")
     
