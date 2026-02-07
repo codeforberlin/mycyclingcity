@@ -4,6 +4,31 @@ Django-based web application for the MyCyclingCity cycling infrastructure tracki
 
 ## Setup and Installation
 
+### Quick Setup (Development)
+
+For a fresh development setup, use the automated setup script:
+
+```bash
+cd mcc-web
+./scripts/setup_dev.sh
+```
+
+This script automatically:
+- Creates Python virtual environment
+- Installs all dependencies
+- Creates required directories (logs, tmp, data/db, etc.)
+- Creates/configures .env file
+- Runs database migrations
+- Optionally creates superuser
+- Collects static files
+
+**Options:**
+- `--skip-venv`: Skip virtual environment creation
+- `--skip-superuser`: Skip superuser creation
+- `--skip-static`: Skip static files collection
+
+For detailed manual installation instructions, see [docs/de/getting-started/installation.md](docs/de/getting-started/installation.md).
+
 ### Creating Deployment Archive
 
 In the development directory:

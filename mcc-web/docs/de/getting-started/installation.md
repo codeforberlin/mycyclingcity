@@ -9,6 +9,34 @@ Diese Anleitung erklärt, wie Sie die MyCyclingCity Entwicklungsumgebung einrich
 - Git
 - Virtuelle Umgebung (empfohlen)
 
+## Schnellstart (Empfohlen)
+
+Für ein automatisches Setup verwenden Sie das Setup-Script:
+
+```bash
+git clone https://github.com/codeforberlin/mycyclingcity.git
+cd mycyclingcity/mcc-web
+./scripts/setup_dev.sh
+```
+
+Das Script führt automatisch alle notwendigen Schritte aus:
+- Erstellt die virtuelle Umgebung
+- Installiert alle Abhängigkeiten
+- Erstellt erforderliche Verzeichnisse (logs, tmp, data/db, etc.)
+- Erstellt/konfiguriert die .env Datei
+- Führt Datenbank-Migrationen aus
+- Erstellt optional einen Superuser
+- Sammelt statische Dateien
+
+**Optionen:**
+- `--skip-venv`: Überspringt die Erstellung der virtuellen Umgebung
+- `--skip-superuser`: Überspringt die Superuser-Erstellung
+- `--skip-static`: Überspringt das Sammeln statischer Dateien
+
+## Manuelle Installation
+
+Falls Sie die Installation manuell durchführen möchten:
+
 ## Schritt 1: Repository klonen
 
 ```bash
@@ -87,19 +115,19 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 python manage.py migrate
 ```
 
-## Schritt 6: Superuser erstellen (Optional)
+## Schritt 7: Superuser erstellen (Optional)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-## Schritt 7: Statische Dateien sammeln
+## Schritt 8: Statische Dateien sammeln
 
 ```bash
 python manage.py collectstatic
 ```
 
-## Schritt 8: Entwicklungsserver starten
+## Schritt 9: Entwicklungsserver starten
 
 ```bash
 python manage.py runserver
