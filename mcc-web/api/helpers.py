@@ -358,8 +358,8 @@ def build_group_hierarchy(
                     'members': sub_member_data
                 })
         
-        # Limit subgroups to top 10 by distance_total (sorted descending)
-        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)[:10]
+        # Sort subgroups by distance_total (sorted descending) - no limit
+        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)
         
         # Use total from HourlyMetric instead of distance_total from model
         p_group_total_km = group_totals.get(p_group.id, 0.0)

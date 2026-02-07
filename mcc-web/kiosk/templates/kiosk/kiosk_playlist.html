@@ -452,11 +452,16 @@
                                     const activityToastContainer = doc.querySelector('#activity-toast-container');
                                     if (activityToastContainer) {
                                         const clonedActivityToastContainer = activityToastContainer.cloneNode(true);
-                                        // Ensure it's positioned correctly for kiosk mode
+                                        // Ensure it's positioned correctly for kiosk mode with all required styles
                                         clonedActivityToastContainer.style.position = 'fixed';
                                         clonedActivityToastContainer.style.top = '20px';
                                         clonedActivityToastContainer.style.right = '20px';
                                         clonedActivityToastContainer.style.zIndex = '2000';
+                                        clonedActivityToastContainer.style.display = 'flex';
+                                        clonedActivityToastContainer.style.flexDirection = 'column';
+                                        clonedActivityToastContainer.style.gap = '10px';
+                                        clonedActivityToastContainer.style.maxWidth = '300px';
+                                        clonedActivityToastContainer.style.pointerEvents = 'none';
                                         content.appendChild(clonedActivityToastContainer);
                                     }
                                     
@@ -502,11 +507,16 @@
                                 const activityToastContainer = doc.querySelector('#activity-toast-container');
                                 if (activityToastContainer) {
                                     const clonedActivityToastContainer = activityToastContainer.cloneNode(true);
-                                    // Ensure it's positioned correctly for kiosk mode
+                                    // Ensure it's positioned correctly for kiosk mode with all required styles
                                     clonedActivityToastContainer.style.position = 'fixed';
                                     clonedActivityToastContainer.style.top = '20px';
                                     clonedActivityToastContainer.style.right = '20px';
                                     clonedActivityToastContainer.style.zIndex = '2000';
+                                    clonedActivityToastContainer.style.display = 'flex';
+                                    clonedActivityToastContainer.style.flexDirection = 'column';
+                                    clonedActivityToastContainer.style.gap = '10px';
+                                    clonedActivityToastContainer.style.maxWidth = '300px';
+                                    clonedActivityToastContainer.style.pointerEvents = 'none';
                                     content.appendChild(clonedActivityToastContainer);
                                 }
                                 
@@ -600,7 +610,18 @@
                                     // Also clone the Activity Toast Container
                                     const activityToastContainer = doc.querySelector('#activity-toast-container');
                                     if (activityToastContainer) {
-                                        content.appendChild(activityToastContainer.cloneNode(true));
+                                        const clonedActivityToastContainer = activityToastContainer.cloneNode(true);
+                                        // Ensure it's positioned correctly for kiosk mode with all required styles
+                                        clonedActivityToastContainer.style.position = 'fixed';
+                                        clonedActivityToastContainer.style.top = '20px';
+                                        clonedActivityToastContainer.style.right = '20px';
+                                        clonedActivityToastContainer.style.zIndex = '2000';
+                                        clonedActivityToastContainer.style.display = 'flex';
+                                        clonedActivityToastContainer.style.flexDirection = 'column';
+                                        clonedActivityToastContainer.style.gap = '10px';
+                                        clonedActivityToastContainer.style.maxWidth = '300px';
+                                        clonedActivityToastContainer.style.pointerEvents = 'none';
+                                        content.appendChild(clonedActivityToastContainer);
                                     }
                                 } else if (!content) {
                                     // Priority 5: Use body content for other views
