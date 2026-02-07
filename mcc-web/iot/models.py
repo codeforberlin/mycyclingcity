@@ -578,7 +578,7 @@ class DeviceManagementSettings(models.Model):
         blank=True,
         null=True,
         verbose_name=_("IoT Device Shared API Key"),
-        help_text=_("Dedicated API key for IoT devices that can be shared by multiple devices. Used as default key before individual device keys are assigned. Only valid for IoT device endpoints.")
+        help_text=_("Dedizierter API-Key für IoT-Geräte, der von mehreren Geräten gleichzeitig verwendet werden kann. Wird als Standard-Key verwendet, bevor individuelle Geräte-Keys zugewiesen werden. Gilt nur für IoT-Geräte-Endpoints, nicht für öffentliche API-Endpoints.")
     )
     
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated at"))

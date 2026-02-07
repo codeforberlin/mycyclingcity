@@ -732,7 +732,7 @@ class WheelSizeWidget(forms.NumberInput):
         js_function_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
         
         preset_html = '<div class="wheel-size-presets" style="margin-bottom: 10px;">'
-        preset_html += '<label for="' + select_id + '" style="font-weight: bold; display: block; margin-bottom: 5px;">Radgröße (Standard):</label>'
+        preset_html += '<label for="' + select_id + '" style="font-weight: bold; display: block; margin-bottom: 5px;">' + str(_("Radgröße (Standard):")) + '</label>'
         preset_html += '<select id="' + select_id + '" name="wheel_size_preset_' + name + '" onchange="updateWheelSizeFromPreset_' + js_function_name + '(); return false;" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">'
         preset_html += '<option value="">-- Manuelle Eingabe --</option>'
         
@@ -743,7 +743,7 @@ class WheelSizeWidget(forms.NumberInput):
         preset_html += '</select></div>'
         
         # Add label for manual input
-        manual_label = f'<label for="{widget_id}" style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">Radumfang (mm):</label>'
+        manual_label = f'<label for="{widget_id}" style="font-weight: bold; display: block; margin-bottom: 5px; margin-top: 10px;">{_("Radumfang (mm):")}</label>'
         
         # JavaScript to sync preset selection with number input
         # Use a more robust approach to find the number input field
@@ -5425,7 +5425,6 @@ class DeviceManagementSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         (_("IoT Device Shared API Key"), {
             'fields': ('iot_device_shared_api_key',),
-            'description': _("Dedizierter API-Key für IoT-Geräte, der von mehreren Geräten gleichzeitig verwendet werden kann. Wird als Standard-Key verwendet, bevor individuelle Geräte-Keys zugewiesen werden. Gilt nur für IoT-Geräte-Endpoints, nicht für öffentliche API-Endpoints.")
         }),
         (_("E-Mail-Benachrichtigungen"), {
             'fields': ('email_notifications_enabled', 'notification_email', 'last_notification_sent'),
@@ -6276,27 +6275,41 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     
     # Define custom ordering
     # Apps with lower numbers appear first, higher numbers appear last
+    # Note: Include both German and English translations for proper ordering in both locales
     app_ordering = {
-        'Gruppen & Radler': 0,  # Ganz oben
-        'MCC Core API & Models': 0,  # Alte Bezeichnung (für Kompatibilität)
-        'Reisen': 2,
+        # Top level - Groups & Cyclists
+        'Gruppen & Radler': 0,  # German
+        'Groups & Cyclists': 0,  # English
+        'MCC Core API & Models': 0,  # Old name (for compatibility)
+        # Travels
+        'Reisen': 2,  # German
+        'Travels': 2,  # English
+        # Eventboard
         'Eventboard': 3,
-        'MCC Game Interface': 4,
-        'MCC Spiel-Interface': 4,  # German translation
-        'Historical Reports & Analytics': 5,
-        'Historische Berichte & Analysen': 5,  # German translation
+        # MCC Game Interface
+        'MCC Game Interface': 4,  # English
+        'MCC Spiel-Interface': 4,  # German
+        # Historical Reports & Analytics
+        'Historical Reports & Analytics': 5,  # English
+        'Historische Berichte & Analysen': 5,  # German
+        # Session Management
         'Session Management': 6,
+        # IOT Management
         'IOT Management': 7,
+        # Kiosk Management
         'Kiosk Management': 8,
+        # MCC Live Map
         'MCC Live Map': 9,
+        # Leaderboard
         'Leaderboard': 10,
+        # Ranking
         'Ranking': 11,
         # Minecraft Verwaltung and Mgmt at the end
-        'Minecraft Verwaltung': 98,
+        'Minecraft Verwaltung': 98,  # German
         'Mgmt': 99,
         # Authentication and Authorization at the very end (under Mgmt)
-        'Authentication and Authorization': 100,
-        'Authentifizierung und Autorisierung': 100,
+        'Authentication and Authorization': 100,  # English
+        'Authentifizierung und Autorisierung': 100,  # German
     }
     
     # Sort apps by custom ordering, then alphabetically for others
