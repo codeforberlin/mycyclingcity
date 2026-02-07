@@ -4141,7 +4141,7 @@ msgstr ""
 
 #: mgmt/admin.py:1304 mgmt/admin.py:5639
 msgid "Kein API-Key konfiguriert"
-msgstr ""
+msgstr "No API key configured"
 
 #: mgmt/admin.py:1305 mgmt/admin.py:5640
 msgid ""
