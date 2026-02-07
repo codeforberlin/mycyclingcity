@@ -7,14 +7,14 @@ Logs are stored in files and can be viewed via the Log File Viewer in the Admin 
 ## Log Files
 
 Logs are stored in the following files:
-- `logs/api.log` - API application
-- `logs/mgmt.log` - Management application
-- `logs/iot.log` - IoT application
-- `logs/kiosk.log` - Kiosk application
-- `logs/game.log` - Game application
-- `logs/django.log` - Django framework (WARNING+ only)
-- `logs/gunicorn_access.log` - Gunicorn access logs
-- `logs/gunicorn_error.log` - Gunicorn error logs
+- `data/logs/api.log` - API application (development) / `/data/var/mcc/logs/api.log` (production)
+- `data/logs/mgmt.log` - Management application (development) / `/data/var/mcc/logs/mgmt.log` (production)
+- `data/logs/iot.log` - IoT application (development) / `/data/var/mcc/logs/iot.log` (production)
+- `data/logs/kiosk.log` - Kiosk application (development) / `/data/var/mcc/logs/kiosk.log` (production)
+- `data/logs/game.log` - Game application (development) / `/data/var/mcc/logs/game.log` (production)
+- `data/logs/django.log` - Django framework (WARNING+ only) (development) / `/data/var/mcc/logs/django.log` (production)
+- `data/logs/gunicorn_access.log` - Gunicorn access logs (development) / `/data/var/mcc/logs/gunicorn_access.log` (production)
+- `data/logs/gunicorn_error.log` - Gunicorn error logs (development) / `/data/var/mcc/logs/gunicorn_error.log` (production)
 
 ## View Logs in Admin
 
@@ -43,14 +43,14 @@ Log levels can be configured per app in `config/settings.py`.
 
 ### In Terminal:
 ```bash
-# API logs
-tail -f logs/api.log
+# API logs (development)
+tail -f data/logs/api.log
 
-# Management logs
-tail -f logs/mgmt.log
+# Management logs (development)
+tail -f data/logs/mgmt.log
 
-# All app logs simultaneously
-tail -f logs/*.log
+# All app logs simultaneously (development)
+tail -f data/logs/*.log
 ```
 
 ### In Admin GUI:

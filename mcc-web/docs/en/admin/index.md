@@ -239,7 +239,7 @@ Server management and system monitoring.
 
 - **Purpose**: Display log files in browser
 - **Features**:
-  - Select log files from `logs/` directory
+  - Select log files from `data/logs/` directory (development) / `/data/var/mcc/logs/` (production)
   - Real-time log display
   - Browse rotated log files
   - Filtering and search

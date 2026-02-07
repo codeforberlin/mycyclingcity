@@ -256,11 +256,11 @@ def minecraft_action(request, action):
 
     try:
         if action in ["start", "stop", "snapshot-start", "snapshot-stop"]:
-            # Use LOGS_DIR from settings (production: /data/var/mcc/logs, dev: BASE_DIR/logs)
+            # Use LOGS_DIR from settings (production: /data/var/mcc/logs, dev: data/logs)
             if hasattr(settings, 'LOGS_DIR'):
                 logs_dir = Path(settings.LOGS_DIR)
             else:
-                logs_dir = Path(settings.BASE_DIR) / "logs"
+                logs_dir = Path(settings.BASE_DIR) / "data" / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
             action_log = logs_dir / "minecraft_action.log"
             

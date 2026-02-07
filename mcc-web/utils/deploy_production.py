@@ -351,8 +351,8 @@ def backup_database(project_dir: Path, db_path: Path, backup_dir: Optional[Path]
         if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
             backup_dir = Path('/data/var/mcc/backups')
         else:
-            # Entwicklung: lokales Verzeichnis
-            backup_dir = project_dir / 'backups'
+            # Entwicklung: lokales Verzeichnis (konsistent mit data/ Struktur)
+            backup_dir = project_dir / 'data' / 'backups'
     
     backup_dir.mkdir(parents=True, exist_ok=True)
     

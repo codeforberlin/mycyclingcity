@@ -150,13 +150,16 @@ fi
 print_status "Creating required directories..."
 
 # Development directories (from settings.py and scripts)
+# Note: STATIC_ROOT = data/staticfiles, MEDIA_ROOT = data/media (from settings.py)
+# Note: LOGS_DIR = data/logs (all logs: Django app logs + Gunicorn logs)
+# Note: TMP_DIR = data/tmp (temporary files, PID files, etc.) - consistent with production /data/var/mcc/tmp
 DIRS=(
     "data/db"           # SQLite database directory
-    "logs"              # Log files
-    "tmp"               # Temporary files (PID files, etc.)
-    "staticfiles"       # Collected static files
-    "media"             # Media files (user uploads, etc.)
-    "backups"           # Database backups
+    "data/staticfiles"  # Collected static files (STATIC_ROOT)
+    "data/media"        # Media files (user uploads, etc.) (MEDIA_ROOT)
+    "data/logs"         # All logs (Django app logs + Gunicorn logs) - from settings.py LOGS_DIR and gunicorn_config.py
+    "data/tmp"          # Temporary files (PID files, etc.) - consistent with production /data/var/mcc/tmp
+    "data/backups"      # Database backups - consistent with production /data/var/mcc/backups
 )
 
 for dir in "${DIRS[@]}"; do
@@ -170,7 +173,7 @@ for dir in "${DIRS[@]}"; do
 done
 
 # Set permissions for tmp directory (for PID files)
-chmod 755 "$PROJECT_DIR/tmp" 2>/dev/null || true
+chmod 755 "$PROJECT_DIR/data/tmp" 2>/dev/null || true
 
 print_success "All required directories created"
 
@@ -246,7 +249,48 @@ else
     exit 1
 fi
 
-# Step 6: Create superuser (optional)
+# Step 6: Create Operator group (from migration or command)
+print_status "Ensuring Operator group exists..."
+
+# Check if Operator group exists
+OPERATOR_GROUP_EXISTS=$("$PYTHON_BIN" manage.py shell -c "
+from django.contrib.auth.models import Group
+if Group.objects.filter(name='Operatoren').exists():
+    print('true')
+else:
+    print('false')
+" 2>/dev/null || echo "false")
+
+if [ "$OPERATOR_GROUP_EXISTS" = "false" ]; then
+    print_warning "Operator group 'Operatoren' not found"
+    print_status "Running setup_operator_group command..."
+    if "$PYTHON_BIN" manage.py setup_operator_group 2>&1 | grep -q "already exists\|Successfully assigned"; then
+        print_success "Operator group created/verified"
+    else
+        print_warning "Operator group setup completed (may have warnings)"
+    fi
+else
+    print_success "Operator group 'Operatoren' already exists"
+    # Verify permissions are set correctly
+    PERM_COUNT=$("$PYTHON_BIN" manage.py shell -c "
+from django.contrib.auth.models import Group
+group = Group.objects.get(name='Operatoren')
+print(group.permissions.count())
+" 2>/dev/null | grep -E '^[0-9]+$' | head -1 || echo "0")
+    # Ensure PERM_COUNT is numeric (strip any non-numeric characters)
+    PERM_COUNT=$(echo "$PERM_COUNT" | tr -d -c '0-9')
+    if [ -z "$PERM_COUNT" ]; then
+        PERM_COUNT="0"
+    fi
+    if [ "$PERM_COUNT" -gt 0 ] 2>/dev/null; then
+        print_success "Operator group has $PERM_COUNT permissions assigned"
+    else
+        print_warning "Operator group exists but has no permissions. Running setup_operator_group..."
+        "$PYTHON_BIN" manage.py setup_operator_group 2>&1 | grep -q "Successfully assigned" && print_success "Permissions assigned" || print_warning "Permission assignment completed"
+    fi
+fi
+
+# Step 7: Create superuser (optional)
 if [ "$SKIP_SUPERUSER" = false ]; then
     print_status "Checking for superuser..."
     
@@ -277,20 +321,49 @@ else
     print_status "Skipping superuser creation"
 fi
 
-# Step 7: Collect static files
+# Step 8: Collect static files
 if [ "$SKIP_STATIC" = false ]; then
     print_status "Collecting static files..."
     
-    if "$PYTHON_BIN" manage.py collectstatic --noinput --clear 2>&1 | grep -q "static files copied"; then
-        print_success "Static files collected"
+    # Ensure STATIC_ROOT directory exists
+    STATIC_ROOT_DIR="$PROJECT_DIR/data/staticfiles"
+    if [ ! -d "$STATIC_ROOT_DIR" ]; then
+        mkdir -p "$STATIC_ROOT_DIR"
+        print_status "Created STATIC_ROOT directory: data/staticfiles"
+    fi
+    
+    # Collect static files (use --noinput to avoid interactive prompt)
+    COLLECT_OUTPUT=$("$PYTHON_BIN" manage.py collectstatic --noinput --clear 2>&1)
+    COLLECT_EXIT_CODE=$?
+    
+    if [ $COLLECT_EXIT_CODE -eq 0 ]; then
+        # Parse output to show what happened
+        if echo "$COLLECT_OUTPUT" | grep -qE "[0-9]+ static files copied"; then
+            COPIED_COUNT=$(echo "$COLLECT_OUTPUT" | grep -oE "[0-9]+ static files copied" | grep -oE "[0-9]+")
+            print_success "Static files collected: $COPIED_COUNT files copied"
+        elif echo "$COLLECT_OUTPUT" | grep -qE "[0-9]+ unmodified"; then
+            UNMODIFIED_COUNT=$(echo "$COLLECT_OUTPUT" | grep -oE "[0-9]+ unmodified" | grep -oE "[0-9]+")
+            print_success "Static files already up to date: $UNMODIFIED_COUNT files unmodified"
+        elif echo "$COLLECT_OUTPUT" | grep -q "0 static files copied"; then
+            # Check if directory is empty or files exist
+            FILE_COUNT=$(find "$STATIC_ROOT_DIR" -type f 2>/dev/null | wc -l)
+            if [ "$FILE_COUNT" -gt 0 ]; then
+                print_success "Static files already collected: $FILE_COUNT files in data/staticfiles"
+            else
+                print_warning "No static files found to collect. Check STATICFILES_DIRS configuration."
+            fi
+        else
+            print_success "Static files collection completed"
+        fi
     else
-        print_warning "Static files collection completed (may have warnings)"
+        print_warning "Static files collection completed with warnings"
+        echo "$COLLECT_OUTPUT" | grep -v "RuntimeWarning" | tail -5
     fi
 else
     print_status "Skipping static files collection"
 fi
 
-# Step 8: Verify setup
+# Step 9: Verify setup
 print_status "Verifying setup..."
 
 # Check if manage.py works
@@ -319,8 +392,8 @@ echo "  - Run migrations: python manage.py migrate"
 echo "  - Collect static: python manage.py collectstatic"
 echo ""
 echo -e "${BLUE}Important directories:${NC}"
-echo "  - Logs: $PROJECT_DIR/logs/"
+echo "  - Logs: $PROJECT_DIR/data/logs/"
 echo "  - Database: $PROJECT_DIR/data/db/"
-echo "  - Static files: $PROJECT_DIR/staticfiles/"
-echo "  - Media files: $PROJECT_DIR/media/"
+echo "  - Static files: $PROJECT_DIR/data/staticfiles/"
+echo "  - Media files: $PROJECT_DIR/data/media/"
 echo ""

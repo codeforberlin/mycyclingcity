@@ -117,10 +117,9 @@ class Command(BaseCommand):
             Permission.objects.get(codename='view_groupeventstatus', content_type=ContentType.objects.get_for_model(GroupEventStatus)),
         ])
         
-        # EventHistory permissions (view and delete)
+        # EventHistory permissions (view only)
         permissions_to_assign.extend([
             Permission.objects.get(codename='view_eventhistory', content_type=ContentType.objects.get_for_model(EventHistory)),
-            Permission.objects.get(codename='delete_eventhistory', content_type=ContentType.objects.get_for_model(EventHistory)),
         ])
         
         # KioskDevice permissions

@@ -13,6 +13,7 @@ Views for deployment and backup management.
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from pathlib import Path
@@ -38,8 +39,8 @@ def backup_control(request):
     if '/data/appl/mcc' in str(settings.BASE_DIR) or os.environ.get('MCC_ENV') == 'production':
         backups_dir = Path('/data/var/mcc/backups')
     else:
-        # Entwicklung: lokales Verzeichnis
-        backups_dir = Path(settings.BASE_DIR) / 'backups'
+        # Entwicklung: lokales Verzeichnis (konsistent mit data/ Struktur)
+        backups_dir = Path(settings.BASE_DIR) / 'data' / 'backups'
     backups_dir.mkdir(parents=True, exist_ok=True)
     
     # List backup files (exclude WAL and SHM files)
@@ -99,8 +100,8 @@ def create_backup(request):
         if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
             backup_dir = Path('/data/var/mcc/backups')
         else:
-            # Entwicklung: lokales Verzeichnis
-            backup_dir = project_dir / 'backups'
+            # Entwicklung: lokales Verzeichnis (konsistent mit data/ Struktur)
+            backup_dir = project_dir / 'data' / 'backups'
         backup_dir.mkdir(parents=True, exist_ok=True)
         
         # Create backup
@@ -131,7 +132,13 @@ def download_backup(request, filename):
     from django.http import FileResponse, Http404
     from urllib.parse import quote
     
-    backups_dir = Path(settings.BASE_DIR) / 'backups'
+    # Prüfe ob wir in Produktion sind
+    if '/data/appl/mcc' in str(settings.BASE_DIR) or os.environ.get('MCC_ENV') == 'production':
+        backups_dir = Path('/data/var/mcc/backups')
+    else:
+        # Entwicklung: lokales Verzeichnis (konsistent mit data/ Struktur)
+        backups_dir = Path(settings.BASE_DIR) / 'data' / 'backups'
+    
     backup_path = backups_dir / filename
     
     # Security: Only allow files from backups directory

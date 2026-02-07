@@ -239,7 +239,7 @@ Server-Verwaltung und System-Monitoring.
 
 - **Zweck**: Log-Dateien im Browser anzeigen
 - **Features**:
-  - Auswahl von Log-Dateien aus dem `logs/` Verzeichnis
+  - Auswahl von Log-Dateien aus dem `data/logs/` Verzeichnis (Entwicklung) / `/data/var/mcc/logs/` (Produktion)
   - Echtzeit-Log-Anzeige
   - Rotierte Log-Dateien durchsuchen
   - Filterung und Suche

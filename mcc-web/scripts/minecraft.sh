@@ -20,8 +20,8 @@ if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]]; then
 else
     # Entwicklung: lokale Verzeichnisse
     VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
-    TMP_DIR="$PROJECT_DIR/tmp"
-    LOG_DIR="$PROJECT_DIR/logs"
+    TMP_DIR="$PROJECT_DIR/data/tmp"
+    LOG_DIR="$PROJECT_DIR/data/logs"
 fi
 
 PYTHON_BIN="$VENV_DIR/bin/python"

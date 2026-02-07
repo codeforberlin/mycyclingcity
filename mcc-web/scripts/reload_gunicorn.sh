@@ -14,7 +14,7 @@ PIDFILE="/data/var/mcc/tmp/mcc-web.pid"
 if [ ! -f "$PIDFILE" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-    PIDFILE="$PROJECT_DIR/tmp/mcc-web.pid"
+    PIDFILE="$PROJECT_DIR/data/tmp/mcc-web.pid"
 fi
 
 if [ ! -f "$PIDFILE" ]; then

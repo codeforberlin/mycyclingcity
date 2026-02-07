@@ -19,8 +19,8 @@ if [ ! -d "$PROJECT_DIR" ] || [[ "$PROJECT_DIR" != *"/data/appl/mcc"* ]]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
     VENV_DIR="${VENV_DIR:-$PROJECT_DIR/venv}"
-    PIDFILE="$PROJECT_DIR/tmp/mcc-web.pid"
-    LOG_DIR="$PROJECT_DIR/logs"
+    PIDFILE="$PROJECT_DIR/data/tmp/mcc-web.pid"
+    LOG_DIR="$PROJECT_DIR/data/logs"
 fi
 
 cd "$PROJECT_DIR" || exit 1

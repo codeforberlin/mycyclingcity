@@ -50,9 +50,9 @@ if os.environ.get('MCC_ENV') == 'production' or '/data/appl/mcc' in str(PROJECT_
     LOG_DIR = Path('/data/var/mcc/logs')
     PIDFILE = '/data/var/mcc/tmp/mcc-web.pid'
 else:
-    # Entwicklung: lokale Verzeichnisse
-    LOG_DIR = PROJECT_DIR / "logs"
-    PIDFILE = str(PROJECT_DIR / "tmp" / "mcc-web.pid")
+    # Entwicklung: lokale Verzeichnisse (konsistent mit settings.py LOGS_DIR)
+    LOG_DIR = PROJECT_DIR / "data" / "logs"
+    PIDFILE = str(PROJECT_DIR / "data" / "tmp" / "mcc-web.pid")
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 Path(PIDFILE).parent.mkdir(parents=True, exist_ok=True)

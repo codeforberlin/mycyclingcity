@@ -151,7 +151,7 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
         'staticfiles',
         'media',
         # Note: .mo files in locale/ are INCLUDED (compiled in dev, deployed to production)
-        # They will be copied to /data/var/mcc/locale_compiled during deployment
+        # They remain in CODE_DIR/locale/ and are NOT copied to DATA_DIR
         'backups',  # Database backups should not be deployed
         'tmp',  # Temporary files directory
         
@@ -268,7 +268,7 @@ def should_exclude(path: Path, base_dir: Path) -> bool:
             return True
     
     # Special case: INCLUDE .mo files in locale/ directory (compiled translations from dev)
-    # These will be deployed and copied to /data/var/mcc/locale_compiled
+    # These remain in CODE_DIR/locale/ and are NOT copied to DATA_DIR
     # Only exclude .mo files outside locale/ (e.g., in venv)
     if filename.endswith('.mo'):
         # Include .mo files in locale/ directory (project translations)
