@@ -1035,7 +1035,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                         })
                 
                 # Already sorted by distance_total from query, but ensure descending order
-                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_km'], reverse=True)[:10]  # Limit to top 10
+                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_km'], reverse=True)[:3]  # Limit to top 3
             
         except Group.DoesNotExist:
             top_parent_groups = []
@@ -1084,8 +1084,8 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                     'total_km': total_km,
                 })
         
-        # Sort parent groups by total_km descending - limit to top 10
-        top_parent_groups = sorted(parent_data, key=lambda x: x['total_km'], reverse=True)[:10]
+        # Sort parent groups by total_km descending - limit to top 3
+        top_parent_groups = sorted(parent_data, key=lambda x: x['total_km'], reverse=True)[:3]
     
     # Daily record holder: Find group with highest value based on sort parameter
     daily_record_holder: Optional[Dict[str, Any]] = None
