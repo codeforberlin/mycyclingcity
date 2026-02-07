@@ -49,7 +49,6 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Erstellt am')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Aktualisiert am')),
                 ('device', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='playlist_entries', to='kiosk.kioskdevice', verbose_name='Kiosk Device')),
-                ('event_filter', models.ForeignKey(blank=True, help_text='Optional: Filter content by specific event', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='kiosk_playlist_entries', to='api.event', verbose_name='Event Filter')),
                 ('group_filter', models.ForeignKey(blank=True, help_text='Optional: Filter content to show only groups and cyclists belonging to this master group', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='kiosk_playlist_entries', to='api.group', verbose_name='Group Filter')),
                 ('track_filter', models.ManyToManyField(blank=True, help_text='Optional: Filter map view to show only selected tracks (leave empty to show all tracks)', related_name='kiosk_playlist_entries', to='api.traveltrack', verbose_name='Track Filter')),
             ],

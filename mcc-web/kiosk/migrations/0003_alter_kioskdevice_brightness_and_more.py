@@ -5,6 +5,58 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def add_event_filter_if_not_exists(apps, schema_editor):
+    """
+    Add event_filter field if it doesn't exist (fresh install).
+    For existing systems: Field already exists, FK constraint already correct.
+    """
+    db_alias = schema_editor.connection.alias
+    connection = schema_editor.connection
+    
+    # Check if column exists
+    with connection.cursor() as cursor:
+        cursor.execute("PRAGMA table_info(kiosk_kioskplaylistentry)")
+        columns = [row[1] for row in cursor.fetchall()]
+        field_exists = 'event_filter_id' in columns
+    
+    if not field_exists:
+        # Fresh install: Add the field using direct SQL (more reliable)
+        with connection.cursor() as cursor:
+            try:
+                # Execute the ALTER TABLE statement
+                cursor.execute(
+                    "ALTER TABLE kiosk_kioskplaylistentry ADD COLUMN event_filter_id INTEGER NULL REFERENCES eventboard_event(id) ON DELETE SET NULL"
+                )
+            except Exception as e:
+                # If field already exists (shouldn't happen, but be safe), ignore
+                error_msg = str(e).lower()
+                if 'duplicate column' not in error_msg and 'already exists' not in error_msg:
+                    raise
+    # Existing system: Field already exists, no action needed
+
+
+def add_field_if_not_exists(apps, schema_editor):
+    """
+    Add event_filter field to state if it doesn't exist in database.
+    This is a wrapper to handle the case where the field was already added by RunPython.
+    """
+    # This function is called after RunPython, so the field should already exist in DB
+    # We just need to update the state
+    pass
+
+
+def reverse_add_event_filter_if_not_exists(apps, schema_editor):
+    """Reverse: Remove event_filter field if it exists."""
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("PRAGMA table_info(kiosk_kioskplaylistentry)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'event_filter_id' in columns:
+            # SQLite doesn't support DROP COLUMN directly, but for reverse we can skip
+            # In practice, this migration should not be reversed
+            pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -44,20 +96,24 @@ class Migration(migrations.Migration):
             name='display_duration',
             field=models.IntegerField(default=30, help_text='Wie lange diese Ansicht angezeigt werden soll, bevor zur nächsten gewechselt wird', validators=[django.core.validators.MinValueValidator(1)], verbose_name='Anzeigedauer (Sekunden)'),
         ),
-        # Use SeparateDatabaseAndState for event_filter because the table was already renamed
-        # in api.0012, so the database FK reference is already correct, we just need to update state
+        # Add event_filter field conditionally to handle both cases:
+        # 1. Fresh install: field doesn't exist, needs to be added
+        # 2. Existing system: field exists (from kiosk.0001), FK constraint already correct (api.0012 renamed table)
+        # First, use RunPython to conditionally add the field in the database if it doesn't exist
+        migrations.RunPython(
+            add_event_filter_if_not_exists,
+            reverse_add_event_filter_if_not_exists,
+        ),
+        # Then update the state to reflect event_filter pointing to eventboard.event
+        # Use SeparateDatabaseAndState to prevent AddField from trying to add it again in the database
         migrations.SeparateDatabaseAndState(
             database_operations=[
-                # No database operations needed - the table was already renamed from api_event to eventboard_event
-                # in api.0012, so the foreign key constraint already points to the correct table.
-                # Use RunSQL with empty SQL to satisfy the requirement for database_operations
-                migrations.RunSQL(
-                    sql=migrations.RunSQL.noop,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                # No database operation - field already created by RunPython above
+                migrations.RunSQL(migrations.RunSQL.noop, migrations.RunSQL.noop),
             ],
             state_operations=[
-                migrations.AlterField(
+                # Only update the state
+                migrations.AddField(
                     model_name='kioskplaylistentry',
                     name='event_filter',
                     field=models.ForeignKey(blank=True, help_text='Optional: Inhalte nach spezifischem Event filtern', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='kiosk_playlist_entries', to='eventboard.event', verbose_name='Event-Filter'),
