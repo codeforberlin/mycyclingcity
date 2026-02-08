@@ -32,6 +32,10 @@ from api.models import (
     HourlyMetric, MapPopupSettings,
     LeafGroupTravelContribution
 )
+from api.helpers import (
+    _calculate_cyclist_totals_from_metrics,
+    _calculate_group_totals_from_metrics
+)
 from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 from api.views import check_milestone_victory
@@ -156,62 +160,99 @@ def map_page(request: HttpRequest) -> HttpResponse:
         target_group_id = None
         selected_group_ids = []  # Ensure selected_group_ids is initialized even when no groups selected
 
+    # Calculate group totals from HourlyMetric for all groups at once (like in build_group_hierarchy)
+    all_groups_list = list(parent_groups)
+    # Also collect all subgroups for calculation
+    for p_group in parent_groups:
+        all_groups_list.extend(list(p_group.children.filter(is_visible=True)))
+    
+    group_totals = _calculate_group_totals_from_metrics(all_groups_list, use_cache=True)
+    
     hierarchy = []
     for p_group in parent_groups:
         p_filter = {'is_visible': True}
 
         direct_members = []
         if show_cyclists:
-            direct_qs = p_group.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage').order_by('-distance_total')
+            direct_qs = p_group.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage')
+            direct_members_list = list(direct_qs)
+            
+            # Calculate totals from HourlyMetric for all cyclists at once
+            cyclist_totals = _calculate_cyclist_totals_from_metrics(direct_members_list, use_cache=True)
+            
             direct_members = []
-            for m in direct_qs:
+            for m in direct_members_list:
                 session_km = 0
                 try:
                     if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
                         session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
                 except (AttributeError, ValueError, TypeError):
                     pass
+                # Use total from HourlyMetric instead of distance_total from model
+                total_km = cyclist_totals.get(m.id, 0.0)
                 direct_members.append({
                     'name': m.user_id,
-                    'km': round(m.distance_total, 3),
+                    'km': round(total_km, 3),
                     'session_km': round(session_km, 3)
                 })
+            
+            # Sort by km (from HourlyMetric) descending
+            direct_members = sorted(direct_members, key=lambda x: x['km'], reverse=True)
 
         # Filter subgroups
-        subgroups_qs = p_group.children.filter(is_visible=True).order_by('-distance_total')
+        subgroups_qs = p_group.children.filter(is_visible=True)
         
         subgroups_data = []
         for sub in subgroups_qs:
             sub_member_data = []
             if show_cyclists:
-                m_qs = sub.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage').order_by('-distance_total')
+                m_qs = sub.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage')
+                sub_members_list = list(m_qs)
+                
+                # Calculate totals from HourlyMetric for all cyclists at once
+                cyclist_totals = _calculate_cyclist_totals_from_metrics(sub_members_list, use_cache=True)
+                
                 sub_member_data = []
-                for m in m_qs:
+                for m in sub_members_list:
                     session_km = 0
                     try:
                         if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
                             session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
                     except (AttributeError, ValueError, TypeError):
                         pass
+                    # Use total from HourlyMetric instead of distance_total from model
+                    total_km = cyclist_totals.get(m.id, 0.0)
                     sub_member_data.append({
                         'name': m.user_id,
-                        'km': round(m.distance_total, 3),
+                        'km': round(total_km, 3),
                         'session_km': round(session_km, 3)
                     })
-            subgroups_data.append({'name': sub.name, 'km': round(sub.distance_total, 3), 'members': sub_member_data})
+                
+                # Sort by km (from HourlyMetric) descending
+                sub_member_data = sorted(sub_member_data, key=lambda x: x['km'], reverse=True)
+            
+            # Use total from HourlyMetric instead of distance_total from model
+            sub_total_km = group_totals.get(sub.id, 0.0)
+            subgroups_data.append({
+                'name': sub.name,
+                'km': round(sub_total_km, 3),
+                'members': sub_member_data
+            })
         
-        # Limit subgroups to top 10 by distance_total (sorted descending)
-        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)[:10]
+        # Sort subgroups by km (from HourlyMetric) descending - no limit
+        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)
 
+        # Use total from HourlyMetric instead of distance_total from model
+        p_group_total_km = group_totals.get(p_group.id, 0.0)
         hierarchy.append({
             'name': p_group.name,
-            'km': round(p_group.distance_total, 3),
+            'km': round(p_group_total_km, 3),
             'direct_members': direct_members,
             'subgroups': subgroups_data
         })
     
-    # Limit to top 10 groups by distance_total (sorted descending)
-    hierarchy = sorted(hierarchy, key=lambda x: x['km'], reverse=True)[:10]
+    # Sort hierarchy by km (from HourlyMetric) descending - no limit
+    hierarchy = sorted(hierarchy, key=lambda x: x['km'], reverse=True)
 
     # Travel data (Tracks & Avatars)
     # Only show tracks that are currently active (considering start_time and end_time)
