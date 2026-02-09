@@ -262,13 +262,22 @@ Configure `/etc/apache2/sites-enabled/mcc.conf`:
         Require all granted
     </Directory>
 
+    # Add media files (user-uploaded content like group logos)
+    # These are stored in DATA_DIR/media (e.g., /data/var/mcc/media)
+    Alias /media /data/var/mcc/media
+
+    <Directory /data/var/mcc/media>
+        Require all granted
+    </Directory>
+
     # Root redirect (ensures trailing slash)
     RedirectMatch permanent ^/$ https://mycyclingcity.net/de/map/
 
     # Proxy rules (IMPORTANT: order and slashes)
-    # Everything that is NOT /static/ or /robots.txt goes to Django
+    # Everything that is NOT /static/, /media/, or /robots.txt goes to Django
     ProxyPreserveHost On
     ProxyPass /static/ !
+    ProxyPass /media/ !
     ProxyPass /robots.txt !
     ProxyPass / http://127.0.0.1:8001/
     ProxyPassReverse / http://127.0.0.1:8001/

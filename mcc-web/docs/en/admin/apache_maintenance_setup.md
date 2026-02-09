@@ -66,6 +66,7 @@ In the Apache VirtualHost configuration (e.g., `/etc/apache2/sites-available/myc
     ProxyPreserveHost On
     ProxyPass /maintenance.html !
     ProxyPass /static/ !
+    ProxyPass /media/ !
     ProxyPass /robots.txt !
     ProxyPass / http://127.0.0.1:8001/
     ProxyPassReverse / http://127.0.0.1:8001/
