@@ -1273,3 +1273,165 @@ def update_group_hierarchy_progress(group, delta_km):
 # --- DEVICE MANAGEMENT & CONFIGURATION ---
 
 # --- DEVICE MANAGEMENT moved to iot app ---
+
+# --- YEAR END SNAPSHOT ---
+class YearEndSnapshot(models.Model):
+    """
+    Speichert einen Jahresabschluss (Schuljahr oder Kalenderjahr) für eine TOP-Gruppe.
+    Erhält alle Kilometerstände zum Zeitpunkt des Abschlusses.
+    """
+    PERIOD_TYPE_CHOICES = [
+        ('school_year', _("Schuljahr")),
+        ('calendar_year', _("Kalenderjahr")),
+    ]
+    
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='year_end_snapshots',
+        verbose_name=_("TOP-Gruppe"),
+        help_text=_("Die TOP-Gruppe (Schule oder Einrichtung), für die dieser Abschluss erstellt wurde")
+    )
+    snapshot_date = models.DateTimeField(
+        verbose_name=_("Abschlussdatum"),
+        help_text=_("Datum/Zeitpunkt, zu dem der Abschluss durchgeführt wurde")
+    )
+    period_start_date = models.DateTimeField(
+        verbose_name=_("Perioden-Startdatum"),
+        help_text=_("Startdatum der abgeschlossenen Periode (z.B. Schuljahresbeginn)")
+    )
+    period_end_date = models.DateTimeField(
+        verbose_name=_("Perioden-Enddatum"),
+        help_text=_("Enddatum der abgeschlossenen Periode (z.B. Schuljahresende)")
+    )
+    period_type = models.CharField(
+        max_length=20,
+        choices=PERIOD_TYPE_CHOICES,
+        verbose_name=_("Periodentyp")
+    )
+    # Gespeicherte Kilometerstände zum Zeitpunkt des Abschlusses
+    group_total_km = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Gruppen-Gesamt-KM")
+    )
+    group_total_coins = models.IntegerField(
+        default=0,
+        verbose_name=_("Gruppen-Gesamt-Coins")
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("Erstellt von")
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Erstellt am"))
+    is_undone = models.BooleanField(
+        default=False,
+        verbose_name=_("Rückgängig gemacht"),
+        help_text=_("Gibt an, ob dieser Abschluss rückgängig gemacht wurde")
+    )
+    undone_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Rückgängig gemacht am")
+    )
+    undone_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='undone_snapshots',
+        verbose_name=_("Rückgängig gemacht von")
+    )
+    
+    class Meta:
+        verbose_name = _("Jahresabschluss")
+        verbose_name_plural = _("Jahresabschlüsse")
+        ordering = ['-snapshot_date']
+        indexes = [
+            models.Index(fields=['group', '-snapshot_date']),
+            models.Index(fields=['group', 'is_undone', '-snapshot_date']),
+        ]
+    
+    def __str__(self):
+        period_type_display = dict(self.PERIOD_TYPE_CHOICES).get(self.period_type, self.period_type)
+        undone_status = " (rückgängig)" if self.is_undone else ""
+        return f"{self.group.name} - {period_type_display} {self.snapshot_date.strftime('%Y-%m-%d')}{undone_status}"
+
+
+class YearEndSnapshotDetail(models.Model):
+    """
+    Detaillierte Kilometerstände für Subgruppen, Radler und Geräte zum Zeitpunkt des Abschlusses.
+    """
+    snapshot = models.ForeignKey(
+        YearEndSnapshot,
+        on_delete=models.CASCADE,
+        related_name='details',
+        verbose_name=_("Jahresabschluss")
+    )
+    # Entweder Subgruppe, Radler oder Gerät
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='year_end_snapshot_details',
+        verbose_name=_("Subgruppe")
+    )
+    cyclist = models.ForeignKey(
+        Cyclist,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='year_end_snapshot_details',
+        verbose_name=_("Radler")
+    )
+    device = models.ForeignKey(
+        'iot.Device',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='year_end_snapshot_details',
+        verbose_name=_("Gerät")
+    )
+    distance_total = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Gesamt-KM zum Abschlusszeitpunkt")
+    )
+    coins_total = models.IntegerField(
+        default=0,
+        verbose_name=_("Gesamt-Coins zum Abschlusszeitpunkt")
+    )
+    
+    class Meta:
+        verbose_name = _("Jahresabschluss-Detail")
+        verbose_name_plural = _("Jahresabschluss-Details")
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(group__isnull=False, cyclist__isnull=True, device__isnull=True) |
+                    models.Q(group__isnull=True, cyclist__isnull=False, device__isnull=True) |
+                    models.Q(group__isnull=True, cyclist__isnull=True, device__isnull=False)
+                ),
+                name='year_end_snapshot_detail_must_have_one'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['snapshot', 'group']),
+            models.Index(fields=['snapshot', 'cyclist']),
+            models.Index(fields=['snapshot', 'device']),
+        ]
+    
+    def __str__(self):
+        if self.group:
+            return f"{self.snapshot} - {self.group.name}: {self.distance_total} km"
+        elif self.cyclist:
+            return f"{self.snapshot} - {self.cyclist.user_id}: {self.distance_total} km"
+        elif self.device:
+            return f"{self.snapshot} - {self.device.name}: {self.distance_total} km"
+        return f"{self.snapshot} - Detail"

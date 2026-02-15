@@ -10,6 +10,7 @@ import json
 import logging
 import requests
 import time
+from typing import Dict, Optional
 from django.http import JsonResponse, Http404, HttpRequest, FileResponse
 from ipaddress import ip_address
 from django.views.decorators.csrf import csrf_exempt
@@ -22,6 +23,7 @@ from .models import (
     Cyclist, Group, HourlyMetric, CyclistDeviceCurrentMileage, GroupTravelStatus, 
     Milestone, GroupMilestoneAchievement, LeafGroupTravelContribution, update_group_hierarchy_progress
 )
+from .helpers import _get_latest_snapshot_date_for_groups, filter_cyclist_metrics_by_snapshot
 from iot.models import (
     Device, DeviceConfiguration, DeviceConfigurationReport, DeviceConfigurationDiff,
     FirmwareImage, DeviceManagementSettings, DeviceHealth, DeviceAuditLog
@@ -1447,16 +1449,45 @@ def get_leaderboard_cyclists(request):
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         
-        # Get daily distance from HourlyMetrics
-        daily_metrics = HourlyMetric.objects.filter(
-            cyclist__in=cyclists_qs,
-            timestamp__gte=today_start,
-            group_at_time__isnull=False
-        ).values('cyclist_id').annotate(
-            daily_total=Sum('distance_km')
-        )
+        # Get daily distance from HourlyMetrics (considering snapshots)
+        cyclist_ids = list(cyclists_qs.values_list('id', flat=True))
         
-        daily_by_cyclist = {m['cyclist_id']: float(m['daily_total'] or 0) for m in daily_metrics}
+        # Get snapshot dates for cyclists (via their groups)
+        cyclist_groups_map: Dict[int, List[int]] = {}
+        for cyclist in cyclists_qs:
+            cyclist_groups_map[cyclist.id] = list(cyclist.groups.values_list('id', flat=True))
+        
+        all_group_ids = set()
+        for group_ids in cyclist_groups_map.values():
+            all_group_ids.update(group_ids)
+        
+        snapshot_dates = _get_latest_snapshot_date_for_groups(list(all_group_ids))
+        
+        # For each cyclist, find the latest snapshot date from their groups
+        cyclist_snapshot_dates: Dict[int, Optional[timezone.datetime]] = {}
+        for cyclist_id, group_ids in cyclist_groups_map.items():
+            latest_date = None
+            for group_id in group_ids:
+                group_date = snapshot_dates.get(group_id)
+                if group_date and (latest_date is None or group_date > latest_date):
+                    latest_date = group_date
+            cyclist_snapshot_dates[cyclist_id] = latest_date
+        
+        # Calculate daily metrics per cyclist (considering snapshot dates)
+        daily_by_cyclist: Dict[int, float] = {}
+        for cyclist_id in cyclist_ids:
+            snapshot_date = cyclist_snapshot_dates.get(cyclist_id)
+            # Use max of today_start and snapshot_date
+            effective_start = max(today_start, snapshot_date) if snapshot_date else today_start
+            
+            daily_metrics = HourlyMetric.objects.filter(
+                cyclist_id=cyclist_id,
+                timestamp__gte=effective_start,
+                group_at_time__isnull=False
+            ).aggregate(
+                daily_total=Sum('distance_km')
+            )
+            daily_by_cyclist[cyclist_id] = float(daily_metrics['daily_total'] or 0.0)
         
         # Add active sessions
         active_sessions = CyclistDeviceCurrentMileage.objects.filter(
@@ -1570,36 +1601,58 @@ def get_leaderboard_groups(request):
                 "parent_group_id": parent_group_id
             }, status=404)
     
-    # Calculate period distances
+    # Calculate period distances (considering snapshots)
+    group_ids = list(groups_qs.values_list('id', flat=True))
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    
+    period_by_group: Dict[int, float] = {}
+    
     if sort == 'daily':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        period_metrics = HourlyMetric.objects.filter(
-            group_at_time__in=groups_qs,
-            timestamp__gte=today_start
-        ).values('group_at_time_id').annotate(
-            period_total=Sum('distance_km')
-        )
+        for group_id in group_ids:
+            snapshot_date = snapshot_dates.get(group_id)
+            # Use max of today_start and snapshot_date
+            effective_start = max(today_start, snapshot_date) if snapshot_date else today_start
+            
+            period_metrics = HourlyMetric.objects.filter(
+                group_at_time_id=group_id,
+                timestamp__gte=effective_start
+            ).aggregate(
+                period_total=Sum('distance_km')
+            )
+            period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
     elif sort == 'weekly':
         days_since_monday = now.weekday()
         week_start = (now - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
-        period_metrics = HourlyMetric.objects.filter(
-            group_at_time__in=groups_qs,
-            timestamp__gte=week_start
-        ).values('group_at_time_id').annotate(
-            period_total=Sum('distance_km')
-        )
+        for group_id in group_ids:
+            snapshot_date = snapshot_dates.get(group_id)
+            # Use max of week_start and snapshot_date
+            effective_start = max(week_start, snapshot_date) if snapshot_date else week_start
+            
+            period_metrics = HourlyMetric.objects.filter(
+                group_at_time_id=group_id,
+                timestamp__gte=effective_start
+            ).aggregate(
+                period_total=Sum('distance_km')
+            )
+            period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
     elif sort == 'monthly':
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        period_metrics = HourlyMetric.objects.filter(
-            group_at_time__in=groups_qs,
-            timestamp__gte=month_start
-        ).values('group_at_time_id').annotate(
-            period_total=Sum('distance_km')
-        )
+        for group_id in group_ids:
+            snapshot_date = snapshot_dates.get(group_id)
+            # Use max of month_start and snapshot_date
+            effective_start = max(month_start, snapshot_date) if snapshot_date else month_start
+            
+            period_metrics = HourlyMetric.objects.filter(
+                group_at_time_id=group_id,
+                timestamp__gte=effective_start
+            ).aggregate(
+                period_total=Sum('distance_km')
+            )
+            period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
     else:
-        period_metrics = []
-    
-    period_by_group = {m['group_at_time_id']: float(m['period_total'] or 0) for m in period_metrics}
+        # For 'total' sort, use existing helper function
+        pass
     
     # Add active sessions for daily/weekly/monthly
     if sort in ['daily', 'weekly', 'monthly']:

@@ -28,7 +28,7 @@ from api.models import (
 )
 from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
-from api.helpers import are_all_parents_visible
+from api.helpers import are_all_parents_visible, _get_latest_snapshot_date_for_groups
 from decimal import Decimal
 from django.core.cache import cache
 import logging
@@ -135,67 +135,93 @@ def _calculate_group_totals_from_metrics(groups: List[Group], now: timezone.date
     # Also initialize for all group_ids (including descendants) for calculation
     calculation_result: Dict[int, Dict[str, float]] = {gid: {'total': 0.0, 'daily': 0.0, 'weekly': 0.0, 'monthly': 0.0, 'yearly': 0.0} for gid in group_ids}
     
-    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each group
-    total_metrics = HourlyMetric.objects.filter(
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        total=Sum('distance_km')
-    )
-    for metric in total_metrics:
-        group_id = metric['group_at_time_id']
-        if group_id in calculation_result:
-            calculation_result[group_id]['total'] = float(metric['total'] or 0.0)
+    # Get snapshot dates for all groups (to filter out metrics before snapshot)
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
     
-    # Calculate DAILY: Sum of HourlyMetric entries for today
-    daily_metrics = HourlyMetric.objects.filter(
-        timestamp__gte=today_start,
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        daily_total=Sum('distance_km')
-    )
-    for metric in daily_metrics:
-        group_id = metric['group_at_time_id']
+    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each group (after snapshot date)
+    # Process each group individually to apply snapshot filtering
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        filter_kwargs = {'group_at_time_id': group_id}
+        if snapshot_date:
+            filter_kwargs['timestamp__gt'] = snapshot_date
+        
+        total_metrics = HourlyMetric.objects.filter(**filter_kwargs).aggregate(
+            total=Sum('distance_km')
+        )
         if group_id in calculation_result:
-            calculation_result[group_id]['daily'] = float(metric['daily_total'] or 0.0)
+            calculation_result[group_id]['total'] = float(total_metrics['total'] or 0.0)
     
-    # Calculate WEEKLY: Sum of HourlyMetric entries for this week
-    weekly_metrics = HourlyMetric.objects.filter(
-        timestamp__gte=week_start,
-        timestamp__lte=week_end,
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        weekly_total=Sum('distance_km')
-    )
-    for metric in weekly_metrics:
-        group_id = metric['group_at_time_id']
+    # Calculate DAILY: Sum of HourlyMetric entries for today (after snapshot date)
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        # Use max of today_start and snapshot_date
+        effective_start = max(today_start, snapshot_date) if snapshot_date else today_start
+        
+        filter_kwargs = {
+            'group_at_time_id': group_id,
+            'timestamp__gte': effective_start
+        }
+        
+        daily_metrics = HourlyMetric.objects.filter(**filter_kwargs).aggregate(
+            daily_total=Sum('distance_km')
+        )
         if group_id in calculation_result:
-            calculation_result[group_id]['weekly'] = float(metric['weekly_total'] or 0.0)
+            calculation_result[group_id]['daily'] = float(daily_metrics['daily_total'] or 0.0)
     
-    # Calculate MONTHLY: Sum of HourlyMetric entries for this month
-    monthly_metrics = HourlyMetric.objects.filter(
-        timestamp__gte=month_start,
-        timestamp__lte=month_end,
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        monthly_total=Sum('distance_km')
-    )
-    for metric in monthly_metrics:
-        group_id = metric['group_at_time_id']
+    # Calculate WEEKLY: Sum of HourlyMetric entries for this week (after snapshot date)
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        # Use max of week_start and snapshot_date
+        effective_start = max(week_start, snapshot_date) if snapshot_date else week_start
+        
+        filter_kwargs = {
+            'group_at_time_id': group_id,
+            'timestamp__gte': effective_start,
+            'timestamp__lte': week_end
+        }
+        
+        weekly_metrics = HourlyMetric.objects.filter(**filter_kwargs).aggregate(
+            weekly_total=Sum('distance_km')
+        )
         if group_id in calculation_result:
-            calculation_result[group_id]['monthly'] = float(metric['monthly_total'] or 0.0)
+            calculation_result[group_id]['weekly'] = float(weekly_metrics['weekly_total'] or 0.0)
     
-    # Calculate YEARLY: Sum of HourlyMetric entries for this year
-    yearly_metrics = HourlyMetric.objects.filter(
-        timestamp__gte=year_start,
-        timestamp__lte=year_end,
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        yearly_total=Sum('distance_km')
-    )
-    for metric in yearly_metrics:
-        group_id = metric['group_at_time_id']
+    # Calculate MONTHLY: Sum of HourlyMetric entries for this month (after snapshot date)
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        # Use max of month_start and snapshot_date
+        effective_start = max(month_start, snapshot_date) if snapshot_date else month_start
+        
+        filter_kwargs = {
+            'group_at_time_id': group_id,
+            'timestamp__gte': effective_start,
+            'timestamp__lte': month_end
+        }
+        
+        monthly_metrics = HourlyMetric.objects.filter(**filter_kwargs).aggregate(
+            monthly_total=Sum('distance_km')
+        )
         if group_id in calculation_result:
-            calculation_result[group_id]['yearly'] = float(metric['yearly_total'] or 0.0)
+            calculation_result[group_id]['monthly'] = float(monthly_metrics['monthly_total'] or 0.0)
+    
+    # Calculate YEARLY: Sum of HourlyMetric entries for this year (after snapshot date)
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        # Use max of year_start and snapshot_date
+        effective_start = max(year_start, snapshot_date) if snapshot_date else year_start
+        
+        filter_kwargs = {
+            'group_at_time_id': group_id,
+            'timestamp__gte': effective_start,
+            'timestamp__lte': year_end
+        }
+        
+        yearly_metrics = HourlyMetric.objects.filter(**filter_kwargs).aggregate(
+            yearly_total=Sum('distance_km')
+        )
+        if group_id in calculation_result:
+            calculation_result[group_id]['yearly'] = float(yearly_metrics['yearly_total'] or 0.0)
     
     # If include_descendants=True, aggregate all descendant values into the original groups
     if include_descendants:

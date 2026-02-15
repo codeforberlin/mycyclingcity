@@ -16,7 +16,8 @@ from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, TravelHistory,
-    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution
+    GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution,
+    YearEndSnapshot, YearEndSnapshotDetail
 )
 from eventboard.models import Event, GroupEventStatus, EventHistory, LeafGroupEventContribution
 from iot.models import (
@@ -6755,6 +6756,373 @@ admin.site.get_app_list = get_app_list_with_custom_ordering.__get__(admin.site, 
 
 # Import performance admin
 from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, AlertRuleAdmin
+
+# --- YEAR END SNAPSHOT ADMIN ---
+@admin.register(YearEndSnapshot)
+class YearEndSnapshotAdmin(admin.ModelAdmin):
+    list_display = ('group', 'period_type_display', 'snapshot_date', 'period_start_date', 'period_end_date', 
+                    'group_total_km_display', 'group_total_coins', 'is_undone', 'created_by', 'created_at')
+    list_filter = ('period_type', 'is_undone', 'snapshot_date', 'created_at')
+    search_fields = ('group__name',)
+    readonly_fields = ('group', 'snapshot_date', 'period_start_date', 'period_end_date', 'period_type',
+                       'group_total_km', 'group_total_coins', 'created_by', 'created_at',
+                       'is_undone', 'undone_at', 'undone_by', 'details_count', 'details_link')
+    date_hierarchy = 'snapshot_date'
+    change_list_template = 'admin/api/yearendsnapshot_change_list.html'
+    
+    fieldsets = (
+        (_("Abschluss-Informationen"), {
+            'fields': ('group', 'period_type', 'snapshot_date', 'period_start_date', 'period_end_date')
+        }),
+        (_("Gespeicherte Werte"), {
+            'fields': ('group_total_km', 'group_total_coins', 'details_count', 'details_link')
+        }),
+        (_("Erstellt"), {
+            'fields': ('created_by', 'created_at')
+        }),
+        (_("Rückgängig gemacht"), {
+            'fields': ('is_undone', 'undone_at', 'undone_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def period_type_display(self, obj):
+        """Display period type in German."""
+        return dict(YearEndSnapshot.PERIOD_TYPE_CHOICES).get(obj.period_type, obj.period_type)
+    period_type_display.short_description = _("Periodentyp")
+    period_type_display.admin_order_field = 'period_type'
+    
+    def group_total_km_display(self, obj):
+        """Display total kilometers with German format."""
+        return format_km_de(obj.group_total_km)
+    group_total_km_display.short_description = _("Gruppen-Gesamt-KM")
+    group_total_km_display.admin_order_field = 'group_total_km'
+    
+    def details_count(self, obj):
+        """Display number of detail entries."""
+        if obj.pk:
+            return obj.details.count()
+        return 0
+    details_count.short_description = _("Anzahl Details")
+    
+    def details_link(self, obj):
+        """Link to detail entries."""
+        if obj.pk:
+            url = reverse('admin:api_yearendsnapshotdetail_changelist')
+            return format_html('<a href="{}?snapshot__id__exact={}">{} {}</a>',
+                             url, obj.id, obj.details.count(), _("Details anzeigen"))
+        return "-"
+    details_link.short_description = _("Details")
+    
+    def get_queryset(self, request):
+        """Filter snapshots based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Only snapshots for managed groups
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group__id__in=managed_group_ids)
+    
+    def get_urls(self):
+        """Add custom URL for creating year-end snapshot."""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('create/', self.admin_site.admin_view(self.create_year_end_view), name='api_yearendsnapshot_create'),
+        ]
+        return custom_urls + urls
+    
+    def changelist_view(self, request, extra_context=None):
+        """Add context for the changelist template."""
+        extra_context = extra_context or {}
+        from django.urls import reverse
+        extra_context['create_url'] = reverse('admin:api_yearendsnapshot_create')
+        return super().changelist_view(request, extra_context)
+    
+    def create_year_end_view(self, request):
+        """View to create a year-end snapshot."""
+        from django.shortcuts import render, redirect
+        from django.contrib import messages
+        from django.db import transaction
+        from django.utils import timezone
+        from datetime import datetime
+        from decimal import Decimal
+        from eventboard.utils import get_all_subgroup_ids
+        from iot.models import Device
+        
+        if request.method == 'GET':
+            # Get available TOP groups
+            if request.user.is_superuser:
+                top_groups = Group.objects.filter(parent__isnull=True).order_by('name')
+            else:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                # Find TOP groups from managed groups
+                top_groups = Group.objects.filter(
+                    id__in=managed_group_ids,
+                    parent__isnull=True
+                ).order_by('name')
+            
+            return render(request, 'admin/api/create_year_end_snapshot.html', {
+                'title': _('Jahresabschluss erstellen'),
+                'top_groups': top_groups,
+                'period_types': YearEndSnapshot.PERIOD_TYPE_CHOICES,
+            })
+        
+        # POST: Process form data
+        try:
+            group_id = request.POST.get('group_id')
+            snapshot_date_str = request.POST.get('snapshot_date')
+            period_start_date_str = request.POST.get('period_start_date')
+            period_end_date_str = request.POST.get('period_end_date')
+            period_type = request.POST.get('period_type')
+            
+            if not all([group_id, snapshot_date_str, period_type]):
+                messages.error(request, _('Bitte füllen Sie alle erforderlichen Felder aus.'))
+                return redirect('admin:api_yearendsnapshot_create')
+            
+            # Parse dates
+            try:
+                snapshot_date = self._parse_date(snapshot_date_str)
+                period_start_date = self._parse_date(period_start_date_str) if period_start_date_str else snapshot_date
+                period_end_date = self._parse_date(period_end_date_str) if period_end_date_str else snapshot_date
+            except ValueError as e:
+                messages.error(request, _('Ungültiges Datumsformat: {}').format(str(e)))
+                return redirect('admin:api_yearendsnapshot_create')
+            
+            # Get TOP group
+            try:
+                top_group = Group.objects.get(id=group_id)
+            except Group.DoesNotExist:
+                messages.error(request, _('Gruppe nicht gefunden.'))
+                return redirect('admin:api_yearendsnapshot_create')
+            
+            # Verify it's a TOP group
+            if top_group.parent is not None:
+                messages.error(request, _('Die ausgewählte Gruppe ist keine TOP-Gruppe.'))
+                return redirect('admin:api_yearendsnapshot_create')
+            
+            # Check permissions
+            if not request.user.is_superuser:
+                managed_group_ids = get_operator_managed_group_ids(request.user)
+                if top_group.id not in managed_group_ids:
+                    messages.error(request, _('Sie haben keine Berechtigung für diese Gruppe.'))
+                    return redirect('admin:api_yearendsnapshot_create')
+            
+            # Get all subgroups (recursively)
+            all_subgroup_ids = get_all_subgroup_ids(top_group)
+            all_subgroup_ids.append(top_group.id)
+            all_groups = Group.objects.filter(id__in=all_subgroup_ids)
+            
+            # Get all cyclists in these groups
+            all_cyclists = Cyclist.objects.filter(groups__id__in=all_subgroup_ids).distinct()
+            
+            # Get all devices assigned to these groups
+            all_devices = Device.objects.filter(group__id__in=all_subgroup_ids)
+            
+            # Perform reset in transaction
+            with transaction.atomic():
+                # Create snapshot
+                snapshot = YearEndSnapshot.objects.create(
+                    group=top_group,
+                    snapshot_date=snapshot_date,
+                    period_start_date=period_start_date,
+                    period_end_date=period_end_date,
+                    period_type=period_type,
+                    group_total_km=top_group.distance_total,
+                    group_total_coins=top_group.coins_total,
+                    created_by=request.user
+                )
+                
+                # Save group details
+                for group in all_groups:
+                    YearEndSnapshotDetail.objects.create(
+                        snapshot=snapshot,
+                        group=group,
+                        distance_total=group.distance_total,
+                        coins_total=group.coins_total
+                    )
+                
+                # Save cyclist details
+                for cyclist in all_cyclists:
+                    YearEndSnapshotDetail.objects.create(
+                        snapshot=snapshot,
+                        cyclist=cyclist,
+                        distance_total=cyclist.distance_total,
+                        coins_total=cyclist.coins_total
+                    )
+                
+                # Save device details
+                for device in all_devices:
+                    YearEndSnapshotDetail.objects.create(
+                        snapshot=snapshot,
+                        device=device,
+                        distance_total=device.distance_total,
+                        coins_total=0
+                    )
+                
+                # Reset group totals
+                all_groups.update(
+                    distance_total=Decimal('0.00000'),
+                    coins_total=0
+                )
+                
+                # Reset cyclist totals
+                all_cyclists.update(
+                    distance_total=Decimal('0.00000'),
+                    coins_total=0,
+                    coins_spendable=0
+                )
+                
+                # Reset device totals
+                all_devices.update(
+                    distance_total=Decimal('0.00000')
+                )
+            
+            # Invalidate cache for affected groups
+            from api.helpers import invalidate_cache_for_top_group
+            invalidate_cache_for_top_group(top_group)
+            
+            messages.success(
+                request,
+                _('Jahresabschluss erfolgreich erstellt! Snapshot ID: {}').format(snapshot.id)
+            )
+            return redirect('admin:api_yearendsnapshot_changelist')
+            
+        except Exception as e:
+            logger.error(f"Error creating year-end snapshot: {e}", exc_info=True)
+            messages.error(request, _('Fehler beim Erstellen des Jahresabschlusses: {}').format(str(e)))
+            return redirect('admin:api_yearendsnapshot_create')
+    
+    def _parse_date(self, date_str):
+        """Parse date string in various formats."""
+        from datetime import datetime
+        from django.utils import timezone
+        
+        if not date_str:
+            return None
+        
+        formats = [
+            '%Y-%m-%dT%H:%M:%S',  # datetime-local format with seconds
+            '%Y-%m-%dT%H:%M',     # datetime-local format (standard)
+            '%Y-%m-%d %H:%M:%S',
+            '%Y-%m-%d %H:%M',
+            '%Y-%m-%d',
+            '%d.%m.%Y %H:%M:%S',
+            '%d.%m.%Y %H:%M',
+            '%d.%m.%Y',
+        ]
+        
+        for fmt in formats:
+            try:
+                return timezone.make_aware(datetime.strptime(date_str, fmt))
+            except ValueError:
+                continue
+        
+        raise ValueError(f"Unable to parse date: {date_str}")
+    
+    def has_add_permission(self, request):
+        """Prevent standard add button - use custom create view instead."""
+        return False
+    
+    def has_view_permission(self, request, obj=None):
+        """Check if user can view this snapshot."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            # For list view, get_queryset handles filtering
+            return True
+        # Check if user manages the group of this snapshot
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.group.id in managed_group_ids
+    
+    def has_change_permission(self, request, obj=None):
+        """Prevent editing snapshots."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deleting snapshots (use undo function instead)."""
+        return False
+
+
+@admin.register(YearEndSnapshotDetail)
+class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
+    list_display = ('snapshot', 'entity_display', 'distance_total_display', 'coins_total', 'entity_type')
+    list_filter = ('snapshot', 'snapshot__group', 'snapshot__snapshot_date')
+    search_fields = ('snapshot__group__name', 'group__name', 'cyclist__user_id', 'device__name')
+    readonly_fields = ('snapshot', 'group', 'cyclist', 'device', 'distance_total', 'coins_total', 'entity_type')
+    date_hierarchy = 'snapshot__snapshot_date'
+    
+    fieldsets = (
+        (_("Abschluss"), {
+            'fields': ('snapshot',)
+        }),
+        (_("Entität"), {
+            'fields': ('group', 'cyclist', 'device', 'entity_type')
+        }),
+        (_("Gespeicherte Werte"), {
+            'fields': ('distance_total', 'coins_total')
+        }),
+    )
+    
+    def entity_display(self, obj):
+        """Display the entity (group, cyclist, or device)."""
+        if obj.group:
+            return obj.group.name
+        elif obj.cyclist:
+            return obj.cyclist.user_id
+        elif obj.device:
+            return obj.device.name
+        return "-"
+    entity_display.short_description = _("Entität")
+    
+    def entity_type(self, obj):
+        """Display the type of entity."""
+        if obj.group:
+            return _("Gruppe")
+        elif obj.cyclist:
+            return _("Radler")
+        elif obj.device:
+            return _("Gerät")
+        return "-"
+    entity_type.short_description = _("Typ")
+    
+    def distance_total_display(self, obj):
+        """Display total kilometers with German format."""
+        return format_km_de(obj.distance_total)
+    distance_total_display.short_description = _("Gesamt-KM")
+    distance_total_display.admin_order_field = 'distance_total'
+    
+    def get_queryset(self, request):
+        """Filter details based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Only details for snapshots of managed groups
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(snapshot__group__id__in=managed_group_ids)
+    
+    def has_view_permission(self, request, obj=None):
+        """Check if user can view this detail."""
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            # For list view, get_queryset handles filtering
+            return True
+        # Check if user manages the group of the snapshot
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return obj.snapshot.group.id in managed_group_ids
+    
+    def has_add_permission(self, request):
+        """Prevent manual creation of details (created automatically with snapshot)."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Prevent editing details."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deleting details."""
+        return False
 
 # Register analytics, log file viewer, server control, and deployment URLs with the admin site
 from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api

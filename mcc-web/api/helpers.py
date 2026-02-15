@@ -15,11 +15,18 @@ Used by map, ranking, and leaderboard apps.
 """
 
 from typing import List, Dict, Any, Optional
-from django.db.models import QuerySet, Sum
+from django.db.models import QuerySet, Sum, Max, Q
 from django.utils import timezone
-from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, HourlyMetric
+from functools import reduce
+from datetime import timedelta
+import operator
+import logging
+from api.models import Group, Cyclist, CyclistDeviceCurrentMileage, HourlyMetric, YearEndSnapshot
 from eventboard.models import Event, GroupEventStatus
+from eventboard.utils import get_all_subgroup_ids
 from iot.models import Device
+
+logger = logging.getLogger(__name__)
 
 
 def are_all_parents_visible(group: Group) -> bool:
@@ -65,12 +72,250 @@ def are_all_parents_visible(group: Group) -> bool:
     return True
 
 
+def _get_latest_snapshot_date_for_groups(group_ids: List[int]) -> Dict[int, Optional[timezone.datetime]]:
+    """
+    Get the latest snapshot date for each group (considering all subgroups).
+    
+    Args:
+        group_ids: List of group IDs to check
+    
+    Returns:
+        Dictionary mapping group_id to latest snapshot_date (or None if no snapshot exists)
+    """
+    if not group_ids:
+        return {}
+    
+    # For each group, find its TOP group and get the latest snapshot
+    result: Dict[int, Optional[timezone.datetime]] = {}
+    
+    for group_id in group_ids:
+        try:
+            group = Group.objects.get(id=group_id)
+        except Group.DoesNotExist:
+            result[group_id] = None
+            continue
+        
+        # Find TOP group
+        top_group = group
+        visited = set()
+        while top_group.parent and top_group.id not in visited:
+            visited.add(top_group.id)
+            top_group = top_group.parent
+        
+        # Get all subgroup IDs for this TOP group
+        all_subgroup_ids = get_all_subgroup_ids(top_group)
+        all_subgroup_ids.append(top_group.id)
+        
+        # Find latest snapshot for this TOP group (not undone)
+        latest_snapshot = YearEndSnapshot.objects.filter(
+            group=top_group,
+            is_undone=False
+        ).order_by('-snapshot_date').first()
+        
+        if latest_snapshot:
+            # Apply this snapshot date to all subgroups
+            for sub_id in all_subgroup_ids:
+                if sub_id in group_ids:
+                    # Only set if not already set or if this is newer
+                    if sub_id not in result or (result[sub_id] is None or latest_snapshot.snapshot_date > result[sub_id]):
+                        result[sub_id] = latest_snapshot.snapshot_date
+        else:
+            # No snapshot, set to None for all subgroups
+            for sub_id in all_subgroup_ids:
+                if sub_id in group_ids and sub_id not in result:
+                    result[sub_id] = None
+    
+    return result
+
+
+def filter_metrics_by_snapshot(queryset: QuerySet, group_ids: List[int], field_name: str = 'group_at_time_id') -> QuerySet:
+    """
+    Filter HourlyMetric queryset to exclude metrics before latest snapshot date.
+    
+    This function applies snapshot filtering to a queryset by checking each group's
+    latest snapshot date and only including metrics after that date.
+    
+    Args:
+        queryset: HourlyMetric queryset to filter
+        group_ids: List of group IDs to check for snapshots
+        field_name: Field name to use for group filtering (default: 'group_at_time_id')
+                   Use 'group_at_time_id' for group metrics, 'cyclist__groups__id' for cyclist metrics
+    
+    Returns:
+        Filtered queryset with snapshot-aware filtering applied
+    """
+    if not group_ids:
+        return queryset
+    
+    # Get snapshot dates for all groups
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    
+    # Build Q objects for filtering
+    # For each group, if it has a snapshot, only include metrics after that date
+    q_objects = []
+    
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        if snapshot_date:
+            # Only include metrics after snapshot date for this group
+            q_objects.append(
+                Q(**{field_name: group_id, 'timestamp__gt': snapshot_date})
+            )
+        else:
+            # No snapshot, include all metrics for this group
+            q_objects.append(Q(**{field_name: group_id}))
+    
+    if q_objects:
+        # Combine all Q objects with OR (metrics matching any group condition)
+        return queryset.filter(reduce(operator.or_, q_objects))
+    
+    return queryset
+
+
+def invalidate_cache_for_top_group(top_group: Group):
+    """
+    Invalidate all cache entries related to a TOP group and its subgroups.
+    
+    This function clears cache for:
+    - Group totals (leaderboard)
+    - Cyclist totals (ranking)
+    - Device totals (ranking)
+    - All subgroups and their descendants
+    
+    Args:
+        top_group: The TOP group for which to invalidate cache
+    """
+    from django.core.cache import cache
+    from eventboard.utils import get_all_subgroup_ids
+    
+    # Get all subgroup IDs (including TOP group itself)
+    all_subgroup_ids = get_all_subgroup_ids(top_group)
+    all_subgroup_ids.append(top_group.id)
+    
+    # Get all cyclists in these groups
+    all_cyclist_ids = list(Cyclist.objects.filter(groups__id__in=all_subgroup_ids).values_list('id', flat=True).distinct())
+    
+    # Get all devices in these groups
+    all_device_ids = list(Device.objects.filter(group__id__in=all_subgroup_ids).values_list('id', flat=True))
+    
+    # Invalidate group totals cache (leaderboard)
+    # Cache keys follow pattern: 'leaderboard_group_totals_{group_ids}_{timestamp}_desc{flag}'
+    # We need to clear all possible combinations, so we'll use a pattern-based approach
+    # Since we can't easily list all cache keys, we'll clear by pattern matching
+    # For simplicity, we'll clear all leaderboard caches (they'll be regenerated on next request)
+    cache_patterns = [
+        'leaderboard_group_totals_*',
+        'ranking_cyclist_totals_*',
+        'ranking_device_totals_*',
+        'ranking_group_totals_*',
+    ]
+    
+    # Django cache doesn't support pattern deletion directly, so we'll use a workaround:
+    # Set a version number that changes, or clear specific known keys
+    # For now, we'll clear the most common patterns by trying to delete known key formats
+    
+    # Clear cache for specific group IDs (most efficient approach)
+    group_ids_str = "-".join(map(str, sorted(all_subgroup_ids)))
+    now = timezone.now()
+    
+    # Try to clear common cache key patterns
+    for hour_offset in range(24):  # Clear last 24 hours of cache
+        timestamp = (now - timedelta(hours=hour_offset)).strftime("%Y%m%d%H")
+        for desc_flag in [0, 1]:
+            cache_key = f'leaderboard_group_totals_{group_ids_str}_{timestamp}_desc{desc_flag}'
+            cache.delete(cache_key)
+    
+    # Clear cyclist totals cache
+    if all_cyclist_ids:
+        cyclist_ids_str = "-".join(map(str, sorted(all_cyclist_ids)))
+        for hour_offset in range(24):
+            timestamp = (now - timedelta(hours=hour_offset)).strftime("%Y%m%d%H")
+            cache_key = f'ranking_cyclist_totals_{cyclist_ids_str}_{timestamp}'
+            cache.delete(cache_key)
+    
+    # Clear device totals cache
+    if all_device_ids:
+        device_ids_str = "-".join(map(str, sorted(all_device_ids)))
+        for hour_offset in range(24):
+            timestamp = (now - timedelta(hours=hour_offset)).strftime("%Y%m%d%H")
+            cache_key = f'ranking_device_totals_{device_ids_str}_{timestamp}'
+            cache.delete(cache_key)
+    
+    # Clear group totals cache (from helpers.py)
+    for hour_offset in range(24):
+        timestamp = (now - timedelta(hours=hour_offset)).strftime("%Y%m%d%H")
+        cache_key = f'ranking_group_totals_{group_ids_str}_{timestamp}'
+        cache.delete(cache_key)
+    
+    logger.info(f"Invalidated cache for TOP group '{top_group.name}' (ID: {top_group.id}) and {len(all_subgroup_ids)} subgroups")
+
+
+def filter_cyclist_metrics_by_snapshot(queryset: QuerySet, cyclist_ids: List[int]) -> QuerySet:
+    """
+    Filter HourlyMetric queryset for cyclists, excluding metrics before latest snapshot date.
+    
+    This function determines snapshot dates based on the groups each cyclist belongs to,
+    then filters metrics accordingly.
+    
+    Args:
+        queryset: HourlyMetric queryset to filter (should already be filtered by cyclist)
+        cyclist_ids: List of cyclist IDs
+    
+    Returns:
+        Filtered queryset with snapshot-aware filtering applied
+    """
+    if not cyclist_ids:
+        return queryset
+    
+    # Get groups for each cyclist
+    cyclist_groups_map: Dict[int, List[int]] = {}
+    for cyclist in Cyclist.objects.filter(id__in=cyclist_ids):
+        cyclist_groups_map[cyclist.id] = list(cyclist.groups.values_list('id', flat=True))
+    
+    # Get snapshot dates for all groups
+    all_group_ids = set()
+    for group_ids in cyclist_groups_map.values():
+        all_group_ids.update(group_ids)
+    
+    snapshot_dates = _get_latest_snapshot_date_for_groups(list(all_group_ids))
+    
+    # For each cyclist, find the latest snapshot date from their groups
+    cyclist_snapshot_dates: Dict[int, Optional[timezone.datetime]] = {}
+    for cyclist_id, group_ids in cyclist_groups_map.items():
+        latest_date = None
+        for group_id in group_ids:
+            group_date = snapshot_dates.get(group_id)
+            if group_date and (latest_date is None or group_date > latest_date):
+                latest_date = group_date
+        cyclist_snapshot_dates[cyclist_id] = latest_date
+    
+    # Build Q objects for filtering
+    q_objects = []
+    for cyclist_id in cyclist_ids:
+        snapshot_date = cyclist_snapshot_dates.get(cyclist_id)
+        if snapshot_date:
+            # Only include metrics after snapshot date for this cyclist
+            q_objects.append(
+                Q(cyclist_id=cyclist_id, timestamp__gt=snapshot_date)
+            )
+        else:
+            # No snapshot, include all metrics for this cyclist
+            q_objects.append(Q(cyclist_id=cyclist_id))
+    
+    if q_objects:
+        return queryset.filter(reduce(operator.or_, q_objects))
+    
+    return queryset
+
+
 def _calculate_cyclist_totals_from_metrics(cyclists: List[Cyclist], use_cache: bool = True) -> Dict[int, float]:
     """
     Calculate total kilometers for cyclists from HourlyMetric.
     
     This ensures ranking tables use the same data source as the leaderboard.
     Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Takes into account year-end snapshots: only metrics after the latest snapshot date are counted.
     
     Args:
         cyclists: List of Cyclist objects to calculate totals for
@@ -94,24 +339,44 @@ def _calculate_cyclist_totals_from_metrics(cyclists: List[Cyclist], use_cache: b
         if cached_result is not None:
             return cached_result
     
-    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each cyclist
+    # Get groups for each cyclist to find snapshot dates
+    cyclist_groups_map: Dict[int, List[int]] = {}
+    for cyclist in cyclists:
+        cyclist_groups_map[cyclist.id] = list(cyclist.groups.values_list('id', flat=True))
+    
+    # Get snapshot dates for all groups
+    all_group_ids = set()
+    for group_ids in cyclist_groups_map.values():
+        all_group_ids.update(group_ids)
+    
+    snapshot_dates = _get_latest_snapshot_date_for_groups(list(all_group_ids))
+    
+    # For each cyclist, find the latest snapshot date from their groups
+    cyclist_snapshot_dates: Dict[int, Optional[timezone.datetime]] = {}
+    for cyclist_id, group_ids in cyclist_groups_map.items():
+        latest_date = None
+        for group_id in group_ids:
+            group_date = snapshot_dates.get(group_id)
+            if group_date and (latest_date is None or group_date > latest_date):
+                latest_date = group_date
+        cyclist_snapshot_dates[cyclist_id] = latest_date
+    
+    # Calculate TOTAL: Sum of HourlyMetric entries after the latest snapshot date for each cyclist
     result: Dict[int, float] = {}
     
-    total_metrics = HourlyMetric.objects.filter(
-        cyclist_id__in=cyclist_ids
-    ).values('cyclist_id').annotate(
-        total=Sum('distance_km')
-    )
-    
-    for metric in total_metrics:
-        cyclist_id = metric['cyclist_id']
-        if cyclist_id:
-            result[cyclist_id] = float(metric['total'] or 0.0)
-    
-    # Initialize missing cyclists with 0.0
     for cyclist_id in cyclist_ids:
-        if cyclist_id not in result:
-            result[cyclist_id] = 0.0
+        snapshot_date = cyclist_snapshot_dates.get(cyclist_id)
+        
+        # Build query filter
+        metric_filter = {'cyclist_id': cyclist_id}
+        if snapshot_date:
+            metric_filter['timestamp__gt'] = snapshot_date
+        
+        total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+            total=Sum('distance_km')
+        )
+        
+        result[cyclist_id] = float(total_metrics['total'] or 0.0)
     
     # Cache the result for 55 seconds
     if use_cache:
@@ -127,6 +392,8 @@ def _calculate_device_totals_from_metrics(devices: List[Device], use_cache: bool
     
     This ensures ranking tables use the same data source as the leaderboard.
     Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Takes into account year-end snapshots: only metrics after the latest snapshot date are counted.
     
     Args:
         devices: List of Device objects to calculate totals for
@@ -150,24 +417,32 @@ def _calculate_device_totals_from_metrics(devices: List[Device], use_cache: bool
         if cached_result is not None:
             return cached_result
     
-    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each device
+    # Get groups for each device to find snapshot dates
+    device_groups_map: Dict[int, Optional[int]] = {}
+    for device in devices:
+        device_groups_map[device.id] = device.group_id if device.group else None
+    
+    # Get snapshot dates for all groups
+    all_group_ids = [gid for gid in device_groups_map.values() if gid is not None]
+    snapshot_dates = _get_latest_snapshot_date_for_groups(all_group_ids)
+    
+    # Calculate TOTAL: Sum of HourlyMetric entries after the latest snapshot date for each device
     result: Dict[int, float] = {}
     
-    total_metrics = HourlyMetric.objects.filter(
-        device_id__in=device_ids
-    ).values('device_id').annotate(
-        total=Sum('distance_km')
-    )
-    
-    for metric in total_metrics:
-        device_id = metric['device_id']
-        if device_id:
-            result[device_id] = float(metric['total'] or 0.0)
-    
-    # Initialize missing devices with 0.0
     for device_id in device_ids:
-        if device_id not in result:
-            result[device_id] = 0.0
+        group_id = device_groups_map.get(device_id)
+        snapshot_date = snapshot_dates.get(group_id) if group_id else None
+        
+        # Build query filter
+        metric_filter = {'device_id': device_id}
+        if snapshot_date:
+            metric_filter['timestamp__gt'] = snapshot_date
+        
+        total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+            total=Sum('distance_km')
+        )
+        
+        result[device_id] = float(total_metrics['total'] or 0.0)
     
     # Cache the result for 55 seconds
     if use_cache:
@@ -183,6 +458,8 @@ def _calculate_group_totals_from_metrics(groups: List[Group], use_cache: bool = 
     
     This ensures ranking tables use the same data source as the leaderboard.
     Results are cached for 55 seconds (just under cronjob interval of 60s) to improve performance.
+    
+    Takes into account year-end snapshots: only metrics after the latest snapshot date are counted.
     
     Args:
         groups: List of Group objects to calculate totals for
@@ -206,19 +483,25 @@ def _calculate_group_totals_from_metrics(groups: List[Group], use_cache: bool = 
         if cached_result is not None:
             return cached_result
     
-    # Calculate TOTAL: Sum of ALL HourlyMetric entries for each group
+    # Get snapshot dates for all groups
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    
+    # Calculate TOTAL: Sum of HourlyMetric entries after the latest snapshot date for each group
     result: Dict[int, float] = {}
     
-    total_metrics = HourlyMetric.objects.filter(
-        group_at_time_id__in=group_ids
-    ).values('group_at_time_id').annotate(
-        total=Sum('distance_km')
-    )
-    
-    for metric in total_metrics:
-        group_id = metric['group_at_time_id']
-        if group_id and group_id in group_ids:
-            result[group_id] = float(metric['total'] or 0.0)
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        
+        # Build query filter
+        metric_filter = {'group_at_time_id': group_id}
+        if snapshot_date:
+            metric_filter['timestamp__gt'] = snapshot_date
+        
+        total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+            total=Sum('distance_km')
+        )
+        
+        result[group_id] = float(total_metrics['total'] or 0.0)
     
     # Propagate values to parent groups (hierarchical aggregation)
     # Process from leaf groups upward to ensure correct aggregation

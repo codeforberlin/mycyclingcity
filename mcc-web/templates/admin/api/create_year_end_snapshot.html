@@ -1,0 +1,241 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    create_year_end_snapshot.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .year-end-form {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 6px;
+        border-left: 4px solid #417690;
+    }
+    
+    .form-section h2 {
+        margin-top: 0;
+        color: #417690;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="datetime-local"],
+    .form-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    
+    .form-group small {
+        display: block;
+        margin-top: 5px;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .warning-box {
+        padding: 15px;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        color: #856404;
+    }
+    
+    .warning-box strong {
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-primary {
+        background: #417690;
+        color: #fff;
+    }
+    
+    .btn-primary:hover {
+        background: #205067;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+    
+    .button-group {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="year-end-form">
+    <h1>{{ title }}</h1>
+    
+    <div class="warning-box">
+        <strong>{% trans "Wichtiger Hinweis" %}</strong>
+        <p>{% trans "Diese Aktion erstellt einen Jahresabschluss für die ausgewählte TOP-Gruppe und setzt alle Kilometerstände auf Null. Die historischen Daten werden in einem Snapshot gespeichert und können jederzeit eingesehen werden." %}</p>
+        <p><strong>{% trans "Betroffen sind:" %}</strong></p>
+        <ul style="margin: 10px 0 0 20px;">
+            <li>{% trans "Die TOP-Gruppe und alle Subgruppen (rekursiv)" %}</li>
+            <li>{% trans "Alle Radler dieser Gruppen" %}</li>
+            <li>{% trans "Alle Geräte, die diesen Gruppen zugeordnet sind" %}</li>
+        </ul>
+        <p style="margin-top: 10px;"><strong>{% trans "Hinweis:" %}</strong> {% trans "Aktive Sessions werden nicht zurückgesetzt. Die stündlichen Metriken (HourlyMetric) bleiben als historische Daten erhalten." %}</p>
+    </div>
+    
+    <form method="post" id="year-end-form">
+        {% csrf_token %}
+        
+        <div class="form-section">
+            <h2>{% trans "Gruppe auswählen" %}</h2>
+            
+            <div class="form-group">
+                <label for="group_id">{% trans "TOP-Gruppe *" %}</label>
+                <select id="group_id" name="group_id" required>
+                    <option value="">{% trans "-- Bitte wählen --" %}</option>
+                    {% for group in top_groups %}
+                        <option value="{{ group.id }}">{{ group.name }}</option>
+                    {% empty %}
+                        <option value="">{% trans "Keine TOP-Gruppen verfügbar" %}</option>
+                    {% endfor %}
+                </select>
+                <small>{% trans "Nur Gruppen ohne übergeordnete Gruppe (TOP-Gruppen) können ausgewählt werden." %}</small>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h2>{% trans "Perioden-Informationen" %}</h2>
+            
+            <div class="form-group">
+                <label for="period_type">{% trans "Periodentyp *" %}</label>
+                <select id="period_type" name="period_type" required>
+                    {% for value, label in period_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="snapshot_date">{% trans "Abschlussdatum *" %}</label>
+                <input type="datetime-local" id="snapshot_date" name="snapshot_date" required>
+                <small>{% trans "Datum und Uhrzeit, zu dem der Abschluss durchgeführt wird (Format: YYYY-MM-DD HH:MM)" %}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="period_start_date">{% trans "Perioden-Startdatum" %}</label>
+                <input type="datetime-local" id="period_start_date" name="period_start_date">
+                <small>{% trans "Optional: Startdatum der abgeschlossenen Periode (z.B. Schuljahresbeginn). Falls nicht angegeben, wird das Abschlussdatum verwendet." %}</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="period_end_date">{% trans "Perioden-Enddatum" %}</label>
+                <input type="datetime-local" id="period_end_date" name="period_end_date">
+                <small>{% trans "Optional: Enddatum der abgeschlossenen Periode (z.B. Schuljahresende). Falls nicht angegeben, wird das Abschlussdatum verwendet." %}</small>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">{% trans "Jahresabschluss erstellen" %}</button>
+            <a href="{% url 'admin:api_yearendsnapshot_changelist' %}" class="btn btn-secondary">{% trans "Abbrechen" %}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default snapshot date to now
+        var now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        var snapshotDateField = document.getElementById('snapshot_date');
+        if (snapshotDateField) {
+            snapshotDateField.value = now.toISOString().slice(0, 16);
+        }
+        
+        // Copy snapshot_date to period dates if they are empty
+        var snapshotDateInput = document.getElementById('snapshot_date');
+        var periodStartInput = document.getElementById('period_start_date');
+        var periodEndInput = document.getElementById('period_end_date');
+        
+        if (snapshotDateInput && periodStartInput && periodEndInput) {
+            snapshotDateInput.addEventListener('change', function() {
+                if (!periodStartInput.value) {
+                    periodStartInput.value = this.value;
+                }
+                if (!periodEndInput.value) {
+                    periodEndInput.value = this.value;
+                }
+            });
+        }
+        
+        // Confirmation before submit
+        var form = document.getElementById('year-end-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                var groupSelect = document.getElementById('group_id');
+                if (groupSelect && groupSelect.selectedIndex > 0) {
+                    var groupName = groupSelect.options[groupSelect.selectedIndex].text;
+                    if (!confirm('{% trans "Möchten Sie wirklich einen Jahresabschluss für" %} "' + groupName + '" {% trans "durchführen? Diese Aktion kann rückgängig gemacht werden, aber bitte vergewissern Sie sich, dass alle Daten korrekt sind." %}')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        }
+    });
+})();
+</script>
+{% endblock %}
