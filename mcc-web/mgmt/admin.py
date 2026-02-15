@@ -2755,8 +2755,11 @@ class TravelTrackAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return qs
         # Nur Reiserouten, die:
-        # - assigned_to_group in managed_group_ids haben ODER
+        # - assigned_to_group in managed_group_ids haben (auch ohne Teilnehmende Gruppen sichtbar) ODER
         # - GroupTravelStatus Einträge mit group in managed_group_ids haben
+        # WICHTIG: Routen mit assigned_to_group sind auch dann sichtbar, wenn noch keine
+        # Teilnehmenden Gruppen zugewiesen wurden. Dies ermöglicht es, Routen zu erstellen
+        # und später Teilnehmende Gruppen hinzuzufügen.
         managed_group_ids = get_operator_managed_group_ids(request.user)
         from django.db.models import Q
         
@@ -3198,7 +3201,12 @@ class TravelTrackAdmin(admin.ModelAdmin):
             # Check permission for operators
             if not request.user.is_superuser:
                 managed_group_ids = get_operator_managed_group_ids(request.user)
-                if not obj.group_statuses.filter(group__id__in=managed_group_ids).exists():
+                # Prüfe zuerst assigned_to_group, dann group_statuses
+                has_permission = (
+                    (obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids) or
+                    obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+                )
+                if not has_permission:
                     messages.error(request, _("Sie haben keine Berechtigung, diese Reise neu zu starten."))
                     return redirect('admin:api_traveltrack_changelist')
             queryset = TravelTrack.objects.filter(pk=obj.pk)

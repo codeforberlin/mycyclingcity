@@ -372,8 +372,9 @@ def build_group_hierarchy(
                 'subgroups': subgroups_data
             })
     
-    # Sort hierarchy by name to match the group menu sorting
-    hierarchy = sorted(hierarchy, key=lambda x: x['name'])
+    # Sort hierarchy by km (from HourlyMetric) descending - no limit
+    # This matches the mobile version sorting behavior
+    hierarchy = sorted(hierarchy, key=lambda x: x['km'], reverse=True)
     
     return hierarchy
 
