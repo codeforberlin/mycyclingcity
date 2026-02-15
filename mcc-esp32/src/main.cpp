@@ -165,6 +165,13 @@ String deviceIdSuffix;
 
 
 unsigned long lastPulseTime = 0; // Timestamp of last pulse
+float currentSpeed_kmh = 0.0; // Current speed calculated from time between pulses (averaged)
+unsigned long previousPulseTime = 0; // Timestamp of previous pulse for speed calculation
+const unsigned long SPEED_TIMEOUT_MS = 5000; // After 5 seconds without pulse → 0 km/h
+const int SPEED_AVERAGE_COUNT = 5; // Number of pulses to average for speed smoothing
+float speedHistory[SPEED_AVERAGE_COUNT] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Array to store last 5 speed values
+int speedHistoryIndex = 0; // Current index in speed history array
+int speedHistoryCount = 0; // Number of valid values in speed history (0 to SPEED_AVERAGE_COUNT)
 
 // --- Function prototypes ---
 /**
@@ -756,8 +763,7 @@ void loop() {
             idTagAtConfigStartInitialized = false; // Reset for next config mode entry
             Serial.println("\nINFO: RFID tag detected. Ending configuration mode and switching to normal operation.");
             
-            // Play tag detected tone (same as in normal mode)
-            play_tag_detected_tone(); // <-- CALL: 1x long
+            // Note: Tag detected tone is already played in RFID_MFRC522_loop_handler() for every tag detection
             
             // NOTE: Do NOT save the detected RFID tag to NVS - it should only be used temporarily
             // The default_id_tag from Config-GUI or Server config should remain unchanged
@@ -973,10 +979,14 @@ void loop() {
         // This works both with and without RFID: idTag can be loaded from NVS or detected via RFID.
         //if (idTag != lastSentIdTag && lastSentIdTag.length() > 0) {
         if (idTag.length() > 0 && idTag != lastSentIdTag) {
-            if (debugEnabled) {
-              Serial.println("DEBUG: play_tag_detected_tone ");
+            // Only play tone if tag was NOT detected via RFID (to avoid double beep)
+            // RFID detection already plays tone in RFID_MFRC522_loop_handler()
+            if (!idTagFromRFID) {
+                if (debugEnabled) {
+                  Serial.println("DEBUG: play_tag_detected_tone ");
+                }
+                play_tag_detected_tone(); // <-- CALL: 1x long
             }
-            play_tag_detected_tone(); // <-- CALL: 1x long
             
             resetDistanceCounters();
 
@@ -1093,11 +1103,49 @@ void loop() {
             // wheel_size is in mm, so result is in mm
             totalDistance_mm = (float)currentPulseCount * wheel_size;
 
+            // Calculate current speed based on time between pulses
+            unsigned long currentTime = millis();
+            if (previousPulseTime > 0) {
+                // Calculate time difference in milliseconds
+                unsigned long timeSinceLastPulse_ms = currentTime - previousPulseTime;
+                float newSpeed = 0.0;
+                if (timeSinceLastPulse_ms > 0 && timeSinceLastPulse_ms < SPEED_TIMEOUT_MS) {
+                    // Speed calculation: (wheel_size_mm / time_ms) * 3.6
+                    // Formula: (mm/ms) * (1000 ms/s) * (3600 s/h) / (1000000 mm/km) = (mm/ms) * 3.6
+                    newSpeed = (wheel_size / (float)timeSinceLastPulse_ms) * 3.6;
+                    if (debugEnabled) {
+                        Serial.printf("DEBUG: Speed calculated: %.1f km/h (time between pulses: %lu ms)\n", newSpeed, timeSinceLastPulse_ms);
+                    }
+                } else {
+                    // Timeout or invalid time - set speed to 0
+                    newSpeed = 0.0;
+                }
+                
+                // Add new speed value to history array (rolling average)
+                speedHistory[speedHistoryIndex] = newSpeed;
+                speedHistoryIndex = (speedHistoryIndex + 1) % SPEED_AVERAGE_COUNT; // Circular buffer
+                if (speedHistoryCount < SPEED_AVERAGE_COUNT) {
+                    speedHistoryCount++; // Increment count until we have 5 values
+                }
+                
+                // Calculate average of last 5 speed values
+                float speedSum = 0.0;
+                for (int i = 0; i < speedHistoryCount; i++) {
+                    speedSum += speedHistory[i];
+                }
+                currentSpeed_kmh = speedSum / (float)speedHistoryCount;
+                
+                if (debugEnabled) {
+                    Serial.printf("DEBUG: Speed average (last %d pulses): %.1f km/h\n", speedHistoryCount, currentSpeed_kmh);
+                }
+            }
+            previousPulseTime = currentTime; // Store current time for next pulse calculation
+
             if (debugEnabled) {
               Serial.printf("DEBUG: Pulse detected! currentPulseCount: %d | totalDistance_mm: %.1f mm\n", currentPulseCount, totalDistance_mm);
             }
             lastPulseCount = currentPulseCount;
-            lastPulseTime = millis(); // Update the timestamp of the last pulse for Deep Sleep
+            lastPulseTime = currentTime; // Update the timestamp of the last pulse for Deep Sleep
             
             #ifdef ENABLE_OLED
             display_Data();
@@ -2344,6 +2392,16 @@ void resetDistanceCounters() {
     lastPulseCount = 0;
     currentPulseCount = 0; // Also reset current counter value
     pcnt_counter_clear(PCNT_UNIT); // Reset hardware counter
+    
+    // Reset speed calculation variables
+    currentSpeed_kmh = 0.0;
+    previousPulseTime = 0;
+    speedHistoryIndex = 0;
+    speedHistoryCount = 0;
+    // Clear speed history array
+    for (int i = 0; i < SPEED_AVERAGE_COUNT; i++) {
+        speedHistory[i] = 0.0;
+    }
 
     if (debugEnabled) {
         Serial.println("DEBUG: Distance values reset to zero due to ID tag change.");
@@ -2669,7 +2727,7 @@ void display_IdTag_Name(const char* id_name, bool isRfidDetected, bool queryWasS
 /**
  * @brief Displays current cycling data on OLED display.
  * 
- * Shows username, current pulse count, and total distance traveled in kilometers.
+ * Shows username, current speed, and total distance traveled in kilometers.
  * 
  * @note Hardware interaction: OLED display (I2C communication)
  * @note Side effects: Updates OLED display buffer and sends to display
@@ -2678,6 +2736,18 @@ void display_IdTag_Name(const char* id_name, bool isRfidDetected, bool queryWasS
 void display_Data() {
 
         if (debugEnabled) Serial.printf("OLED: Show cycling data.\n");
+        
+        // Check for speed timeout - if no pulse for 5 seconds, set speed to 0 and reset history
+        unsigned long currentTime = millis();
+        if (lastPulseTime > 0 && (currentTime - lastPulseTime) >= SPEED_TIMEOUT_MS) {
+            currentSpeed_kmh = 0.0;
+            // Reset speed history to avoid old values in average
+            speedHistoryIndex = 0;
+            speedHistoryCount = 0;
+            for (int i = 0; i < SPEED_AVERAGE_COUNT; i++) {
+                speedHistory[i] = 0.0;
+            }
+        }
         
         display.clearBuffer();
         display.setFont(u8g2_font_7x14_tf);
@@ -2708,8 +2778,10 @@ void display_Data() {
             display.print(textline);
         }
 
-        display.drawStr(0, 44,  "Impulse:");  // 
-        display.drawStr(70, 44, String(currentPulseCount).c_str() );  // 
+        // Display speed instead of pulse count
+        display.drawStr(0, 44,  "Geschw.:");  // 
+        String speedStr = String(currentSpeed_kmh, 1) + " km/h";
+        display.drawStr(70, 44, speedStr.c_str());  // 
         display.drawStr(0, 60,  "Distanz:");  //
         display.drawStr(70, 60, String(totalDistance_mm/1000000).c_str() );  // distance in kilometer (mm to km)
         display.sendBuffer();     

@@ -11,6 +11,9 @@
 #include "rfid_mfrc522_control.h"
 #include "led_control.h" // For the updateLed function
 
+// Forward declaration for buzzer function
+void play_tag_detected_tone();
+
 
 // --- Helper functions ---
 
@@ -96,6 +99,9 @@ void RFID_MFRC522_loop_handler() {
         if (mfrc522.PICC_ReadCardSerial()) { 
             
             String newIdTag = RFID_MFRC522_uidToHexString(mfrc522.uid.uidByte, mfrc522.uid.size);
+            
+            // Always play tone when RFID tag is detected, even if it's the same tag
+            play_tag_detected_tone();
             
             // IMPORTANT CHANGE: The UID of the detected card should replace the UserID (idTag).
             if (idTag != newIdTag) {
