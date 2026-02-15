@@ -35,6 +35,7 @@ import gpxpy
 import json
 import time
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,232 @@ def get_operator_managed_group_ids(user):
         all_group_ids.update(get_all_descendants(group.id))
     
     return list(all_group_ids)
+
+def calculate_gps_from_distance(track_geojson_data, target_distance_km):
+    """
+    Calculate GPS coordinates for a point on a track at a specific distance.
+    
+    Args:
+        track_geojson_data: GeoJSON data as list of [lat, lon] pairs
+        target_distance_km: Target distance in kilometers along the track
+    
+    Returns:
+        tuple: (latitude, longitude) or (None, None) if calculation fails
+    """
+    if not track_geojson_data or not target_distance_km:
+        return None, None
+    
+    try:
+        # Parse GeoJSON if it's a string
+        if isinstance(track_geojson_data, str):
+            track_data = json.loads(track_geojson_data)
+        else:
+            track_data = track_geojson_data
+        
+        if not track_data or len(track_data) < 2:
+            return None, None
+        
+        # Haversine formula to calculate distance between two GPS points
+        def haversine_distance(lat1, lon1, lat2, lon2):
+            """Calculate distance in meters between two GPS points."""
+            R = 6371000  # Earth radius in meters
+            phi1 = math.radians(lat1)
+            phi2 = math.radians(lat2)
+            delta_phi = math.radians(lat2 - lat1)
+            delta_lambda = math.radians(lon2 - lon1)
+            
+            a = math.sin(delta_phi / 2) ** 2 + \
+                math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+            
+            return R * c
+        
+        # Calculate total track length
+        total_distance_m = 0
+        segment_distances = []
+        
+        for i in range(len(track_data) - 1):
+            lat1, lon1 = track_data[i][0], track_data[i][1]
+            lat2, lon2 = track_data[i + 1][0], track_data[i + 1][1]
+            segment_dist = haversine_distance(lat1, lon1, lat2, lon2)
+            segment_distances.append(segment_dist)
+            total_distance_m += segment_dist
+        
+        if total_distance_m == 0:
+            return None, None
+        
+        # Convert target distance to meters
+        target_distance_m = float(target_distance_km) * 1000
+        
+        # Clamp target distance to track length
+        if target_distance_m > total_distance_m:
+            target_distance_m = total_distance_m
+        if target_distance_m < 0:
+            target_distance_m = 0
+        
+        # Find the segment where the target distance falls
+        accumulated_distance = 0
+        for i, segment_dist in enumerate(segment_distances):
+            if accumulated_distance + segment_dist >= target_distance_m:
+                # Target point is on this segment
+                remaining_distance = target_distance_m - accumulated_distance
+                ratio = remaining_distance / segment_dist if segment_dist > 0 else 0
+                
+                # Interpolate between the two points
+                lat1, lon1 = track_data[i][0], track_data[i][1]
+                lat2, lon2 = track_data[i + 1][0], track_data[i + 1][1]
+                
+                lat = lat1 + (lat2 - lat1) * ratio
+                lon = lon1 + (lon2 - lon1) * ratio
+                
+                return lat, lon
+            
+            accumulated_distance += segment_dist
+        
+        # If we reach here, return the last point
+        last_point = track_data[-1]
+        return last_point[0], last_point[1]
+    
+    except (json.JSONDecodeError, KeyError, IndexError, ValueError, TypeError) as e:
+        logger.error(f"Error calculating GPS from distance: {e}")
+        return None, None
+
+def calculate_distance_from_gps(track_geojson_data, gps_latitude, gps_longitude):
+    """
+    Calculate distance along a track from GPS coordinates.
+    
+    Finds the closest point on the track to the given GPS coordinates
+    and calculates the distance along the track to that point.
+    
+    Args:
+        track_geojson_data: GeoJSON data as list of [lat, lon] pairs
+        gps_latitude: GPS latitude
+        gps_longitude: GPS longitude
+    
+    Returns:
+        float: Distance in kilometers along the track, or None if calculation fails
+    """
+    if not track_geojson_data or gps_latitude is None or gps_longitude is None:
+        return None
+    
+    try:
+        # Parse GeoJSON if it's a string
+        if isinstance(track_geojson_data, str):
+            track_data = json.loads(track_geojson_data)
+        else:
+            track_data = track_geojson_data
+        
+        if not track_data or len(track_data) < 2:
+            return None
+        
+        # Haversine formula to calculate distance between two GPS points
+        def haversine_distance(lat1, lon1, lat2, lon2):
+            """Calculate distance in meters between two GPS points."""
+            R = 6371000  # Earth radius in meters
+            phi1 = math.radians(lat1)
+            phi2 = math.radians(lat2)
+            delta_phi = math.radians(lat2 - lat1)
+            delta_lambda = math.radians(lon2 - lon1)
+            
+            a = math.sin(delta_phi / 2) ** 2 + \
+                math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+            
+            return R * c
+        
+        # Find the closest point on the track to the given GPS coordinates
+        target_lat = float(gps_latitude)
+        target_lon = float(gps_longitude)
+        
+        min_distance = float('inf')
+        closest_segment_index = -1
+        closest_point_on_segment = None
+        
+        # Find the closest segment by checking distance to each segment
+        for i in range(len(track_data) - 1):
+            lat1, lon1 = track_data[i][0], track_data[i][1]
+            lat2, lon2 = track_data[i + 1][0], track_data[i + 1][1]
+            
+            # Calculate segment length
+            segment_length = haversine_distance(lat1, lon1, lat2, lon2)
+            if segment_length == 0:
+                continue
+            
+            # Calculate distances from target to both endpoints
+            dist_to_p1 = haversine_distance(target_lat, target_lon, lat1, lon1)
+            dist_to_p2 = haversine_distance(target_lat, target_lon, lat2, lon2)
+            
+            # Find the closest point on the line segment
+            # Using the formula for point-to-line-segment distance
+            # Calculate the parameter t (0 to 1) for the closest point
+            # Convert lat/lon differences to approximate meters for calculation
+            lat_diff = lat2 - lat1
+            lon_diff = lon2 - lon1
+            
+            # Approximate conversion to meters (good enough for finding closest point)
+            # 1 degree latitude ≈ 111320 meters
+            # 1 degree longitude ≈ 111320 * cos(latitude) meters
+            avg_lat = (lat1 + lat2) / 2
+            dx = lon_diff * 111320 * math.cos(math.radians(avg_lat))
+            dy = lat_diff * 111320
+            
+            segment_length_sq = dx * dx + dy * dy
+            
+            if segment_length_sq > 0:
+                # Vector from p1 to target point
+                target_lat_diff = target_lat - lat1
+                target_lon_diff = target_lon - lon1
+                target_dx = target_lon_diff * 111320 * math.cos(math.radians((lat1 + target_lat) / 2))
+                target_dy = target_lat_diff * 111320
+                
+                # Project target onto segment
+                t = (target_dx * dx + target_dy * dy) / segment_length_sq
+                t = max(0.0, min(1.0, t))  # Clamp to [0, 1]
+            else:
+                t = 0.0
+            
+            # Calculate closest point on segment
+            closest_lat = lat1 + (lat2 - lat1) * t
+            closest_lon = lon1 + (lon2 - lon1) * t
+            
+            # Calculate distance from target to closest point on segment
+            dist_to_segment = haversine_distance(target_lat, target_lon, closest_lat, closest_lon)
+            
+            if dist_to_segment < min_distance:
+                min_distance = dist_to_segment
+                closest_segment_index = i
+                closest_point_on_segment = (closest_lat, closest_lon)
+        
+        if closest_segment_index == -1:
+            return None
+        
+        # Calculate total distance along track to the closest point
+        total_distance_m = 0
+        
+        # Sum distances for all segments before the closest segment
+        for i in range(closest_segment_index):
+            if i < len(track_data) - 1:
+                lat1, lon1 = track_data[i][0], track_data[i][1]
+                lat2, lon2 = track_data[i + 1][0], track_data[i + 1][1]
+                total_distance_m += haversine_distance(lat1, lon1, lat2, lon2)
+        
+        # Add distance to the closest point on the current segment
+        if closest_segment_index < len(track_data) - 1:
+            lat1, lon1 = track_data[closest_segment_index][0], track_data[closest_segment_index][1]
+            total_distance_m += haversine_distance(lat1, lon1, closest_point_on_segment[0], closest_point_on_segment[1])
+        
+        # Convert to kilometers
+        distance_km = total_distance_m / 1000.0
+        
+        # Skip milestones at 0 km (start point)
+        if distance_km < 0.001:
+            return None
+        
+        return distance_km
+    
+    except (json.JSONDecodeError, KeyError, IndexError, ValueError, TypeError) as e:
+        logger.error(f"Error calculating distance from GPS: {e}")
+        return None
 
 class GroupTravelStatusInline(admin.TabularInline):
     """Displays all groups traveling on this track"""
@@ -668,13 +895,89 @@ class LimitedDescriptionWidget(forms.Textarea):
         super().__init__(attrs=default_attrs)
 
 class MilestoneAdminForm(forms.ModelForm):
-    """Custom form for Milestone admin with limited description field."""
+    """Custom form for Milestone admin with limited description field and automatic GPS calculation."""
     class Meta:
         model = Milestone
         fields = '__all__'
         widgets = {
             'description': LimitedDescriptionWidget()
         }
+    
+    def clean(self):
+        """Validate and automatically calculate GPS coordinates if missing."""
+        cleaned_data = super().clean()
+        
+        gps_latitude = cleaned_data.get('gps_latitude')
+        gps_longitude = cleaned_data.get('gps_longitude')
+        distance_km = cleaned_data.get('distance_km')
+        track = cleaned_data.get('track')
+        
+        # Skip validation for start milestones (distance_km = 0)
+        if distance_km and float(distance_km) < 0.001:
+            return cleaned_data
+        
+        # Check if GPS coordinates are valid (not None, not 0)
+        has_valid_gps = (
+            gps_latitude is not None and 
+            gps_longitude is not None and
+            float(gps_latitude) != 0 and 
+            float(gps_longitude) != 0
+        )
+        
+        # Check if distance_km is set
+        has_distance_km = distance_km is not None and float(distance_km) > 0.001
+        
+        # If GPS coordinates are set but distance_km is missing, calculate distance_km
+        if has_valid_gps and not has_distance_km and track:
+            if track.geojson_data:
+                calculated_distance = calculate_distance_from_gps(
+                    track.geojson_data, 
+                    gps_latitude, 
+                    gps_longitude
+                )
+                if calculated_distance is not None and calculated_distance > 0.001:
+                    cleaned_data['distance_km'] = Decimal(str(round(calculated_distance, 5)))
+                    logger.info(f"Auto-calculated distance_km for milestone: {calculated_distance} km from GPS coordinates")
+                else:
+                    # Calculation failed or too close to start
+                    logger.warning(f"Could not calculate distance_km from GPS coordinates for milestone")
+        
+        # If GPS coordinates are missing or invalid, try to calculate them
+        if not has_valid_gps and distance_km and track:
+            # Check if track has GeoJSON data
+            if track.geojson_data:
+                lat, lon = calculate_gps_from_distance(track.geojson_data, distance_km)
+                if lat is not None and lon is not None:
+                    # Automatically set GPS coordinates
+                    cleaned_data['gps_latitude'] = Decimal(str(round(lat, 6)))
+                    cleaned_data['gps_longitude'] = Decimal(str(round(lon, 6)))
+                    logger.info(f"Auto-calculated GPS coordinates for milestone: lat={lat}, lon={lon} from distance_km={distance_km}")
+                else:
+                    # Calculation failed
+                    raise forms.ValidationError({
+                        'gps_latitude': _('GPS-Koordinaten konnten nicht automatisch berechnet werden. Bitte setzen Sie die Koordinaten manuell oder verwenden Sie die Inline-Ansicht mit Karten-Interaktion.'),
+                        'gps_longitude': _('GPS-Koordinaten konnten nicht automatisch berechnet werden. Bitte setzen Sie die Koordinaten manuell oder verwenden Sie die Inline-Ansicht mit Karten-Interaktion.')
+                    })
+            else:
+                # Track has no GeoJSON data
+                raise forms.ValidationError({
+                    'gps_latitude': _('Die Route hat keine GeoJSON-Daten. GPS-Koordinaten können nicht automatisch berechnet werden. Bitte setzen Sie die Koordinaten manuell oder verwenden Sie die Inline-Ansicht mit Karten-Interaktion.'),
+                    'gps_longitude': _('Die Route hat keine GeoJSON-Daten. GPS-Koordinaten können nicht automatisch berechnet werden. Bitte setzen Sie die Koordinaten manuell oder verwenden Sie die Inline-Ansicht mit Karten-Interaktion.')
+                })
+        elif not has_valid_gps and not distance_km:
+            # No GPS coordinates and no distance_km
+            raise forms.ValidationError({
+                'gps_latitude': _('GPS-Koordinaten oder KM-Marke müssen gesetzt sein. Wenn die KM-Marke gesetzt ist, werden die GPS-Koordinaten automatisch berechnet.'),
+                'gps_longitude': _('GPS-Koordinaten oder KM-Marke müssen gesetzt sein. Wenn die KM-Marke gesetzt ist, werden die GPS-Koordinaten automatisch berechnet.')
+            })
+        elif not has_valid_gps and not track:
+            # No GPS coordinates and no track
+            raise forms.ValidationError({
+                'gps_latitude': _('GPS-Koordinaten müssen gesetzt sein, wenn keine Route ausgewählt ist.'),
+                'gps_longitude': _('GPS-Koordinaten müssen gesetzt sein, wenn keine Route ausgewählt ist.')
+            })
+        
+        return cleaned_data
 
 class WheelSizeWidget(forms.NumberInput):
     """Custom widget for wheel size selection with preset checkboxes."""
@@ -2865,8 +3168,26 @@ class TravelTrackAdmin(admin.ModelAdmin):
         custom_urls = [
             path('<path:object_id>/restart/', self.admin_site.admin_view(self.restart_trip_view), name='api_traveltrack_restart'),
             path('<path:object_id>/save_history/', self.admin_site.admin_view(self.save_history_view), name='api_traveltrack_save_history'),
+            path('<path:object_id>/geojson/', self.admin_site.admin_view(self.geojson_view), name='api_traveltrack_geojson'),
         ]
         return custom_urls + urls
+    
+    def geojson_view(self, request, object_id):
+        """Return track geojson data for AJAX requests."""
+        from django.http import JsonResponse
+        from django.shortcuts import get_object_or_404
+        
+        try:
+            track = get_object_or_404(TravelTrack, pk=object_id)
+            if track.geojson_data:
+                return JsonResponse({
+                    'geojson_data': json.loads(track.geojson_data)
+                })
+            else:
+                return JsonResponse({'error': 'No geojson data available'}, status=404)
+        except Exception as e:
+            logger.error(f"Error fetching geojson for track {object_id}: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
 
     def restart_trip_view(self, request, object_id):
         """Custom view to restart a single trip from detail page."""
@@ -3007,6 +3328,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
 @admin.register(Milestone)
 class MilestoneAdmin(admin.ModelAdmin):
     form = MilestoneAdminForm
+    change_form_template = 'admin/api/milestone/change_form.html'
     list_display = ('name', 'distance_km_display', 'track', 'winner_group_display', 'reached_at', 'deletion_warning')
     list_filter = ('track', 'winner_group', 'reached_at')
     search_fields = ('name', 'track__name', 'winner_group__name', 'description')
@@ -3117,6 +3439,51 @@ class MilestoneAdmin(admin.ModelAdmin):
                 group_statuses__group__id__in=managed_group_ids
             ).distinct()
         return form
+    
+    def get_urls(self):
+        """Add custom URL for fetching track geojson data."""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('<path:object_id>/track_geojson/', self.admin_site.admin_view(self.track_geojson_view), name='api_milestone_track_geojson'),
+        ]
+        return custom_urls + urls
+    
+    def track_geojson_view(self, request, object_id):
+        """Return track geojson data for AJAX requests."""
+        from django.http import JsonResponse
+        from django.shortcuts import get_object_or_404
+        
+        try:
+            milestone = get_object_or_404(Milestone, pk=object_id)
+            if milestone.track and milestone.track.geojson_data:
+                return JsonResponse({
+                    'geojson_data': json.loads(milestone.track.geojson_data)
+                })
+            else:
+                return JsonResponse({'error': 'No track data available'}, status=404)
+        except Exception as e:
+            logger.error(f"Error fetching track geojson for milestone {object_id}: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Add track geojson data to context for map display."""
+        extra_context = extra_context or {}
+        
+        # Get track data if milestone has a track
+        if object_id:
+            try:
+                obj = self.get_object(request, object_id)
+                if obj and obj.track and obj.track.geojson_data:
+                    extra_context['track_geojson_data'] = json.dumps(json.loads(obj.track.geojson_data), ensure_ascii=False)
+            except Exception as e:
+                logger.error(f"Error loading track data for milestone: {e}")
+                extra_context['track_geojson_data'] = None
+        else:
+            # For new milestones, check if track is selected in form
+            extra_context['track_geojson_data'] = None
+        
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
     def distance_km_display(self, obj):
         """Display distance_km with German format (comma decimal)."""
@@ -3135,17 +3502,75 @@ class MilestoneAdmin(admin.ModelAdmin):
     deletion_warning.short_description = _("Warnung")
     deletion_warning.admin_order_field = 'track'
 
-    def has_delete_permission(self, request, obj=None):
-        """Prevent deletion if milestone is used in a trip. Also check operator permissions."""
-        if obj and obj.pk and obj.track_id:
-            return False
-        # Check operator permissions
-        if obj is None:
-            return request.user.has_perm('api.delete_milestone')
-        if request.user.is_superuser:
-            return True
-        managed_group_ids = get_operator_managed_group_ids(request.user)
-        return obj.track.group_statuses.filter(group__id__in=managed_group_ids).exists()
+    def delete_model(self, request, obj):
+        """Delete milestone with confirmation. Also deletes related GroupMilestoneAchievement objects."""
+        from django.contrib import messages
+        
+        # Check if milestone has achievements
+        achievement_count = obj.achievements.count() if hasattr(obj, 'achievements') else 0
+        
+        # Delete the milestone (this will cascade delete GroupMilestoneAchievement objects)
+        try:
+            milestone_name = obj.name
+            track_name = obj.track.name if obj.track else _("Unbekannte Route")
+            
+            super().delete_model(request, obj)
+            
+            if achievement_count > 0:
+                messages.success(
+                    request,
+                    _("Meilenstein '{}' von Route '{}' wurde erfolgreich gelöscht. {} zugehörige Meilenstein-Erreichungen wurden ebenfalls gelöscht.").format(
+                        milestone_name, track_name, achievement_count
+                    )
+                )
+            else:
+                messages.success(
+                    request,
+                    _("Meilenstein '{}' von Route '{}' wurde erfolgreich gelöscht.").format(
+                        milestone_name, track_name
+                    )
+                )
+        except Exception as e:
+            logger.error(f"Error deleting milestone {obj.pk}: {e}")
+            messages.error(
+                request,
+                _("Fehler beim Löschen des Meilensteins: {}").format(str(e))
+            )
+            raise
+
+    def delete_queryset(self, request, queryset):
+        """Bulk delete milestones with confirmation."""
+        from django.contrib import messages
+        
+        deleted_count = 0
+        achievement_count = 0
+        
+        for obj in queryset:
+            if hasattr(obj, 'achievements'):
+                achievement_count += obj.achievements.count()
+            try:
+                obj.delete()
+                deleted_count += 1
+            except Exception as e:
+                logger.error(f"Error deleting milestone {obj.pk}: {e}")
+                messages.error(
+                    request,
+                    _("Fehler beim Löschen des Meilensteins '{}': {}").format(obj.name, str(e))
+                )
+        
+        if deleted_count > 0:
+            if achievement_count > 0:
+                messages.success(
+                    request,
+                    _("{} Meilenstein(e) wurden erfolgreich gelöscht. {} zugehörige Meilenstein-Erreichungen wurden ebenfalls gelöscht.").format(
+                        deleted_count, achievement_count
+                    )
+                )
+            else:
+                messages.success(
+                    request,
+                    _("{} Meilenstein(e) wurden erfolgreich gelöscht.").format(deleted_count)
+                )
 
     class Media:
         css = LEAFLET_ASSETS['css']

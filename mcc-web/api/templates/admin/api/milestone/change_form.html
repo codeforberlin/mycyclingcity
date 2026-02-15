@@ -1,0 +1,212 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    change_form.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block field_sets %}
+{{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-geometryutil@0.10.3/src/leaflet.geometryutil.min.js"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    var trackPolyline = null;
+    var trackData = null;
+    var map = null;
+    
+    // Track data from backend (for existing milestones)
+    var trackDataJson = {% if track_geojson_data %}{{ track_geojson_data|safe }}{% else %}null{% endif %};
+    
+    // Store all tracks data for quick lookup
+    var allTracksData = {};
+    
+    // Intercept L.map to capture the map instance when MapInputWidget creates it
+    if (typeof L !== 'undefined' && L.map) {
+        var originalLMap = L.map;
+        L.map = function(id, options) {
+            var instance = originalLMap.call(this, id, options);
+            // Check if this is the leaflet_map created by MapInputWidget
+            if (typeof id === 'string' && id === 'leaflet_map') {
+                map = instance;
+                window.milestoneMap = instance; // Store globally for access
+                // Setup track display once map is available
+                setTimeout(setupTrackDisplay, 200);
+            }
+            return instance;
+        };
+    }
+    
+    function setupTrackDisplay() {
+        if (!map) {
+            // Try to get map from global storage
+            if (typeof window.milestoneMap !== 'undefined') {
+                map = window.milestoneMap;
+            } else {
+                // Try to find map by container
+                var mapDiv = document.getElementById('leaflet_map');
+                if (mapDiv && mapDiv._leaflet_id) {
+                    // Map exists, try to get it from Leaflet's registry
+                    // This is a fallback if interception didn't work
+                    setTimeout(setupTrackDisplay, 100);
+                    return;
+                }
+            }
+        }
+        
+        if (!map) {
+            console.warn('Map not available yet, retrying...');
+            setTimeout(setupTrackDisplay, 200);
+            return;
+        }
+        
+        // Load track if data is available (for existing milestones)
+        if (trackDataJson) {
+            loadTrack(trackDataJson);
+        }
+        
+        // Preload all tracks data from select options
+        preloadTracksData();
+        
+        // Listen for track field changes
+        var trackSelect = document.querySelector('select[name="track"]');
+        if (trackSelect) {
+            // Load track if one is already selected
+            if (trackSelect.value) {
+                loadTrackFromSelect(trackSelect.value);
+            }
+            
+            trackSelect.addEventListener('change', function() {
+                var trackId = this.value;
+                if (trackId) {
+                    loadTrackFromSelect(trackId);
+                } else {
+                    clearTrack();
+                }
+            });
+        }
+    }
+    
+    function preloadTracksData() {
+        // Get all track options from select field
+        var trackSelect = document.querySelector('select[name="track"]');
+        if (!trackSelect) return;
+        
+        var options = trackSelect.querySelectorAll('option');
+        options.forEach(function(option) {
+            var trackId = option.value;
+            var trackName = option.text;
+            if (trackId && trackId !== '') {
+                // Store track name for reference
+                allTracksData[trackId] = { name: trackName };
+            }
+        });
+    }
+    
+    function loadTrackFromSelect(trackId) {
+        // Check if we already have the data
+        if (allTracksData[trackId] && allTracksData[trackId].geojson) {
+            loadTrack(allTracksData[trackId].geojson);
+            return;
+        }
+        
+        // Fetch track data via AJAX
+        fetchTrackData(trackId);
+    }
+    
+    function loadTrack(data) {
+        if (!map) {
+            console.error('Map not available');
+            return;
+        }
+        
+        // Clear existing track
+        if (trackPolyline) {
+            map.removeLayer(trackPolyline);
+            trackPolyline = null;
+        }
+        
+        try {
+            if (typeof data === 'string') {
+                trackData = JSON.parse(data);
+            } else {
+                trackData = data;
+            }
+            
+            if (trackData && trackData.length > 0) {
+                trackPolyline = L.polyline(trackData, {
+                    color: '#1877f2',
+                    weight: 6,
+                    opacity: 0.75
+                }).addTo(map);
+                
+                // Fit bounds to track, but don't zoom too much if marker exists
+                var bounds = trackPolyline.getBounds();
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        } catch (e) {
+            console.error('Fehler beim Laden der Track-Daten:', e);
+        }
+    }
+    
+    function clearTrack() {
+        if (trackPolyline && map) {
+            map.removeLayer(trackPolyline);
+            trackPolyline = null;
+        }
+        trackData = null;
+    }
+    
+    function fetchTrackData(trackId) {
+        // Fetch track data from backend
+        var url = '/admin/api/traveltrack/' + trackId + '/geojson/';
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.geojson_data) {
+                // Parse and store for future use
+                var geojson = typeof data.geojson_data === 'string' ? JSON.parse(data.geojson_data) : data.geojson_data;
+                if (allTracksData[trackId]) {
+                    allTracksData[trackId].geojson = geojson;
+                }
+                loadTrack(geojson);
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Route:', error);
+        });
+    }
+    
+    // Initialize after page load (MapInputWidget script runs in gps_longitude field)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(setupTrackDisplay, 1000);
+        });
+    } else {
+        setTimeout(setupTrackDisplay, 1000);
+    }
+})();
+</script>
+{% endblock %}
