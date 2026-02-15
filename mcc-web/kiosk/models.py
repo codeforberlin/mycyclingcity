@@ -15,6 +15,7 @@ class KioskDevice(models.Model):
     """Remote Kiosk device configuration and hardware control."""
     name = models.CharField(
         max_length=200,
+        unique=True,
         verbose_name=_("Gerätename"),
         help_text=_("Lesbarer Name für dieses Kiosk-Gerät")
     )

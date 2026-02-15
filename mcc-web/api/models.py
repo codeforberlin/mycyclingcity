@@ -127,7 +127,7 @@ class Group(models.Model):
         related_name='groups',
         verbose_name=_("Gruppentyp")
     )
-    name = models.CharField(max_length=100, verbose_name=_("Gruppenname"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Gruppenname"))
     distance_total = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Gesamt-KM"))
     coins_total = models.IntegerField(default=0, verbose_name=_("Gesamt-Coins"))
 
@@ -160,7 +160,6 @@ class Group(models.Model):
     comments = models.TextField(blank=True, null=True, verbose_name=_("Interne Kommentare (Admin)"))
 
     class Meta:
-        unique_together = ('group_type', 'name')
         verbose_name = _("Group")
         verbose_name_plural = _("Groups")
         indexes = [
@@ -415,7 +414,7 @@ class CyclistDeviceCurrentMileage(models.Model):
 
 # --- TRAVEL SYSTEM ---
 class TravelTrack(models.Model):
-    name = models.CharField(max_length=100, verbose_name=_("Name der Route"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Name der Route"))
     track_file = models.FileField(upload_to='tracks/', null=True, blank=True, verbose_name=_("GPX-Datei"))
     geojson_data = models.TextField(blank=True, verbose_name=_("GeoJSON Daten"))
     total_length_km = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Gesamtlänge (km)"))
@@ -521,7 +520,7 @@ class TravelTrack(models.Model):
 
 class Milestone(models.Model):
     track = models.ForeignKey(TravelTrack, on_delete=models.CASCADE, related_name='milestones', verbose_name=_("Route"))
-    name = models.CharField(max_length=100, verbose_name=_("Bezeichnung"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Bezeichnung"))
     description = models.TextField(blank=True, null=True, verbose_name=_("Beschreibung"))
     external_link = models.URLField(blank=True, null=True, verbose_name=_("Info-Link"))
     reward_text = models.CharField(max_length=200, blank=True, null=True, verbose_name=_("Belohnung"))

@@ -37,7 +37,7 @@ class Event(models.Model):
         ('other', _("Sonstiges")),
     ]
     
-    name = models.CharField(max_length=200, verbose_name=_("Event-Name"))
+    name = models.CharField(max_length=200, unique=True, verbose_name=_("Event-Name"))
     top_group = models.ForeignKey(
         'api.Group',
         on_delete=models.CASCADE,
