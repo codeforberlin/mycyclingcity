@@ -76,6 +76,33 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
 
+# 4. Security Settings for Production Deployment
+# These settings are only active when DEBUG=False (production mode)
+# Note: Since the app runs behind Apache proxy (which handles SSL termination),
+# SECURE_SSL_REDIRECT is set but Apache should handle redirects in practice.
+
+# HTTP Strict Transport Security (HSTS)
+# Only enable in production (when DEBUG=False)
+# 31536000 seconds = 1 year
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000 if not DEBUG else 0, cast=int)
+if SECURE_HSTS_SECONDS > 0:
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
+    SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
+
+# SSL Redirect (Django will redirect HTTP to HTTPS)
+# Note: In practice, Apache should handle this, but Django's check --deploy requires it
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=not DEBUG, cast=bool)
+
+# Validate SECRET_KEY in production
+if not DEBUG and (SECRET_KEY.startswith('django-insecure-') or len(SECRET_KEY) < 50):
+    import warnings
+    warnings.warn(
+        "SECURITY WARNING: SECRET_KEY is insecure! "
+        "Please generate a long, random SECRET_KEY (at least 50 characters) "
+        "and set it in your .env file.",
+        UserWarning
+    )
+
 
 
 # Application definition

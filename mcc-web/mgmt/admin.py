@@ -2014,18 +2014,28 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     def save_related(self, request, form, formsets, change):
         """Override save_related to handle single group assignment."""
         # Get the selected group from the form
-        selected_group = form.cleaned_data.get('group')
-        
-        # WICHTIG: Stelle sicher, dass immer eine Gruppe zugewiesen wird
-        if not selected_group:
-            # Falls keine Gruppe ausgewählt wurde (sollte durch clean() verhindert werden),
-            # aber als Fallback: Fehler werfen
-            from django.core.exceptions import ValidationError
-            raise ValidationError(_("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden."))
-        
-        # Clear existing groups and add the selected group
-        form.instance.groups.clear()
-        form.instance.groups.add(selected_group)
+        # Bei Bulk-Edits (z.B. über list_editable) ist 'group' möglicherweise nicht im cleaned_data
+        # In diesem Fall die bestehenden Gruppen beibehalten
+        if hasattr(form, 'cleaned_data') and 'group' in form.cleaned_data:
+            selected_group = form.cleaned_data.get('group')
+            
+            # WICHTIG: Stelle sicher, dass immer eine Gruppe zugewiesen wird
+            if not selected_group:
+                # Falls keine Gruppe ausgewählt wurde (sollte durch clean() verhindert werden),
+                # aber als Fallback: Fehler werfen
+                from django.core.exceptions import ValidationError
+                raise ValidationError(_("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden."))
+            
+            # Clear existing groups and add the selected group
+            form.instance.groups.clear()
+            form.instance.groups.add(selected_group)
+        else:
+            # Bei Bulk-Edits: Stelle sicher, dass mindestens eine Gruppe vorhanden ist
+            # Wenn keine Gruppe vorhanden ist, Fehler werfen
+            if not form.instance.groups.exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError(_("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden."))
+            # Ansonsten bestehende Gruppen beibehalten (nichts tun)
         
         # Call parent save_related (though there are no other related objects to save)
         super().save_related(request, form, formsets, change)
