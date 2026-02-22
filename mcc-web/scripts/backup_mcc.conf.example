@@ -1,0 +1,30 @@
+# MyCyclingCity Backup Konfiguration
+# Kopieren Sie diese Datei nach backup_mcc.conf und passen Sie die Werte an
+#
+# Produktionsumgebung:
+# - Anwendung: /data/appl/mcc/mcc-web
+# - Daten: /data/var/mcc
+# - Konfiguration: /data/appl/mcc/mcc-web/scripts/backup_mcc.conf
+
+# SSH-Verbindung zum Backup-Server
+SSH_HOST="backup.example.com"
+SSH_USER="backup-user"
+SSH_PORT="22"
+
+# Optional: Pfad zu SSH-Private-Key (wenn nicht im Standard-Verzeichnis)
+# SSH_KEY="/home/user/.ssh/id_rsa"
+
+# Zielverzeichnis auf dem Remote-Server
+# Backups werden in diesem Verzeichnis gespeichert:
+# - ${REMOTE_BACKUP_DIR}/backups/  -> Datenbank-Backups
+# - ${REMOTE_BACKUP_DIR}/media/    -> Media-Dateien
+REMOTE_BACKUP_DIR="/backup/mcc"
+
+# Optional: Lokale Backup-Pfade überschreiben (Standard: /data/var/mcc)
+# BACKUP_SOURCE_BASE="/data/var/mcc"
+# BACKUP_DB_PATH="${BACKUP_SOURCE_BASE}/db/db.sqlite3"
+# BACKUP_MEDIA_PATH="${BACKUP_SOURCE_BASE}/media"
+# BACKUP_LOCAL_DIR="${BACKUP_SOURCE_BASE}/backups"
+
+# Optional: Aufbewahrungsdauer für lokale Backups (in Tagen)
+# BACKUP_RETENTION_DAYS=30
