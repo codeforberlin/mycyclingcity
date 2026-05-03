@@ -103,7 +103,7 @@ if not DEBUG and (SECRET_KEY.startswith('django-insecure-') or len(SECRET_KEY) <
         UserWarning
     )
 
-
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Application definition
 
