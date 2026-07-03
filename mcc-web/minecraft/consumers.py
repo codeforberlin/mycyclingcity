@@ -3,9 +3,8 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 from django.utils import timezone
 
-from api.models import Cyclist
 from config.logger_utils import get_logger
-from minecraft.services.outbox import queue_player_coins_update
+from minecraft.services.group_velos import spend_group_velos_from_minecraft
 from minecraft.services.ws_security import verify_signature
 
 
@@ -30,13 +29,13 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
             return
 
         event_type = content.get("type")
-        if event_type == "SPEND_COINS":
-            await self._handle_spend_coins(content)
+        if event_type in ("SPEND_GROUP_VELOS", "SPEND_COINS"):
+            await self._handle_spend_group_velos(content)
             return
 
         await self.send_json({"status": "error", "error": "unsupported_event"})
 
-    async def _handle_spend_coins(self, payload: dict):
+    async def _handle_spend_group_velos(self, payload: dict):
         player = payload.get("player")
         amount = payload.get("amount")
         server_id = payload.get("server_id")
@@ -50,29 +49,21 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
             return
 
         result = await self._apply_spend(player, amount)
-        if result == "player_not_found":
-            await self.send_json({"status": "error", "error": "player_not_found"})
+        if result == "group_not_found":
+            await self.send_json({"status": "error", "error": "group_not_found"})
+            return
+        if result == "invalid_amount":
+            await self.send_json({"status": "error", "error": "invalid_amount"})
             return
 
         logger.info(
-            f"[minecraft_ws] spend coins player={player} amount={amount} at={timezone.now().isoformat()}"
+            "[minecraft_ws] spend group velos player=%s amount=%s at=%s",
+            player,
+            amount,
+            timezone.now().isoformat(),
         )
         await self.send_json({"status": "ok"})
 
     @database_sync_to_async
     def _apply_spend(self, player: str, amount: int):
-        cyclist = Cyclist.objects.filter(mc_username__iexact=player).first()
-        if not cyclist:
-            return "player_not_found"
-
-        coins_spendable = max(int(cyclist.coins_spendable) - int(amount), 0)
-        cyclist.coins_spendable = coins_spendable
-        cyclist.save(update_fields=["coins_spendable"])
-
-        queue_player_coins_update(
-            player=player,
-            coins_total=int(cyclist.coins_total),
-            coins_spendable=coins_spendable,
-            reason="minecraft_spend",
-        )
-        return "ok"
+        return spend_group_velos_from_minecraft(player, amount)

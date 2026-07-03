@@ -26,7 +26,9 @@ urlpatterns = [
     # HTMX Views
     path('htmx/assignments', views.handle_assignment_form, name='handle_assignment_form'),
     path('htmx/results', views.render_results_table, name='render_results_table'),
-    path('htmx/target-km', views.render_target_km_display, name='render_target_km_display'),
+    path('htmx/target-velos', views.render_target_velos_display, name='render_target_velos_display'),
+    path('htmx/timer-settings', views.update_round_timer_settings, name='update_round_timer_settings'),
+    path('htmx/round-timer', views.render_round_timer, name='render_round_timer'),
     path('htmx/sync-session', views.sync_session_endpoint, name='sync_session_endpoint'),
     path('htmx/game-buttons', views.render_game_buttons, name='render_game_buttons'),
     path('htmx/filtered-cyclists', views.get_filtered_cyclists, name='get_filtered_cyclists'),

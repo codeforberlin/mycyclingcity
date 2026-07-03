@@ -19,7 +19,7 @@ class MinecraftOutboxEventAdmin(admin.ModelAdmin):
 
 @admin.register(MinecraftPlayerScoreboardSnapshot)
 class MinecraftPlayerScoreboardSnapshotAdmin(admin.ModelAdmin):
-    list_display = ("player_name", "coins_spendable", "coins_total", "captured_at", "source")
+    list_display = ("player_name", "group", "velos_spendable", "velos_total", "captured_at", "source")
     list_filter = ("source",)
     search_fields = ("player_name",)
     readonly_fields = ("captured_at",)

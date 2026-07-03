@@ -28,7 +28,13 @@ from api.models import (
 )
 from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
-from api.helpers import are_all_parents_visible, _get_latest_snapshot_date_for_groups
+from api.helpers import (
+    are_all_parents_visible,
+    _get_latest_snapshot_date_for_groups,
+    get_cyclist_session_velos,
+    _calculate_group_velos_periods,
+)
+from api.travel_velos import build_travel_status_avatar_fields
 from decimal import Decimal
 from django.core.cache import cache
 import logging
@@ -388,11 +394,15 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     track_ids = [t.id for t in active_tracks]
     statuses = GroupTravelStatus.objects.filter(track_id__in=track_ids).select_related('group', 'track')
     for status in statuses:
-        if status.current_travel_distance > 0:
+        travel = build_travel_status_avatar_fields(status)
+        if travel['velos'] > 0:
             group_avatars.append({
                 'name': status.group.name,
-                'km': float(status.current_travel_distance),
-                'track_id': status.track.id
+                'velos': travel['velos'],
+                'goal_velos': travel['goal_velos'],
+                'progress_ratio': travel['progress_ratio'],
+                'km': travel['km'],
+                'track_id': status.track.id,
             })
     
     # Get active cyclists for ticker (active in last 60 seconds)
@@ -402,7 +412,9 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         is_visible=True,
         last_active__isnull=False,
         last_active__gte=active_cutoff
-    ).select_related('cyclistdevicecurrentmileage').prefetch_related('groups').order_by('-last_active')
+    ).select_related(
+        'cyclistdevicecurrentmileage__device__configuration'
+    ).prefetch_related('groups').order_by('-last_active')
     
     # Filter cyclists by parent group if filter is active
     if parent_name:
@@ -561,19 +573,13 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                 # Fallback to group name if recursion occurs
                 group_kiosk_label = primary_group.name
         
-        # Get session kilometers from CyclistDeviceCurrentMileage
-        session_km = 0.0
-        try:
-            mileage_obj = cyclist.cyclistdevicecurrentmileage
-            if mileage_obj and mileage_obj.cumulative_mileage is not None:
-                session_km = float(mileage_obj.cumulative_mileage)
-        except (AttributeError, CyclistDeviceCurrentMileage.DoesNotExist):
-            session_km = 0.0
+        # Get session Velos from active device session
+        session_velos = get_cyclist_session_velos(cyclist)
         
         active_cyclists.append({
             'user_id': cyclist.user_id,
             'group_short_name': group_kiosk_label,  # Use kiosk label (short_name if available, otherwise full name)
-            'session_km': session_km,
+            'session_velos': session_velos,
         })
     
     # Time thresholds
@@ -805,9 +811,11 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         if not groups_list:
             groups_list = []
         group_totals = _calculate_group_totals_from_metrics(groups_list, now)
+        group_velos_totals = _calculate_group_velos_periods(groups_list, now)
     except Exception as e:
         logger.error(f"Error calculating group totals from metrics: {e}", exc_info=True)
         group_totals = {}
+        group_velos_totals = {}
     
     # Extract individual dictionaries for backward compatibility
     daily_km_by_group: Dict[int, float] = {gid: totals['daily'] for gid, totals in group_totals.items()}
@@ -862,11 +870,17 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         
         # Get all aggregated values from unified calculation (already includes parent aggregation)
         totals = group_totals.get(group.id, {'total': 0.0, 'daily': 0.0, 'weekly': 0.0, 'monthly': 0.0, 'yearly': 0.0})
+        velos = group_velos_totals.get(group.id, {'total': 0, 'daily': 0, 'weekly': 0, 'monthly': 0, 'yearly': 0})
         daily_km = float(totals['daily'])
         weekly_km = float(totals['weekly'])
         monthly_km = float(totals['monthly'])
         yearly_km = float(totals['yearly'])
         distance_total_from_metrics = float(totals['total'])
+        velos_total = int(velos['total'])
+        daily_velos = int(velos['daily'])
+        weekly_velos = int(velos['weekly'])
+        monthly_velos = int(velos['monthly'])
+        yearly_velos = int(velos['yearly'])
         
         # Get kiosk label (short_name if available, otherwise full name)
         # CRITICAL: Ensure short_name is loaded from database
@@ -898,11 +912,16 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             'kiosk_label': kiosk_label,
             'parent_group_name': parent_group_name,
             'top_parent_id': top_parent_id,  # For color mapping
-            'distance_total': distance_total_from_metrics,  # Use HourlyMetric total instead of Group.distance_total
+            'distance_total': distance_total_from_metrics,
+            'velos_total': velos_total,
             'daily_km': daily_km,
+            'daily_velos': daily_velos,
             'weekly_km': weekly_km,
+            'weekly_velos': weekly_velos,
             'monthly_km': monthly_km,
+            'monthly_velos': monthly_velos,
             'yearly_km': yearly_km,
+            'yearly_velos': yearly_velos,
             'state': state,
             'is_active': is_active,
             'is_recent': is_recent,
@@ -911,15 +930,12 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     # Filter out groups with zero total kilometers
     # Show all groups with distance_total > 0, regardless of current activity
     # The 'state' field (active/idle/dormant) will indicate current activity status
-    groups_data = [g for g in groups_data if g['distance_total'] > 0]
+    groups_data = [g for g in groups_data if g['velos_total'] > 0]
     
-    # Sort groups based on sort parameter
     if sort_by == 'daily':
-        # Sort by daily kilometers (descending), then by total as tiebreaker
-        groups_data = sorted(groups_data, key=lambda x: (x['daily_km'], x['distance_total']), reverse=True)
+        groups_data = sorted(groups_data, key=lambda x: (x['daily_velos'], x['velos_total']), reverse=True)
     else:
-        # Sort by total kilometers (descending), then by daily as tiebreaker
-        groups_data = sorted(groups_data, key=lambda x: (x['distance_total'], x['daily_km']), reverse=True)
+        groups_data = sorted(groups_data, key=lambda x: (x['velos_total'], x['daily_velos']), reverse=True)
     
     # Calculate banner data for display
     # If a group filter is active, show subgroups of that parent group
@@ -1052,16 +1068,14 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                         continue
                     
                     # Use HourlyMetric total instead of Group.distance_total for consistency
-                    subgroup_total = total_km_by_group.get(subgroup.id, 0.0)
-                    # Only include if total > 0 (filter by HourlyMetric total, not Group.distance_total)
+                    subgroup_total = int(group_velos_totals.get(subgroup.id, {}).get('total', 0))
                     if subgroup_total > 0:
                         top_parent_groups.append({
-                            'name': subgroup.get_kiosk_label(),  # Use short_name if available, otherwise full name
-                            'total_km': subgroup_total,
+                            'name': subgroup.get_kiosk_label(),
+                            'total_velos': subgroup_total,
                         })
                 
-                # Already sorted by distance_total from query, but ensure descending order
-                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_km'], reverse=True)[:3]  # Limit to top 3
+                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_velos'], reverse=True)[:3]
             
         except Group.DoesNotExist:
             top_parent_groups = []
@@ -1081,8 +1095,8 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                 continue
             
             # Use HourlyMetric totals for consistency
-            parent_total = total_km_by_group.get(parent.id, 0.0)
-            parent_visible_with_km = parent.is_visible and parent_total > 0
+            parent_total = int(group_velos_totals.get(parent.id, {}).get('total', 0))
+            parent_visible_with_velos = parent.is_visible and parent_total > 0
             
             # Check if parent has visible children with totals > 0
             # Also ensure all children's parent groups are visible
@@ -1090,7 +1104,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             for child in parent.children.filter(is_visible=True):
                 # Only include child if all its parent groups are visible
                 if are_all_parents_visible(child):
-                    child_total = total_km_by_group.get(child.id, 0.0)
+                    child_total = int(group_velos_totals.get(child.id, {}).get('total', 0))
                     if child_total > 0:
                         visible_children.append((child, child_total))
             
@@ -1098,85 +1112,70 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             has_visible_children = children_total > 0
             
             # Only include parent if it meets one of the conditions
-            if parent_visible_with_km or has_visible_children:
-                # Use the sum of visible children if available, otherwise use parent's total from HourlyMetric
+            if parent_visible_with_velos or has_visible_children:
                 if has_visible_children:
-                    total_km = children_total
+                    total_velos = children_total
                 else:
-                    total_km = parent_total
+                    total_velos = parent_total
                 
                 parent_data.append({
-                    'name': parent.get_kiosk_label(),  # Use short_name if available, otherwise full name
-                    'total_km': total_km,
+                    'name': parent.get_kiosk_label(),
+                    'total_velos': total_velos,
                 })
         
-        # Sort parent groups by total_km descending - limit to top 3
-        top_parent_groups = sorted(parent_data, key=lambda x: x['total_km'], reverse=True)[:3]
+        top_parent_groups = sorted(parent_data, key=lambda x: x['total_velos'], reverse=True)[:3]
     
-    # Daily record holder: Find group with highest value based on sort parameter
+    # Daily record holder: highest daily_velos today (independent of tile sort order)
     daily_record_holder: Optional[Dict[str, Any]] = None
     daily_record_value: float = 0.0
     
     if groups_data:
-        # Find the top group based on sort parameter
-        if sort_by == 'daily':
-            top_group = max(groups_data, key=lambda x: (x['daily_km'], x['distance_total']))
-            if top_group['daily_km'] > 0:
-                daily_record_holder = {
-                    'name': top_group['kiosk_label'],
-                    'parent_group_name': top_group['parent_group_name'],
-                }
-                daily_record_value = top_group['daily_km']
-        else:
-            top_group = max(groups_data, key=lambda x: (x['distance_total'], x['daily_km']))
-            if top_group['distance_total'] > 0:
-                daily_record_holder = {
-                    'name': top_group['kiosk_label'],
-                    'parent_group_name': top_group['parent_group_name'],
-                }
-                daily_record_value = top_group['distance_total']
+        top_daily_group = max(groups_data, key=lambda x: (x['daily_velos'], x['velos_total']))
+        if top_daily_group['daily_velos'] > 0:
+            daily_record_holder = {
+                'name': top_daily_group['kiosk_label'],
+                'parent_group_name': top_daily_group['parent_group_name'],
+            }
+            daily_record_value = top_daily_group['daily_velos']
     
     # Weekly record holder: Find group with highest weekly kilometers (Monday to Sunday)
     weekly_record_holder: Optional[Dict[str, Any]] = None
     weekly_record_value: float = 0.0
     
     if groups_data:
-        # Find the group with highest weekly_km
-        top_weekly_group = max(groups_data, key=lambda x: (x['weekly_km'], x['distance_total']))
-        if top_weekly_group['weekly_km'] > 0:
+        top_weekly_group = max(groups_data, key=lambda x: (x['weekly_velos'], x['velos_total']))
+        if top_weekly_group['weekly_velos'] > 0:
             weekly_record_holder = {
                 'name': top_weekly_group['kiosk_label'],
                 'parent_group_name': top_weekly_group['parent_group_name'],
             }
-            weekly_record_value = top_weekly_group['weekly_km']
+            weekly_record_value = top_weekly_group['weekly_velos']
     
     # Monthly record holder: Find group with highest monthly kilometers (1st to last day of month)
     monthly_record_holder: Optional[Dict[str, Any]] = None
     monthly_record_value: float = 0.0
     
     if groups_data:
-        # Find the group with highest monthly_km
-        top_monthly_group = max(groups_data, key=lambda x: (x['monthly_km'], x['distance_total']))
-        if top_monthly_group['monthly_km'] > 0:
+        top_monthly_group = max(groups_data, key=lambda x: (x['monthly_velos'], x['velos_total']))
+        if top_monthly_group['monthly_velos'] > 0:
             monthly_record_holder = {
                 'name': top_monthly_group['kiosk_label'],
                 'parent_group_name': top_monthly_group['parent_group_name'],
             }
-            monthly_record_value = top_monthly_group['monthly_km']
+            monthly_record_value = top_monthly_group['monthly_velos']
     
     # Yearly record holder: Find group with highest yearly kilometers (January 1st to December 31st)
     yearly_record_holder: Optional[Dict[str, Any]] = None
     yearly_record_value: float = 0.0
     
     if groups_data:
-        # Find the group with highest yearly_km
-        top_yearly_group = max(groups_data, key=lambda x: (x['yearly_km'], x['distance_total']))
-        if top_yearly_group['yearly_km'] > 0:
+        top_yearly_group = max(groups_data, key=lambda x: (x['yearly_velos'], x['velos_total']))
+        if top_yearly_group['yearly_velos'] > 0:
             yearly_record_holder = {
                 'name': top_yearly_group['kiosk_label'],
                 'parent_group_name': top_yearly_group['parent_group_name'],
             }
-            yearly_record_value = top_yearly_group['yearly_km']
+            yearly_record_value = top_yearly_group['yearly_velos']
     
     # Count active groups - synchronize with ticker logic
     # Ticker shows cyclists active in last 60 seconds, so we count leaf-groups with active cyclists
@@ -1184,46 +1183,9 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     # This matches what the ticker displays
     active_count = len(active_leaf_group_ids)  # Only count leaf-groups, not parent groups
     
-    # Calculate total kilometers across all visible groups (like Admin Report)
-    # Use HourlyMetric totals for consistency with other components
-    # If a filter is active, only count the filtered parent group's total
-    # (which already contains the aggregated sum of all descendants)
-    if current_filter:
-        # Filtered view: use the parent group's total from HourlyMetric
-        # This is the aggregated sum of all its descendants
-        try:
-            parent_group = Group.objects.get(name__iexact=current_filter, is_visible=True)
-            # Check if parent_group.id is in total_km_by_group
-            # If not, recalculate with include_descendants=True to get aggregated values
-            if parent_group.id in total_km_by_group:
-                total_km = total_km_by_group.get(parent_group.id, 0.0)
-            else:
-                # Parent group not in total_km_by_group - recalculate with include_descendants=True
-                # This ensures we get the aggregated sum of all descendants
-                parent_group_totals = _calculate_group_totals_from_metrics(
-                    [parent_group],
-                    now,
-                    use_cache=True,
-                    include_descendants=True
-                )
-                total_km = parent_group_totals.get(parent_group.id, {}).get('total', 0.0)
-        except Group.DoesNotExist:
-            # Fallback: use groups_data sum (already from HourlyMetric)
-            total_km = sum(g['distance_total'] for g in groups_data)
-    else:
-        # Unfiltered view: count only top-level groups (no parent) to avoid double-counting
-        # Top-level groups need to include aggregated sum of all their descendants
-        all_visible_top_groups = Group.objects.filter(is_visible=True, parent__isnull=True)
-        
-        # Recalculate totals with include_descendants=True to get aggregated values
-        # This ensures top-level groups include all their descendants' kilometers
-        top_group_totals = _calculate_group_totals_from_metrics(
-            list(all_visible_top_groups),
-            now,
-            use_cache=True,
-            include_descendants=True
-        )
-        total_km = sum(top_group_totals.get(g.id, {}).get('total', 0.0) for g in all_visible_top_groups)
+    # Total Velos across all displayed leaf groups (same tiles as groups_data).
+    # Top-level parents have no direct HourlyMetric rows; summing leaf velos_total is correct.
+    total_velos = sum(g['velos_total'] for g in groups_data)
     
     # Generate consistent colors for top parent groups
     # Use a palette of distinct, vibrant colors
@@ -1288,7 +1250,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'yearly_record_holder': yearly_record_holder,
         'yearly_record_value': yearly_record_value,
         'active_count': active_count,
-        'total_km': round(total_km, 3),
+        'total_velos': total_velos,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker
@@ -1356,7 +1318,9 @@ def leaderboard_ticker(request: HttpRequest) -> HttpResponse:
     base_cyclists = Cyclist.objects.filter(
         is_visible=True,
         last_active__gte=active_cutoff
-    ).select_related('cyclistdevicecurrentmileage').prefetch_related('groups')
+    ).select_related(
+        'cyclistdevicecurrentmileage__device__configuration'
+    ).prefetch_related('groups')
     
     target_group = None
     if group_id and group_id.strip() and group_id != 'None':
@@ -1440,41 +1404,38 @@ def leaderboard_ticker(request: HttpRequest) -> HttpResponse:
         if primary_group:
             group_short_name = primary_group.get_kiosk_label()
         
-        # Always include cyclist, even if session_km is 0
+        # Always include cyclist, even if session_velos is 0
         ticker_data.append({
             'id': cyclist.id,
             'user_id': cyclist.user_id,
             'device_display': dev_name,
-            'session_km': s_km,
+            'session_velos': get_cyclist_session_velos(cyclist),
             'total_km': cyclist.distance_total,
             'last_active': cyclist.last_active,
             'group_short_name': group_short_name
         })
     
-    ticker_data = sorted(ticker_data, key=lambda x: x['session_km'], reverse=True)[:10]
+    ticker_data = sorted(ticker_data, key=lambda x: x['session_velos'], reverse=True)[:10]
     
     event_data = None
     if ticker_data:
-        # Determine the most recently active cyclist for the overlay
         trigger_cyclist = sorted(ticker_data, key=lambda x: x['last_active'], reverse=True)[0]
-        cyclist_key = f"last_session_km_{trigger_cyclist['id']}"
-        last_shown_km = request.session.get(cyclist_key, 0)
-        current_session_km = int(trigger_cyclist['session_km'])
+        cyclist_key = f"last_session_velos_{trigger_cyclist['id']}"
+        last_shown_velos = int(request.session.get(cyclist_key, 0))
+        current_session_velos = int(trigger_cyclist['session_velos'])
         
-        # World champion logo for each new kilometer in the session
-        if current_session_km > last_shown_km:
+        if current_session_velos > last_shown_velos:
             event_data = {
-                'type': 'km_update',
+                'type': 'velos_update',
                 'name': trigger_cyclist['user_id'],
-                'km': current_session_km,
+                'velos': current_session_velos,
                 'icon': '👑'
             }
-            # Trophy for milestones (every 100 total kilometers)
             if int(trigger_cyclist['total_km']) % 100 == 0:
                 event_data['type'] = 'milestone'
                 event_data['icon'] = '🏆'
             
-            request.session[cyclist_key] = current_session_km
+            request.session[cyclist_key] = current_session_velos
             request.session.modified = True
     
     return render(request, 'leaderboard/partials/ticker.html', {

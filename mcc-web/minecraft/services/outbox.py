@@ -7,28 +7,28 @@ from minecraft.models import MinecraftOutboxEvent
 logger = get_logger("minecraft")
 
 
-def queue_player_coins_update(
+def queue_group_velos_update(
     player: str,
-    coins_total: int,
-    coins_spendable: int,
+    velos_total: int,
+    velos_spendable: int,
     reason: str,
     spendable_action: str = "set",
     spendable_delta: int | None = None,
 ) -> MinecraftOutboxEvent:
     payload = {
         "player": player,
-        "coins_total": int(coins_total),
-        "coins_spendable": int(coins_spendable),
+        "velos_total": int(velos_total),
+        "velos_spendable": int(velos_spendable),
         "reason": reason,
         "spendable_action": spendable_action,
         "spendable_delta": int(spendable_delta) if spendable_delta is not None else None,
         "queued_at": timezone.now().isoformat(),
     }
     event = MinecraftOutboxEvent.objects.create(
-        event_type=MinecraftOutboxEvent.EVENT_UPDATE_PLAYER_COINS,
+        event_type=MinecraftOutboxEvent.EVENT_UPDATE_GROUP_VELOS,
         payload=payload,
     )
-    logger.info(f"[minecraft_outbox] queued update for player={player} reason={reason}")
+    logger.info(f"[minecraft_outbox] queued group velos for player={player} reason={reason}")
     return event
 
 

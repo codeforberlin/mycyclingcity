@@ -61,15 +61,13 @@ class TestGroupModel:
         initial_child_total = child.distance_total
         initial_parent_total = parent.distance_total
         
-        child.add_to_totals(Decimal('10.50000'), 5)
+        child.add_to_totals(Decimal('10.50000'))
         
         child.refresh_from_db()
         parent.refresh_from_db()
         
         assert child.distance_total == initial_child_total + Decimal('10.50000')
-        assert child.coins_total == 5
         assert parent.distance_total == initial_parent_total + Decimal('10.50000')
-        assert parent.coins_total == 5
     
     def test_group_recalculate_totals(self, group_hierarchy):
         """Test recalculate_totals method."""

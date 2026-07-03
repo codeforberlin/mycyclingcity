@@ -2492,7 +2492,14 @@
             if (lookup[g.track_id]) {
                 var poly = lookup[g.track_id], latlngs = poly.getLatLngs(), total = 0;
                 for (var i = 0; i < latlngs.length - 1; i++) total += latlngs[i].distanceTo(latlngs[i+1]);
-                var ratio = Math.max(0, Math.min(1, (g.km * 1000) / total));
+                var ratio;
+                if (g.progress_ratio !== undefined && g.progress_ratio !== null) {
+                    ratio = Math.max(0, Math.min(1, g.progress_ratio));
+                } else if (g.goal_velos && g.velos !== undefined) {
+                    ratio = Math.max(0, Math.min(1, g.velos / g.goal_velos));
+                } else {
+                    ratio = Math.max(0, Math.min(1, (g.km * 1000) / total));
+                }
                 return L.GeometryUtil.interpolateOnLine(mapInstance, poly, ratio).latLng;
             }
             return null;
@@ -2504,7 +2511,8 @@
         function createAvatarIcon(g, xOffset, yOffset, rank) {
             // Use km for display (current_travel_distance only, not historical)
             // This ensures that after restart, avatars show 0 km at the start point
-            var displayKm = g.km || 0;
+            var displayVelos = g.velos || 0;
+            var goalVelos = g.goal_velos || 0;
             // Use display_name (short_name if available) or fall back to name
             // Escape HTML to prevent XSS and ensure proper display
             var groupName = ((g.display_name || g.name) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2527,12 +2535,12 @@
             var topContributorDisplay = '';
             var travelDurationDisplay = '';
             var trackTotalLength = g.track_total_length_km || 0;
-            var isAtFinish = trackTotalLength > 0 && g.km >= trackTotalLength;
+            var isAtFinish = goalVelos > 0 && displayVelos >= goalVelos;
             if (isAtFinish && g.top_contributor_leaf_group) {
                 var leafGroup = g.top_contributor_leaf_group;
                 var leafGroupName = ((leafGroup.display_name || leafGroup.name) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                var leafContribution = formatNumberDE(leafGroup.contribution_km || 0, 2);
-                topContributorDisplay = `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd; font-size: 10px; color: #28a745; font-weight: bold;">⭐ ${leafGroupName}<br>${leafContribution} km</div>`;
+                var leafContribution = formatVelosDE(leafGroup.contribution_velos || 0);
+                topContributorDisplay = `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd; font-size: 10px; color: #28a745; font-weight: bold;">⭐ ${leafGroupName}<br>${leafContribution} Velos</div>`;
             }
             
             // Display travel duration if goal is reached
@@ -2557,7 +2565,7 @@
                 html: `
                     <div class="group-icon-container" style="${transform}">
                         <img src="${g.logo}" class="group-icon-img" onerror="this.src='/static/map/images/default_group.png'">
-                        <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${rankDisplay}${groupName}<br>${formatNumberDE(displayKm, 2)} km${travelDurationDisplay}${topContributorDisplay}</div>
+                        <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${rankDisplay}${groupName}<br>${formatVelosDE(displayVelos)} Velos${travelDurationDisplay}${topContributorDisplay}</div>
                     </div>`,
                 className: '',
                 iconSize: [50, 65],
@@ -2697,8 +2705,8 @@
                         topContributorDiv.className = 'hero-card-top-contributor';
                         var leafGroup = avatar.top_contributor_leaf_group;
                         var displayName = leafGroup.display_name || leafGroup.name;
-                        var contributionKm = formatNumberDE(leafGroup.contribution_km || 0, 2);
-                        topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionKm + ' km)';
+                        var contributionVelos = formatVelosDE(leafGroup.contribution_velos || 0);
+                        topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionVelos + ' Velos)';
                         heroDetails.appendChild(topContributorDiv);
                     }
                     
@@ -2931,7 +2939,7 @@
                 if (activeTrackIds.length === 0 || activeTrackIds.includes(trackIdInt)) {
                     var finishAvatars = avatarsByTrack[trackId].filter(function(g) {
                         var trackTotalLength = g.track_total_length_km || 0;
-                        return trackTotalLength > 0 && g.km >= trackTotalLength;
+                        return g.goal_velos > 0 && (g.velos || 0) >= g.goal_velos;
                     });
                     
                     if (finishAvatars.length > 0) {
@@ -2997,7 +3005,7 @@
             avatars.forEach(function(g) {
                 // Skip avatars that have reached the finish - they should not be displayed on the map
                 var trackTotalLength = g.track_total_length_km || 0;
-                var isAtFinish = trackTotalLength > 0 && g.km >= trackTotalLength;
+                var isAtFinish = g.goal_velos > 0 && (g.velos || 0) >= g.goal_velos;
                 
                 if (isAtFinish) {
                     // Remove marker if it exists
@@ -4375,6 +4383,23 @@
         var maxToasts = 5;
         var toastDuration = 5000; // 5 seconds
         
+        function formatVelosDE(value) {
+            var n = Math.round(Number(value) || 0);
+            return n.toLocaleString('de-DE');
+        }
+
+        function parseSessionVelosFromTickerItem(item) {
+            var velosAttr = item.getAttribute('data-session-velos');
+            if (velosAttr !== null && velosAttr !== '') {
+                return parseInt(velosAttr, 10) || 0;
+            }
+            var velosMatch = (item.textContent || '').match(/([\d.]+)\s*Velos/i);
+            if (velosMatch) {
+                return parseInt(velosMatch[1].replace(/\./g, ''), 10) || 0;
+            }
+            return 0;
+        }
+        
         function createActivityToast(cyclist) {
             var container = document.getElementById('activity-toast-container');
             if (!container) return;
@@ -4394,6 +4419,7 @@
             
             var toast = document.createElement('div');
             toast.className = 'activity-toast';
+            toast.setAttribute('data-session-velos', cyclist.session_velos);
             
             var icon = '🚴';
             var title = textCurrentlyCycling;
@@ -4401,7 +4427,7 @@
             if (cyclist.group_short_name) {
                 body += ' (' + cyclist.group_short_name + ')';
             }
-            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+            body += ' - <span class="activity-toast-distance">' + formatVelosDE(cyclist.session_velos) + ' Velos</span>';
             
             toast.innerHTML = 
                 '<div class="activity-toast-header">' +
@@ -4445,43 +4471,29 @@
             // Extract cyclist data from ticker items
             tickerItems.forEach(function(item) {
                 var text = item.textContent.trim();
-                if (text && !text.includes('Warten auf Radler') && text.includes('km')) {
-                    // Parse cyclist info from ticker format: "● USER_ID (GROUP) 🚴 X.XXX km"
+                if (text && !text.includes('Warten auf Radler') && text.includes('Velos')) {
                     var parts = text.split('●');
                     if (parts.length > 1) {
                         var cyclistText = parts[1].trim();
                         
-                        // Extract user ID (text before first parenthesis or emoji)
                         var userMatch = cyclistText.match(/^([^\s(🚴]+)/);
                         if (!userMatch) return;
                         
-                        // Extract group name (in parentheses)
                         var groupMatch = cyclistText.match(/\(([^)]+)\)/);
-                        
-                        // Extract km value (number before "km")
-                        // Handle German format: "1.234,56 km" -> 1234.56
-                        var kmMatch = cyclistText.match(/([\d.,]+)\s*km/i);
-                        if (!kmMatch) return;
-                        
-                        var kmStr = kmMatch[1];
-                        // German format: dots are thousands, comma is decimal
-                        // Remove dots (thousands separators) and replace comma with dot
-                        var sessionKm = parseFloat(kmStr.replace(/\./g, '').replace(',', '.'));
+                        var sessionVelos = parseSessionVelosFromTickerItem(item);
                         
                         var cyclist = {
                             user_id: userMatch[1].trim(),
-                            session_km: sessionKm,
+                            session_velos: sessionVelos,
                             group_short_name: groupMatch ? groupMatch[1].trim() : null
                         };
                         
-                        // Create unique key for this cyclist
                         var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
                         
-                        // Only show toast if this is new data or km has increased significantly
-                        var lastKm = lastTickerData[key];
-                        if (!lastKm || Math.abs(cyclist.session_km - lastKm) > 0.1) {
+                        var lastVelos = lastTickerData[key];
+                        if (lastVelos === undefined || lastVelos === null || Math.abs(cyclist.session_velos - lastVelos) >= 1) {
                             createActivityToast(cyclist);
-                            lastTickerData[key] = cyclist.session_km;
+                            lastTickerData[key] = cyclist.session_velos;
                         }
                     }
                 }

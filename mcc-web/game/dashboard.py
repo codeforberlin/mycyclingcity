@@ -120,7 +120,7 @@ def game_dashboard(request):
             'inactive_display': inactive_display,
             'participants_count': participants_count,
             'assignments_count': assignments_count,
-            'current_target_km': room.current_target_km,
+            'current_target_velos': room.current_target_velos,
             'game_status': game_status,
             'game_status_color': game_status_color,
             'is_master_active': room.master_session_key and room.master_session_key in (room.active_sessions or []),

@@ -10,16 +10,42 @@
 <div class="ticker-scroll">
     ⚡ {% trans "AKTUELL AM START" %}: 
     {% for cyclist in active_cyclists %}
-        <span class="ticker-item">
+        <span class="ticker-item" data-session-velos="{{ cyclist.session_velos }}">
             ● 
             <strong>{{ cyclist.user_id }}</strong>
             {% if cyclist.group_short_name %}
             <span style="color: #666;">({{ cyclist.group_short_name }})</span>
             {% endif %}
             <span style="margin: 0 8px;">🚴</span>
-            <span style="color: #28a745; font-weight: bold;">{% format_km_de_tag cyclist.session_km 2 %} km</span>
+            <span style="color: #28a745; font-weight: bold;">{% format_velos_de_tag cyclist.session_velos %} Velos</span>
         </span>
     {% empty %}
         <span class="ticker-item">{% trans "Warten auf Radler..." %}</span>
     {% endfor %}
 </div>
+
+{% if event %}
+<div id="map-event-popup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="opacity: {{ weltmeister_popup_opacity|default:1 }};">
+    <div style="text-align: center; color: gold;">
+        <div style="font-size: 8rem; animation: map-wm-bounce 2s infinite;">{{ event.icon }}</div>
+        <h1 style="font-size: 4rem; margin:0;">
+            {% if event.type == 'milestone' %}{% trans "MEILENSTEIN ERREICHT" %}{% else %}{% trans "SITZUNGS-WELTMEISTER" %}{% endif %}
+        </h1>
+        <h2 style="font-size: 5rem; color: white; margin:10px 0;">{{ event.name }}</h2>
+        <p style="font-size: 2rem;">{% trans "hat" %} {% format_velos_de_tag event.velos %} {% trans "Velos in dieser Runde gesammelt!" %}</p>
+    </div>
+</div>
+<style>
+    @keyframes map-wm-bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-30px);} 60% {transform: translateY(-15px);} }
+</style>
+<script>
+    setTimeout(() => {
+        const el = document.getElementById('map-event-popup');
+        if (el) {
+            el.style.transition = "opacity 1s ease";
+            el.style.opacity = "0";
+            setTimeout(() => el.remove(), 1000);
+        }
+    }, {{ weltmeister_popup_duration|default:6000 }});
+</script>
+{% endif %}

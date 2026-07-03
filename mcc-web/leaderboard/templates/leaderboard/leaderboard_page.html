@@ -269,7 +269,7 @@
             return parts.join(',');
         }
 
-        // Sort toasts by session_km (descending - highest first)
+        // Sort toasts by session_velos (descending - highest first)
         function sortActivityToasts() {
             var container = document.getElementById('activity-toast-container');
             if (!container) return;
@@ -277,29 +277,32 @@
             var toasts = Array.from(container.querySelectorAll('.activity-toast'));
             if (toasts.length === 0) return;
 
-            // Sort by session_km (extract from distance span)
             toasts.sort(function(a, b) {
-                var aDistanceSpan = a.querySelector('.activity-toast-distance');
-                var bDistanceSpan = b.querySelector('.activity-toast-distance');
-                
-                if (!aDistanceSpan || !bDistanceSpan) return 0;
-                
-                // Extract km value from text (format: "X.XX km")
-                var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
-                var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
-                
-                // Parse German number format (e.g., "1.234,56" -> 1234.56)
-                var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
-                var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
-                
-                // Sort descending (highest km first)
-                return bKm - aKm;
+                var aVelos = parseInt(a.dataset.sessionVelos || '0', 10);
+                var bVelos = parseInt(b.dataset.sessionVelos || '0', 10);
+                return bVelos - aVelos;
             });
 
-            // Re-append sorted toasts
             toasts.forEach(function(toast) {
                 container.appendChild(toast);
             });
+        }
+
+        function formatVelosDE(value) {
+            var n = Math.round(Number(value) || 0);
+            return n.toLocaleString('de-DE');
+        }
+
+        function parseSessionVelosFromTickerItem(item) {
+            var velosAttr = item.getAttribute('data-session-velos');
+            if (velosAttr !== null && velosAttr !== '') {
+                return parseInt(velosAttr, 10) || 0;
+            }
+            var velosMatch = (item.textContent || '').match(/([\d.]+)\s*Velos/i);
+            if (velosMatch) {
+                return parseInt(velosMatch[1].replace(/\./g, ''), 10) || 0;
+            }
+            return 0;
         }
 
         function createActivityToast(cyclist) {
@@ -336,8 +339,9 @@
                     existingToast = existingToasts[i];
                     var distanceSpan = existingToast.querySelector('.activity-toast-distance');
                     if (distanceSpan) {
-                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                        distanceSpan.textContent = formatVelosDE(cyclist.session_velos) + ' Velos';
                     }
+                    existingToast.setAttribute('data-session-velos', cyclist.session_velos);
                     toastExists = true;
                     break;
                 }
@@ -349,35 +353,22 @@
                 return;
             }
 
-            // In toast mode, limit to maxToasts (remove lowest km if needed)
+            // In toast mode, limit to maxToasts (remove lowest Velos if needed)
             var currentToasts = container.querySelectorAll('.activity-toast');
             if (currentToasts.length >= maxToasts) {
-                // Sort current toasts to find the one with lowest km
                 var toastsArray = Array.from(currentToasts);
                 toastsArray.sort(function(a, b) {
-                    var aDistanceSpan = a.querySelector('.activity-toast-distance');
-                    var bDistanceSpan = b.querySelector('.activity-toast-distance');
-                    
-                    if (!aDistanceSpan || !bDistanceSpan) return 0;
-                    
-                    var aKmText = aDistanceSpan.textContent.replace(' km', '').trim();
-                    var bKmText = bDistanceSpan.textContent.replace(' km', '').trim();
-                    
-                    var aKm = parseFloat(aKmText.replace(/\./g, '').replace(',', '.'));
-                    var bKm = parseFloat(bKmText.replace(/\./g, '').replace(',', '.'));
-                    
-                    return aKm - bKm; // Ascending to find lowest
+                    var aVelos = parseInt(a.dataset.sessionVelos || '0', 10);
+                    var bVelos = parseInt(b.dataset.sessionVelos || '0', 10);
+                    return aVelos - bVelos;
                 });
                 
-                // Remove the toast with lowest km
                 var lowestToast = toastsArray[0];
                 if (lowestToast) {
-                    // Only remove if new cyclist has more km
-                    var newKm = cyclist.session_km;
-                    var lowestKmText = lowestToast.querySelector('.activity-toast-distance').textContent.replace(' km', '').trim();
-                    var lowestKm = parseFloat(lowestKmText.replace(/\./g, '').replace(',', '.'));
+                    var newVelos = cyclist.session_velos;
+                    var lowestVelos = parseInt(lowestToast.dataset.sessionVelos || '0', 10);
                     
-                    if (newKm > lowestKm) {
+                    if (newVelos > lowestVelos) {
                         lowestToast.classList.add('fade-out');
                         setTimeout(function() {
                             if (lowestToast.parentNode) {
@@ -385,7 +376,6 @@
                             }
                         }, 300);
                     } else {
-                        // New cyclist has fewer km, don't add
                         return;
                     }
                 }
@@ -394,7 +384,7 @@
             var toast = document.createElement('div');
             toast.className = 'activity-toast';
             toast.setAttribute('data-cyclist-key', cyclistKey);
-            toast.setAttribute('data-session-km', cyclist.session_km);
+            toast.setAttribute('data-session-velos', cyclist.session_velos);
 
             var icon = '🚴';
             var title = '{% trans "Aktuell radelnd" %}';
@@ -402,7 +392,7 @@
             if (cyclist.group_short_name) {
                 body += ' (' + cyclist.group_short_name + ')';
             }
-            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+            body += ' - <span class="activity-toast-distance">' + formatVelosDE(cyclist.session_velos) + ' Velos</span>';
 
             toast.innerHTML =
                 '<div class="activity-toast-header">' +
@@ -456,7 +446,7 @@
             
             // Fetch fresh data directly from server (like in map)
             // Use the dedicated ticker endpoint for fresh session data
-            // This endpoint reads current session kilometers from the database
+            // This endpoint reads current session Velos from the database
             var url = "{% url 'leaderboard:leaderboard_ticker' %}";
             
             // Get filter from URL parameters (works in both normal and kiosk context)
@@ -585,7 +575,7 @@
                         // Extract cyclist data
                         var userId = hasUserId.textContent.trim();
                         var groupShortName = null;
-                        var sessionKm = 0;
+                        var sessionVelos = parseSessionVelosFromTickerItem(item);
 
                         // Extract group name if present (in parentheses)
                         var groupMatch = text.match(/\(([^)]+)\)/);
@@ -593,32 +583,20 @@
                             groupShortName = groupMatch[1];
                         }
 
-                        // Extract km value
-                        // Handle German format: "1.234,56 km" -> 1234.56
-                        var kmMatch = text.match(/([\d.,]+)\s*km/i);
-                        if (kmMatch) {
-                            var kmStr = kmMatch[1];
-                            // German format: dots are thousands, comma is decimal
-                            // Remove dots (thousands separators) and replace comma with dot
-                            sessionKm = parseFloat(kmStr.replace(/\./g, '').replace(',', '.'));
-                        }
-
                         var cyclist = {
                             user_id: userId,
                             group_short_name: groupShortName,
-                            session_km: sessionKm
+                            session_velos: sessionVelos
                         };
 
                         // Check if we should show/create a toast for this cyclist
                         var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
-                        var lastKm = lastTickerData[key];
+                        var lastVelos = lastTickerData[key];
                         var shouldShowToast = false;
                         
-                        if (!lastKm) {
-                            // First time seeing this cyclist - always show toast
+                        if (lastVelos === undefined || lastVelos === null) {
                             shouldShowToast = true;
-                        } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
-                            // Kilometers have increased significantly - show toast
+                        } else if (Math.abs(cyclist.session_velos - lastVelos) >= 1) {
                             shouldShowToast = true;
                         } else {
                             // Check if a toast for this cyclist is already visible
@@ -643,7 +621,7 @@
                         
                         if (shouldShowToast) {
                             createActivityToast(cyclist);
-                            lastTickerData[key] = cyclist.session_km;
+                            lastTickerData[key] = cyclist.session_velos;
                         }
                     });
                 })

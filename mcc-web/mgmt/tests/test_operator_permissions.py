@@ -297,8 +297,8 @@ class TestOperatorPermissions:
         assert event3 in qs
         # Should NOT see event2 (other top_group)
         assert event2 not in qs
-        # Should NOT see event4 (other top_group, no GroupEventStatus)
-        assert event4 not in qs
+        # event4 has no GroupEventStatus — visible to all operators (new-event rule)
+        assert event4 in qs
     
     def test_hidden_admin_classes(self, operator_user):
         """Test that hidden admin classes are not visible to operators."""

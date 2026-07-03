@@ -23,7 +23,7 @@ from minecraft.models import (
     MinecraftPlayerScoreboardSnapshot,
     MinecraftWorkerState,
 )
-from api.tests.conftest import CyclistFactory
+from api.tests.conftest import GroupFactory
 
 
 @pytest.mark.unit
@@ -31,17 +31,27 @@ from api.tests.conftest import CyclistFactory
 class TestMinecraftOutboxEvent:
     """Tests for MinecraftOutboxEvent model."""
     
-    def test_create_update_player_coins_event(self):
-        """Test creating an UPDATE_PLAYER_COINS event."""
+    def test_create_update_group_velos_event(self):
+        """Test creating an UPDATE_GROUP_VELOS event."""
+        event = MinecraftOutboxEvent.objects.create(
+            event_type=MinecraftOutboxEvent.EVENT_UPDATE_GROUP_VELOS,
+            payload={"player": "testplayer", "velos_total": 100, "velos_spendable": 50},
+        )
+
+        assert event.event_type == MinecraftOutboxEvent.EVENT_UPDATE_GROUP_VELOS
+        assert event.status == MinecraftOutboxEvent.STATUS_PENDING
+        assert event.attempts == 0
+        assert event.payload["player"] == "testplayer"
+        assert event.payload["velos_total"] == 100
+
+    def test_create_update_player_coins_event_deprecated(self):
+        """Deprecated coin events can still be stored for legacy payloads."""
         event = MinecraftOutboxEvent.objects.create(
             event_type=MinecraftOutboxEvent.EVENT_UPDATE_PLAYER_COINS,
             payload={"player": "testplayer", "coins_total": 100, "coins_spendable": 50},
         )
-        
+
         assert event.event_type == MinecraftOutboxEvent.EVENT_UPDATE_PLAYER_COINS
-        assert event.status == MinecraftOutboxEvent.STATUS_PENDING
-        assert event.attempts == 0
-        assert event.payload["player"] == "testplayer"
         assert event.payload["coins_total"] == 100
     
     def test_create_sync_all_event(self):
@@ -137,59 +147,58 @@ class TestMinecraftPlayerScoreboardSnapshot:
     
     def test_create_snapshot(self):
         """Test creating a scoreboard snapshot."""
-        cyclist = CyclistFactory(mc_username="testplayer")
-        
+        group = GroupFactory(mc_username="testplayer")
+
         snapshot = MinecraftPlayerScoreboardSnapshot.objects.create(
             player_name="testplayer",
-            cyclist=cyclist,
-            coins_total=1000,
-            coins_spendable=500,
+            group=group,
+            velos_total=1000,
+            velos_spendable=500,
             source="rcon",
         )
-        
+
         assert snapshot.player_name == "testplayer"
-        assert snapshot.cyclist == cyclist
-        assert snapshot.coins_total == 1000
-        assert snapshot.coins_spendable == 500
+        assert snapshot.group == group
+        assert snapshot.velos_total == 1000
+        assert snapshot.velos_spendable == 500
         assert snapshot.source == "rcon"
-    
+
     def test_snapshot_str_representation(self):
         """Test string representation of snapshot."""
         snapshot = MinecraftPlayerScoreboardSnapshot.objects.create(
             player_name="testplayer",
-            coins_total=1000,
-            coins_spendable=500,
+            velos_total=1000,
+            velos_spendable=500,
         )
-        
+
         assert str(snapshot) == "testplayer (500/1000)"
-    
+
     def test_unique_together_player_name(self):
         """Test that player_name is unique."""
         MinecraftPlayerScoreboardSnapshot.objects.create(
             player_name="testplayer",
-            coins_total=1000,
-            coins_spendable=500,
+            velos_total=1000,
+            velos_spendable=500,
         )
-        
-        # Creating another with same player_name should update, not create
+
         snapshot2 = MinecraftPlayerScoreboardSnapshot.objects.update_or_create(
             player_name="testplayer",
-            defaults={"coins_total": 2000, "coins_spendable": 1000},
+            defaults={"velos_total": 2000, "velos_spendable": 1000},
         )[0]
-        
+
         assert MinecraftPlayerScoreboardSnapshot.objects.count() == 1
-        assert snapshot2.coins_total == 2000
-        assert snapshot2.coins_spendable == 1000
-    
-    def test_snapshot_without_cyclist(self):
-        """Test creating a snapshot without a cyclist."""
+        assert snapshot2.velos_total == 2000
+        assert snapshot2.velos_spendable == 1000
+
+    def test_snapshot_without_group(self):
+        """Test creating a snapshot without a group."""
         snapshot = MinecraftPlayerScoreboardSnapshot.objects.create(
             player_name="orphanplayer",
-            coins_total=100,
-            coins_spendable=50,
+            velos_total=100,
+            velos_spendable=50,
         )
-        
-        assert snapshot.cyclist is None
+
+        assert snapshot.group is None
         assert snapshot.player_name == "orphanplayer"
 
 

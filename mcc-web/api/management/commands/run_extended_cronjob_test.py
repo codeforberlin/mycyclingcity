@@ -203,8 +203,6 @@ class Command(BaseCommand):
                     
                     if not created:
                         metric.distance_km += sess.cumulative_mileage
-                        if metric.group_at_time != primary_group:
-                            metric.group_at_time = primary_group
                         metric.save()
                         self.stdout.write(f"  → Updated HourlyMetric for {sess.cyclist.user_id} on {sess.device.name}: {sess.cumulative_mileage} km")
                     else:

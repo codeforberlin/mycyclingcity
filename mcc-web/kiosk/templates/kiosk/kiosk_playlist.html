@@ -1259,8 +1259,8 @@
                                                                     topContributorDiv.className = 'hero-card-top-contributor';
                                                                     const leafGroup = avatar.top_contributor_leaf_group;
                                                                     const displayName = leafGroup.display_name || leafGroup.name;
-                                                                    const contributionKm = formatNumberDE(leafGroup.contribution_km || 0, 2);
-                                                                    topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionKm + ' km)';
+                                                                    const contributionVelos = formatNumberDE(leafGroup.contribution_velos || 0);
+                                                                    topContributorDiv.innerHTML = '🏆 ' + displayName + ' (' + contributionVelos + ' Velos)';
                                                                     heroDetails.appendChild(topContributorDiv);
                                                                 }
                                                                 
@@ -1402,7 +1402,14 @@
                                                                         for (let i = 0; i < latlngs.length - 1; i++) {
                                                                             total += latlngs[i].distanceTo(latlngs[i+1]);
                                                                         }
-                                                                        const ratio = Math.max(0, Math.min(1, (g.km * 1000) / total));
+                                                                        let ratio;
+                                                                        if (g.progress_ratio !== undefined && g.progress_ratio !== null) {
+                                                                            ratio = Math.max(0, Math.min(1, g.progress_ratio));
+                                                                        } else if (g.goal_velos && g.velos !== undefined) {
+                                                                            ratio = Math.max(0, Math.min(1, g.velos / g.goal_velos));
+                                                                        } else {
+                                                                            ratio = Math.max(0, Math.min(1, (g.km * 1000) / total));
+                                                                        }
                                                                         pos = L.GeometryUtil.interpolateOnLine(mapInstance, poly, ratio).latLng;
                                                                     }
                                                                     
@@ -1416,7 +1423,7 @@
                                                                     // After start: arrange vertically (stacked) to avoid overlap
                                                                     let xOffset = 0;
                                                                     let yOffset = 0;
-                                                                    if (g.km === 0 || (g.km !== undefined && Math.abs(g.km) < 0.01)) {
+                                                                    if ((g.velos || 0) === 0 && (g.km === 0 || (g.km !== undefined && Math.abs(g.km) < 0.01))) {
                                                                         // At start: arrange avatars on a virtual line perpendicular to the track start
                                                                         if (polylineLookup[g.track_id]) {
                                                                             const poly = polylineLookup[g.track_id];
@@ -1427,7 +1434,7 @@
                                                                                 
                                                                                 // Get all avatars at start for this track
                                                                                 const startAvatars = avatarsByTrack[g.track_id].filter(function(avatar) {
-                                                                                    return avatar.km === 0 || (avatar.km !== undefined && Math.abs(avatar.km) < 0.01);
+                                                                                    return (avatar.velos || 0) === 0 && (avatar.km === 0 || (avatar.km !== undefined && Math.abs(avatar.km) < 0.01));
                                                                                 });
                                                                                 
                                                                                 // Sort by offset_index to ensure consistent ordering
@@ -1485,7 +1492,7 @@
                                                                     }
                                                                     
                                                                     // Create icon
-                                                                    const displayKm = g.km || 0;
+                                                                    const displayVelos = g.velos || 0;
                                                                     const groupName = ((g.display_name || g.name) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                                                                     
                                                                     // Format number (simple version)
@@ -1515,7 +1522,7 @@
                                                                         html: `
                                                                             <div class="group-icon-container" style="${transform}">
                                                                                 <img src="${g.logo}" class="group-icon-img" onerror="this.src='/static/map/images/default_group.png'">
-                                                                                <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${groupName}<br>${formatNumber(displayKm, 2)} km</div>
+                                                                                <div class="group-icon-label" style="color: #333; background: rgba(255,255,255,0.95); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ccc; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 2px; display: inline-block; line-height: 1.2; text-align: center; max-width: 100px;">${groupName}<br>${formatNumber(displayVelos, 0)} Velos</div>
                                                                             </div>`,
                                                                         className: '',
                                                                         iconSize: [50, 65],

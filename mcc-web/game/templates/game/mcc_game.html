@@ -11,7 +11,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCC Spiel: Kilometer-Challenge</title>
+    <title>MCC Spiel: Velos-Rallye</title>
     {% load static %}
     {% load i18n %}
     {% url 'favicon' as favicon_url %}
@@ -116,6 +116,31 @@
         .rank-cell { font-weight: bold; font-size: 1.1em; }
         .medal { font-size: 1.5em; }
         .winner-badge { background-color: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 5px; }
+        .round-timer-container { margin: 12px 0 4px; text-align: center; }
+        .round-timer-display { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; display: inline-block; min-width: 220px; }
+        .round-timer-label { display: block; font-size: 0.85em; color: #666; margin-bottom: 4px; }
+        .round-timer-countdown { font-size: 1.8em; font-weight: bold; font-variant-numeric: tabular-nums; color: #333; }
+        .round-timer-countdown.last-minute { color: #dc3545; animation: timer-pulse 1s ease-in-out infinite; }
+        .round-timer-progress-wrap { height: 6px; background: #e9ecef; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .round-timer-progress { height: 100%; background: linear-gradient(90deg, #28a745, #20c997); width: 100%; transition: width 0.5s linear; }
+        .round-timer-expired-banner { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; font-weight: bold; }
+        .round-timer-settings { margin-bottom: 16px; text-align: left; width: 100%; }
+        .round-timer-settings h3 { text-align: center; }
+        .round-timer-settings--inactive .round-timer-duration-row,
+        .round-timer-settings--inactive .round-timer-checkbox--optional {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .round-timer-settings--inactive .round-timer-duration-row input[readonly] {
+            background-color: #f1f3f5;
+            cursor: not-allowed;
+        }
+        .round-timer-checkbox { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-weight: normal; cursor: pointer; }
+        .round-timer-checkbox input { width: 18px; height: 18px; cursor: pointer; }
+        .round-timer-duration-row { margin: 10px 0; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .round-timer-duration-row label { font-weight: bold; margin: 0; }
+        .round-timer-duration-row input[type="number"] { width: 4.5em; max-width: 80px; padding: 6px 8px; text-align: center; flex: 0 0 auto; }
+        @keyframes timer-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .progress-container { width: 100%; background-color: #e9ecef; border-radius: 10px; height: 20px; margin: 5px 0; position: relative; }
         .progress-bar { height: 100%; border-radius: 10px; transition: width 0.3s ease; min-height: 20px; width: auto !important; }
         .results-table td .progress-bar { width: auto !important; }
@@ -578,18 +603,18 @@
         <img id="logo-left" class="logo-left" src="{% static logo_left %}" alt="{% trans 'Logo links' %}">
         <div>
             <h1>MyCyclingCity</h1>
-            <p style="text-align: center; margin: 0;">{% trans "Kilometer-Challenge" %}</p>
+            <p style="text-align: center; margin: 0;">{% trans "Velos-Rallye" %}</p>
         </div>
         <img id="logo-right" class="logo-right" src="{% static logo_right %}" alt="{% trans 'Logo rechts' %}">
     </div>
 
-    <p style="text-align: center;">{% trans "Radler und Geräte zuweisen → Spiel starten → Kilometer sammeln!" %}</p>
+    <p style="text-align: center;">{% trans "Radler und Geräte zuweisen → Runde starten → Velos sammeln!" %}</p>
 
     {% if room_code %}
     <div id="roomInfo" style="background-color: #d4edda; border: 2px solid #28a745; border-radius: 6px; padding: 10px; margin: 10px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px;">
             <div id="masterBadge" style="background-color: #ffc107; padding: 4px 8px; border-radius: 3px; font-size: 0.85em; display: {% if is_master %}inline-block{% else %}none{% endif %};">
-                <strong>👑 {% trans "Spielleiter" %}</strong>
+                <strong>👑 {% trans "Rallye-Leiter" %}</strong>
             </div>
             <div style="flex: 1;">
                 <div style="font-size: 0.9em; color: #155724; font-weight: bold; margin-bottom: 2px;">🏠 {% trans "Raum" %}</div>
@@ -617,13 +642,13 @@
             </div>
         </div>
         <div id="masterTip" style="width: 100%; font-size: 0.75em; color: #666; margin-top: 5px; display: {% if is_master %}block{% else %}none{% endif %};">
-            <em>{% trans "Tipp: 👑 neben Radlernamen = Spielleiter-Rolle übertragen" %}</em>
+            <em>{% trans "Tipp: 👑 neben Radlernamen = Rallye-Leiter-Rolle übertragen" %}</em>
         </div>
     </div>
     {% else %}
     <div style="text-align: center; margin: 20px 0;">
-        <h3>{% trans "Gemeinsam spielen" %}</h3>
-        <p>{% trans "Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die gleiche Tabelle sehen können." %}</p>
+        <h3>{% trans "Gemeinsam strampeln" %}</h3>
+        <p>{% trans "Erstelle einen Rallye-Raum, damit andere Radler an verschiedenen Orten die gleiche Tabelle sehen können." %}</p>
         <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
             <a href="{% url 'game:create_room' %}" style="display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
                 🏠 {% trans "Raum erstellen" %}
@@ -650,14 +675,19 @@
     </div>
 
     <div>
+        <div id="roundTimerWrapper"
+             hx-get="{% url 'game:render_round_timer' %}"
+             hx-target="this"
+             hx-swap="innerHTML"
+             hx-trigger="load, every 1s, refresh, roundTimerRefresh from:body">
+        </div>
         <table class="results-table">
             <thead>
                 <tr>
                     <th style="width: 60px;">{% trans "Rang" %}</th>
                     <th>{% trans "Radler" %}</th>
                     <th>{% trans "Gerät" %}</th>
-                    <th>{% trans "Kilometer (km)" %}</th>
-                    <th>{% trans "MCC-Coins" %}</th>
+                    <th>{% trans "Velos" %}</th>
                     <th>{% trans "Entfernen" %}</th>
                 </tr>
             </thead>
@@ -665,7 +695,7 @@
                  hx-get="{% url 'game:render_results_table' %}"
                  hx-target="this"
                  hx-swap="outerHTML"
-                 hx-include="#targetKm"
+                 hx-include="#targetVelos"
                  {% if room_code %}
                  {# Wenn in einem Raum: Sofort laden und dann automatisch aktualisieren (alle 3 Sekunden) #}
                  hx-trigger="load, every 3s"
@@ -776,98 +806,69 @@
 
             <div>
                 {% if is_master or not room_code %}
-                <h3>{% trans "Zielkilometer (optional)" %}</h3>
+                {% include "game/partials/round_timer_settings.html" %}
+                <h3>{% trans "Velos-Ziel (optional)" %}</h3>
                 
-                {# Checkbox options for quick selection #}
                 <div class="target-km-options">
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm1" name="target_km_checkbox" value="1" onchange="handleTargetKmCheckbox(1)">
-                        <label for="targetKm1">1 km</label>
+                        <input type="checkbox" id="targetVelos100" name="target_velos_checkbox" value="100" onchange="handleTargetVelosCheckbox(100)">
+                        <label for="targetVelos100">100</label>
                     </div>
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm2" name="target_km_checkbox" value="2" onchange="handleTargetKmCheckbox(2)">
-                        <label for="targetKm2">2 km</label>
+                        <input type="checkbox" id="targetVelos200" name="target_velos_checkbox" value="200" onchange="handleTargetVelosCheckbox(200)">
+                        <label for="targetVelos200">200</label>
                     </div>
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm3" name="target_km_checkbox" value="3" onchange="handleTargetKmCheckbox(3)">
-                        <label for="targetKm3">3 km</label>
+                        <input type="checkbox" id="targetVelos400" name="target_velos_checkbox" value="400" onchange="handleTargetVelosCheckbox(400)">
+                        <label for="targetVelos400">400</label>
                     </div>
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm4" name="target_km_checkbox" value="4" onchange="handleTargetKmCheckbox(4)">
-                        <label for="targetKm4">4 km</label>
+                        <input type="checkbox" id="targetVelos600" name="target_velos_checkbox" value="600" onchange="handleTargetVelosCheckbox(600)">
+                        <label for="targetVelos600">600</label>
                     </div>
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm5" name="target_km_checkbox" value="5" onchange="handleTargetKmCheckbox(5)">
-                        <label for="targetKm5">5 km</label>
+                        <input type="checkbox" id="targetVelos800" name="target_velos_checkbox" value="800" onchange="handleTargetVelosCheckbox(800)">
+                        <label for="targetVelos800">800</label>
                     </div>
                     <div class="target-km-option">
-                        <input type="checkbox" id="targetKm10" name="target_km_checkbox" value="10" onchange="handleTargetKmCheckbox(10)">
-                        <label for="targetKm10">10 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm15" name="target_km_checkbox" value="15" onchange="handleTargetKmCheckbox(15)">
-                        <label for="targetKm15">15 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm20" name="target_km_checkbox" value="20" onchange="handleTargetKmCheckbox(20)">
-                        <label for="targetKm20">20 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm25" name="target_km_checkbox" value="25" onchange="handleTargetKmCheckbox(25)">
-                        <label for="targetKm25">25 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm30" name="target_km_checkbox" value="30" onchange="handleTargetKmCheckbox(30)">
-                        <label for="targetKm30">30 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm35" name="target_km_checkbox" value="35" onchange="handleTargetKmCheckbox(35)">
-                        <label for="targetKm35">35 km</label>
-                    </div>
-                    <div class="target-km-option">
-                        <input type="checkbox" id="targetKm40" name="target_km_checkbox" value="40" onchange="handleTargetKmCheckbox(40)">
-                        <label for="targetKm40">40 km</label>
+                        <input type="checkbox" id="targetVelos1000" name="target_velos_checkbox" value="1000" onchange="handleTargetVelosCheckbox(1000)">
+                        <label for="targetVelos1000">1.000</label>
                     </div>
                 </div>
 
-                {# Manual input field #}
                 <div class="target-km-manual">
-                    <label for="targetKm" style="text-align:center; display: block; margin-bottom: 5px;">{% trans "Oder manuell eingeben" %}:</label>
+                    <label for="targetVelos" style="text-align:center; display: block; margin-bottom: 5px;">{% trans "Oder manuell eingeben" %}:</label>
                     <input type="number" 
-                           id="targetKm" 
-                           name="target_km" 
+                           id="targetVelos" 
+                           name="target_velos" 
                            min="1" 
                            step="1"
-                           placeholder="{% trans 'Ziel-km eingeben' %}" 
-                           value="{% if current_target_km > 0 %}{{ current_target_km|floatformat:0 }}{% endif %}"
+                           placeholder="{% trans 'Velos-Ziel eingeben' %}" 
+                           value="{% if current_target_velos > 0 %}{{ current_target_velos }}{% endif %}"
                            style="max-width: 200px; margin: 0 auto; display: block;"
                            hx-trigger="input changed delay:500ms"
                            hx-get="{% url 'game:render_results_table' %}"
                            hx-target="#resultsTableBody"
                            hx-swap="outerHTML"
                            hx-include="this"
-                           oninput="handleTargetKmInput()"
-                           onkeydown="return handleTargetKmKeydown(event)"
-                           onpaste="handleTargetKmPaste(event)">
+                           oninput="handleTargetVelosInput()"
+                           onkeydown="return handleTargetVelosKeydown(event)"
+                           onpaste="handleTargetVelosPaste(event)">
                 </div>
                 {% else %}
-                {# Non-master view: show target but not editable - HTMX-updateable #}
-                <div id="targetKmDisplayContainer"
-                     hx-get="{% url 'game:render_target_km_display' %}"
+                <div id="targetVelosDisplayContainer"
+                     hx-get="{% url 'game:render_target_velos_display' %}"
                      hx-target="this"
                      hx-swap="innerHTML"
                      {% if room_code %}
-                     {# Wenn in einem Raum: Sofort laden und dann automatisch aktualisieren (alle 3 Sekunden) #}
                      hx-trigger="load, every 3s"
                      {% else %}
-                     {# Kein Raum: Nur einmal beim Laden #}
                      hx-trigger="load once"
                      {% endif %}>
-                    {# Initial content - wird sofort durch HTMX ersetzt #}
-                    <h3>{% trans "Zielkilometer" %}</h3>
-                    {% if current_target_km > 0 %}
+                    <h3>{% trans "Velos-Ziel" %}</h3>
+                    {% if current_target_velos > 0 %}
                     <p style="font-size: 20px; font-weight: bold; text-align: center; color: #28a745; margin: 20px 0;">
-                        {{ current_target_km|floatformat:0 }} km
+                        {{ current_target_velos }} Velos
                     </p>
                     {% else %}
                     <p style="text-align: center; color: #666; font-style: italic; margin: 20px 0;">
@@ -875,7 +876,7 @@
                     </p>
                     {% endif %}
                     <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: 10px;">
-                        <em>{% trans "Nur der Spielleiter kann das Ziel ändern" %}</em>
+                        <em>{% trans "Nur der Rallye-Leiter kann das Ziel ändern" %}</em>
                     </p>
                 </div>
                 {% endif %}
@@ -895,15 +896,162 @@
 <div id="winnerModal" class="modal-overlay">
     <div class="modal-content">
         <span class="modal-close" onclick="closeModal()">&times;</span>
-        <h2>{% trans "Kilometerweltmeister!" %}</h2>
+        <h2>{% trans "Velos-Weltmeister!" %}</h2>
         <p id="winnerName"></p>
         <img id="winnerPhoto" src="{% static winner_photo %}" alt="{% trans 'Foto des Gewinners' %}">
     </div>
 </div>
 
 <script>
-    const winnerSoundUrl = '{% url "game:serve_goal_sound" %}';
+    const gameSoundUrl = '{% url "game:serve_goal_sound" %}';
     const announcedWinners = new Set(); // Track which winners have been announced
+
+    function syncRoundTimerHiddenFields() {
+        const enabled = document.getElementById('timerEnabledCheckbox');
+        const autoStop = document.getElementById('timerAutoStopCheckbox');
+        const sound = document.getElementById('timerSoundCheckbox');
+        const enabledHidden = document.getElementById('timerEnabledHidden');
+        const autoStopHidden = document.getElementById('timerAutoStopHidden');
+        const soundHidden = document.getElementById('timerSoundHidden');
+        const settings = document.getElementById('roundTimerSettings');
+        const duration = document.getElementById('timerDurationMinutes');
+        if (!enabled || !enabledHidden) {
+            return;
+        }
+        enabledHidden.value = enabled.checked ? '1' : '0';
+        if (autoStop && autoStopHidden) {
+            autoStopHidden.value = autoStop.checked ? '1' : '0';
+        }
+        if (sound && soundHidden) {
+            soundHidden.value = sound.checked ? '1' : '0';
+        }
+        if (settings) {
+            settings.classList.toggle('round-timer-settings--inactive', !enabled.checked);
+        }
+        if (duration) {
+            if (enabled.checked) {
+                duration.removeAttribute('readonly');
+                duration.removeAttribute('tabindex');
+            } else {
+                duration.setAttribute('readonly', 'readonly');
+                duration.setAttribute('tabindex', '-1');
+            }
+        }
+    }
+
+    function submitRoundTimerSettingsForm() {
+        const form = document.getElementById('roundTimerSettingsForm');
+        if (!form) {
+            return;
+        }
+        syncRoundTimerHiddenFields();
+        form.requestSubmit();
+    }
+
+    let lastTimerSoundAt = 0;
+    let previousTimerRemainingSeconds = null;
+
+    function unlockGameSound() {
+        const audio = new Audio(gameSoundUrl);
+        audio.volume = 0.001;
+        const unlockPromise = audio.play();
+        if (!unlockPromise) {
+            return;
+        }
+        unlockPromise.then(function() {
+            audio.pause();
+        }).catch(function() {
+            // Browser may block until explicit user gesture; start button handles that.
+        });
+    }
+
+    function playGameSound() {
+        const audio = new Audio(gameSoundUrl);
+        audio.play().catch(function(e) {
+            console.error('Error playing game sound:', e);
+        });
+    }
+
+    function playTimerExpiredSound() {
+        const now = Date.now();
+        if (now - lastTimerSoundAt < 2000) {
+            return;
+        }
+        lastTimerSoundAt = now;
+        console.log('Timer expired: playing sound');
+        playGameSound();
+    }
+
+    function checkTimerExpiryFromCountdown(wrapper) {
+        const countdownEl = wrapper.querySelector('#roundTimerCountdown');
+        if (!countdownEl) {
+            return;
+        }
+
+        const remaining = parseInt(countdownEl.dataset.remainingSeconds, 10);
+        const soundEnabled = countdownEl.dataset.timerSoundEnabled !== '0';
+
+        if (
+            soundEnabled &&
+            !Number.isNaN(remaining) &&
+            remaining === 0 &&
+            previousTimerRemainingSeconds !== null &&
+            previousTimerRemainingSeconds > 0 &&
+            previousTimerRemainingSeconds <= 3
+        ) {
+            playTimerExpiredSound();
+        }
+
+        if (!Number.isNaN(remaining)) {
+            previousTimerRemainingSeconds = remaining;
+        }
+    }
+
+    function handleTimerSoundFromSwap(target) {
+        if (!target) {
+            return;
+        }
+        checkTimerExpiryFromCountdown(target);
+        const marker = target.querySelector
+            ? target.querySelector('[data-play-timer-sound="1"]')
+            : null;
+        if (marker) {
+            marker.removeAttribute('data-play-timer-sound');
+            playTimerExpiredSound();
+        }
+    }
+
+    document.body.addEventListener('roundTimerExpired', function(event) {
+        const detail = event.detail || {};
+        if (detail.playSound === false) {
+            return;
+        }
+        playTimerExpiredSound();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        const target = event.detail && event.detail.target;
+        if (!target || target.id !== 'roundTimerWrapper') {
+            return;
+        }
+        handleTimerSoundFromSwap(target);
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        const elt = event.detail && event.detail.elt;
+        if (!elt || elt.id !== 'roundTimerWrapper' || !event.detail.successful) {
+            return;
+        }
+        const trigger = event.detail.xhr.getResponseHeader('HX-Trigger-After-Swap')
+            || event.detail.xhr.getResponseHeader('HX-Trigger');
+        if (trigger && trigger.indexOf('roundTimerExpired') !== -1) {
+            playTimerExpiredSound();
+        }
+    });
+
+    ['click', 'keydown', 'touchstart'].forEach(function(eventName) {
+        document.body.addEventListener(eventName, unlockGameSound, { once: true, passive: true });
+    });
 
     function showWinnerPopupAndPlaySound(winnerName) {
         // Skip if this winner was already announced
@@ -919,14 +1067,7 @@
         document.getElementById('winnerName').textContent = winnerName;
         document.getElementById('winnerModal').style.display = 'flex';
 
-        const audio = new Audio(winnerSoundUrl);
-        audio.preload = 'auto';
-
-        audio.addEventListener('canplaythrough', function() {
-            audio.play().catch(e => console.error("Error playing goal sound:", e));
-        }, { once: true });
-
-        audio.load();
+        playGameSound();
         
         // Auto-close popup after 5 seconds
         setTimeout(function() {
@@ -947,7 +1088,7 @@
     // Master Transfer Functionality
     // ============================================
     function transferMasterTo(cyclistUserId) {
-        if (!confirm('{% trans "Möchten Sie die Spielleiter-Rolle wirklich an" %} ' + cyclistUserId + ' {% trans "übertragen?" %}')) {
+        if (!confirm('{% trans "Möchten Sie die Rallye-Leiter-Rolle wirklich an" %} ' + cyclistUserId + ' {% trans "übertragen?" %}')) {
             return;
         }
         
@@ -989,10 +1130,10 @@
                 // 1. Refresh results table (updates master buttons visibility)
                 htmx.trigger('#resultsTableBody', 'refresh');
                 
-                // 2. Refresh target_km_display if visible
-                const targetKmDisplay = document.getElementById('targetKmDisplayContainer');
+                // 2. Refresh target_velos_display if visible
+                const targetKmDisplay = document.getElementById('targetVelosDisplayContainer');
                 if (targetKmDisplay) {
-                    htmx.trigger('#targetKmDisplayContainer', 'refresh');
+                    htmx.trigger('#targetVelosDisplayContainer', 'refresh');
                 }
                 
                 // 3. CRITICAL: Force a sync request to update session immediately
@@ -1017,9 +1158,9 @@
                             
                             // Show success message
                             if (syncData.is_master) {
-                                alert('{% trans "Spielleiter-Rolle wurde übertragen. Die Buttons sind jetzt aktiv." %}');
+                                alert('{% trans "Rallye-Leiter-Rolle wurde übertragen. Die Buttons sind jetzt aktiv." %}');
                             } else {
-                                alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                                alert('{% trans "Rallye-Leiter-Rolle wurde übertragen." %}');
                                 // Reload after a short delay for old master
                                 setTimeout(() => {
                                     window.location.reload();
@@ -1028,7 +1169,7 @@
                         }).catch(err => {
                             console.error('Error reloading buttons:', err);
                             // Fallback: reload page
-                            alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                            alert('{% trans "Rallye-Leiter-Rolle wurde übertragen." %}');
                             setTimeout(() => {
                                 window.location.reload();
                             }, 500);
@@ -1036,7 +1177,7 @@
                     } else {
                         console.error('❌ gameButtonsContainer not found');
                         // Fallback: reload page
-                        alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                        alert('{% trans "Rallye-Leiter-Rolle wurde übertragen." %}');
                         setTimeout(() => {
                             window.location.reload();
                         }, 500);
@@ -1044,7 +1185,7 @@
                 }).catch(err => {
                     console.error('Error syncing after master transfer:', err);
                     // Still reload even if sync fails
-                    alert('{% trans "Spielleiter-Rolle wurde übertragen." %}');
+                    alert('{% trans "Rallye-Leiter-Rolle wurde übertragen." %}');
                     setTimeout(() => {
                         window.location.reload();
                     }, 500);
@@ -1059,7 +1200,7 @@
         })
         .catch(error => {
             console.error('Error transferring master:', error);
-            alert('{% trans "Fehler beim Übertragen der Spielleiter-Rolle" %}: ' + error.message);
+            alert('{% trans "Fehler beim Übertragen der Rallye-Leiter-Rolle" %}: ' + error.message);
         });
     }
     // Function to activate master buttons (for new master after transfer)
@@ -1069,7 +1210,7 @@
         const endSessionButton = document.getElementById('endSessionButton');
         const explanationText = document.querySelector('.top-controls p');
         
-        if (startButton && stopButton && endSessionButton) {
+        if (startButton && stopButton) {
             // Remove disabled state and restore functionality
             startButton.disabled = false;
             startButton.style.opacity = '1';
@@ -1079,7 +1220,8 @@
             startButton.setAttribute('hx-post', '{% url "game:start_game" %}');
             startButton.setAttribute('hx-target', '#startButton');
             startButton.setAttribute('hx-swap', 'none');
-            startButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+            startButton.setAttribute('hx-include', '#roundTimerSettings, [name="csrfmiddlewaretoken"]');
+            startButton.setAttribute('hx-on::htmx:config-request', 'syncRoundTimerHiddenFields()');
             startButton.setAttribute('hx-on::htmx:after-request', 'handleStartGameResponse(event)');
             
             stopButton.disabled = false;
@@ -1092,18 +1234,21 @@
             stopButton.setAttribute('hx-target', '#stopButton');
             stopButton.setAttribute('hx-swap', 'none');
             stopButton.setAttribute('hx-vals', '{"action": "stop"}');
-            stopButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+            stopButton.setAttribute('hx-include', '#roundTimerSettings, [name="csrfmiddlewaretoken"]');
+            stopButton.setAttribute('hx-on::htmx:config-request', 'syncRoundTimerHiddenFields()');
             stopButton.setAttribute('hx-on::htmx:after-request', 'handleStopGameResponse(event)');
             
-            endSessionButton.disabled = false;
-            endSessionButton.style.opacity = '1';
-            endSessionButton.style.cursor = 'pointer';
-            endSessionButton.style.pointerEvents = 'auto';
-            endSessionButton.style.backgroundColor = '#f4a261';
-            endSessionButton.setAttribute('hx-post', '{% url "game:end_session" %}');
-            endSessionButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
-            endSessionButton.setAttribute('hx-confirm', '{% trans "Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?" %}');
-            endSessionButton.setAttribute('hx-on::after-request', 'window.location.reload();');
+            if (endSessionButton) {
+                endSessionButton.disabled = false;
+                endSessionButton.style.opacity = '1';
+                endSessionButton.style.cursor = 'pointer';
+                endSessionButton.style.pointerEvents = 'auto';
+                endSessionButton.style.backgroundColor = '#f4a261';
+                endSessionButton.setAttribute('hx-post', '{% url "game:end_session" %}');
+                endSessionButton.setAttribute('hx-include', '[name="csrfmiddlewaretoken"]');
+                endSessionButton.setAttribute('hx-confirm', '{% trans "Achtung! Dadurch wird der aktuelle Spielstand und alle Zuweisungen zurückgesetzt. Sind Sie sicher?" %}');
+                endSessionButton.setAttribute('hx-on::after-request', 'window.location.reload();');
+            }
             
             // Remove explanation text if present
             if (explanationText) {
@@ -1115,7 +1260,9 @@
                 // Process each button individually
                 htmx.process(startButton);
                 htmx.process(stopButton);
-                htmx.process(endSessionButton);
+                if (endSessionButton) {
+                    htmx.process(endSessionButton);
+                }
                 
                 // Also process the parent container to ensure all attributes are recognized
                 const topControls = document.querySelector('.top-controls');
@@ -1139,17 +1286,12 @@
                     disabled: stopButton.disabled,
                     hasHxPost: stopButton.hasAttribute('hx-post'),
                     style: window.getComputedStyle(stopButton).opacity
-                },
-                endSessionButton: {
-                    disabled: endSessionButton.disabled,
-                    hasHxPost: endSessionButton.hasAttribute('hx-post'),
-                    style: window.getComputedStyle(endSessionButton).opacity
                 }
             });
             
             console.log('✅ Master buttons activated and HTMX processed');
         } else {
-            console.error('❌ Could not find all buttons:', {startButton, stopButton, endSessionButton});
+            console.error('❌ Could not find start/stop buttons:', {startButton, stopButton});
         }
     }
     
@@ -1159,7 +1301,7 @@
         const stopButton = document.getElementById('stopButton');
         const endSessionButton = document.getElementById('endSessionButton');
         
-        if (startButton && stopButton && endSessionButton) {
+        if (startButton && stopButton) {
             startButton.disabled = true;
             startButton.style.opacity = '0.5';
             startButton.style.cursor = 'not-allowed';
@@ -1172,11 +1314,13 @@
             stopButton.style.pointerEvents = 'none';
             stopButton.removeAttribute('hx-post');
             
-            endSessionButton.disabled = true;
-            endSessionButton.style.opacity = '0.5';
-            endSessionButton.style.cursor = 'not-allowed';
-            endSessionButton.style.pointerEvents = 'none';
-            endSessionButton.removeAttribute('hx-post');
+            if (endSessionButton) {
+                endSessionButton.disabled = true;
+                endSessionButton.style.opacity = '0.5';
+                endSessionButton.style.cursor = 'not-allowed';
+                endSessionButton.style.pointerEvents = 'none';
+                endSessionButton.removeAttribute('hx-post');
+            }
             
             console.log('✅ Master buttons deactivated');
         }
@@ -1198,27 +1342,27 @@
     });
 
     // ============================================
-    // Target Kilometer Management
+    // Target Velos Management
     // ============================================
     // Store the render_results_table URL for use in JavaScript
     const renderResultsTableUrl = '{% url "game:render_results_table" %}';
     
-    // Track when user last interacted with target KM controls
+    // Track when user last interacted with target Velos controls
     let lastUserInteractionTime = 0;
     const USER_INTERACTION_TIMEOUT = 2000; // 2 seconds
     
-    // Function to update checkboxes and input field based on target_km value
-    function updateTargetKmUI(targetKmValue) {
-        const targetKmInput = document.getElementById('targetKm');
-        if (!targetKmInput) {
-            console.log('updateTargetKmUI: targetKmInput not found');
+    // Function to update checkboxes and input field based on target_velos value
+    function updateTargetVelosUI(targetVelosValue) {
+        const targetVelosInput = document.getElementById('targetVelos');
+        if (!targetVelosInput) {
+            console.log('updateTargetVelosUI: targetVelosInput not found');
             return;
         }
         
-        const value = parseFloat(targetKmValue) || 0;
-        const currentValue = parseFloat(targetKmInput.value) || 0;
+        const value = parseFloat(targetVelosValue) || 0;
+        const currentValue = parseFloat(targetVelosInput.value) || 0;
         
-        console.log('updateTargetKmUI called:', { targetKmValue, value, currentValue, timeSinceLastInteraction: Date.now() - lastUserInteractionTime, justUnchecked });
+        console.log('updateTargetVelosUI called:', { targetVelosValue, value, currentValue, timeSinceLastInteraction: Date.now() - lastUserInteractionTime, justUnchecked });
         
         // Don't update if user interacted recently (within timeout period)
         const timeSinceLastInteraction = Date.now() - lastUserInteractionTime;
@@ -1234,12 +1378,12 @@
         }
         
         // Check if user is currently typing (input field has focus)
-        if (document.activeElement === targetKmInput) {
+        if (document.activeElement === targetVelosInput) {
             console.log('Skipping UI update - user is currently typing');
             return;
         }
         
-        console.log('✅ Updating target KM UI:', currentValue, '->', value);
+        console.log('✅ Updating target Velos UI:', currentValue, '->', value);
         
         // Round value to integer (whole number only)
         const intValue = Math.round(value);
@@ -1248,9 +1392,9 @@
         // Only update if the value is significantly different
         if (intValue > 0) {
             // Format value as integer (whole number only)
-            targetKmInput.value = intValue.toString();
+            targetVelosInput.value = intValue.toString();
         } else {
-            targetKmInput.value = '';
+            targetVelosInput.value = '';
         }
         
         // Update checkboxes - only check if value exactly matches a checkbox value
@@ -1265,7 +1409,7 @@
         
         // Only update checkboxes if value > 0 (never check when value is 0)
         if (intValue > 0) {
-            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+            document.querySelectorAll('input[name="target_velos_checkbox"]').forEach(cb => {
                 const cbValue = parseInt(cb.value, 10);
                 const shouldBeChecked = (intValue === cbValue);
                 if (cb.checked !== shouldBeChecked) {
@@ -1276,7 +1420,7 @@
         } else {
             // Value is 0 - uncheck all checkboxes
             console.log('Value is 0, unchecking all checkboxes');
-            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+            document.querySelectorAll('input[name="target_velos_checkbox"]').forEach(cb => {
                 if (cb.checked) {
                     cb.checked = false;
                     console.log('Unchecked checkbox', cb.id);
@@ -1287,9 +1431,9 @@
     
     // Initialize checkboxes and input field on page load
     document.addEventListener('DOMContentLoaded', function() {
-        const targetKmInput = document.getElementById('targetKm');
-        const currentValue = parseFloat(targetKmInput.value) || 0;
-        updateTargetKmUI(currentValue);
+        const targetVelosInput = document.getElementById('targetVelos');
+        const currentValue = parseFloat(targetVelosInput.value) || 0;
+        updateTargetVelosUI(currentValue);
     });
     
     // Track if user just unchecked a checkbox to prevent re-checking
@@ -1299,69 +1443,67 @@
     document.body.addEventListener('htmx:afterSwap', function(event) {
         if (event.detail.target && event.detail.target.id === 'resultsTableBody') {
             const tbody = event.detail.target;
-            const targetKm = tbody.getAttribute('data-target-km');
-            console.log('HTMX afterSwap - data-target-km:', targetKm, 'justUnchecked:', justUnchecked);
+            const targetVelos = tbody.getAttribute('data-target-velos');
+            console.log('HTMX afterSwap - data-target-velos:', targetVelos, 'justUnchecked:', justUnchecked);
             
-            if (targetKm !== null && targetKm !== '') {
-                const targetKmValue = parseFloat(targetKm) || 0;
-                // Always update UI - updateTargetKmUI will handle justUnchecked flag for checkboxes only
-                // This ensures progress bars and kilometer synchronization continue to work
-                updateTargetKmUI(targetKm);
+            if (targetVelos !== null && targetVelos !== '') {
+                const targetVelosValue = parseInt(targetVelos, 10) || 0;
+                updateTargetVelosUI(targetVelosValue);
             }
         }
     });
     
-    function handleTargetKmCheckbox(kmValue) {
+    function handleTargetVelosCheckbox(velosValue) {
         // Record user interaction time
         lastUserInteractionTime = Date.now();
         
-        const targetKmInput = document.getElementById('targetKm');
-        const checkbox = document.getElementById('targetKm' + kmValue);
-        const currentValue = parseFloat(targetKmInput.value) || 0;
+        const targetVelosInput = document.getElementById('targetVelos');
+        const checkbox = document.getElementById('targetVelos' + velosValue);
+        const currentValue = parseFloat(targetVelosInput.value) || 0;
         
         if (checkbox.checked) {
             // CRITICAL: Reset announced winners if target changed
-            if (currentValue !== kmValue) {
+            if (currentValue !== velosValue) {
                 announcedWinners.clear();
-                console.log('✅ Target KM changed to', kmValue, '- announcedWinners cleared');
+                console.log('✅ Target KM changed to', velosValue, '- announcedWinners cleared');
             }
             
             // Set input value
-            targetKmInput.value = kmValue;
+            targetVelosInput.value = velosValue;
             // Uncheck all other checkboxes
-            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+            document.querySelectorAll('input[name="target_velos_checkbox"]').forEach(cb => {
                 if (cb.id !== checkbox.id) {
                     cb.checked = false;
                 }
             });
             // Trigger HTMX update directly with the value
-            console.log('Checkbox selected:', kmValue, 'Triggering HTMX update');
+            console.log('Checkbox selected:', velosValue, 'Triggering HTMX update');
             // Use htmx.ajax to ensure the value is sent correctly
-            htmx.ajax('GET', renderResultsTableUrl + '?target_km=' + kmValue, {
+            htmx.ajax('GET', renderResultsTableUrl + '?target_velos=' + velosValue, {
                 target: '#resultsTableBody',
                 swap: 'outerHTML',
-                include: '#targetKm'
+                include: '#targetVelos'
             });
         } else {
             // Clear input if checkbox is unchecked
-            targetKmInput.value = '';
+            targetVelosInput.value = '';
             // Uncheck all other checkboxes
-            document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+            document.querySelectorAll('input[name="target_velos_checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
             // CRITICAL: Reset announced winners when target is cleared
             announcedWinners.clear();
             console.log('✅ Target KM cleared - announcedWinners cleared');
-            // Update lastTargetKm to prevent updateTargetKmUI from re-checking
-            lastTargetKm = 0;
+            // Update lastTargetVelos to prevent updateTargetVelosUI from re-checking
+            lastTargetVelos = 0;
             // Set flag to prevent HTMX response from re-checking checkboxes
             justUnchecked = true;
             // Trigger HTMX update to clear target
             console.log('Checkbox unchecked, clearing target, justUnchecked set to true');
-            htmx.ajax('GET', renderResultsTableUrl + '?target_km=', {
+            htmx.ajax('GET', renderResultsTableUrl + '?target_velos=', {
                 target: '#resultsTableBody',
                 swap: 'outerHTML',
-                include: '#targetKm'
+                include: '#targetVelos'
             });
             // Reset flag after HTMX response is processed (longer timeout to prevent re-checking)
             setTimeout(() => {
@@ -1371,12 +1513,12 @@
         }
     }
 
-    // Store last target KM value to detect changes
-    let lastTargetKm = 0;
+    // Store last target Velos value to detect changes
+    let lastTargetVelos = 0;
     let inputDebounceTimer = null;
     
-    // Prevent decimal input in target KM field - only allow digits
-    function handleTargetKmKeydown(event) {
+    // Prevent decimal input in target Velos field - only allow digits
+    function handleTargetVelosKeydown(event) {
         // Allow: backspace (8), delete (46), tab (9), escape (27), enter (13)
         if ([8, 9, 27, 13, 46].indexOf(event.keyCode) !== -1) {
             return true;
@@ -1409,25 +1551,25 @@
     }
     
     // Handle paste events to remove decimal points and commas
-    function handleTargetKmPaste(event) {
+    function handleTargetVelosPaste(event) {
         event.preventDefault();
         const paste = (event.clipboardData || window.clipboardData).getData('text');
         // Remove all non-digit characters (keep only 0-9)
         const digitsOnly = paste.replace(/[^0-9]/g, '');
-        const targetKmInput = document.getElementById('targetKm');
-        if (targetKmInput) {
-            targetKmInput.value = digitsOnly;
+        const targetVelosInput = document.getElementById('targetVelos');
+        if (targetVelosInput) {
+            targetVelosInput.value = digitsOnly;
             // Trigger input handler to process the value
-            handleTargetKmInput();
+            handleTargetVelosInput();
         }
     }
     
-    function handleTargetKmInput() {
+    function handleTargetVelosInput() {
         // Record user interaction time
         lastUserInteractionTime = Date.now();
         
-        const targetKmInput = document.getElementById('targetKm');
-        let inputValueStr = targetKmInput.value.trim();
+        const targetVelosInput = document.getElementById('targetVelos');
+        let inputValueStr = targetVelosInput.value.trim();
         
         // Remove any decimal points or commas that might have been pasted
         inputValueStr = inputValueStr.replace(/[.,]/g, '');
@@ -1437,14 +1579,14 @@
         
         // Update the input field to show only whole number
         if (inputValueStr !== '' && inputValue > 0) {
-            targetKmInput.value = inputValue;
+            targetVelosInput.value = inputValue;
         } else if (inputValueStr === '') {
-            targetKmInput.value = '';
+            targetVelosInput.value = '';
         }
         
         // Uncheck all checkboxes if value doesn't match any checkbox
         // Only check if value exactly matches a checkbox value
-        document.querySelectorAll('input[name="target_km_checkbox"]').forEach(cb => {
+        document.querySelectorAll('input[name="target_velos_checkbox"]').forEach(cb => {
             const cbValue = parseInt(cb.value, 10);
             cb.checked = (inputValue > 0 && inputValue === cbValue);
         });
@@ -1456,27 +1598,27 @@
         
         inputDebounceTimer = setTimeout(() => {
             // Only send if value actually changed
-            if (Math.abs(inputValue - lastTargetKm) > 0.01) {
+            if (Math.abs(inputValue - lastTargetVelos) > 0.01) {
                 // CRITICAL: Reset announced winners if target changed
                 announcedWinners.clear();
-                console.log('✅ Target KM changed from', lastTargetKm, 'to', inputValue, '- announcedWinners cleared');
-                lastTargetKm = inputValue;
+                console.log('✅ Target KM changed from', lastTargetVelos, 'to', inputValue, '- announcedWinners cleared');
+                lastTargetVelos = inputValue;
                 
                 // Send value to server via HTMX (as integer)
                 if (inputValue > 0) {
-                    console.log('Sending target KM to server:', inputValue);
-                    htmx.ajax('GET', renderResultsTableUrl + '?target_km=' + encodeURIComponent(inputValue), {
+                    console.log('Sending target Velos to server:', inputValue);
+                    htmx.ajax('GET', renderResultsTableUrl + '?target_velos=' + encodeURIComponent(inputValue), {
                         target: '#resultsTableBody',
                         swap: 'outerHTML',
-                        include: '#targetKm'
+                        include: '#targetVelos'
                     });
                 } else {
                     // Clear target if input is empty or 0
-                    console.log('Clearing target KM');
-                    htmx.ajax('GET', renderResultsTableUrl + '?target_km=', {
+                    console.log('Clearing target Velos');
+                    htmx.ajax('GET', renderResultsTableUrl + '?target_velos=', {
                         target: '#resultsTableBody',
                         swap: 'outerHTML',
-                        include: '#targetKm'
+                        include: '#targetVelos'
                     });
                 }
             }
@@ -1490,9 +1632,9 @@
         setTimeout(() => {
             const tbody = document.getElementById('resultsTableBody');
             if (tbody) {
-                const targetKm = tbody.getAttribute('data-target-km');
-                if (targetKm) {
-                    updateTargetKmUI(targetKm);
+                const targetVelos = tbody.getAttribute('data-target-velos');
+                if (targetVelos) {
+                    updateTargetVelosUI(parseInt(targetVelos, 10) || 0);
                 }
             }
         }, 100);
@@ -1596,10 +1738,11 @@
     // ============================================
     function handleStartGameResponse(event) {
         console.log('handleStartGameResponse called', event.detail);
+        unlockGameSound();
         if (event.detail && event.detail.successful) {
             // CRITICAL: Reset announced winners when starting a new game
-            // This ensures that winners can be announced again in the new game
             announcedWinners.clear();
+            previousTimerRemainingSeconds = null;
             console.log('✅ New game started: announcedWinners cleared');
             
             // Update buttons IMMEDIATELY with direct DOM manipulation
@@ -1621,13 +1764,13 @@
             
             // Update state manager
             GameStateManager.setGameRunning(true);
-            
-            // Reload table after a short delay
+
             setTimeout(() => {
                 htmx.trigger('#resultsTableBody', 'refresh');
+                htmx.trigger('#roundTimerWrapper', 'refresh');
             }, 50);
         } else {
-            alert('{% trans "Spiel konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)." %}');
+            alert('{% trans "Runde konnte nicht gestartet werden (evtl. keine Zuweisungen aktiv)." %}');
         }
     }
 
@@ -1657,9 +1800,10 @@
             // Reload table after a short delay
             setTimeout(() => {
                 htmx.trigger('#resultsTableBody', 'refresh');
+                htmx.trigger('#roundTimerWrapper', 'refresh');
             }, 50);
         } else {
-            alert('{% trans "Spiel konnte nicht gestoppt werden." %}');
+            alert('{% trans "Runde konnte nicht gestoppt werden." %}');
         }
     }
 
@@ -1768,10 +1912,10 @@
             // This ensures the new master sees the badge immediately
             if (masterStatusChanged && isMaster && roomCode) {
                 console.log('👑 Neuer Master erkannt, aktualisiere UI sofort...');
-                // Trigger immediate refresh of target_km_display if visible
-                const targetKmDisplay = document.getElementById('targetKmDisplayContainer');
+                // Trigger immediate refresh of target_velos_display if visible
+                const targetKmDisplay = document.getElementById('targetVelosDisplayContainer');
                 if (targetKmDisplay) {
-                    htmx.trigger('#targetKmDisplayContainer', 'refresh');
+                    htmx.trigger('#targetVelosDisplayContainer', 'refresh');
                 }
             }
             
@@ -1853,8 +1997,8 @@
 
     // Share Room Function
     function shareRoom(roomUrl, roomCode) {
-        const shareTitle = 'MyCyclingCity: {% trans "Spiel-Raum beitreten" %}';
-        const shareText = '{% trans "Tritt meinem Spiel-Raum bei!" %}: ' + roomCode;
+        const shareTitle = 'MyCyclingCity: {% trans "Rallye-Raum beitreten" %}';
+        const shareText = '{% trans "Tritt meinem Rallye-Raum bei!" %}: ' + roomCode;
         
         // Try Web Share API first (mobile devices)
         if (navigator.share) {
@@ -1917,8 +2061,8 @@
     }
     
     function shareViaEmail(roomUrl, roomCode) {
-        const subject = encodeURIComponent('MyCyclingCity: {% trans "Spiel-Raum beitreten" %} - ' + roomCode);
-        const body = encodeURIComponent('{% trans "Tritt meinem Spiel-Raum bei!" %}\n\n' + 
+        const subject = encodeURIComponent('MyCyclingCity: {% trans "Rallye-Raum beitreten" %} - ' + roomCode);
+        const body = encodeURIComponent('{% trans "Tritt meinem Rallye-Raum bei!" %}\n\n' + 
                                        '{% trans "Raum-Code" %}: ' + roomCode + '\n' +
                                        '{% trans "Link" %}: ' + roomUrl);
         const mailtoLink = 'mailto:?subject=' + subject + '&body=' + body;
@@ -2173,4 +2317,5 @@
             }
         }
     });
+
 </script>

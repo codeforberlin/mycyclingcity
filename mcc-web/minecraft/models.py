@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 class MinecraftOutboxEvent(models.Model):
     EVENT_UPDATE_PLAYER_COINS = "update_player_coins"
+    EVENT_UPDATE_GROUP_VELOS = "update_group_velos"
     EVENT_SYNC_ALL = "sync_all"
 
     STATUS_PENDING = "pending"
@@ -13,8 +14,9 @@ class MinecraftOutboxEvent(models.Model):
     STATUS_FAILED = "failed"
 
     EVENT_TYPE_CHOICES = [
-        (EVENT_UPDATE_PLAYER_COINS, _("Update Player Coins")),
-        (EVENT_SYNC_ALL, _("Sync All Players")),
+        (EVENT_UPDATE_PLAYER_COINS, _("Update Player Coins (deprecated)")),
+        (EVENT_UPDATE_GROUP_VELOS, _("Update Group Velos")),
+        (EVENT_SYNC_ALL, _("Sync All Groups")),
     ]
 
     STATUS_CHOICES = [
@@ -57,6 +59,13 @@ class MinecraftOutboxEvent(models.Model):
 
 class MinecraftPlayerScoreboardSnapshot(models.Model):
     player_name = models.CharField(max_length=64, db_index=True)
+    group = models.ForeignKey(
+        "api.Group",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="minecraft_scoreboard_snapshots",
+    )
     cyclist = models.ForeignKey(
         "api.Cyclist",
         null=True,
@@ -64,8 +73,8 @@ class MinecraftPlayerScoreboardSnapshot(models.Model):
         on_delete=models.SET_NULL,
         related_name="minecraft_scoreboard_snapshots",
     )
-    coins_total = models.PositiveIntegerField(default=0)
-    coins_spendable = models.PositiveIntegerField(default=0)
+    velos_total = models.PositiveIntegerField(default=0)
+    velos_spendable = models.PositiveIntegerField(default=0)
     source = models.CharField(max_length=32, default="rcon")
     captured_at = models.DateTimeField(auto_now=True)
 
@@ -76,7 +85,7 @@ class MinecraftPlayerScoreboardSnapshot(models.Model):
         verbose_name_plural = _("Minecraft Scoreboard Snapshots")
 
     def __str__(self):
-        return f"{self.player_name} ({self.coins_spendable}/{self.coins_total})"
+        return f"{self.player_name} ({self.velos_spendable}/{self.velos_total})"
 
 
 class MinecraftWorkerState(models.Model):

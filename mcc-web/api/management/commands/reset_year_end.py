@@ -10,9 +10,9 @@
 Management command to perform year-end reset for a TOP group (school or institution).
 
 This command will:
-1. Create a YearEndSnapshot with all current kilometer and coin totals
+1. Create a YearEndSnapshot with all current kilometer and Velos totals
 2. Save detailed snapshot data for all subgroups, cyclists, and devices
-3. Reset distance_total and coins_total to 0 for all affected entities
+3. Reset distance_total and velos_total to 0 for all affected entities
 4. Support undo functionality to restore previous state
 
 Usage:
@@ -187,8 +187,8 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write("This will:")
         self.stdout.write(f"  1. Create a snapshot with current totals")
-        self.stdout.write(f"  2. Reset {group_count} Groups (distance_total, coins_total → 0)")
-        self.stdout.write(f"  3. Reset {cyclist_count} Cyclists (distance_total, coins_total → 0)")
+        self.stdout.write(f"  2. Reset {group_count} Groups (distance_total, velos_total → 0)")
+        self.stdout.write(f"  3. Reset {cyclist_count} Cyclists (distance_total, velos_total → 0)")
         self.stdout.write(f"  4. Reset {device_count} Devices (distance_total → 0)")
         self.stdout.write("")
         self.stdout.write(self.style.NOTICE("Note: HourlyMetric entries are NOT deleted. They remain as historical data."))
@@ -220,7 +220,7 @@ class Command(BaseCommand):
                     period_end_date=period_end_date,
                     period_type=period_type,
                     group_total_km=top_group.distance_total,
-                    group_total_coins=top_group.coins_total,
+                    group_total_velos=top_group.velos_total,
                     created_by=user
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Created snapshot ID: {snapshot.id}"))
@@ -233,7 +233,7 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         group=group,
                         distance_total=group.distance_total,
-                        coins_total=group.coins_total
+                        velos_total=group.velos_total
                     )
                     group_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {group_details_count} group details"))
@@ -246,7 +246,7 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         cyclist=cyclist,
                         distance_total=cyclist.distance_total,
-                        coins_total=cyclist.coins_total
+                        velos_total=cyclist.velos_balance
                     )
                     cyclist_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {cyclist_details_count} cyclist details"))
@@ -259,7 +259,7 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         device=device,
                         distance_total=device.distance_total,
-                        coins_total=0  # Devices don't have coins
+                        velos_total=0  # Devices have no Velos ledger
                     )
                     device_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {device_details_count} device details"))
@@ -268,7 +268,7 @@ class Command(BaseCommand):
                 self.stdout.write("Resetting group totals...")
                 all_groups.update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0
+                    velos_total=0
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {group_count} groups"))
 
@@ -276,8 +276,7 @@ class Command(BaseCommand):
                 self.stdout.write("Resetting cyclist totals...")
                 all_cyclists.update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0,
-                    coins_spendable=0
+                    velos_balance=0
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {cyclist_count} cyclists"))
 
@@ -374,8 +373,8 @@ class Command(BaseCommand):
                 group_count = 0
                 for detail in group_details.select_related('group'):
                     detail.group.distance_total = detail.distance_total
-                    detail.group.coins_total = detail.coins_total
-                    detail.group.save(update_fields=['distance_total', 'coins_total'])
+                    detail.group.velos_total = detail.velos_total
+                    detail.group.save(update_fields=['distance_total', 'velos_total'])
                     group_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {group_count} groups"))
 
@@ -384,9 +383,7 @@ class Command(BaseCommand):
                 cyclist_count = 0
                 for detail in cyclist_details.select_related('cyclist'):
                     detail.cyclist.distance_total = detail.distance_total
-                    detail.cyclist.coins_total = detail.coins_total
-                    # Note: coins_spendable is not restored (it's calculated)
-                    detail.cyclist.save(update_fields=['distance_total', 'coins_total'])
+                    detail.cyclist.save(update_fields=['distance_total'])
                     cyclist_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {cyclist_count} cyclists"))
 

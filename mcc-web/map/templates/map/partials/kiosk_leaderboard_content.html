@@ -6,8 +6,7 @@
      @note    This code was developed with the assistance of AI (LLMs).
 -->
 
-{% load i18n l10n %}
-{% load map_filters %}
+{% load i18n map_filters %}
 <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 h-full overflow-y-auto p-8">
     {% if groups %}
     {% for group in groups %}
@@ -43,23 +42,21 @@
             {{ group.kiosk_label }}
         </div>
         
-        <!-- Bottom: Daily and Total Distance -->
+        <!-- Bottom: Daily and Total Velos -->
         <div class="w-full text-center space-y-1">
-            <!-- Daily kilometers (larger) -->
             <div class="text-3xl font-black
                 {% if forloop.counter == 1 %}text-yellow-100
                 {% elif forloop.counter == 2 %}text-gray-100
                 {% elif forloop.counter == 3 %}text-amber-100
                 {% else %}text-white{% endif %}">
-                {% format_km_de_tag group.daily_km 3 %} km
+                {% format_velos_de_tag group.daily_velos|default:0 %} {% trans "Velos" %}
             </div>
-            <!-- Total kilometers (smaller) -->
             <div class="text-sm opacity-75
                 {% if forloop.counter == 1 %}text-yellow-200
                 {% elif forloop.counter == 2 %}text-gray-200
                 {% elif forloop.counter == 3 %}text-amber-200
                 {% else %}text-gray-300{% endif %}">
-                {% trans "Gesamt" %}: {% format_km_de_tag group.distance_total 3 %} km
+                {% trans "Gesamt" %}: {% format_velos_de_tag group.velos_total|default:0 %} {% trans "Velos" %}
             </div>
         </div>
     </div>

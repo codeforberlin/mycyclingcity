@@ -31,7 +31,7 @@ class GameRoomAdmin(admin.ModelAdmin):
         'participants_count',
         'participants_display',
         'assignments_count',
-        'current_target_km_display',
+        'current_target_velos_display',
         'game_status_display',
         'room_link',
     )
@@ -80,7 +80,7 @@ class GameRoomAdmin(admin.ModelAdmin):
             'fields': ('room_code', 'is_active', 'master_session_key', 'created_at', 'last_activity', 'room_link')
         }),
         (_('Spielstatus'), {
-            'fields': ('is_game_stopped', 'current_target_km', 'announced_winners_display')
+            'fields': ('is_game_stopped', 'current_target_velos', 'announced_winners_display')
         }),
         (_('Teilnehmer & Sitzungen'), {
             'fields': ('participants_count', 'participants_display', 'active_sessions_display', 'session_to_cyclist_display')
@@ -185,13 +185,13 @@ class GameRoomAdmin(admin.ModelAdmin):
         return count
     assignments_count.short_description = _('Zuweisungen')
     
-    def current_target_km_display(self, obj):
+    def current_target_velos_display(self, obj):
         """Display current target kilometers."""
-        if obj.current_target_km and obj.current_target_km > 0:
-            return f"{obj.current_target_km:.1f} km"
+        if obj.current_target_velos and obj.current_target_velos > 0:
+            return f"{obj.current_target_velos} Velos"
         return "-"
-    current_target_km_display.short_description = _('Ziel (km)')
-    current_target_km_display.admin_order_field = 'current_target_km'
+    current_target_velos_display.short_description = _('Ziel (Velos)')
+    current_target_velos_display.admin_order_field = 'current_target_velos'
     
     def game_status_display(self, obj):
         """Display game status."""
@@ -519,7 +519,7 @@ class GameSessionModelAdmin(admin.ModelAdmin):
         'room_code',
         'is_master',
         'has_assignments',
-        'has_target_km',
+        'has_target_velos',
         'created_at',
         'last_updated',
     )
@@ -528,7 +528,7 @@ class GameSessionModelAdmin(admin.ModelAdmin):
         'room_code',
         'is_master',
         'has_assignments',
-        'has_target_km',
+        'has_target_velos',
         'created_at',
         'last_updated',
     )

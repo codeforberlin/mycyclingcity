@@ -73,12 +73,12 @@ def is_game_session(session):
     1. User is in a room (room_code is set and not empty)
     2. User has device assignments (device_assignments is set and not empty) - works for both room and single-player mode
     3. User is a master (is_master is True) - only relevant in room mode
-    4. User has set a target (current_target_km is set and > 0) - works for both room and single-player mode
+    4. User has set a target (current_target_velos is set and > 0) - works for both room and single-player mode
     
     Recognition happens:
     - Immediately when creating/joining a room (room_code + is_master set)
     - When assigning a device to a cyclist (device_assignments set) - works for both room and single-player mode
-    - When setting a target kilometer (current_target_km > 0) - works for both room and single-player mode
+    - When setting a target kilometer (current_target_velos > 0) - works for both room and single-player mode
     
     Single-player games (without room) are recognized as soon as:
     - A device is assigned to a cyclist, OR
@@ -105,15 +105,15 @@ def is_game_session(session):
         has_master = 'is_master' in session_dict and session_dict.get('is_master')
         
         # 4. User has set a target (works for both room and single-player mode)
-        target_km = session_dict.get('current_target_km', 0.0)
-        has_target_km = 'current_target_km' in session_dict and target_km and target_km > 0
+        target_km = session_dict.get('current_target_velos', 0.0)
+        has_target_velos = 'current_target_velos' in session_dict and target_km and target_km > 0
         
         # Debug logging for troubleshooting (use INFO level for visibility during debugging)
-        if has_room_code or has_assignments or has_master or has_target_km:
+        if has_room_code or has_assignments or has_master or has_target_velos:
             logger.info(f"✅ Game session detected: session_key={session.session_key[:10]}..., "
                        f"has_room_code={has_room_code}, has_assignments={has_assignments} "
                        f"(count={len(device_assignments) if isinstance(device_assignments, dict) else 0}, "
-                       f"value={device_assignments}), has_master={has_master}, has_target_km={has_target_km} (value={target_km})")
+                       f"value={device_assignments}), has_master={has_master}, has_target_velos={has_target_velos} (value={target_km})")
         else:
             # Log why it's not a game session
             logger.info(f"❌ Not a game session: session_key={session.session_key[:10]}..., "
@@ -121,11 +121,11 @@ def is_game_session(session):
                        f"device_assignments={device_assignments} (type={type(device_assignments)}, "
                        f"isinstance_dict={isinstance(device_assignments, dict)}, "
                        f"len={len(device_assignments) if isinstance(device_assignments, dict) else 'N/A'}), "
-                       f"has_room_code={has_room_code}, has_master={has_master}, has_target_km={has_target_km} (value={target_km})")
+                       f"has_room_code={has_room_code}, has_master={has_master}, has_target_velos={has_target_velos} (value={target_km})")
         
         # Session is a game session if ANY condition is met
         # This includes single-player games (without room) that have assignments
-        return has_room_code or has_assignments or has_master or has_target_km
+        return has_room_code or has_assignments or has_master or has_target_velos
     except Exception as e:
         logger.error(f"Error checking game session: {e}", exc_info=True)
         return False
@@ -487,7 +487,7 @@ class GameSessionAdmin(admin.ModelAdmin):
         """Display only game-related session data."""
         try:
             session_dict = decode_session_data(obj.session_data)
-            game_keys = ['room_code', 'is_master', 'device_assignments', 'current_target_km', 
+            game_keys = ['room_code', 'is_master', 'device_assignments', 'current_target_velos', 
                           'start_distances', 'stop_distances', 'is_game_stopped', 'announced_winners']
             game_data = {k: v for k, v in session_dict.items() if k in game_keys}
             
@@ -547,9 +547,9 @@ class GameSessionAdmin(admin.ModelAdmin):
             stats.append(format_html("<strong>{}:</strong> {}", _('Zuweisungen'), len(device_assignments)))
             
             # Target KM
-            target_km = session_dict.get('current_target_km', 0)
-            if target_km:
-                stats.append(format_html("<strong>{}:</strong> {:.1f}", _('Ziel (km)'), target_km))
+            target_velos = session_dict.get('current_target_velos', 0)
+            if target_velos:
+                stats.append(format_html("<strong>{}:</strong> {}", _('Ziel (Velos)'), target_velos))
             
             # Game status
             is_stopped = session_dict.get('is_game_stopped', False)

@@ -39,6 +39,11 @@ class Command(BaseCommand):
         """Deletes sessions that have exceeded the inactivity limit."""
         now = timezone.now()
         timeout_min = getattr(settings, 'MCC_SESSION_TIMEOUT_MINUTES', 5)
+        try:
+            from mgmt.models import GameConfiguration
+            timeout_min = GameConfiguration.get_config().get_session_timeout_minutes()
+        except Exception:
+            pass
         timeout_limit = now - timedelta(minutes=timeout_min)
 
         expired_sessions = CyclistDeviceCurrentMileage.objects.filter(
@@ -140,9 +145,6 @@ class Command(BaseCommand):
                                     existing_metric.distance_km += hourly_distance  # ADDITION
                                     existing_metric.last_session_start_time = sess.start_time  # Track this session
                                     existing_metric.last_session_distance_km = hourly_distance  # Track session distance
-                                    # Update group if it changed
-                                    if existing_metric.group_at_time != primary_group:
-                                        existing_metric.group_at_time = primary_group
                                     existing_metric.save()
                                     logger.info(f"Added expired session to HourlyMetric for {sess.cyclist.user_id}: "
                                               f"added {hourly_distance} km (total now: {existing_metric.distance_km} km, was {old_distance} km)")
@@ -165,9 +167,6 @@ class Command(BaseCommand):
                                     existing_metric.distance_km += distance_delta  # Add only the difference
                                     existing_metric.last_session_distance_km = hourly_distance  # Update tracking
                                     existing_metric.last_session_start_time = sess.start_time  # Update tracking
-                                    # Update group if it changed
-                                    if existing_metric.group_at_time != primary_group:
-                                        existing_metric.group_at_time = primary_group
                                     existing_metric.save()
                                     logger.info(f"Updated HourlyMetric for expired session: {sess.cyclist.user_id}, "
                                               f"added {distance_delta} km (total now: {hourly_distance} km, was {old_distance} km)")
@@ -185,8 +184,6 @@ class Command(BaseCommand):
                                     existing_metric.distance_km = hourly_distance
                                     existing_metric.last_session_start_time = sess.start_time
                                     existing_metric.last_session_distance_km = hourly_distance
-                                    if existing_metric.group_at_time != primary_group:
-                                        existing_metric.group_at_time = primary_group
                                     existing_metric.save()
                                     saved_count += 1
                                     continue
@@ -266,9 +263,6 @@ class Command(BaseCommand):
                             metric.distance_km = hourly_distance
                             metric.last_session_start_time = sess.start_time  # Update tracking
                             metric.last_session_distance_km = hourly_distance  # Update tracking
-                            # Update group if it changed
-                            if metric.group_at_time != primary_group:
-                                metric.group_at_time = primary_group
                             metric.save()
                             logger.info(f"Updated HourlyMetric for expired session from previous hour: {sess.cyclist.user_id}, "
                                       f"hourly distance: {hourly_distance} km (was {old_distance} km)")
@@ -401,9 +395,6 @@ class Command(BaseCommand):
                                         old_distance = existing_metric.distance_km
                                         existing_metric.distance_km += distance_delta  # Add only the difference
                                         existing_metric.last_session_distance_km = hourly_distance  # Update tracking
-                                        # Update group if it changed
-                                        if existing_metric.group_at_time != primary_group:
-                                            existing_metric.group_at_time = primary_group
                                         existing_metric.save()
                                         updated_count += 1
                                         logger.info(f"Updated HourlyMetric for grown session: {sess.cyclist.user_id}, "
@@ -441,9 +432,6 @@ class Command(BaseCommand):
                                 existing_metric.distance_km += hourly_distance  # ADDITION
                                 existing_metric.last_session_start_time = sess.start_time  # Track this session
                                 existing_metric.last_session_distance_km = hourly_distance  # Track session distance
-                                # Update group if it changed
-                                if existing_metric.group_at_time != primary_group:
-                                    existing_metric.group_at_time = primary_group
                                 existing_metric.save()
                                 updated_count += 1
                                 logger.info(f"Added NEW session to HourlyMetric for {sess.cyclist.user_id}: "
@@ -466,9 +454,6 @@ class Command(BaseCommand):
                                 existing_metric.distance_km += distance_delta  # Add only the difference
                                 existing_metric.last_session_distance_km = hourly_distance  # Update tracking
                                 existing_metric.last_session_start_time = sess.start_time  # Update tracking
-                                # Update group if it changed
-                                if existing_metric.group_at_time != primary_group:
-                                    existing_metric.group_at_time = primary_group
                                 existing_metric.save()
                                 updated_count += 1
                                 logger.info(f"Updated HourlyMetric for active session: {sess.cyclist.user_id}, "
@@ -489,8 +474,6 @@ class Command(BaseCommand):
                                 existing_metric.distance_km = hourly_distance
                                 existing_metric.last_session_start_time = sess.start_time
                                 existing_metric.last_session_distance_km = hourly_distance
-                                if existing_metric.group_at_time != primary_group:
-                                    existing_metric.group_at_time = primary_group
                                 existing_metric.save()
                                 updated_count += 1
                                 logger.info(f"Updated HourlyMetric (unexpected case) for {sess.cyclist.user_id}: "
@@ -590,9 +573,6 @@ class Command(BaseCommand):
                         old_distance = metric.distance_km
                         metric.distance_km = hourly_distance
                         metric.last_session_start_time = sess.start_time  # Update tracking
-                        # Update group if it changed
-                        if metric.group_at_time != primary_group:
-                            metric.group_at_time = primary_group
                         metric.save()
                         updated_count += 1
                         logger.info(f"Updated HourlyMetric for active session from previous hour: {sess.cyclist.user_id}, "

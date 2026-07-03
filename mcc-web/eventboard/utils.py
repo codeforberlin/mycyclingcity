@@ -48,6 +48,22 @@ def get_all_subgroup_ids(top_group):
     return list(get_descendant_ids(top_group.id))
 
 
+def get_session_velos_for_cyclist(cyclist) -> int:
+    """Return Velos earned in the cyclist's active session (fair wheel factor)."""
+    from api.velos import calculate_session_velos
+
+    try:
+        mileage_obj = cyclist.cyclistdevicecurrentmileage
+    except (AttributeError, CyclistDeviceCurrentMileage.DoesNotExist):
+        return 0
+
+    if not mileage_obj or not mileage_obj.cumulative_mileage:
+        return 0
+
+    device = mileage_obj.device
+    return calculate_session_velos(mileage_obj.cumulative_mileage, device)
+
+
 def get_active_cyclists_for_eventboard(event_id=None, group_filter_id=None):
     """
     Hole aktive Radler für Eventboard mit Event- und Gruppen-Filterung.

@@ -39,7 +39,12 @@ class Command(BaseCommand):
         parser.add_argument(
             '--player-id',
             type=int,
-            help='Analyze only a specific player by ID',
+            help='Analyze only a specific cyclist by ID (deprecated alias)',
+        )
+        parser.add_argument(
+            '--cyclist-id',
+            type=int,
+            help='Analyze only a specific cyclist by ID',
         )
         parser.add_argument(
             '--fix',
@@ -81,6 +86,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Analyzing {cyclists.count()} cyclist(s)...')
         self.stdout.write('')
         
+        cyclist_count = cyclists.count()
         inconsistencies = []
         
         for cyclist in cyclists:
@@ -89,13 +95,13 @@ class Command(BaseCommand):
             
             # Get HourlyMetrics sum
             metrics_sum = HourlyMetric.objects.filter(
-                cyclist = player
+                cyclist=cyclist
             ).aggregate(
                 total=Sum('distance_km')
             )['total'] or Decimal('0.00000')
             
             # Check for active sessions that should be included
-            active_sessions = CyclistDeviceCurrentMileage.objects.filter(cyclist = player)
+            active_sessions = CyclistDeviceCurrentMileage.objects.filter(cyclist=cyclist)
             active_sessions_sum = sum(
                 (sess.cumulative_mileage or Decimal('0')) for sess in active_sessions
             )
@@ -147,7 +153,7 @@ class Command(BaseCommand):
                 )
             
             # Show detailed breakdown
-            metrics = HourlyMetric.objects.filter(cyclist = cyclist).order_by('timestamp')
+            metrics = HourlyMetric.objects.filter(cyclist=cyclist).order_by('timestamp')
             if metrics.exists():
                 self.stdout.write(f'  HourlyMetrics entries ({metrics.count()}):')
                 for metric in metrics[:10]:  # Show first 10
@@ -179,7 +185,7 @@ class Command(BaseCommand):
         # Summary
         self.stdout.write('')
         self.stdout.write('Summary:')
-        self.stdout.write(f'  Players analyzed: {players.count()}')
+        self.stdout.write(f'  Cyclists analyzed: {cyclist_count}')
         self.stdout.write(f'  Inconsistencies found: {len(inconsistencies)}')
         
         if fix:
@@ -213,7 +219,7 @@ class Command(BaseCommand):
                 
                 # Get all metrics ordered by timestamp (oldest first)
                 metrics = HourlyMetric.objects.filter(
-                    cyclist = cyclist
+                    cyclist=cyclist
                 ).order_by('timestamp', 'id')
                 
                 # Delete metrics until we match cyclist_total

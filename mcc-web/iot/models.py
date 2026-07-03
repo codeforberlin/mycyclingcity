@@ -36,6 +36,25 @@ class Device(models.Model):
 
     is_visible = models.BooleanField(default=True, verbose_name=_("In Map/Game anzeigen"))
     is_km_collection_enabled = models.BooleanField(default=True, verbose_name=_("Kilometer-Erfassung aktiv"), help_text=_("Wenn deaktiviert, werden keine Kilometer für dieses Gerät erfasst"))
+    is_operator_box = models.BooleanField(
+        default=False,
+        verbose_name=_("Operator-Box"),
+        help_text=_(
+            "Reserviert für Phase H: RFID-Auslese ohne Strampel-Session. "
+            "Nur vom Systemadministrator setzbar."
+        ),
+    )
+
+    @property
+    def radumfang_mm(self) -> int:
+        try:
+            return int(self.configuration.wheel_size)
+        except (DeviceConfiguration.DoesNotExist, AttributeError, TypeError, ValueError):
+            return 2075
+
+    def get_fkm_factor(self) -> float:
+        from api.velos import get_fkm_factor, get_paedagogischer_bonus
+        return get_fkm_factor(self.radumfang_mm, get_paedagogischer_bonus(self))
 
 
 class DeviceConfiguration(models.Model):
@@ -218,7 +237,32 @@ class DeviceConfiguration(models.Model):
             MaxValueValidator(3000.0, message=_("Radumfang darf maximal 3000 mm betragen"))
         ]
     )
-    
+    paedagogischer_bonus = models.FloatField(
+        default=0.0,
+        verbose_name=_("Pädagogischer Bonus"),
+        help_text=_(
+            "Zusatz zum FKM-Faktor für faire Velos: (2300 / Radumfang mm) + Bonus. "
+            "Typisch 0,3 für Kinder-/20\"-Räder, 0,0 für Erwachsenenräder."
+        ),
+        validators=[
+            MinValueValidator(0.0),
+            MaxValueValidator(2.0),
+        ],
+    )
+
+    display_velos_locked = models.BooleanField(
+        default=False,
+        verbose_name=_("OLED Velos eingefroren"),
+        help_text=_(
+            "Nach Rundenstopp: OLED zeigt eingefrorene Velos statt live Session-Velos."
+        ),
+    )
+    frozen_display_velos = models.IntegerField(
+        default=0,
+        verbose_name=_("Eingefrorene OLED-Velos"),
+        help_text=_("Velos-Anzeige auf dem Gerät solange display_velos_locked aktiv ist."),
+    )
+
     # Firmware management
     assigned_firmware = models.ForeignKey(
         'iot.FirmwareImage',
@@ -327,6 +371,7 @@ class DeviceConfiguration(models.Model):
             'test_interval_seconds': self.test_interval_seconds,
             'deep_sleep_seconds': self.deep_sleep_seconds,
             'wheel_size': self.wheel_size,
+            'paedagogischer_bonus': self.paedagogischer_bonus,
             'device_api_key': self.device_specific_api_key or '',
             'config_fetch_interval_seconds': self.config_fetch_interval_seconds,
         }

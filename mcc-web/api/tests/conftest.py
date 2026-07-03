@@ -58,7 +58,8 @@ class GroupFactory(factory.django.DjangoModelFactory):
     group_type = factory.LazyFunction(lambda: GroupType.objects.get_or_create(name='TestType', defaults={'is_active': True})[0])
     name = factory.Sequence(lambda n: f'Group{n}')
     distance_total = Decimal('0.00000')
-    coins_total = 0
+    velos_total = 0
+    velos_spendable = 0
     is_visible = True
     short_name = None
     color = None
@@ -74,9 +75,7 @@ class CyclistFactory(factory.django.DjangoModelFactory):
     id_tag = factory.Sequence(lambda n: f'tag-{n:04d}')
     mc_username = factory.LazyAttribute(lambda obj: f'mc_{obj.user_id}')
     distance_total = Decimal('0.00000')
-    coins_total = 0
-    coins_spendable = 0
-    coin_conversion_factor = 100.0
+    velos_balance = 0
     is_visible = True
     is_km_collection_enabled = True
     last_active = None
@@ -143,6 +142,7 @@ class EventFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ('name',)
     
     name = factory.Sequence(lambda n: f'Event{n}')
+    top_group = factory.SubFactory(GroupFactory)
     event_type = 'competition'
     description = factory.LazyAttribute(lambda obj: f'Description for {obj.name}')
     is_active = True
@@ -188,8 +188,8 @@ class GroupEventStatusFactory(factory.django.DjangoModelFactory):
     
     group = factory.SubFactory(GroupFactory)
     event = factory.SubFactory(EventFactory)
-    current_distance_km = Decimal('0.00000')
-    start_km_offset = Decimal('0.00000')
+    current_velos = 0
+    start_velos_offset = 0
 
 
 class HourlyMetricFactory(factory.django.DjangoModelFactory):

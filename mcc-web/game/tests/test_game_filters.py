@@ -355,15 +355,13 @@ class TestGameFilters:
         assert response.status_code == 200
         content = response.content.decode('utf-8')
         
-        # Should contain all devices (using display_name)
+        # Should contain all devices (display_name as label, name as option value)
         assert 'Gerät 1' in content
         assert 'Gerät 2' in content
         assert 'Gerät 3' in content
-        
-        # Should NOT contain internal device names
-        assert 'device001' not in content
-        assert 'device002' not in content
-        assert 'device003' not in content
+        assert 'value="device001"' in content
+        assert 'value="device002"' in content
+        assert 'value="device003"' in content
     
     def test_get_filtered_devices_by_top_group(self, client, devices, top_groups):
         """Test filtering devices by top-level group."""

@@ -1,0 +1,39 @@
+{% load i18n %}
+<div id="roundTimerSettings" class="round-timer-settings{% if not timer_enabled %} round-timer-settings--inactive{% endif %}">
+    <h3>{% trans "Runden-Timer" %}</h3>
+    <form hx-post="{% url 'game:update_round_timer_settings' %}"
+          hx-target="#roundTimerSettings"
+          hx-swap="outerHTML"
+          id="roundTimerSettingsForm">
+        {% csrf_token %}
+        <input type="hidden" name="timer_enabled" id="timerEnabledHidden" value="{% if timer_enabled %}1{% else %}0{% endif %}">
+        <input type="hidden" name="timer_auto_stop" id="timerAutoStopHidden" value="{% if timer_auto_stop %}1{% else %}0{% endif %}">
+        <input type="hidden" name="timer_sound_enabled" id="timerSoundHidden" value="{% if timer_sound_enabled %}1{% else %}0{% endif %}">
+        <label class="round-timer-checkbox">
+            <input type="checkbox" id="timerEnabledCheckbox" value="1"
+                   {% if timer_enabled %}checked{% endif %}
+                   onchange="submitRoundTimerSettingsForm()">
+            {% trans "Timer aktivieren" %}
+        </label>
+        <div class="round-timer-duration-row">
+            <label for="timerDurationMinutes">{% trans "Dauer (Minuten)" %}</label>
+            <input type="number" id="timerDurationMinutes" name="timer_duration_minutes"
+                   min="1" max="180" step="1"
+                   value="{{ timer_duration_minutes|default:5 }}"
+                   {% if not timer_enabled %}readonly tabindex="-1"{% endif %}
+                   onchange="submitRoundTimerSettingsForm()">
+        </div>
+        <label class="round-timer-checkbox round-timer-checkbox--optional">
+            <input type="checkbox" id="timerAutoStopCheckbox" value="1"
+                   {% if timer_auto_stop %}checked{% endif %}
+                   onchange="submitRoundTimerSettingsForm()">
+            {% trans "Bei Ablauf automatisch stoppen" %}
+        </label>
+        <label class="round-timer-checkbox round-timer-checkbox--optional">
+            <input type="checkbox" id="timerSoundCheckbox" value="1"
+                   {% if timer_sound_enabled %}checked{% endif %}
+                   onchange="submitRoundTimerSettingsForm()">
+            {% trans "Ton bei Ablauf" %}
+        </label>
+    </form>
+</div>

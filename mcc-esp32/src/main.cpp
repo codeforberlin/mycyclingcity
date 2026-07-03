@@ -133,6 +133,7 @@ unsigned long serverErrorBackoffInterval = 60000;  // Wait 60 seconds between re
 bool apiKeyErrorActive = false;  // Track if API key error is active (don't show username error until fixed)
 int wifiConnectAttempts = 0;  // Track number of WiFi connection attempts (max 3)
 float wheel_size = 2075.0;  // Default: 26 Zoll = 2075 mm circumference
+float paedagogischer_bonus = 0.0f;
 String serverUrl = "";
 String apiKey = "";
 unsigned int sendInterval_sec = 30;
@@ -170,6 +171,14 @@ unsigned long previousPulseTime = 0; // Timestamp of previous pulse for speed ca
 const unsigned long SPEED_TIMEOUT_MS = 5000; // After 5 seconds without pulse → 0 km/h
 const int SPEED_AVERAGE_COUNT = 5; // Number of pulses to average for speed smoothing
 float speedHistory[SPEED_AVERAGE_COUNT] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Array to store last 5 speed values
+
+// Server-authoritative session Velos for OLED display
+char displayedSessionVelosStr[16] = "0";
+String sessionEpoch = "";
+bool hasSessionVelosFromServer = false;
+// Set when a server response changes the displayed Velos, so the OLED is
+// refreshed even without a new pulse (e.g. after a pedaling pause).
+bool oledVelosNeedsRefresh = false;
 int speedHistoryIndex = 0; // Current index in speed history array
 int speedHistoryCount = 0; // Number of valid values in speed history (0 to SPEED_AVERAGE_COUNT)
 
@@ -302,6 +311,7 @@ void play_tag_detected_tone();
  */
 #ifdef ENABLE_OLED
 void display_IdTag_Name(const char* text, bool isRfidDetected = false, bool queryWasSuccessful = false);
+void display_OperatorReset(bool didReset, const char* defaultUserName, const char* defaultTag);
 void display_ServerError(const char* errorType, int errorCode);
 #endif
 
@@ -318,7 +328,7 @@ void display_ServerError(const char* errorType, int errorCode);
  * @note Side effects: Sends HTTP request, writes to Serial
  */
 String getUserIdFromTag(String& tagId);
-
+bool applyOperatorResetFromResponse(JsonDocument& responseDoc);
 /**
  * @brief Displays current cycling data on OLED display.
  * 
@@ -554,6 +564,11 @@ void setup() {
 
     // Check wakeup reason
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
+        setPendingBootReason("deep_sleep");
+    } else {
+        setPendingBootReason("power_on");
+    }
 
     // ----------------------------------------------------------------------
     // Logic for configuration mode - ALWAYS start on restart
@@ -1364,6 +1379,17 @@ void loop() {
             lastDataSendTime = millis();
         }
 
+        // Refresh the OLED when the server changed the displayed Velos, even
+        // without a new pulse (e.g. final update after a pedaling pause).
+        #ifdef ENABLE_OLED
+        if (oledVelosNeedsRefresh) {
+            oledVelosNeedsRefresh = false;
+            if (hasValidUsername) {
+                display_Data();
+            }
+        }
+        #endif
+
         // Deep Sleep Check - only if deepSleepTimeout_sec > 0 (0 = disabled)
         if ( deepSleepTimeout_sec > 0 && (millis() - lastPulseTime >= (unsigned long)deepSleepTimeout_sec * 1000) && DeepSleep ) {
           if (debugEnabled) {
@@ -1783,7 +1809,7 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
   }
   
   HTTPClient http;
-  StaticJsonDocument<200> doc;
+  StaticJsonDocument<256> doc;
 
   if (isTest) {
     if (debugEnabled) {
@@ -1819,6 +1845,8 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
   } else {
       doc["id_tag"] = idTag;
   }
+
+  appendPendingBootReasonToJson(doc.as<JsonObject>());
 
   String jsonPayload;
   serializeJson(doc, jsonPayload);
@@ -1868,12 +1896,18 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
 
   digitalWrite(LED_PIN, LOW);  // OFF
 
-  if (debugEnabled) {
-    Serial.printf("HTTP Code: %d\n", httpCode);
-    if (httpCode > 0) {
-      String response = http.getString();
+  if (httpCode > 0 && httpCode < 300) {
+    String response = http.getString();
+    applyDisplayVelosFromResponse(response);
+    if (debugEnabled) {
+      Serial.printf("HTTP Code: %d\n", httpCode);
       Serial.println("Server Response:");
       Serial.println(response);
+    }
+  } else if (debugEnabled) {
+    Serial.printf("HTTP Code: %d\n", httpCode);
+    if (httpCode > 0) {
+      Serial.println(http.getString());
     } else {
       Serial.printf("HTTP error: %s\n", http.errorToString(httpCode).c_str());
     }
@@ -1897,6 +1931,39 @@ int sendDataToServer(float currentSpeed_kmh, float distanceInInterval_mm, int pu
  * @note Pure logic function - network communication only
  * @note Side effects: Sends HTTP request, writes to Serial
  */
+bool applyOperatorResetFromResponse(JsonDocument& responseDoc) {
+    if (!responseDoc.containsKey("action")) {
+        return false;
+    }
+    String action = responseDoc["action"].as<String>();
+    if (action != "reset_to_default") {
+        return false;
+    }
+
+    String defaultTag = responseDoc["default_id_tag"] | "";
+    String defaultUser = responseDoc["default_user_id"] | "NULL";
+
+    preferences.begin("bike-tacho", false);
+    if (defaultTag.length() > 0) {
+        preferences.putString("default_id_tag", defaultTag);
+        idTag = defaultTag;
+    }
+    preferences.end();
+
+    idTagFromRFID = false;
+    resetDistanceCounters();
+    username = defaultUser.length() > 0 ? defaultUser : String("NULL");
+    lastSentIdTag = idTag;
+
+    if (debugEnabled) {
+        Serial.printf("DEBUG: Operator reset applied (default_tag=%s, user=%s)\n",
+                        defaultTag.c_str(), username.c_str());
+    }
+
+    play_tag_detected_tone();
+    return true;
+}
+
 String getUserIdFromTag(String& tagId) {
     // Check backoff interval - don't spam server with requests after errors
     // After 60 seconds, retry even if API key error is active (to check if API key was fixed)
@@ -1919,9 +1986,11 @@ String getUserIdFromTag(String& tagId) {
     }
 
     HTTPClient http;
-    StaticJsonDocument<100> doc;
+    StaticJsonDocument<256> doc;
     
     doc["id_tag"] = tagId;
+    doc["device_id"] = deviceName;
+    doc["current_id_tag"] = idTag;
     String jsonPayload;
     serializeJson(doc, jsonPayload);
 
@@ -1955,7 +2024,7 @@ String getUserIdFromTag(String& tagId) {
                 Serial.printf("DEBUG: Server response: %s\n", response.c_str());
             }
 
-            StaticJsonDocument<200> responseDoc;
+            StaticJsonDocument<384> responseDoc;
             DeserializationError error = deserializeJson(responseDoc, response);
 
             if (error) {
@@ -1964,6 +2033,31 @@ String getUserIdFromTag(String& tagId) {
                 }
                 http.end();
                 return "FEHLER";
+            }
+
+            if (responseDoc.containsKey("is_operator_tag") && responseDoc["is_operator_tag"].as<bool>()) {
+                bool didReset = applyOperatorResetFromResponse(responseDoc);
+                String defaultTag = responseDoc["default_id_tag"] | "";
+                String defaultUserId = responseDoc["default_user_id"] | String("NULL");
+                String operatorUserId = defaultUserId;
+                if (!didReset) {
+                    operatorUserId = String("OPERATOR");
+                }
+                http.end();
+                lastServerErrorTime = 0;
+                apiKeyErrorActive = false;
+                username = operatorUserId;
+                #ifdef ENABLE_OLED
+                display_OperatorReset(
+                    didReset,
+                    defaultUserId.c_str(),
+                    defaultTag.c_str()
+                );
+                delay(3000);
+                #endif
+                // Display handled; username already updated. Empty return prevents
+                // the ID-tag-change loop from showing "ID Tag erkannt!" again.
+                return "";
             }
             
             // Response should contain a JSON object with key "user_id"
@@ -2129,6 +2223,7 @@ void displayNVSConfig() {
     Serial.printf("Device name: %s\n", (preferences.getString("deviceName", "") + deviceIdSuffix).c_str());
     Serial.printf("ID Tag: %s\n", preferences.getString("idTag", "").c_str());
     Serial.printf("Wheel size: %.1f mm\n", preferences.getFloat("wheel_size", 2075.0));
+    Serial.printf("Paedagogischer bonus: %.2f\n", preferences.getFloat("ped_bonus", 0.0f));
     Serial.printf("Server URL: %s\n", preferences.getString("serverUrl", "").c_str());
     Serial.printf("API Key: %s\n", preferences.getString("apiKey", "").c_str());
     Serial.printf("Send interval: %d s\n", preferences.getUInt("sendInterval", 30));
@@ -2246,6 +2341,7 @@ void getPreferences() {
     // even if a different RFID tag was used before deep sleep
     lastSentIdTag = "";
     wheel_size = preferences.getFloat("wheel_size", 2075.0);  // Default: 26 Zoll = 2075 mm
+    paedagogischer_bonus = preferences.getFloat("ped_bonus", 0.0f);
     serverUrl = preferences.getString("serverUrl", "");
     // Check if apiKey exists in NVS before reading to avoid error log
     if (preferences.isKey("apiKey")) {
@@ -2402,6 +2498,10 @@ void resetDistanceCounters() {
     for (int i = 0; i < SPEED_AVERAGE_COUNT; i++) {
         speedHistory[i] = 0.0;
     }
+
+    strcpy(displayedSessionVelosStr, "0");
+    sessionEpoch = "";
+    hasSessionVelosFromServer = false;
 
     if (debugEnabled) {
         Serial.println("DEBUG: Distance values reset to zero due to ID tag change.");
@@ -2609,6 +2709,69 @@ void display_ConfigCheck() {
 #endif
 
 /**
+ * @brief Displays operator RFID reset feedback on the OLED.
+ *
+ * @param didReset True when the server reset the device to its default cyclist.
+ * @param defaultUserName Kurzname of the default cyclist, or "NULL".
+ * @param defaultTag Default RFID tag configured for the device.
+ */
+void display_OperatorReset(bool didReset, const char* defaultUserName, const char* defaultTag) {
+    if (debugEnabled) {
+        Serial.printf(
+            "OLED: Operator reset display (didReset=%s, user=%s, tag=%s)\n",
+            didReset ? "yes" : "no",
+            defaultUserName != nullptr ? defaultUserName : "",
+            defaultTag != nullptr ? defaultTag : ""
+        );
+    }
+
+    display.clearBuffer();
+    display.setFont(u8g2_font_7x14_tf);
+
+    if (didReset) {
+        textline = "Operator-Reset";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 12);
+        display.print(textline);
+
+        textline = "Standard-Radler:";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 28);
+        display.print(textline);
+
+        const char* showName = defaultUserName;
+        if (
+            showName == nullptr
+            || strlen(showName) == 0
+            || strcmp(showName, "NULL") == 0
+            || strcmp(showName, "OPERATOR") == 0
+        ) {
+            showName = (defaultTag != nullptr && strlen(defaultTag) > 0) ? defaultTag : "—";
+        }
+        textWidth = display.getStrWidth(showName);
+        display.setCursor((128 - textWidth) / 2, 50);
+        display.print(showName);
+    } else {
+        textline = "Operator-Tag";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 12);
+        display.print(textline);
+
+        textline = "Kein Reset";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 28);
+        display.print(textline);
+
+        textline = "erforderlich";
+        textWidth = display.getStrWidth(textline);
+        display.setCursor((128 - textWidth) / 2, 44);
+        display.print(textline);
+    }
+
+    display.sendBuffer();
+}
+
+/**
  * @brief Displays ID tag name on OLED display.
  * 
  * Shows username or default user name. Only shows "ID Tag erkannt!" if a RFID tag was actually detected.
@@ -2727,7 +2890,7 @@ void display_IdTag_Name(const char* id_name, bool isRfidDetected, bool queryWasS
 /**
  * @brief Displays current cycling data on OLED display.
  * 
- * Shows username, current speed, and total distance traveled in kilometers.
+ * Shows username, current speed, and server-provided session Velos.
  * 
  * @note Hardware interaction: OLED display (I2C communication)
  * @note Side effects: Updates OLED display buffer and sends to display
@@ -2782,8 +2945,8 @@ void display_Data() {
         display.drawStr(0, 44,  "Geschw.:");  // 
         String speedStr = String(currentSpeed_kmh, 1) + " km/h";
         display.drawStr(70, 44, speedStr.c_str());  // 
-        display.drawStr(0, 60,  "Distanz:");  //
-        display.drawStr(70, 60, String(totalDistance_mm/1000000).c_str() );  // distance in kilometer (mm to km)
+        display.drawStr(0, 60,  "Velos:");  //
+        display.drawStr(70, 60, hasSessionVelosFromServer ? displayedSessionVelosStr : "0");
         display.sendBuffer();     
 
 }

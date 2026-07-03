@@ -15,12 +15,13 @@ Reuses format_km_de from api.utils via map_filters for now.
 """
 
 from django import template
-from map.templatetags.map_filters import format_km_de, format_km_de_tag
+from map.templatetags.map_filters import format_km_de, format_km_de_tag, format_velos_de_tag
 
 register = template.Library()
 
-# Reuse format_km_de from map_filters
+# Reuse formatters from map_filters
 register.filter('format_km_de', format_km_de)
 register.simple_tag(takes_context=True)(format_km_de_tag)
+register.simple_tag(takes_context=True)(format_velos_de_tag)
 
 

@@ -14,6 +14,23 @@
 #include <Preferences.h>
 #include <cmath>
 
+static String pendingBootReason;
+
+void setPendingBootReason(const char* reason) {
+    if (reason != nullptr && reason[0] != '\0') {
+        pendingBootReason = reason;
+    }
+}
+
+bool appendPendingBootReasonToJson(JsonObject doc) {
+    if (pendingBootReason.length() == 0) {
+        return false;
+    }
+    doc["boot_reason"] = pendingBootReason;
+    pendingBootReason = "";
+    return true;
+}
+
 // External global variables from main.cpp
 extern Preferences preferences;
 extern String serverUrl;
@@ -23,10 +40,15 @@ extern String deviceIdSuffix;
 extern String idTag;
 extern unsigned int sendInterval_sec;
 extern float wheel_size;
+extern float paedagogischer_bonus;
 extern bool debugEnabled;
 extern String wifi_ssid;
 extern String wifi_password;
 extern bool testActive;
+extern char displayedSessionVelosStr[16];
+extern String sessionEpoch;
+extern bool hasSessionVelosFromServer;
+extern bool oledVelosNeedsRefresh;
 extern float testDistance;
 extern bool apiKeyErrorActive;  // Track if API key error is active
 extern unsigned int testInterval_sec;
@@ -129,6 +151,7 @@ StaticJsonDocument<512> createConfigJson() {
     config["test_interval_seconds"] = testInterval_sec;
     config["deep_sleep_seconds"] = deepSleepTimeout_sec;
     config["wheel_size"] = wheel_size;
+    config["paedagogischer_bonus"] = paedagogischer_bonus;
     // Note: apiKey/device_api_key is not part of config report (security)
     
     // Add config_fetch_interval_seconds
@@ -454,6 +477,24 @@ bool fetchDeviceConfig() {
                                 newSizeMm);
                         }
                     }
+
+                    if (config.containsKey("paedagogischer_bonus")) {
+                        float newBonus = config["paedagogischer_bonus"].as<float>();
+                        if (debugEnabled) {
+                            Serial.printf("DEBUG: [Config Update] paedagogischer_bonus from server: %.2f, current: %.2f\n",
+                                newBonus, paedagogischer_bonus);
+                        }
+                        if (fabsf(newBonus - paedagogischer_bonus) > 0.001f) {
+                            preferences.putFloat("ped_bonus", newBonus);
+                            paedagogischer_bonus = newBonus;
+                            configChanged = true;
+                            if (debugEnabled) {
+                                Serial.printf("DEBUG: [Config Update] paedagogischer_bonus updated to: %.2f\n", newBonus);
+                            }
+                        } else if (debugEnabled) {
+                            Serial.println("DEBUG: [Config Update] paedagogischer_bonus unchanged, no update needed");
+                        }
+                    }
                     
                     // Note: debug_mode and test_mode are booleans, so they are always "real" values
                     // We check if the key exists, and if it does, we update (even if false)
@@ -736,7 +777,7 @@ bool sendHeartbeat() {
     }
 
     HTTPClient http;
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<256> doc;
     
     String finalDeviceId = deviceName;
     if (finalDeviceId.length() > 0) {
@@ -744,6 +785,7 @@ bool sendHeartbeat() {
     }
     
     doc["device_id"] = finalDeviceId;
+    appendPendingBootReasonToJson(doc.as<JsonObject>());
 
     String jsonPayload;
     serializeJson(doc, jsonPayload);
@@ -776,7 +818,7 @@ bool sendHeartbeat() {
                 Serial.println(response);
             }
             
-            StaticJsonDocument<200> responseDoc;
+            StaticJsonDocument<512> responseDoc;
             DeserializationError error = deserializeJson(responseDoc, response);
             
             if (!error && responseDoc.containsKey("success")) {
@@ -785,6 +827,9 @@ bool sendHeartbeat() {
                 // Update last heartbeat time
                 lastHeartbeatTime = millis();
                 preferences.putULong64("last_hb_time", lastHeartbeatTime);
+
+                String responseJson = response;
+                applyDisplayVelosFromResponse(responseJson);
             }
         } else {
             if (debugEnabled) {
@@ -1210,4 +1255,71 @@ bool shouldCheckFirmware() {
         lastFirmwareCheckTime = 0;
     }
     return (now - lastFirmwareCheckTime >= FIRMWARE_CHECK_INTERVAL_MS);
+}
+
+bool applyDisplayVelosFromResponse(const String& response) {
+    if (response.length() == 0) {
+        return false;
+    }
+
+    StaticJsonDocument<512> responseDoc;
+    DeserializationError error = deserializeJson(responseDoc, response);
+    if (error) {
+        if (debugEnabled) {
+            Serial.printf("DEBUG: display_velos JSON parse error: %s\n", error.c_str());
+        }
+        return false;
+    }
+
+    String displayMode = responseDoc["display_mode"] | "";
+    String newDisplay;
+
+    if (responseDoc.containsKey("display_velos_display")) {
+        newDisplay = responseDoc["display_velos_display"].as<String>();
+    } else if (responseDoc.containsKey("session_velos_display")) {
+        newDisplay = responseDoc["session_velos_display"].as<String>();
+    } else {
+        return false;
+    }
+
+    if (displayMode == "round_frozen") {
+        String newEpoch = responseDoc["session_epoch"] | "";
+        if (newEpoch.length() > 0 && newEpoch != sessionEpoch) {
+            sessionEpoch = newEpoch;
+        }
+    } else {
+        String newEpoch = responseDoc["session_epoch"] | "";
+        if (newEpoch.length() > 0 && newEpoch != sessionEpoch) {
+            sessionEpoch = newEpoch;
+        } else if (newEpoch.length() == 0) {
+            if (!hasSessionVelosFromServer) {
+                sessionEpoch = "legacy";
+            }
+        }
+    }
+
+    if (newDisplay.length() >= sizeof(displayedSessionVelosStr)) {
+        newDisplay = newDisplay.substring(0, sizeof(displayedSessionVelosStr) - 1);
+    }
+
+    // Trigger an OLED refresh when the displayed value or first server value
+    // changes, so the update is visible without waiting for the next pulse.
+    bool changed = (!hasSessionVelosFromServer) || (newDisplay != displayedSessionVelosStr);
+
+    strncpy(displayedSessionVelosStr, newDisplay.c_str(), sizeof(displayedSessionVelosStr) - 1);
+    displayedSessionVelosStr[sizeof(displayedSessionVelosStr) - 1] = '\0';
+    hasSessionVelosFromServer = true;
+    if (changed) {
+        oledVelosNeedsRefresh = true;
+    }
+
+    if (debugEnabled) {
+        Serial.printf(
+            "DEBUG: OLED display_velos updated: %s (mode=%s, epoch=%s)\n",
+            displayedSessionVelosStr,
+            displayMode.length() > 0 ? displayMode.c_str() : "legacy",
+            sessionEpoch.c_str()
+        );
+    }
+    return true;
 }

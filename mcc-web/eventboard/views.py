@@ -12,7 +12,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime
 from eventboard.models import Event, GroupEventStatus, LeafGroupEventContribution
 from api.models import Group, Cyclist, CyclistDeviceCurrentMileage
-from .utils import get_active_cyclists_for_eventboard, get_all_subgroup_ids
+from .utils import get_active_cyclists_for_eventboard, get_all_subgroup_ids, get_session_velos_for_cyclist
 from decimal import Decimal
 import json
 
@@ -178,7 +178,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                     active_cyclists_by_event[event_id] = list(active_cyclists_by_event[event_id].values())
         
         for event in available_events:
-            total_distance = float(event.get_total_distance_km())
+            total_distance = float(event.get_total_velos())
             group_count = event.group_statuses.count()
             is_currently_active = event.is_currently_active()
             
@@ -196,7 +196,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                 'event_type_code': event.event_type,
                 'start_time': event.start_time,
                 'end_time': event.end_time,
-                'total_distance_km': total_distance,
+                'total_velos': total_distance,
                 'group_count': group_count,
                 'is_currently_active': is_currently_active,
                 'has_active_cyclists': has_active_cyclists,
@@ -224,9 +224,9 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
     event = None
     groups_data = []
     statistics = {
-        'total_distance_km': Decimal('0.00000'),
+        'total_velos': Decimal('0.00000'),
         'group_count': 0,
-        'average_distance_km': Decimal('0.00000'),
+        'average_velos': Decimal('0.00000'),
     }
     
     if event_id:
@@ -236,7 +236,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
             # Lade Gruppen-Status für dieses Event
             group_statuses = GroupEventStatus.objects.filter(
                 event=event
-            ).select_related('group').order_by('-current_distance_km')
+            ).select_related('group').order_by('-current_velos')
             
             # Filtere nach TOP-Gruppe, falls angegeben
             if group_filter_id:
@@ -256,35 +256,35 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                     'short_name': group.short_name,
                     'logo_url': group.logo.url if group.logo else None,
                     'color': group.color,
-                    'current_distance_km': float(status.current_distance_km),
+                    'current_velos': float(status.current_velos),
                     'group_type': group.group_type.name if group.group_type else None,
                 })
             
             # Berechne Statistiken
             if groups_data:
-                total = sum(g['current_distance_km'] for g in groups_data)
-                statistics['total_distance_km'] = Decimal(str(total))
+                total = sum(g['current_velos'] for g in groups_data)
+                statistics['total_velos'] = Decimal(str(total))
                 statistics['group_count'] = len(groups_data)
-                statistics['average_distance_km'] = Decimal(str(total / len(groups_data))) if groups_data else Decimal('0.00000')
+                statistics['average_velos'] = Decimal(str(total / len(groups_data))) if groups_data else Decimal('0.00000')
                 
                 # Sortiere nach Distanz (absteigend)
-                groups_data.sort(key=lambda x: x['current_distance_km'], reverse=True)
+                groups_data.sort(key=lambda x: x['current_velos'], reverse=True)
                 
                 # Füge Rang und Fortschritts-Prozentsatz hinzu
-                # WICHTIG: Fortschritts-Prozentsatz relativ zum Event-Ziel (target_distance_km), nicht relativ zu anderen Gruppen
+                # WICHTIG: Fortschritts-Prozentsatz relativ zum Event-Ziel (target_velos), nicht relativ zu anderen Gruppen
                 for idx, group_data in enumerate(groups_data, start=1):
                     group_data['rank'] = idx
                     # Berechne Fortschritts-Prozentsatz relativ zum Event-Ziel
-                    if event.target_distance_km and event.target_distance_km > 0:
+                    if event.target_velos and event.target_velos > 0:
                         # Verwende float() um sicherzustellen, dass die Berechnung mit Punkten (nicht Kommas) funktioniert
-                        group_progress = (float(group_data['current_distance_km']) / float(event.target_distance_km)) * 100.0
+                        group_progress = (float(group_data['current_velos']) / float(event.target_velos)) * 100.0
                         group_data['progress_percentage'] = float(min(group_progress, 100.0))  # Cap bei 100%
                         # CRITICAL: Format as string with dot for CSS compatibility (like in game app)
                         group_data['progress_percentage_str'] = format_css_number(group_data['progress_percentage'], decimals=1)
                     else:
                         # Falls kein Ziel gesetzt ist, verwende relativen Fortschritt zu anderen Gruppen
                         if total > 0:
-                            group_data['progress_percentage'] = float((group_data['current_distance_km'] / total) * 100)
+                            group_data['progress_percentage'] = float((group_data['current_velos'] / total) * 100)
                         else:
                             group_data['progress_percentage'] = 0.0
                         # Format as string with dot for CSS compatibility
@@ -296,7 +296,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
         # Berechne Fortschrittsdaten zum Ziel (pro Gruppe, nicht Summe)
         progress_data = None
         podium_data = []
-        if event and event.target_distance_km:
+        if event and event.target_velos:
             # Hole Top 3 Gruppen, die das Ziel erreicht haben (sortiert nach goal_reached_at)
             top_groups = event.get_top_groups(limit=3)
             for idx, status in enumerate(top_groups, start=1):
@@ -313,7 +313,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                     leaf_contributions = LeafGroupEventContribution.objects.filter(
                         leaf_group__parent=group,
                         event=event
-                    ).select_related('leaf_group').order_by('-current_event_distance')
+                    ).select_related('leaf_group').order_by('-current_event_velos')
                     
                     if leaf_contributions.exists():
                         best_contribution = leaf_contributions.first()
@@ -331,9 +331,9 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                             leaf_group=best_leaf_group,
                             event=event
                         )
-                        contribution_km = float(contribution.current_event_distance)
+                        contribution_velos = float(contribution.current_event_velos)
                     except LeafGroupEventContribution.DoesNotExist:
-                        contribution_km = 0.0
+                        contribution_velos = 0.0
                     
                     best_leaf_group_data = {
                         'id': best_leaf_group.id,
@@ -341,7 +341,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                         'short_name': best_leaf_group.short_name,
                         'logo_url': best_leaf_group.logo.url if best_leaf_group.logo else None,
                         'color': best_leaf_group.color,
-                        'contribution_km': contribution_km,
+                        'contribution_velos': contribution_velos,
                         'goal_reached_at': status.best_leaf_group_goal_reached_at.isoformat() if status.best_leaf_group_goal_reached_at else None,
                     }
                 
@@ -352,7 +352,7 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
                     'short_name': group.short_name,
                     'logo_url': group.logo.url if group.logo else None,
                     'color': group.color,
-                    'current_distance_km': float(status.current_distance_km),
+                    'current_velos': float(status.current_velos),
                     'goal_reached_at': status.goal_reached_at.isoformat() if status.goal_reached_at else None,
                     'best_leaf_group': best_leaf_group_data,
                 })
@@ -361,13 +361,13 @@ def eventboard_page(request: HttpRequest) -> HttpResponse:
             # (nicht die Summe aller Gruppen)
             # Für die Anzeige verwenden wir die beste Gruppe als Referenz
             if groups_data:
-                best_group = max(groups_data, key=lambda x: x['current_distance_km'])
-                best_group_progress = (best_group['current_distance_km'] / float(event.target_distance_km)) * 100.0 if event.target_distance_km > 0 else 0.0
+                best_group = max(groups_data, key=lambda x: x['current_velos'])
+                best_group_progress = (best_group['current_velos'] / float(event.target_velos)) * 100.0 if event.target_velos > 0 else 0.0
                 progress_data = {
-                    'target_distance_km': float(event.target_distance_km),
-                    'current_distance_km': best_group['current_distance_km'],
+                    'target_velos': float(event.target_velos),
+                    'current_velos': best_group['current_velos'],
                     'progress_percentage': min(best_group_progress, 100.0),
-                    'remaining_distance_km': max(0.0, float(event.target_distance_km) - best_group['current_distance_km']),
+                    'remaining_velos': max(0.0, float(event.target_velos) - best_group['current_velos']),
                     'best_group_name': best_group['name'],
                 }
     
@@ -396,7 +396,7 @@ def eventboard_selection_api(request: HttpRequest) -> JsonResponse:
     group_filter_id = request.GET.get('group_filter_id')
     
     # Lade verfügbare Events
-    # WICHTIG: Kein prefetch_related verwenden, da wir get_total_distance_km() aufrufen,
+    # WICHTIG: Kein prefetch_related verwenden, da wir get_total_velos() aufrufen,
     # das eine neue Datenbankabfrage macht. prefetch_related würde nur die bereits geladenen
     # Objekte verwenden, die möglicherweise veraltet sind.
     available_events = Event.objects.filter(is_active=True)
@@ -507,11 +507,11 @@ def eventboard_selection_api(request: HttpRequest) -> JsonResponse:
     
     # Erstelle Event-Daten mit aktiven Radlern
     # WICHTIG: Refresh jedes Event-Objekt von der Datenbank, um sicherzustellen,
-    # dass wir die neuesten Daten haben (insbesondere für get_total_distance_km())
+    # dass wir die neuesten Daten haben (insbesondere für get_total_velos())
     for event in available_events:
         # Refresh event from database to ensure we have the latest data
         event.refresh_from_db()
-        total_distance = float(event.get_total_distance_km())
+        total_distance = float(event.get_total_velos())
         group_count = event.group_statuses.count()
         is_currently_active = event.is_currently_active()
         
@@ -529,7 +529,7 @@ def eventboard_selection_api(request: HttpRequest) -> JsonResponse:
             'event_type_code': event.event_type,
             'start_time': event.start_time.isoformat() if event.start_time else None,
             'end_time': event.end_time.isoformat() if event.end_time else None,
-            'total_distance_km': total_distance,
+            'total_velos': total_distance,
             'group_count': group_count,
             'is_currently_active': is_currently_active,
             'has_active_cyclists': has_active_cyclists,
@@ -566,9 +566,9 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
     event_data = None
     groups_data = []
     statistics = {
-        'total_distance_km': 0.0,
+        'total_velos': 0.0,
         'group_count': 0,
-        'average_distance_km': 0.0,
+        'average_velos': 0.0,
     }
     podium_data = []
     progress_data = None
@@ -579,7 +579,7 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
             
             group_statuses = GroupEventStatus.objects.filter(
                 event=event
-            ).select_related('group').order_by('-current_distance_km')
+            ).select_related('group').order_by('-current_velos')
             
             if group_filter_id:
                 try:
@@ -597,31 +597,31 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                     'short_name': group.short_name,
                     'logo_url': group.logo.url if group.logo else None,
                     'color': group.color,
-                    'current_distance_km': float(status.current_distance_km),
+                    'current_velos': float(status.current_velos),
                     'group_type': group.group_type.name if group.group_type else None,
                 })
             
             if groups_data:
-                total = sum(g['current_distance_km'] for g in groups_data)
-                statistics['total_distance_km'] = total
+                total = sum(g['current_velos'] for g in groups_data)
+                statistics['total_velos'] = total
                 statistics['group_count'] = len(groups_data)
-                statistics['average_distance_km'] = total / len(groups_data) if groups_data else 0.0
+                statistics['average_velos'] = total / len(groups_data) if groups_data else 0.0
                 
-                groups_data.sort(key=lambda x: x['current_distance_km'], reverse=True)
+                groups_data.sort(key=lambda x: x['current_velos'], reverse=True)
                 
                 for idx, group_data in enumerate(groups_data, start=1):
                     group_data['rank'] = idx
-                    # Berechne Fortschritts-Prozentsatz relativ zum Event-Ziel (target_distance_km)
+                    # Berechne Fortschritts-Prozentsatz relativ zum Event-Ziel (target_velos)
                     # WICHTIG: Verwende float() um sicherzustellen, dass die Berechnung mit Punkten (nicht Kommas) funktioniert
-                    if event.target_distance_km and event.target_distance_km > 0:
-                        group_progress = (float(group_data['current_distance_km']) / float(event.target_distance_km)) * 100.0
+                    if event.target_velos and event.target_velos > 0:
+                        group_progress = (float(group_data['current_velos']) / float(event.target_velos)) * 100.0
                         group_data['progress_percentage'] = float(min(group_progress, 100.0))  # Cap bei 100%
                         # CRITICAL: Format as string with dot for CSS compatibility (like in game app)
                         group_data['progress_percentage_str'] = format_css_number(group_data['progress_percentage'], decimals=1)
                     else:
                         # Falls kein Ziel gesetzt ist, verwende relativen Fortschritt zu anderen Gruppen
                         if total > 0:
-                            group_data['progress_percentage'] = float((group_data['current_distance_km'] / total) * 100)
+                            group_data['progress_percentage'] = float((group_data['current_velos'] / total) * 100)
                         else:
                             group_data['progress_percentage'] = 0.0
                         # Format as string with dot for CSS compatibility
@@ -630,15 +630,15 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
             # Berechne Fortschrittsdaten zum Ziel
             progress_data = None
             podium_data = []
-            if event.target_distance_km:
-                total_distance = event.get_total_distance_km()
+            if event.target_velos:
+                total_distance = event.get_total_velos()
                 progress_percentage = event.get_progress_percentage()
-                remaining_distance_km = float(event.target_distance_km - total_distance) if total_distance < event.target_distance_km else 0.0
+                remaining_velos = float(event.target_velos - total_distance) if total_distance < event.target_velos else 0.0
                 progress_data = {
-                    'target_distance_km': float(event.target_distance_km),
-                    'current_distance_km': float(total_distance),
+                    'target_velos': float(event.target_velos),
+                    'current_velos': float(total_distance),
                     'progress_percentage': float(progress_percentage) if progress_percentage else 0.0,
-                    'remaining_distance_km': remaining_distance_km,
+                    'remaining_velos': remaining_velos,
                 }
                 
                 # Hole Top 3 Gruppen, die das Ziel erreicht haben (sortiert nach goal_reached_at)
@@ -660,7 +660,7 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                         leaf_contributions = LeafGroupEventContribution.objects.filter(
                             leaf_group__parent=group,
                             event=event
-                        ).select_related('leaf_group').order_by('-current_event_distance')
+                        ).select_related('leaf_group').order_by('-current_event_velos')
                         
                         if leaf_contributions.exists():
                             best_contribution = leaf_contributions.first()
@@ -678,9 +678,9 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                                 leaf_group=best_leaf_group,
                                 event=event
                             )
-                            contribution_km = float(contribution.current_event_distance)
+                            contribution_velos = float(contribution.current_event_velos)
                         except LeafGroupEventContribution.DoesNotExist:
-                            contribution_km = 0.0
+                            contribution_velos = 0.0
                         
                         best_leaf_group_data = {
                             'id': best_leaf_group.id,
@@ -688,7 +688,7 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                             'short_name': best_leaf_group.short_name,
                             'logo_url': best_leaf_group.logo.url if best_leaf_group.logo else None,
                             'color': best_leaf_group.color,
-                            'contribution_km': contribution_km,
+                            'contribution_velos': contribution_velos,
                             'goal_reached_at': status.best_leaf_group_goal_reached_at.isoformat() if status.best_leaf_group_goal_reached_at else None,
                         }
                     
@@ -699,20 +699,20 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                         'short_name': group.short_name,
                         'logo_url': group.logo.url if group.logo else None,
                         'color': group.color,
-                        'current_distance_km': float(status.current_distance_km),
+                        'current_velos': float(status.current_velos),
                         'goal_reached_at': status.goal_reached_at.isoformat() if status.goal_reached_at else None,
                         'best_leaf_group': best_leaf_group_data,
                     })
                 
                 # Fortschrittsanzeige: Zeige für die beste Gruppe ihren individuellen Fortschritt
                 if groups_data:
-                    best_group = max(groups_data, key=lambda x: x['current_distance_km'])
-                    best_group_progress = (best_group['current_distance_km'] / float(event.target_distance_km)) * 100.0 if event.target_distance_km > 0 else 0.0
+                    best_group = max(groups_data, key=lambda x: x['current_velos'])
+                    best_group_progress = (best_group['current_velos'] / float(event.target_velos)) * 100.0 if event.target_velos > 0 else 0.0
                     progress_data = {
-                        'target_distance_km': float(event.target_distance_km),
-                        'current_distance_km': best_group['current_distance_km'],
+                        'target_velos': float(event.target_velos),
+                        'current_velos': best_group['current_velos'],
                         'progress_percentage': min(best_group_progress, 100.0),
-                        'remaining_distance_km': max(0.0, float(event.target_distance_km) - best_group['current_distance_km']),
+                        'remaining_velos': max(0.0, float(event.target_velos) - best_group['current_velos']),
                         'best_group_name': best_group['name'],
                     }
             
@@ -724,7 +724,7 @@ def eventboard_api(request: HttpRequest) -> JsonResponse:
                 'start_time': event.start_time.isoformat() if event.start_time else None,
                 'end_time': event.end_time.isoformat() if event.end_time else None,
                 'is_active': event.is_active,
-                'target_distance_km': float(event.target_distance_km) if event.target_distance_km else None,
+                'target_velos': float(event.target_velos) if event.target_velos else None,
                 'update_interval_seconds': event.update_interval_seconds,
                 'left_logo_url': event.left_logo.url if event.left_logo else None,
                 'right_logo_url': event.right_logo.url if event.right_logo else None,
@@ -767,7 +767,9 @@ def eventboard_ticker(request: HttpRequest) -> HttpResponse:
         is_visible=True,
         last_active__isnull=False,
         last_active__gte=active_cutoff
-    ).select_related('cyclistdevicecurrentmileage').prefetch_related('groups')
+    ).select_related(
+        'cyclistdevicecurrentmileage__device__configuration',
+    ).prefetch_related('groups')
     
     base_count = base_cyclists.count()
     logger.info(f"Eventboard ticker: Base query found {base_count} cyclists")
@@ -873,14 +875,7 @@ def eventboard_ticker(request: HttpRequest) -> HttpResponse:
     logger.info(f"Eventboard ticker: Processing {final_count} cyclists")
     ticker_data = []
     for cyclist in base_cyclists.order_by('-last_active'):
-        # Get session kilometers from CyclistDeviceCurrentMileage (gleiche Logik wie Map/Leaderboard)
-        session_km = 0.0
-        try:
-            mileage_obj = cyclist.cyclistdevicecurrentmileage
-            if mileage_obj and mileage_obj.cumulative_mileage is not None:
-                session_km = float(mileage_obj.cumulative_mileage)
-        except (AttributeError, CyclistDeviceCurrentMileage.DoesNotExist):
-            session_km = 0.0
+        session_velos = get_session_velos_for_cyclist(cyclist)
         
         # Get primary group's short name (gleiche Logik wie Map/Leaderboard)
         group_short_name = ''
@@ -896,17 +891,16 @@ def eventboard_ticker(request: HttpRequest) -> HttpResponse:
                 # Fallback zu short_name oder name
                 group_short_name = primary_group.short_name or primary_group.name
         
-        # Always include cyclist, even if session_km is 0 (gleiche Logik wie Map)
+        # Always include cyclist, even if session_velos is 0
         ticker_data.append({
             'id': cyclist.id,
             'user_id': cyclist.user_id,
             'group_short_name': group_short_name,
-            'session_km': session_km,
+            'session_velos': session_velos,
             'last_active': cyclist.last_active.isoformat() if cyclist.last_active else None,
         })
     
-    # Sortiere nach Session-Kilometern (absteigend) - gleiche Logik wie Map/Leaderboard
-    ticker_data.sort(key=lambda x: x['session_km'], reverse=True)
+    ticker_data.sort(key=lambda x: x['session_velos'], reverse=True)
     
     logger.info(f"Eventboard ticker: Returning {len(ticker_data)} active cyclists")
     if len(ticker_data) > 0:

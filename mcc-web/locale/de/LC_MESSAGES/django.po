@@ -1982,7 +1982,7 @@ msgid "Raum-Code"
 msgstr ""
 
 #: game/models.py:23
-msgid "Eindeutiger Code für diesen Spielraum"
+msgid "Eindeutiger Code für diesen Rallye-Raum"
 msgstr ""
 
 #: game/models.py:30
@@ -2064,16 +2064,12 @@ msgid "Zeitpunkt der letzten Aktivität in diesem Raum"
 msgstr ""
 
 #: game/models.py:106
-#, fuzzy
-#| msgid "Spieler"
-msgid "Spielraum"
-msgstr "Spieler"
+msgid "Rallye-Raum"
+msgstr ""
 
 #: game/models.py:107
-#, fuzzy
-#| msgid "Spieler"
-msgid "Spielräume"
-msgstr "Spieler"
+msgid "Rallye-Räume"
+msgstr ""
 
 #: game/models.py:148
 msgid "Django Sitzungsschlüssel"
@@ -2477,7 +2473,7 @@ msgid "Zurück"
 msgstr ""
 
 #: game/templates/game/join_room.html:150
-msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Spielraum beizutreten."
+msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Rallye-Raum beizutreten."
 msgstr ""
 
 #: game/templates/game/mcc_game.html:581
@@ -2519,7 +2515,7 @@ msgstr ""
 
 #: game/templates/game/mcc_game.html:626
 msgid ""
-"Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die "
+"Erstelle einen Rallye-Raum, damit andere Radler an verschiedenen Orten die "
 "gleiche Tabelle sehen können."
 msgstr ""
 
@@ -2697,14 +2693,12 @@ msgstr ""
 
 #: game/templates/game/mcc_game.html:1856
 #: game/templates/game/mcc_game.html:1920
-#, fuzzy
-#| msgid "Spiel starten"
-msgid "Spiel-Raum beitreten"
-msgstr "Spiel starten"
+msgid "Rallye-Raum beitreten"
+msgstr ""
 
 #: game/templates/game/mcc_game.html:1857
 #: game/templates/game/mcc_game.html:1921
-msgid "Tritt meinem Spiel-Raum bei!"
+msgid "Tritt meinem Rallye-Raum bei!"
 msgstr ""
 
 #: game/templates/game/mcc_game.html:1884
@@ -2781,13 +2775,13 @@ msgid ""
 msgstr ""
 
 #: game/templates/game/partials/info_modal.html:39
-msgid "Was sind Spielräume?"
+msgid "Was sind Rallye-Räume?"
 msgstr ""
 
 #: game/templates/game/partials/info_modal.html:44
 msgid ""
-"Spielräume ermöglichen es mehreren Spielern, gemeinsam an derselben "
-"Challenge teilzunehmen. Der Raum-Ersteller ist der Spielleiter und kann "
+"Rallye-Räume ermöglichen es mehreren Radlern, gemeinsam an derselben "
+"Velos-Rallye teilzunehmen. Der Raum-Ersteller ist der Rallye-Leiter und kann "
 "Einstellungen ändern. Alle Teilnehmer sehen die gleichen Ergebnisse in "
 "Echtzeit."
 msgstr ""

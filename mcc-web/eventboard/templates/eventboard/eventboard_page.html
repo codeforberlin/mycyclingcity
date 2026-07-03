@@ -866,7 +866,7 @@
                     </div>
                     <div class="event-card-stats">
                         <div class="stat">
-                            <span class="stat-value" data-stat="distance">{{ event_item.total_distance_km|floatformat:2 }} km</span>
+                            <span class="stat-value" data-stat="distance">{{ event_item.total_velos }} Velos</span>
                             <span class="stat-label">{% trans "Gesamt" %}</span>
                         </div>
                         <div class="stat">
@@ -942,12 +942,12 @@
                             {% endif %}
                         </div>
                         <div class="podium-group-name">{{ group.name }}</div>
-                        <div class="podium-group-distance">{{ group.current_distance_km|floatformat:2 }} km</div>
+                        <div class="podium-group-distance">{{ group.current_velos }} Velos</div>
                         {% if group.best_leaf_group %}
                         <div class="podium-leaf-group">
                             <span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span>
                             <span class="podium-leaf-name">{{ group.best_leaf_group.name }}</span>
-                            <span class="podium-leaf-distance">({{ group.best_leaf_group.contribution_km|floatformat:2 }} km)</span>
+                            <span class="podium-leaf-distance">({{ group.best_leaf_group.contribution_velos }} Velos)</span>
                             {% if group.best_leaf_group.goal_reached_at %}
                             <div class="podium-leaf-time">
                                 {% trans "Ziel erreicht" %}: <span data-utc-datetime="{{ group.best_leaf_group.goal_reached_at }}" data-datetime-format="d.m.Y H:i">{{ group.best_leaf_group.goal_reached_at|date:"d.m.Y H:i" }}</span>
@@ -982,12 +982,12 @@
                         </div>
                     </div>
                     <div class="group-card-distance">
-                        {{ group.current_distance_km|floatformat:2 }} km
-                        {% if event.target_distance_km %}
-                        <span class="group-card-target">/ {{ event.target_distance_km|floatformat:2 }} km</span>
+                        {{ group.current_velos }} Velos
+                        {% if event.target_velos %}
+                        <span class="group-card-target">/ {{ event.target_velos }} Velos</span>
                         {% endif %}
                     </div>
-                    {% if event.target_distance_km %}
+                    {% if event.target_velos %}
                     <div class="group-card-progress">
                         {% if group.progress_percentage > 100.0 %}
                             <div class="group-card-progress-bar" style="width: 100% !important; max-width: 100% !important; background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%) !important;"></div>
@@ -997,7 +997,7 @@
                             <div class="group-card-progress-bar" style="width: {{ group.progress_percentage_str|default:"0.0" }}% !important; max-width: {{ group.progress_percentage_str|default:"0.0" }}% !important; min-width: 0% !important;"></div>
                         {% endif %}
                     </div>
-                    {% elif statistics.total_distance_km > 0 %}
+                    {% elif statistics.total_velos > 0 %}
                     <div class="group-card-progress">
                         <div class="group-card-progress-bar" style="width: {{ group.progress_percentage_str|default:"0.0" }}% !important; max-width: {{ group.progress_percentage_str|default:"0.0" }}% !important; min-width: 0% !important;"></div>
                     </div>
@@ -1016,8 +1016,8 @@
                 <h2>{% trans "Statistiken" %}</h2>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-item-label">{% trans "Gesamtkilometer" %}</div>
-                        <div class="stat-item-value">{{ statistics.total_distance_km|floatformat:2 }} km</div>
+                        <div class="stat-item-label">{% trans "Velos gesamt" %}</div>
+                        <div class="stat-item-value">{{ statistics.total_velos }} Velos</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-item-label">{% trans "Teilnehmende Gruppen" %}</div>
@@ -1025,7 +1025,7 @@
                     </div>
                     <div class="stat-item">
                         <div class="stat-item-label">{% trans "Durchschnitt" %}</div>
-                        <div class="stat-item-value">{{ statistics.average_distance_km|floatformat:2 }} km</div>
+                        <div class="stat-item-value">{{ statistics.average_velos }} Velos</div>
                     </div>
                 </div>
             </footer>
@@ -1142,14 +1142,12 @@
                 
                 activeCyclists.forEach(function(cyclist) {
                     var key = cyclist.user_id + '|' + (cyclist.group_short_name || '');
-                    var lastKm = lastTickerData[key];
+                    var lastVelos = lastTickerData[key];
                     var shouldShowToast = false;
                     
-                    if (!lastKm) {
-                        // First time seeing this cyclist - always show toast
+                    if (lastVelos === undefined || lastVelos === null) {
                         shouldShowToast = true;
-                    } else if (Math.abs(cyclist.session_km - lastKm) > 0.1) {
-                        // Kilometers have increased significantly - show toast
+                    } else if (Math.abs(cyclist.session_velos - lastVelos) >= 1) {
                         shouldShowToast = true;
                     } else {
                         // Check if a toast for this cyclist is already visible
@@ -1174,7 +1172,7 @@
                     
                     if (shouldShowToast) {
                         createActivityToast(cyclist);
-                        lastTickerData[key] = cyclist.session_km;
+                        lastTickerData[key] = cyclist.session_velos;
                     }
                 });
             } catch (e) {
@@ -1293,10 +1291,10 @@
                         var groupsContainer = document.querySelector('.eventboard-groups');
                         if (groupsContainer) {
                             groupsContainer.innerHTML = '';
-                            // WICHTIG: Verwende target_distance_km für Fortschrittsberechnung, falls vorhanden
+                            // WICHTIG: Verwende target_velos für Fortschrittsberechnung, falls vorhanden
                             var targetDistance = null;
-                            if (data.event && data.event.target_distance_km !== null && data.event.target_distance_km !== undefined) {
-                                targetDistance = parseFloat(data.event.target_distance_km);
+                            if (data.event && data.event.target_velos !== null && data.event.target_velos !== undefined) {
+                                targetDistance = parseFloat(data.event.target_velos);
                             }
                             console.log('Eventboard Update: targetDistance =', targetDistance, 'event =', data.event);
                             
@@ -1326,7 +1324,7 @@
                                     // Verwende progress_percentage_str aus der API, falls vorhanden
                                     if (!group.progress_percentage_str) {
                                         // Fallback: Berechne neu
-                                        var progressWidth = Math.min((parseFloat(group.current_distance_km) / parseFloat(targetDistance)) * 100.0, 100.0);
+                                        var progressWidth = Math.min((parseFloat(group.current_velos) / parseFloat(targetDistance)) * 100.0, 100.0);
                                         progressWidthStr = progressWidth.toFixed(1);
                                     }
                                     
@@ -1346,9 +1344,9 @@
                                     }
                                 } else {
                                     // Fallback: Relativer Fortschritt zu anderen Gruppen
-                                    var maxDistance = Math.max(...data.groups.map(g => parseFloat(g.current_distance_km)));
+                                    var maxDistance = Math.max(...data.groups.map(g => parseFloat(g.current_velos)));
                                     if (maxDistance > 0) {
-                                        var progressWidth = (parseFloat(group.current_distance_km) / parseFloat(maxDistance)) * 100.0;
+                                        var progressWidth = (parseFloat(group.current_velos) / parseFloat(maxDistance)) * 100.0;
                                         progressWidthStr = progressWidth.toFixed(1);
                                         progressHtml = '<div class="group-card-progress">' +
                                             '<div class="group-card-progress-bar" style="width: ' + progressWidthStr + '% !important; max-width: ' + progressWidthStr + '% !important; min-width: 0% !important;"></div>' +
@@ -1356,9 +1354,9 @@
                                     }
                                 }
                                 
-                                var distanceHtml = '<div class="group-card-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km';
+                                var distanceHtml = '<div class="group-card-distance">' + formatVelosDE(group.current_velos) + ' Velos';
                                 if (targetDistance && targetDistance > 0) {
-                                    distanceHtml += '<span class="group-card-target"> / ' + formatNumberDE(targetDistance, 2) + ' km</span>';
+                                    distanceHtml += '<span class="group-card-target"> / ' + formatVelosDE(targetDistance) + ' Velos</span>';
                                 }
                                 distanceHtml += '</div>';
                                 
@@ -1380,9 +1378,9 @@
                         if (data.statistics) {
                             var statItems = document.querySelectorAll('.stat-item-value');
                             if (statItems.length >= 3) {
-                                statItems[0].textContent = formatNumberDE(data.statistics.total_distance_km, 2) + ' km';
+                                statItems[0].textContent = formatVelosDE(data.statistics.total_velos) + ' Velos';
                                 statItems[1].textContent = data.statistics.group_count;
-                                statItems[2].textContent = formatNumberDE(data.statistics.average_distance_km, 2) + ' km';
+                                statItems[2].textContent = formatVelosDE(data.statistics.average_velos) + ' Velos';
                             }
                         }
                         
@@ -1449,7 +1447,7 @@
                                         leafGroupHtml = '<div class="podium-leaf-group">' +
                                             '<span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span> ' +
                                             '<span class="podium-leaf-name">' + leafGroup.name + '</span> ' +
-                                            '<span class="podium-leaf-distance">(' + formatNumberDE(leafGroup.contribution_km, 2) + ' km)</span>';
+                                            '<span class="podium-leaf-distance">(' + formatVelosDE(leafGroup.contribution_velos) + ' Velos)</span>';
                                         if (leafGroup.goal_reached_at) {
                                             var leafGoalTime = new Date(leafGroup.goal_reached_at);
                                             var leafGoalTimeStr = leafGoalTime.toLocaleString('de-DE', {
@@ -1471,7 +1469,7 @@
                                         '<div class="podium-medal">' + medal + '</div>' +
                                         '<div class="podium-group-logo">' + logoHtml + '</div>' +
                                         '<div class="podium-group-name">' + group.name + '</div>' +
-                                        '<div class="podium-group-distance">' + formatNumberDE(group.current_distance_km, 2) + ' km</div>' +
+                                        '<div class="podium-group-distance">' + formatVelosDE(group.current_velos) + ' Velos</div>' +
                                         leafGroupHtml +
                                         '<div class="podium-rank">{% trans "Platz" %} ' + group.rank + '</div>' +
                                         '</div>';
@@ -1579,11 +1577,11 @@
         }
         
         function updateEventCard(card, event) {
-            // Aktualisiere Kilometer
+            // Aktualisiere Velos-Gesamtstand
             var distanceStat = card.querySelector('[data-stat="distance"]');
             if (distanceStat) {
                 var oldValue = distanceStat.textContent;
-                var newValue = formatNumberDE(event.total_distance_km, 2) + ' km';
+                var newValue = formatVelosDE(event.total_velos) + ' Velos';
                 distanceStat.textContent = newValue;
                 if (oldValue !== newValue) {
                     console.log('Eventboard: Updated distance for event', event.id, 'from', oldValue, 'to', newValue);
@@ -1684,7 +1682,7 @@
                 '<div class="event-card-time">' + timeRange + '</div>' +
                 '<div class="event-card-stats">' +
                 '<div class="stat">' +
-                '<span class="stat-value" data-stat="distance">' + formatNumberDE(event.total_distance_km, 2) + ' km</span>' +
+                '<span class="stat-value" data-stat="distance">' + formatVelosDE(event.total_velos) + ' Velos</span>' +
                 '<span class="stat-label">{% trans "Gesamt" %}</span>' +
                 '</div>' +
                 '<div class="stat">' +
@@ -1728,7 +1726,7 @@
                     existingToast = existingToasts[i];
                     var distanceSpan = existingToast.querySelector('.activity-toast-distance');
                     if (distanceSpan) {
-                        distanceSpan.textContent = formatNumberDE(cyclist.session_km, 2) + ' km';
+                        distanceSpan.textContent = formatVelosDE(cyclist.session_velos) + ' Velos';
                     }
                     toastExists = true;
                     sortActivityToasts();
@@ -1736,23 +1734,20 @@
                 }
             }
             
-            // Remove lowest km toast if at max (same logic as Map/Leaderboard)
+            // Remove lowest Velos toast if at max
             var currentToasts = container.querySelectorAll('.activity-toast');
             if (currentToasts.length >= maxToasts) {
-                // Sort current toasts to find the one with lowest km
                 var toastsArray = Array.from(currentToasts);
                 toastsArray.sort(function(a, b) {
-                    var aKm = parseFloat(a.dataset.sessionKm || 0);
-                    var bKm = parseFloat(b.dataset.sessionKm || 0);
-                    return aKm - bKm; // Ascending to find lowest
+                    var aVelos = parseInt(a.dataset.sessionVelos || '0', 10);
+                    var bVelos = parseInt(b.dataset.sessionVelos || '0', 10);
+                    return aVelos - bVelos;
                 });
                 
-                // Remove the toast with lowest km
                 var lowestToast = toastsArray[0];
                 if (lowestToast) {
-                    // Only remove if new cyclist has more km
-                    var lowestKm = parseFloat(lowestToast.dataset.sessionKm || 0);
-                    if (cyclist.session_km > lowestKm) {
+                    var lowestVelos = parseInt(lowestToast.dataset.sessionVelos || '0', 10);
+                    if (cyclist.session_velos > lowestVelos) {
                         lowestToast.classList.add('fade-out');
                         setTimeout(function() {
                             if (lowestToast.parentNode) {
@@ -1760,7 +1755,6 @@
                             }
                         }, 300);
                     } else {
-                        // New cyclist has less or equal km - don't show toast
                         return;
                     }
                 } else {
@@ -1771,7 +1765,7 @@
             var toast = document.createElement('div');
             toast.className = 'activity-toast';
             toast.setAttribute('data-cyclist-key', cyclist.user_id + '|' + (cyclist.group_short_name || ''));
-            toast.setAttribute('data-session-km', cyclist.session_km);
+            toast.setAttribute('data-session-velos', cyclist.session_velos);
             
             var icon = '🚴';
             var title = '{% trans "Aktuell radelnd" %}';
@@ -1779,7 +1773,7 @@
             if (cyclist.group_short_name) {
                 body += ' (' + cyclist.group_short_name + ')';
             }
-            body += ' - <span class="activity-toast-distance">' + formatNumberDE(cyclist.session_km, 2) + ' km</span>';
+            body += ' - <span class="activity-toast-distance">' + formatVelosDE(cyclist.session_velos) + ' Velos</span>';
             
             toast.innerHTML = 
                 '<div class="activity-toast-header">' +
@@ -1809,9 +1803,9 @@
             
             var toasts = Array.from(container.children);
             toasts.sort(function(a, b) {
-                var aKm = parseFloat(a.dataset.sessionKm || 0);
-                var bKm = parseFloat(b.dataset.sessionKm || 0);
-                return bKm - aKm;
+                var aVelos = parseInt(a.dataset.sessionVelos || '0', 10);
+                var bVelos = parseInt(b.dataset.sessionVelos || '0', 10);
+                return bVelos - aVelos;
             });
             
             toasts.forEach(function(toast) {
@@ -1821,6 +1815,11 @@
         
         function formatNumberDE(num, decimals) {
             return num.toFixed(decimals).replace('.', ',');
+        }
+
+        function formatVelosDE(value) {
+            var n = Math.round(Number(value) || 0);
+            return n.toLocaleString('de-DE');
         }
         
         // Debug: Prüfe, ob updateEventSelection definiert ist und rufe sie auf

@@ -9,32 +9,27 @@
 {# mcc/game/templates/game/results_table_fragment.html #}
 {% load static %}
 {% load i18n %}
-{% load game_filters %}
+{% load game_filters map_filters %}
 
 <tbody id="resultsTableBody"
     hx-get="{% url 'game:render_results_table' %}"
     hx-target="this"
     hx-swap="outerHTML"
-    hx-include="#targetKm" 
+    hx-include="#targetVelos" 
     
-    {# Setze den Trigger basierend auf Spielstatus und Raum-Status #}
     {% if game_is_active and not is_game_stopped %}
-        {# Spiel läuft: Alle 10 Sekunden aktualisieren + refresh event #}
         hx-trigger="every 10s, refresh" 
     {% elif room_code %}
-        {# Raum aktiv, aber Spiel noch nicht gestartet: Alle 3 Sekunden aktualisieren für Echtzeit-Synchronisation #}
         hx-trigger="every 3s, refresh" 
     {% else %}
-        {# Kein Raum, kein aktives Spiel: Nur bei refresh event #}
         hx-trigger="refresh" 
     {% endif %}
     
-    {# CRITICAL: Data attributes for JS control and winner check #}
     data-game-active="{{ game_is_active|yesno:'true,false' }}"
     data-game-stopped="{{ is_game_stopped|yesno:'true,false' }}"
     data-new-winners="{{ new_winners|join:',' }}"
     data-room-code="{{ room_code|default:'' }}"
-    data-target-km="{% if target_km > 0 %}{{ target_km|floatformat:0 }}{% else %}0{% endif %}"
+    data-target-velos="{% if target_velos > 0 %}{{ target_velos }}{% else %}0{% endif %}"
     data-is-master="{{ is_master|yesno:'true,false' }}"
     >
     {% if game_results %}
@@ -48,10 +43,8 @@
         
         <tr data-cyclist="{{ result.cyclist_name }}" data-device="{{ result.device_name }}" 
             class="{% if is_winner %}winner-row {% endif %}{% if is_game_stopped and rank == 1 %}rank-1{% elif is_game_stopped and rank == 2 %}rank-2{% elif is_game_stopped and rank == 3 %}rank-3{% endif %}{% if result.is_master_cyclist %} master-row{% endif %}{% if result.is_own_assignment %} own-assignment{% endif %}">
-            {# Rank column: Medals when game is stopped, numbers when game is running #}
             <td class="rank-cell">
                 {% if is_game_stopped %}
-                    {# Show medals for top 3 when game is stopped #}
                     {% if rank == 1 %}
                         <span class="medal">🥇</span>
                     {% elif rank == 2 %}
@@ -62,12 +55,10 @@
                         {{ rank }}.
                     {% endif %}
                 {% else %}
-                    {# Show numbers when game is running #}
                     {{ rank }}.
                 {% endif %}
             </td>
             
-            {# Cyclist name with winner badge #}
             <td>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                     <span>{{ result.cyclist_name }}</span>
@@ -76,7 +67,7 @@
                     {% endif %}
                     {% if is_master and room_code %}
                         <button onclick="transferMasterTo('{{ result.cyclist_name }}')"
-                                title="{% trans 'Spielleiter-Rolle an diesen Teilnehmer übertragen' %}"
+                                title="{% trans 'Rallye-Leiter-Rolle an diesen Teilnehmer übertragen' %}"
                                 style="background-color: #ffc107; color: #333; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7em; cursor: pointer; margin-left: 5px;">
                             👑
                         </button>
@@ -86,11 +77,10 @@
             
             <td>{{ result.device_name }}</td>
             
-            {# Kilometers with progress bar if target is set #}
             <td>
                 <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div style="font-weight: bold; margin-bottom: 3px;">{{ result.distance_km|floatformat:2 }} km</div>
-                    {% if target_km > 0 %}
+                    <div style="font-weight: bold; margin-bottom: 3px;">{% format_velos_de_tag result.velos %}</div>
+                    {% if target_velos > 0 %}
                         <div class="progress-container" style="position: relative;">
                             {% if result.progress_percent > 100.0 %}
                                 <div class="progress-bar progress-bar-full" style="width: 100% !important; max-width: 100% !important; background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%) !important; height: 100% !important; display: block !important;"></div>
@@ -111,7 +101,6 @@
                 </div>
             </td>
             
-            <td>{{ result.coins|floatformat:0 }}</td>
             <td>
                 {% if result.can_delete %}
                 <button hx-post="{% url 'game:handle_assignment_form' %}"
@@ -126,13 +115,13 @@
                     {% trans "Entfernen" %}
                 </button>
                 {% else %}
-                <span style="color: #999; font-size: 0.8em;">{% trans "Nur Spielleiter" %}</span>
+                <span style="color: #999; font-size: 0.8em;">{% trans "Nur Rallye-Leiter" %}</span>
                 {% endif %}
             </td>
         </tr>
         {% endwith %}
         {% endfor %}
     {% else %}
-        <tr><td colspan="6" style="text-align:center;">{% trans "Warte auf Spielstart oder keine Zuweisungen aktiv." %}</td></tr>
+        <tr><td colspan="5" style="text-align:center;">{% trans "Warte auf Rundenstart oder keine Zuweisungen aktiv." %}</td></tr>
     {% endif %}
 </tbody>

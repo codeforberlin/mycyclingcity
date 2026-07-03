@@ -9,10 +9,10 @@
 {% load i18n ranking_filters %}
 <div class="rk-item-row">
     <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span class="rk-km-badge">{% format_km_de_tag item.distance_total 3 %} km</span>
+        <span class="rk-km-badge">{% format_velos_de_tag item.velos_total|default:item.distance_total|default:0 %}</span>
     </div>
     <div style="margin-top: 5px;">
-        <strong>{% format_km_de_tag item.distance_total 3 %} km</strong>
+        <strong>{% format_velos_de_tag item.velos_total|default:item.distance_total|default:0 %}</strong>
     </div>
 </div>
 

@@ -23,7 +23,21 @@ from .models import (
     Cyclist, Group, HourlyMetric, CyclistDeviceCurrentMileage, GroupTravelStatus, 
     Milestone, GroupMilestoneAchievement, LeafGroupTravelContribution, update_group_hierarchy_progress
 )
-from .helpers import _get_latest_snapshot_date_for_groups, filter_cyclist_metrics_by_snapshot
+from .helpers import (
+    _get_latest_snapshot_date_for_groups,
+    filter_cyclist_metrics_by_snapshot,
+    get_cyclist_by_identifier,
+    build_cyclist_velos_api_fields,
+    build_group_velos_api_fields,
+    get_cyclist_velos_total,
+    get_cyclist_velos_daily,
+    get_cyclist_velos_period,
+    _calculate_group_velos_periods,
+    _calculate_group_velos_from_metrics,
+    get_cyclist_session_velos,
+)
+from api.services.velos_redemption import redeem_cyclist_by_identifier
+from api.velos import track_reference_velos
 from iot.models import (
     Device, DeviceConfiguration, DeviceConfigurationReport, DeviceConfigurationDiff,
     FirmwareImage, DeviceManagementSettings, DeviceHealth, DeviceAuditLog
@@ -36,7 +50,7 @@ from decimal import Decimal, ROUND_FLOOR
 from datetime import timedelta, datetime
 from functools import wraps
 from config.logger_utils import get_logger
-
+from api.services.velos_earn import apply_velos_earn
 
 logger = get_logger(__name__)
 
@@ -93,42 +107,6 @@ def retry_on_db_lock(max_retries=10, base_delay=0.05, max_delay=5.0):
             return None
         return wrapper
     return decorator
-def push_to_minecraft_bridge(
-    username,
-    coins_total,
-    coins_spendable,
-    action,
-    spendable_action="set",
-    spendable_delta=None,
-):
-    """Queue a Minecraft outbox event for player score updates."""
-    from minecraft.services.outbox import queue_player_coins_update
-
-    if not username:
-        logger.error(_(" Konfiguration für Minecraft-Bridge ist unvollständig."))
-        return False
-
-    try:
-        if action not in ["set", "add"]:
-            logger.error(_(f" Ungültige Action für Minecraft-Bridge: {action}"))
-            return False
-
-        if action == "add":
-            logger.warning(_(f" Add-Action für Minecraft wird ignoriert. Führe set aus: {username}"))
-
-        queue_player_coins_update(
-            player=username,
-            coins_total=int(coins_total),
-            coins_spendable=int(coins_spendable),
-            reason="db_update",
-            spendable_action=spendable_action,
-            spendable_delta=spendable_delta,
-        )
-        logger.info(_(f" Coins für Spieler {username} in Outbox eingereiht."))
-        return True
-    except Exception as e:
-        logger.error(_(f" Fehler beim Einreihen der Coins an die Minecraft-Outbox: {e}"))
-        return False
 
 def validate_api_key(api_key):
     """Validates the API key for public endpoints (not IoT device endpoints).
@@ -300,286 +278,194 @@ def validate_device_api_key(request: HttpRequest, device_id: str = None) -> tupl
 
 def check_milestone_victory(group, active_leaf_group=None):
     """
-    Checks during KM update whether the group has reached a new milestone.
-    
-    Important: Meilensteine werden der kleinsten Gruppeneinheit (Leaf-Group) zugeordnet,
-    zu der die Radler direkt gehören (z.B. Klasse einer Schule), damit sichtbar ist,
-    welche spezifische Gruppe den Meilenstein zuerst erreicht hat.
-    
-    IMPORTANT: Uses current_travel_distance (Reise-Distanz) not distance_total (Gesamtdistanz).
-    Meilensteine werden basierend auf der aktuellen Reise-Distanz zugeordnet, nicht auf der
-    Gesamtdistanz aller Zeiten.
-    
-    Race-Condition Protection:
-    - Uses `select_for_update()` to lock the milestone during transaction
-    - First group to acquire the lock and update the milestone wins (first-come-first-serve)
-    - If multiple groups reach the milestone simultaneously, the group with the HIGHEST
-      current_travel_distance wins (ensures the group that actually reached furthest in the
-      current trip gets the milestone)
-    
-    Args:
-        group: The group to check milestones for (can be leaf or parent group)
-        active_leaf_group: Optional leaf group that is currently active (the one that just rode).
-                          Used for logging purposes only - milestone assignment is based on
-                          highest current_travel_distance, not on which group is currently active.
+    Check whether a group has reached new milestones based on Velos travel progress.
+
+    Milestones are assigned to the leaf group with the highest Velos contribution.
+    Geographic milestone positions remain km-based on the track.
     """
-    # Reload group from database to get fresh travel_status
+    from api.travel_velos import get_milestone_position_velos
+
     group.refresh_from_db()
-    
-    # Track variable to store the track for milestone checking
+
     track = None
     status = None
-    parent_travel_distance = None  # Store parent's travel distance for milestone checking
-    
+    parent_travel_velos = 0
+    leaf_group = None
+    leaf_current_velos = 0
+    new_milestones = Milestone.objects.none()
+
     try:
         status = group.travel_status
         track = status.track
-        parent_travel_distance = status.current_travel_distance
+        parent_travel_velos = int(status.current_travel_velos or 0)
     except GroupTravelStatus.DoesNotExist:
-        # If this is a leaf group without travel_status, we need to get the travel distance
-        # from its parent group's travel_status (since leaf groups share the parent's trip)
-        if group.is_leaf_group():
-            # Find parent group with travel_status to get current_travel_distance
-            parent = group.parent
-            if not parent:
-                logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has no parent. Skipping milestone check.")
-                return
-            
-            try:
-                parent_status = parent.travel_status
-                track = parent_status.track
-                # Get this leaf group's contribution to the trip
-                try:
-                    contribution = LeafGroupTravelContribution.objects.get(
-                        leaf_group=group,
-                        track=track
-                    )
-                    leaf_current_km = contribution.current_travel_distance or Decimal('0.00000')
-                    logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has travel contribution: {leaf_current_km} km on track '{track.name}'")
-                except LeafGroupTravelContribution.DoesNotExist:
-                    # No contribution yet - use parent's distance as fallback
-                    leaf_current_km = parent_status.current_travel_distance or Decimal('0.00000')
-                    logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has no contribution yet, using parent '{parent.name}' travel distance: {leaf_current_km} km")
-            except GroupTravelStatus.DoesNotExist:
-                logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' parent '{parent.name}' has no travel_status. Skipping milestone check.")
-                return
-            
-            # Find unreached milestones on this track that have now been exceeded
-            # IMPORTANT: Check against parent's total travel distance, but assign to leaf group with highest contribution
-            parent_travel_distance = parent_status.current_travel_distance or Decimal('0.00000')
-            
-            # Early exit if no distance traveled - prevents unnecessary debug messages
-            if parent_travel_distance <= 0:
-                return
-            
-            new_milestones = Milestone.objects.filter(
-                track=track,
-                winner_group__isnull=True,
-                distance_km__lte=parent_travel_distance  # Check parent's total distance
-            ).order_by('distance_km')
-            # Store parent_travel_distance for later use in transaction check
-            
-            # Early exit if no milestones to check - prevents unnecessary debug messages
-            if not new_milestones.exists():
-                return
-            
-            logger.debug(f"[check_milestone_victory] Found {new_milestones.count()} unreached milestones for leaf group '{group.name}'")
-            
-            # Use this leaf group directly
-            leaf_group = group
-        else:
-            logger.debug(f"[check_milestone_victory] Group '{group.name}' has no travel_status and is not a leaf group. Skipping milestone check.")
+        if not group.is_leaf_group():
+            logger.debug(
+                "[check_milestone_victory] Group '%s' has no travel_status and is not a leaf group.",
+                group.name,
+            )
             return
-    else:
-        # Group has travel_status - proceed with normal logic
-        # Reload status from database to get latest current_travel_distance
-        status.refresh_from_db()
-        track = status.track  # Set track for later use
-        current_travel_km = status.current_travel_distance
-        parent_travel_distance = current_travel_km  # For parent groups, this is the travel distance
-        
-        # Early exit if no distance traveled - prevents unnecessary debug messages
-        if not current_travel_km or current_travel_km <= 0:
-            return
-        
-        logger.debug(f"[check_milestone_victory] Checking milestones for group '{group.name}' on track '{track.name}' at {current_travel_km} km")
 
-        # Find unreached milestones on this track that have now been exceeded
+        parent = group.parent
+        if not parent:
+            return
+
+        try:
+            parent_status = parent.travel_status
+            track = parent_status.track
+            parent_travel_velos = int(parent_status.current_travel_velos or 0)
+        except GroupTravelStatus.DoesNotExist:
+            return
+
+        if parent_travel_velos <= 0:
+            return
+
         new_milestones = Milestone.objects.filter(
-            track=status.track,
+            track=track,
             winner_group__isnull=True,
-            distance_km__lte=current_travel_km
-        ).order_by('distance_km')
+            position_velos__lte=parent_travel_velos,
+        ).order_by('position_velos')
 
-        # Early exit if no milestones to check - prevents unnecessary debug messages
         if not new_milestones.exists():
             return
 
-        logger.debug(f"[check_milestone_victory] Found {new_milestones.count()} unreached milestones that may have been reached")
+        leaf_group = group
+        try:
+            contribution = LeafGroupTravelContribution.objects.get(
+                leaf_group=group,
+                track=track,
+            )
+            leaf_current_velos = int(contribution.current_travel_velos or 0)
+        except LeafGroupTravelContribution.DoesNotExist:
+            leaf_current_velos = parent_travel_velos
+    else:
+        status.refresh_from_db()
+        track = status.track
+        parent_travel_velos = int(status.current_travel_velos or 0)
 
-        # IMPORTANT: Find the actual leaf group (smallest unit) that reached the milestone
-        # The passed group might be a parent group with travel_status, but we MUST find the specific leaf group
-        # that actually reached the milestone based on their distance_total
-        leaf_group = None
-        leaf_current_km = None
-        
+        if parent_travel_velos <= 0:
+            return
+
+        logger.debug(
+            "[check_milestone_victory] Checking milestones for '%s' on '%s' at %s Velos",
+            group.name, track.name, parent_travel_velos,
+        )
+
+        new_milestones = Milestone.objects.filter(
+            track=track,
+            winner_group__isnull=True,
+            position_velos__lte=parent_travel_velos,
+        ).order_by('position_velos')
+
+        if not new_milestones.exists():
+            return
+
         if group.is_leaf_group():
-            # Group is already a leaf group, use it directly
-            # IMPORTANT: For leaf groups, we need to get the travel contribution from LeafGroupTravelContribution
-            # This tracks how much this leaf group contributed to the parent's trip
             parent = group.parent
-            if parent:
+            if not parent:
+                return
+            leaf_group = group
+            try:
+                contribution = LeafGroupTravelContribution.objects.get(
+                    leaf_group=group,
+                    track=track,
+                )
+                leaf_current_velos = int(contribution.current_travel_velos or 0)
+            except LeafGroupTravelContribution.DoesNotExist:
                 try:
                     parent_status = parent.travel_status
-                    track = parent_status.track
-                    # Get this leaf group's contribution to the trip
-                    try:
-                        contribution = LeafGroupTravelContribution.objects.get(
-                            leaf_group=group,
-                            track=track
-                        )
-                        leaf_current_km = contribution.current_travel_distance or Decimal('0.00000')
-                        logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has travel contribution: {leaf_current_km} km on track '{track.name}'")
-                    except LeafGroupTravelContribution.DoesNotExist:
-                        # No contribution yet - use parent's distance as fallback
-                        leaf_current_km = parent_status.current_travel_distance or Decimal('0.00000')
-                        logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has no contribution yet, using parent '{parent.name}' travel distance: {leaf_current_km} km")
+                    leaf_current_velos = int(parent_status.current_travel_velos or 0)
                 except GroupTravelStatus.DoesNotExist:
-                    logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' parent has no travel_status. Skipping milestone check.")
-                    return
-            else:
-                logger.debug(f"[check_milestone_victory] Leaf group '{group.name}' has no parent. Skipping milestone check.")
-                return
-            
-            leaf_group = group
+                    leaf_current_velos = parent_travel_velos
         else:
-            # Group is not a leaf group, find the leaf groups that belong to it
-            # We MUST find which specific leaf group reached the milestone based on their distance_total
-            # IMPORTANT: If active_leaf_group is provided, prefer it over other leaf groups
             leaf_groups = group.get_leaf_groups()
             if not leaf_groups.exists():
-                # No leaf groups - exit silently (no debug message needed)
                 return
-            
-            # Find the leaf group that has reached the milestone distance
-            # IMPORTANT: The leaf group with the HIGHEST travel contribution (current_travel_distance from LeafGroupTravelContribution)
-            # that reached the milestone should win. This ensures the leaf group that contributed the most
-            # kilometers to the parent's trip gets the milestone.
-            best_leaf_group = None
-            best_distance = Decimal('0.00000')
-            
-            # Get travel contributions for all leaf groups on this track
+
             leaf_contributions = LeafGroupTravelContribution.objects.filter(
                 leaf_group__in=leaf_groups,
-                track=track
-            ).select_related('leaf_group').order_by('-current_travel_distance')
-            
-            # Early exit if no contributions exist - prevents unnecessary debug messages
+                track=track,
+            ).select_related('leaf_group').order_by('-current_travel_velos')
+
             if not leaf_contributions.exists():
                 return
-            
-            # Build a map of leaf_group_id -> contribution distance
-            contribution_map = {contrib.leaf_group_id: contrib.current_travel_distance for contrib in leaf_contributions}
-            
-            # Check all leaf groups to find the one with highest contribution that reached the milestone
+
+            contribution_map = {
+                contrib.leaf_group_id: int(contrib.current_travel_velos or 0)
+                for contrib in leaf_contributions
+            }
+
+            best_leaf_group = None
+            best_velos = 0
             for leaf in leaf_groups:
-                # Get this leaf group's travel contribution (how much it contributed to the trip)
-                leaf_travel_distance = contribution_map.get(leaf.id, Decimal('0.00000'))
-                # Only log if there's actual contribution (reduces debug noise)
-                if leaf_travel_distance > 0:
-                    logger.debug(f"[check_milestone_victory] Checking leaf group '{leaf.name}' with travel contribution: {leaf_travel_distance} km")
-                
-                # Check if this leaf group has reached any of the milestones
-                # IMPORTANT: We check if the PARENT's total travel distance has reached the milestone,
-                # but assign it to the leaf group with the highest contribution
+                leaf_travel_velos = contribution_map.get(leaf.id, 0)
                 for ms in new_milestones:
-                    if current_travel_km >= ms.distance_km:
-                        # Parent has reached this milestone - check which leaf group should get credit
-                        # The leaf group with the highest contribution wins
-                        if leaf_travel_distance > best_distance:
+                    if parent_travel_velos >= get_milestone_position_velos(ms):
+                        if leaf_travel_velos > best_velos:
                             best_leaf_group = leaf
-                            best_distance = leaf_travel_distance
-                            logger.debug(f"[check_milestone_victory] Leaf group '{leaf.name}' ({leaf_travel_distance} km contribution) should get milestone '{ms.name}' ({ms.distance_km} km) - highest contribution so far")
-            
-            # If no leaf group has contributions yet, fall back to active_leaf_group if provided
+                            best_velos = leaf_travel_velos
+
             if not best_leaf_group and active_leaf_group and active_leaf_group in leaf_groups:
                 best_leaf_group = active_leaf_group
-                best_distance = contribution_map.get(active_leaf_group.id, Decimal('0.00000'))
-                logger.debug(f"[check_milestone_victory] No contributions found, using active leaf group '{active_leaf_group.name}' as fallback")
-            
+                best_velos = contribution_map.get(active_leaf_group.id, 0)
+
             if not best_leaf_group:
-                # No leaf group reached milestone - exit silently (no warning needed if no milestones exist or no distance traveled)
                 return
-            
+
             leaf_group = best_leaf_group
-            leaf_current_km = best_distance
-            logger.info(f"[check_milestone_victory] Selected leaf group '{leaf_group.name}' with {leaf_current_km} km as milestone winner (highest distance)")
-    
-    # Validate that leaf group is visible (should be checked, but double-check for safety)
-    if not leaf_group.is_visible:
-        logger.warning(f"[check_milestone_victory] Leaf group '{leaf_group.name}' is not visible. Skipping milestone assignment.")
+            leaf_current_velos = best_velos
+
+    if leaf_group is None or not leaf_group.is_visible:
+        if leaf_group:
+            logger.warning(
+                "[check_milestone_victory] Leaf group '%s' is not visible.",
+                leaf_group.name,
+            )
         return
 
     for ms in new_milestones:
+        ms_position_velos = get_milestone_position_velos(ms)
         with transaction.atomic():
-            # Re-check within the transaction (first-come-first-serve)
             ms_locked = Milestone.objects.select_for_update().get(pk=ms.pk)
-            if not ms_locked.winner_group:
-                # Double-check that parent group has reached this milestone distance
-                # The milestone is assigned to the leaf group with highest contribution,
-                # but we check against the parent's total travel distance
-                if parent_travel_distance is None:
-                    # Fallback: try to get from status
-                    parent_travel_distance = status.current_travel_distance if status else Decimal('0.00000')
-                
-                if parent_travel_distance < ms_locked.distance_km:
-                    logger.debug(f"[check_milestone_victory] Parent group has not reached milestone '{ms_locked.name}' yet ({parent_travel_distance} km < {ms_locked.distance_km} km). Skipping.")
-                    continue
-                
-                reached_time = timezone.now()
-                # Use leaf_group for milestone assignment (smallest unit)
-                ms_locked.winner_group = leaf_group
-                ms_locked.reached_at = reached_time
-                ms_locked.save()
-                
-                # IMPORTANT: Get the actual travel contribution of the leaf group for reached_distance
-                # This ensures we store the leaf group's contribution, not the parent's total distance
-                leaf_contribution_distance = leaf_current_km
-                try:
-                    leaf_contribution = LeafGroupTravelContribution.objects.get(
-                        leaf_group=leaf_group,
-                        track=track
-                    )
-                    leaf_contribution_distance = leaf_contribution.current_travel_distance or Decimal('0.00000')
-                    logger.debug(f"[check_milestone_victory] Using leaf group '{leaf_group.name}' contribution: {leaf_contribution_distance} km for reached_distance")
-                except LeafGroupTravelContribution.DoesNotExist:
-                    # Fallback: use leaf_current_km (should be from contribution already, but if not, use it)
-                    logger.debug(f"[check_milestone_victory] No contribution found for leaf group '{leaf_group.name}', using leaf_current_km: {leaf_contribution_distance} km")
-                
-                # Also save to persistent achievement table using leaf_group
-                # Use get_or_create to prevent duplicates (unique_together constraint)
-                # IMPORTANT: Use track (parent group's track or found track) to ensure consistency
-                # IMPORTANT: Store reward_text at the time of achievement (persistent snapshot)
-                # IMPORTANT: Store leaf group's travel contribution distance, not parent's total distance
-                achievement, created = GroupMilestoneAchievement.objects.get_or_create(
-                    group=leaf_group,  # Use leaf_group (smallest unit) - this is the group that won the milestone
-                    milestone=ms_locked,
-                    defaults={
-                        'track': track,  # Use track (parent group's track or found track - leaf groups don't have their own travel_status)
-                        'reached_at': reached_time,
-                        'reached_distance': leaf_contribution_distance,  # Use leaf group's travel contribution (current_travel_distance from LeafGroupTravelContribution)
-                        'reward_text': ms_locked.reward_text or '',  # Store reward at time of achievement
-                        'is_redeemed': False  # Reward not yet redeemed
-                    }
+            if ms_locked.winner_group:
+                continue
+
+            if parent_travel_velos < ms_position_velos:
+                continue
+
+            reached_time = timezone.now()
+            ms_locked.winner_group = leaf_group
+            ms_locked.reached_at = reached_time
+            ms_locked.save()
+
+            leaf_contribution_distance = Decimal(str(
+                LeafGroupTravelContribution.objects.filter(
+                    leaf_group=leaf_group,
+                    track=track,
+                ).values_list('current_travel_distance', flat=True).first() or 0,
+            ))
+            if leaf_contribution_distance <= 0 and track:
+                from api.travel_velos import sync_travel_distance_km_from_velos
+                leaf_contribution_distance = sync_travel_distance_km_from_velos(
+                    leaf_current_velos, track,
                 )
-                if created:
-                    logger.info(f"[check_milestone_victory] ✅ Milestone '{ms_locked.name}' reached by leaf group '{leaf_group.name}' at {ms_locked.distance_km} km! (Persistent achievement saved)")
-                else:
-                    logger.debug(f"[check_milestone_victory] Milestone '{ms_locked.name}' already has persistent achievement for leaf group '{leaf_group.name}'")
-                
-                logger.info(f"[check_milestone_victory] ✅ Milestone '{ms_locked.name}' reached by leaf group '{leaf_group.name}' at {ms_locked.distance_km} km!")
-            else:
-                logger.debug(f"[check_milestone_victory] Milestone '{ms_locked.name}' already reached by '{ms_locked.winner_group.name}'")
+
+            achievement, created = GroupMilestoneAchievement.objects.get_or_create(
+                group=leaf_group,
+                milestone=ms_locked,
+                defaults={
+                    'track': track,
+                    'reached_at': reached_time,
+                    'reached_distance': leaf_contribution_distance,
+                    'reward_text': ms_locked.reward_text or '',
+                    'is_redeemed': False,
+                },
+            )
+            if created:
+                logger.info(
+                    "[check_milestone_victory] Milestone '%s' reached by '%s' at %s Velos",
+                    ms_locked.name, leaf_group.name, ms_position_velos,
+                )
 
 # --- API Endpoints ---
 
@@ -670,19 +556,48 @@ def update_data(request):
     # Check if kilometer collection is enabled for cyclist and device
     if not cyclist_obj.is_km_collection_enabled:
         logger.info(f"[update_data] Kilometer collection disabled for cyclist: {cyclist_obj.id_tag} (ID: {cyclist_obj.pk})")
-        return JsonResponse({
+        from api.services.device_display import (
+            build_device_display_api_payload,
+            get_active_session_for_device,
+            handle_boot_reason,
+        )
+        handle_boot_reason(device_obj, data.get('boot_reason'))
+        payload = {
             "success": False,
             "message": _("Kilometer-Erfassung für diesen Radler ist deaktiviert"),
-            "skipped": True
-        }, status=200)
+            "skipped": True,
+        }
+        payload.update(
+            build_device_display_api_payload(
+                device_obj,
+                get_active_session_for_device(device_obj),
+            )
+        )
+        return JsonResponse(payload, status=200)
     
     if not device_obj.is_km_collection_enabled:
         logger.info(f"[update_data] Kilometer collection disabled for device: {device_obj.name} (ID: {device_obj.pk})")
-        return JsonResponse({
+        from api.services.device_display import (
+            build_device_display_api_payload,
+            get_active_session_for_device,
+            handle_boot_reason,
+        )
+        handle_boot_reason(device_obj, data.get('boot_reason'))
+        payload = {
             "success": False,
             "message": _("Kilometer-Erfassung für dieses Gerät ist deaktiviert"),
-            "skipped": True
-        }, status=200)
+            "skipped": True,
+        }
+        payload.update(
+            build_device_display_api_payload(
+                device_obj,
+                get_active_session_for_device(device_obj),
+            )
+        )
+        return JsonResponse(payload, status=200)
+
+    from api.services.device_display import handle_boot_reason
+    handle_boot_reason(device_obj, data.get('boot_reason'))
 
     # Process the update with retry mechanism for database locks
     try:
@@ -823,9 +738,7 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
                         if hourly_distance > metric.distance_km:
                             old_distance = metric.distance_km
                             metric.distance_km = hourly_distance
-                            # Update group if it changed
-                            if metric.group_at_time != primary_group:
-                                metric.group_at_time = primary_group
+                            # group_at_time is write-once (set at creation only)
                             metric.save()
                             logger.info(f"[update_data] Updated HourlyMetric entry for cyclist {existing_device_session.cyclist.id_tag} "
                                        f"on device {existing_device_session.device.name}: "
@@ -861,62 +774,39 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
             session.save()
             logger.debug(f"[update_data] Updated session - old_mileage: {old_mileage}, new_mileage: {session.cumulative_mileage}")
 
+        velos_added = 0
+        if distance_delta > 0:
+            velos_added = apply_velos_earn(cyclist_obj, device_obj, distance_delta)
+            if velos_added > 0:
+                logger.info(
+                    "[update_data] Velos added for %s: +%s",
+                    cyclist_obj.id_tag,
+                    velos_added,
+                )
+
         # --- ACTIVATE HIERARCHY LOGIC ---
-        # distance_delta is already a Decimal from line 126
         if distance_delta > 0:
             logger.debug(f"[update_data] Propagating {distance_delta} km to {cyclist_obj.groups.count()} group(s)")
-            
-            # Find the active leaf group (the one the cyclist directly belongs to)
+
             active_leaf_group = None
             for group in cyclist_obj.groups.all():
                 if group.is_leaf_group():
                     active_leaf_group = group
                     break
-            
-            # The delta is propagated recursively upward for all groups of the cyclist
-            # IMPORTANT: Always call update_group_hierarchy_progress, even if the group has reached the travel goal.
-            # This ensures that:
-            # - distance_total is still updated (for statistics/leaderboard)
-            # - Event statuses are still updated (events are independent of travel goals)
-            # - Parent groups are still updated (they might not have reached the goal)
-            # The function itself will skip travel distance updates if the goal is reached.
+
             for group in cyclist_obj.groups.all():
                 old_group_distance = group.distance_total
-                update_group_hierarchy_progress(group, distance_delta)
+                update_group_hierarchy_progress(group, distance_delta, velos_added)
                 group.refresh_from_db()
                 logger.debug(f"[update_data] Group '{group.name}' - old_distance: {old_group_distance}, new_distance: {group.distance_total}")
-                # Check milestones AFTER updating the group's travel distance
-                # Pass active_leaf_group to ensure correct milestone assignment
                 check_milestone_victory(group, active_leaf_group=active_leaf_group)
 
         # Cyclist & Device total KM
-        # Use Decimal arithmetic - no rounding needed as DecimalField handles precision
         old_cyclist_distance = cyclist_obj.distance_total
         cyclist_obj.distance_total = cyclist_obj.distance_total + distance_delta
-        coins_added = 0
-        if distance_delta > 0 and cyclist_obj.mc_username:
-            conversion_factor = cyclist_obj.coin_conversion_factor or settings.DEFAULT_COIN_CONVERSION_FACTOR
-            try:
-                delta_coins = (distance_delta * Decimal(str(conversion_factor))).to_integral_value(rounding=ROUND_FLOOR)
-            except Exception:
-                delta_coins = Decimal('0')
-            coins_added = int(delta_coins) if delta_coins > 0 else 0
-            if coins_added > 0:
-                cyclist_obj.coins_total += coins_added
-                cyclist_obj.coins_spendable += coins_added
         cyclist_obj.last_active = now
         cyclist_obj.save()
         logger.debug(f"[update_data] Cyclist '{cyclist_obj.id_tag}' - old_distance: {old_cyclist_distance}, new_distance: {cyclist_obj.distance_total}")
-        if coins_added > 0:
-            logger.info(f"[update_data] Coins added for {cyclist_obj.id_tag}: +{coins_added}")
-            push_to_minecraft_bridge(
-                cyclist_obj.mc_username,
-                cyclist_obj.coins_total,
-                cyclist_obj.coins_spendable,
-                "set",
-                spendable_action="add",
-                spendable_delta=coins_added,
-            )
         
         old_device_distance = device_obj.distance_total
         device_obj.distance_total = device_obj.distance_total + distance_delta
@@ -925,69 +815,21 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
         logger.debug(f"[update_data] Device '{device_obj.name}' - old_distance: {old_device_distance}, new_distance: {device_obj.distance_total}")
 
     logger.info(f"[update_data] Successfully processed update - id_tag: {id_tag}, device_id: {device_id}, distance: {distance_delta}")
-    return JsonResponse({"success": True})
+    from api.services.device_display import build_device_display_api_payload
 
-def get_player_coins(request, username):
-    """Returns the current coins of a player."""
-    api_key_header = request.headers.get('X-Api-Key')
-    is_valid, _device = validate_api_key(api_key_header)
-    if not is_valid:
-        return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
-
+    response_payload = {"success": True}
+    if velos_added:
+        response_payload["velos_added"] = velos_added
     try:
-        cyclist_obj = Cyclist.objects.get(Q(user_id__iexact=username) | Q(mc_username__iexact=username))
-    except Cyclist.DoesNotExist:
-        return JsonResponse({"error": _("Radler nicht gefunden")}, status=404)
-
-    response_data = {
-        "mc_username": cyclist_obj.mc_username,
-        "coins_total": cyclist_obj.coins_total,
-        "coins_spendable": cyclist_obj.coins_spendable,
-        "distance_total": cyclist_obj.distance_total,
-        "last_active": cyclist_obj.last_active.isoformat() if cyclist_obj.last_active else None
-    }
-    return JsonResponse(response_data)
-
-
-def get_cyclist_coins(request, username):
-    """Backward-compatible alias for get_player_coins."""
-    return get_player_coins(request, username)
-
-@csrf_exempt
-def spend_cyclist_coins(request):
-    """Allows spending coins."""
-    api_key_header = request.headers.get('X-Api-Key')
-    is_valid, _device = validate_api_key(api_key_header)
-    if not is_valid:
-        return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
-
-    try:
-        data = json.loads(request.body)
-        username = data.get('username').lower()
-        coins_spent = int(data.get('coins_spent'))
-    except (json.JSONDecodeError, ValueError, AttributeError):
-        return JsonResponse({"error": _("Ungültige oder fehlende Daten.")}, status=400)
-    
-    try:
-        cyclist_obj = Cyclist.objects.get(mc_username__iexact=username)
-    except Cyclist.DoesNotExist:
-        return JsonResponse({"error": _("Radler nicht gefunden.")}, status=404)
-        
-    with transaction.atomic():
-        cyclist_obj = Cyclist.objects.select_for_update().get(pk=cyclist_obj.pk)
-        if cyclist_obj.coins_spendable < coins_spent:
-            return JsonResponse({"error": _("Nicht genug Coins")}, status=400)
-        cyclist_obj.coins_spendable -= coins_spent
-        cyclist_obj.save()
-    
-    push_to_minecraft_bridge(
-        username,
-        cyclist_obj.coins_total,
-        cyclist_obj.coins_spendable,
-        "set",
-        spendable_action="set",
-    )
-    return JsonResponse({"success": True, "message": _("Coins abgezogen.")})
+        active_session = CyclistDeviceCurrentMileage.objects.select_related('device').get(
+            cyclist=cyclist_obj
+        )
+        response_payload.update(
+            build_device_display_api_payload(active_session.device, active_session)
+        )
+    except CyclistDeviceCurrentMileage.DoesNotExist:
+        response_payload.update(build_device_display_api_payload(device_obj))
+    return JsonResponse(response_payload)
 
 def get_mapped_minecraft_players(request):
     """Returns the complete player mapping structure."""
@@ -997,13 +839,13 @@ def get_mapped_minecraft_players(request):
         return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
 
     filtered_cyclists = Cyclist.objects.filter(mc_username__isnull=False).values(
-        'id_tag', 'user_id', 'mc_username', 'coins_total', 'coins_spendable', 'distance_total', 'last_active'
+        'id_tag', 'user_id', 'mc_username', 'velos_balance', 'distance_total', 'last_active'
     )
     
     response_data = {
         c['id_tag']: {
             'user_id': c['user_id'], 'mc_username': c['mc_username'],
-            'coins_total': c['coins_total'], 'coins_spendable': c['coins_spendable'],
+            'velos_balance': c['velos_balance'],
             'distance_total': c['distance_total'],
             'last_active': c['last_active'].isoformat() if c['last_active'] else None
         } for c in filtered_cyclists
@@ -1017,9 +859,9 @@ def get_mapped_minecraft_cyclists(request):
 
 @csrf_exempt
 def get_user_id(request):
-    """Returns the user_id based on the id_tag."""
+    """Returns the user_id based on the id_tag. Operator tags reset counter to default cyclist."""
     api_key_header = request.headers.get('X-Api-Key')
-    is_valid, _device = validate_api_key(api_key_header)
+    is_valid, api_device = validate_api_key(api_key_header)
     if not is_valid:
         logger.warning(f"[get_user_id] Invalid API key")
         return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
@@ -1038,17 +880,89 @@ def get_user_id(request):
         logger.warning(f"[get_user_id] Missing id_tag in request")
         return JsonResponse({"error": _("id_tag erforderlich.")}, status=400)
 
-    return_user_id = "NULL"
+    device_id = (data.get('device_id') or data.get('device_name') or '').strip()
+    current_id_tag = (data.get('current_id_tag') or '').strip()
+
     try:
         cyclist_obj = Cyclist.objects.get(id_tag__iexact=id_tag)
-        if cyclist_obj.user_id: 
-            return_user_id = cyclist_obj.user_id
-            logger.info(f"[get_user_id] ID tag '{id_tag}' found, assigned to user_id: '{return_user_id}'")
-        else:
-            logger.info(f"[get_user_id] ID tag '{id_tag}' found but has no user_id assigned")
     except Cyclist.DoesNotExist:
         logger.info(f"[get_user_id] ID tag '{id_tag}' not found in database")
-    
+        return JsonResponse({"user_id": "NULL"})
+
+    if cyclist_obj.is_operator_tag:
+        device_obj = api_device
+        if device_id and device_obj is None:
+            try:
+                device_obj = Device.objects.get(name=device_id)
+            except Device.DoesNotExist:
+                device_obj = None
+        if device_obj is None:
+            return JsonResponse(
+                {"error": _("device_id erforderlich für Operator-Reset.")},
+                status=400,
+            )
+
+        default_tag = ''
+        try:
+            default_tag = (device_obj.configuration.default_id_tag or '').strip()
+        except DeviceConfiguration.DoesNotExist:
+            default_tag = ''
+
+        default_user_id = 'NULL'
+        if default_tag:
+            try:
+                default_cyclist = Cyclist.objects.get(id_tag__iexact=default_tag)
+                if default_cyclist.user_id:
+                    default_user_id = default_cyclist.user_id
+            except Cyclist.DoesNotExist:
+                pass
+
+        from api.services.device_session import end_device_session_for_device
+
+        active = (
+            CyclistDeviceCurrentMileage.objects.filter(device=device_obj)
+            .select_related('cyclist')
+            .first()
+        )
+        needs_reset = False
+        if active and not active.cyclist.is_operator_tag:
+            if default_tag and active.cyclist.id_tag.lower() != default_tag.lower():
+                needs_reset = True
+            elif not default_tag:
+                needs_reset = True
+        if (
+            current_id_tag
+            and default_tag
+            and current_id_tag.lower() != default_tag.lower()
+        ):
+            needs_reset = True
+
+        action = 'reset_to_default' if needs_reset else 'noop'
+        if needs_reset:
+            end_device_session_for_device(device_obj, reason='operator_reset')
+            from api.services.device_display import unlock_device_display
+            unlock_device_display(device_obj, reason='operator_reset')
+            logger.info(
+                "[get_user_id] Operator reset on device %s (default_tag=%s)",
+                device_obj.name,
+                default_tag,
+            )
+
+        return JsonResponse({
+            'user_id': 'OPERATOR',
+            'is_operator_tag': True,
+            'action': action,
+            'default_id_tag': default_tag,
+            'default_user_id': default_user_id,
+        })
+
+    return_user_id = "NULL"
+    if cyclist_obj.user_id:
+        return_user_id = cyclist_obj.user_id
+        logger.info(f"[get_user_id] ID tag '{id_tag}' found, assigned to user_id: '{return_user_id}'")
+    else:
+        logger.info(f"[get_user_id] ID tag '{id_tag}' found but has no user_id assigned")
+
     return JsonResponse({"user_id": return_user_id})
 
 # --- NEW: Live Map Logic ---
@@ -1169,6 +1083,171 @@ def kiosk_get_commands(request, uid: str):
 
 
 @csrf_exempt
+def get_cyclist_velos(request, identifier):
+    """
+    Get cyclist Velos data (balance, totals, session, optional period).
+
+    Query parameters:
+    - start_date / end_date (optional, YYYY-MM-DD): velos_period for the range
+    """
+    api_key_header = request.headers.get('X-Api-Key')
+    is_valid, _device = validate_api_key(api_key_header)
+    if not is_valid:
+        return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
+
+    cyclist_obj = get_cyclist_by_identifier(identifier)
+    if not cyclist_obj:
+        return JsonResponse({
+            "error": _("Radler nicht gefunden"),
+            "identifier": identifier,
+        }, status=404)
+
+    response_data = {
+        "cyclist_id": cyclist_obj.id,
+        "user_id": cyclist_obj.user_id,
+        "id_tag": cyclist_obj.id_tag,
+        "mc_username": cyclist_obj.mc_username,
+        "distance_total": float(cyclist_obj.distance_total or 0),
+        **build_cyclist_velos_api_fields(
+            cyclist_obj,
+            include_session=True,
+            include_daily=True,
+        ),
+    }
+
+    start_date = request.GET.get('start_date', '').strip()
+    end_date = request.GET.get('end_date', '').strip()
+
+    if start_date and end_date:
+        try:
+            start_dt = timezone.make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
+            end_dt = timezone.make_aware(datetime.strptime(end_date, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            ))
+            if start_dt > end_dt:
+                return JsonResponse({
+                    "error": _("start_date muss vor end_date liegen")
+                }, status=400)
+            response_data.update(build_cyclist_velos_api_fields(
+                cyclist_obj,
+                period_start=start_dt,
+                period_end=end_dt,
+            ))
+            response_data.update({
+                "period_start": start_date,
+                "period_end": end_date,
+            })
+        except ValueError as e:
+            return JsonResponse({
+                "error": _("Ungültiges Datumsformat. Verwenden Sie YYYY-MM-DD"),
+                "details": str(e),
+            }, status=400)
+    elif start_date or end_date:
+        return JsonResponse({
+            "error": _("start_date und end_date müssen beide angegeben werden")
+        }, status=400)
+
+    return JsonResponse(response_data)
+
+
+@csrf_exempt
+def redeem_cyclist_velos_api(request):
+    """
+    Redeem 100% of a cyclist's velos_balance (FEZitty / Wuhlis workflow).
+
+    POST JSON: identifier (user_id or id_tag), optional note, external_currency
+    """
+    api_key_header = request.headers.get('X-Api-Key')
+    is_valid, _device = validate_api_key(api_key_header)
+    if not is_valid:
+        return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({"error": _("Methode nicht erlaubt.")}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": _("Ungültiges JSON-Format")}, status=400)
+
+    identifier = (data.get('identifier') or data.get('user_id') or data.get('id_tag') or '').strip()
+    if not identifier:
+        return JsonResponse({"error": _("identifier ist erforderlich")}, status=400)
+
+    result = redeem_cyclist_by_identifier(
+        identifier,
+        note=data.get('note', '') or '',
+        external_currency=data.get('external_currency', '') or '',
+    )
+
+    if not result.success:
+        return JsonResponse({"success": False, "error": result.message}, status=400)
+
+    cyclist = result.redemption.cyclist if result.redemption else None
+    payload = {
+        "success": True,
+        "message": result.message,
+        "velos_redeemed": result.velos_redeemed,
+    }
+    if cyclist:
+        payload.update({
+            "cyclist_id": cyclist.id,
+            "user_id": cyclist.user_id,
+            "velos_balance": cyclist.velos_balance,
+        })
+    return JsonResponse(payload)
+
+
+@csrf_exempt
+def get_group_velos(request, identifier):
+    """
+    Get group Velos ledger data (total and spendable).
+
+    Query parameters:
+    - include_cyclists: Include member cyclists with velos_total (default: false)
+    """
+    api_key_header = request.headers.get('X-Api-Key')
+    is_valid, _device = validate_api_key(api_key_header)
+    if not is_valid:
+        return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
+
+    try:
+        if identifier.isdigit():
+            group_obj = Group.objects.get(id=int(identifier), is_visible=True)
+        else:
+            group_obj = Group.objects.get(name__iexact=identifier, is_visible=True)
+    except Group.DoesNotExist:
+        return JsonResponse({
+            "error": _("Gruppe nicht gefunden"),
+            "identifier": identifier,
+        }, status=404)
+
+    include_cyclists = request.GET.get('include_cyclists', 'false').strip().lower() == 'true'
+
+    response_data = {
+        "group_id": group_obj.id,
+        "name": group_obj.name,
+        "short_name": group_obj.short_name,
+        "mc_username": group_obj.mc_username,
+        **build_group_velos_api_fields(group_obj),
+    }
+
+    if include_cyclists:
+        members = []
+        for cyclist in group_obj.members.filter(is_visible=True).order_by('user_id'):
+            members.append({
+                "cyclist_id": cyclist.id,
+                "user_id": cyclist.user_id,
+                "velos_balance": int(cyclist.velos_balance or 0),
+                "velos_total": get_cyclist_velos_total(cyclist),
+            })
+        response_data["cyclists"] = members
+        response_data["sum_cyclist_velos_total"] = sum(m["velos_total"] for m in members)
+
+    return JsonResponse(response_data)
+
+
+@csrf_exempt
 def get_cyclist_distance(request, identifier):
     """
     Get cyclist distance data (total and optionally for a time period).
@@ -1188,26 +1267,22 @@ def get_cyclist_distance(request, identifier):
     if not is_valid:
         return JsonResponse({"error": _("Ungültiger API-Schlüssel")}, status=403)
     
-    # Find cyclist by user_id, id_tag, or mc_username
-    try:
-        cyclist_obj = Cyclist.objects.get(
-            Q(user_id__iexact=identifier) | 
-            Q(id_tag__iexact=identifier) | 
-            Q(mc_username__iexact=identifier)
-        )
-    except Cyclist.DoesNotExist:
+    # Find cyclist by user_id or id_tag
+    cyclist_obj = get_cyclist_by_identifier(identifier)
+    if not cyclist_obj:
         return JsonResponse({
             "error": _("Radler nicht gefunden"),
             "identifier": identifier
         }, status=404)
     
-    # Build response with total distance
+    # Build response with total distance and Velos (km fields kept for transition)
     response_data = {
         "cyclist_id": cyclist_obj.id,
         "user_id": cyclist_obj.user_id,
         "id_tag": cyclist_obj.id_tag,
         "mc_username": cyclist_obj.mc_username,
         "distance_total": float(cyclist_obj.distance_total or 0),
+        **build_cyclist_velos_api_fields(cyclist_obj, include_session=True),
     }
     
     # Parse optional date range
@@ -1249,6 +1324,11 @@ def get_cyclist_distance(request, identifier):
                 if session.start_time and session.start_time <= end_dt:
                     period_distance += session.cumulative_mileage or Decimal('0')
             
+            response_data.update(build_cyclist_velos_api_fields(
+                cyclist_obj,
+                period_start=start_dt,
+                period_end=end_dt,
+            ))
             response_data.update({
                 "distance_period": float(period_distance),
                 "period_start": start_date,
@@ -1307,13 +1387,14 @@ def get_group_distance(request, identifier):
             "identifier": identifier
         }, status=400)
     
-    # Build response with total distance
+    # Build response with total distance and Velos ledger
     response_data = {
         "group_id": group_obj.id,
         "name": group_obj.name,
         "short_name": group_obj.short_name,
         "group_type": group_obj.group_type.name if group_obj.group_type else None,
         "distance_total": float(group_obj.distance_total or 0),
+        **build_group_velos_api_fields(group_obj),
     }
     
     # Parse optional date range
@@ -1337,7 +1418,7 @@ def get_group_distance(request, identifier):
             # Get group IDs to query (include children if requested)
             if include_children:
                 # Get all descendant groups
-                from .analytics import _get_descendant_group_ids
+                from mgmt.analytics import _get_descendant_group_ids
                 group_ids = _get_descendant_group_ids(group_obj)
                 group_ids.append(group_obj.id)
             else:
@@ -1352,21 +1433,31 @@ def get_group_distance(request, identifier):
                 total=Sum('distance_km')
             )['total'] or Decimal('0.00000')
             
+            period_velos = HourlyMetric.objects.filter(
+                group_at_time_id__in=group_ids,
+                timestamp__gte=start_dt,
+                timestamp__lte=end_dt,
+            ).aggregate(
+                total=Sum('velos')
+            )['total'] or 0
+            
             # Add active sessions that fall within the period
             active_sessions = CyclistDeviceCurrentMileage.objects.filter(
                 cyclist__groups__id__in=group_ids,
                 last_activity__gte=start_dt,
                 last_activity__lte=end_dt,
                 cumulative_mileage__gt=0
-            ).distinct()
+            ).select_related('cyclist', 'device__configuration').distinct()
             
             for session in active_sessions:
                 # Only count session distance if it overlaps with the period
                 if session.start_time and session.start_time <= end_dt:
                     period_distance += session.cumulative_mileage or Decimal('0')
+                    period_velos += get_cyclist_session_velos(session.cyclist)
             
             response_data.update({
                 "distance_period": float(period_distance),
+                "velos_period": int(period_velos),
                 "period_start": start_date,
                 "period_end": end_date,
                 "include_children": include_children,
@@ -1394,8 +1485,21 @@ def get_group_distance(request, identifier):
                 "short_name": child.short_name,
                 "group_type": child.group_type.name if child.group_type else None,
                 "distance_total": float(child.distance_total or 0),
+                **build_group_velos_api_fields(child),
             })
         response_data["children"] = children
+
+    include_cyclists = request.GET.get('include_cyclists', 'false').strip().lower() == 'true'
+    if include_cyclists:
+        cyclists_payload = []
+        for cyclist in group_obj.members.filter(is_visible=True).order_by('user_id'):
+            cyclists_payload.append({
+                "cyclist_id": cyclist.id,
+                "user_id": cyclist.user_id,
+                "velos_balance": int(cyclist.velos_balance or 0),
+                "velos_total": get_cyclist_velos_total(cyclist),
+            })
+        response_data["cyclists"] = cyclists_payload
     
     return JsonResponse(response_data)
 
@@ -1403,10 +1507,10 @@ def get_group_distance(request, identifier):
 @csrf_exempt
 def get_leaderboard_cyclists(request):
     """
-    Get leaderboard of top cyclists by distance.
+    Get leaderboard of top cyclists by Velos (distance fields kept for transition).
     
     Query parameters:
-    - sort: 'daily' or 'total' (default: 'total')
+    - sort: 'daily' or 'total' (default: 'total') — sorts by velos_daily / velos_total
     - limit: Number of cyclists to return (default: 10, max: 100)
     - group_id: Filter by group ID (optional)
     """
@@ -1434,7 +1538,7 @@ def get_leaderboard_cyclists(request):
     if group_id:
         try:
             group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
             cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
@@ -1475,6 +1579,7 @@ def get_leaderboard_cyclists(request):
         
         # Calculate daily metrics per cyclist (considering snapshot dates)
         daily_by_cyclist: Dict[int, float] = {}
+        daily_velos_by_cyclist: Dict[int, int] = {}
         for cyclist_id in cyclist_ids:
             snapshot_date = cyclist_snapshot_dates.get(cyclist_id)
             # Use max of today_start and snapshot_date
@@ -1488,24 +1593,33 @@ def get_leaderboard_cyclists(request):
                 daily_total=Sum('distance_km')
             )
             daily_by_cyclist[cyclist_id] = float(daily_metrics['daily_total'] or 0.0)
+            cyclist_obj = cyclists_qs.filter(id=cyclist_id).first()
+            if cyclist_obj:
+                daily_velos_by_cyclist[cyclist_id] = get_cyclist_velos_daily(cyclist_obj, now)
+            else:
+                daily_velos_by_cyclist[cyclist_id] = 0
         
         # Add active sessions
         active_sessions = CyclistDeviceCurrentMileage.objects.filter(
             cyclist__in=cyclists_qs,
             last_activity__gte=today_start,
             cumulative_mileage__gt=0
-        ).select_related('cyclist')
+        ).select_related('cyclist', 'device__configuration')
         
         for session in active_sessions:
             cyclist_id = session.cyclist.id
             if cyclist_id not in daily_by_cyclist:
                 daily_by_cyclist[cyclist_id] = 0.0
+            if cyclist_id not in daily_velos_by_cyclist:
+                daily_velos_by_cyclist[cyclist_id] = 0
             daily_by_cyclist[cyclist_id] += float(session.cumulative_mileage or 0)
+            daily_velos_by_cyclist[cyclist_id] += get_cyclist_session_velos(session.cyclist)
         
         # Get cyclists with their daily totals
         cyclists_list = []
         for cyclist in cyclists_qs.select_related().prefetch_related('groups'):
             daily_km = daily_by_cyclist.get(cyclist.id, 0.0)
+            daily_velos = daily_velos_by_cyclist.get(cyclist.id, 0)
             primary_group = cyclist.groups.filter(is_visible=True).first()
             if not primary_group:
                 primary_group = cyclist.groups.first()
@@ -1517,12 +1631,15 @@ def get_leaderboard_cyclists(request):
                 'mc_username': cyclist.mc_username,
                 'distance_total': float(cyclist.distance_total or 0),
                 'distance_daily': daily_km,
+                'velos_total': get_cyclist_velos_total(cyclist),
+                'velos_daily': daily_velos,
+                'velos_balance': int(cyclist.velos_balance or 0),
                 'group_name': primary_group.name if primary_group else None,
                 'group_short_name': primary_group.short_name if primary_group else None,
             })
         
-        # Sort by daily distance
-        cyclists_list.sort(key=lambda x: (x['distance_daily'], x['distance_total']), reverse=True)
+        # Sort by daily Velos (distance_daily kept for reference)
+        cyclists_list.sort(key=lambda x: (x['velos_daily'], x['velos_total']), reverse=True)
     else:
         # Sort by total distance
         cyclists_list = []
@@ -1537,9 +1654,13 @@ def get_leaderboard_cyclists(request):
                 'id_tag': cyclist.id_tag,
                 'mc_username': cyclist.mc_username,
                 'distance_total': float(cyclist.distance_total or 0),
+                'velos_total': get_cyclist_velos_total(cyclist),
+                'velos_balance': int(cyclist.velos_balance or 0),
                 'group_name': primary_group.name if primary_group else None,
                 'group_short_name': primary_group.short_name if primary_group else None,
             })
+        
+        cyclists_list.sort(key=lambda x: (x['velos_total'], x['distance_total']), reverse=True)
     
     # Limit results
     cyclists_list = cyclists_list[:limit]
@@ -1558,7 +1679,10 @@ def get_leaderboard_cyclists(request):
 @csrf_exempt
 def get_leaderboard_groups(request):
     """
-    Get leaderboard of top groups by distance.
+    Get leaderboard of top groups by Velos from HourlyMetric.
+
+    velos_total reflects metric totals (period-aware via snapshots).
+    velos_spendable remains the group ledger field (Minecraft).
     
     Query parameters:
     - sort: 'daily', 'total', 'weekly', 'monthly' (default: 'total')
@@ -1591,7 +1715,7 @@ def get_leaderboard_groups(request):
     if parent_group_id:
         try:
             parent_group = Group.objects.get(pk=int(parent_group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(parent_group)
             group_ids.append(parent_group.id)
             groups_qs = groups_qs.filter(id__in=group_ids)
@@ -1606,6 +1730,10 @@ def get_leaderboard_groups(request):
     snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
     
     period_by_group: Dict[int, float] = {}
+    velos_period_by_group: Dict[int, int] = {}
+    
+    groups_for_velos = list(groups_qs)
+    velos_periods = _calculate_group_velos_periods(groups_for_velos, now=now, use_cache=False)
     
     if sort == 'daily':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1621,6 +1749,7 @@ def get_leaderboard_groups(request):
                 period_total=Sum('distance_km')
             )
             period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
+            velos_period_by_group[group_id] = velos_periods.get(group_id, {}).get('daily', 0)
     elif sort == 'weekly':
         days_since_monday = now.weekday()
         week_start = (now - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1636,6 +1765,7 @@ def get_leaderboard_groups(request):
                 period_total=Sum('distance_km')
             )
             period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
+            velos_period_by_group[group_id] = velos_periods.get(group_id, {}).get('weekly', 0)
     elif sort == 'monthly':
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         for group_id in group_ids:
@@ -1650,6 +1780,7 @@ def get_leaderboard_groups(request):
                 period_total=Sum('distance_km')
             )
             period_by_group[group_id] = float(period_metrics['period_total'] or 0.0)
+            velos_period_by_group[group_id] = velos_periods.get(group_id, {}).get('monthly', 0)
     else:
         # For 'total' sort, use existing helper function
         pass
@@ -1676,16 +1807,18 @@ def get_leaderboard_groups(request):
                     period_by_group[group.id] = 0.0
                 period_by_group[group.id] += float(session.cumulative_mileage or 0)
     
-    # Build groups list
+    # Build groups list (velos_total = HourlyMetric period total; velos_spendable = ledger)
     groups_list = []
     for group in groups_qs.select_related('parent'):
         period_km = period_by_group.get(group.id, 0.0) if sort != 'total' else None
-        
+        period_velos = velos_period_by_group.get(group.id, 0) if sort != 'total' else None
+        metric_velos_total = int(velos_periods.get(group.id, {}).get('total', 0))
+
         # Get parent group name
         parent_group_name = None
         if group.parent:
             parent_group_name = group.parent.name
-        
+
         groups_list.append({
             'group_id': group.id,
             'name': group.name,
@@ -1693,14 +1826,17 @@ def get_leaderboard_groups(request):
             'group_type': group.group_type.name if group.group_type else None,
             'distance_total': float(group.distance_total or 0),
             'distance_period': period_km,
+            'velos_total': metric_velos_total,
+            'velos_spendable': int(group.velos_spendable or 0),
+            'velos_period': period_velos,
             'parent_group_name': parent_group_name,
         })
     
-    # Sort
+    # Sort by Velos (distance fields kept for reference)
     if sort == 'total':
-        groups_list.sort(key=lambda x: x['distance_total'], reverse=True)
+        groups_list.sort(key=lambda x: (x['velos_total'], x['distance_total']), reverse=True)
     else:
-        groups_list.sort(key=lambda x: (x['distance_period'] or 0, x['distance_total']), reverse=True)
+        groups_list.sort(key=lambda x: (x['velos_period'] or 0, x['velos_total']), reverse=True)
     
     # Limit results
     groups_list = groups_list[:limit]
@@ -1753,13 +1889,15 @@ def get_active_cyclists(request):
         is_visible=True,
         last_active__isnull=False,
         last_active__gte=active_cutoff
-    ).select_related('cyclistdevicecurrentmileage').prefetch_related('groups')
+    ).select_related(
+        'cyclistdevicecurrentmileage__device__configuration'
+    ).prefetch_related('groups')
     
     # Filter by group if specified
     if group_id:
         try:
             group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
             cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
@@ -1773,6 +1911,7 @@ def get_active_cyclists(request):
     active_cyclists = []
     for cyclist in cyclists_qs.order_by('-last_active')[:limit * 2]:
         session_km = 0.0
+        session_velos = 0
         device_name = "Unbekannt"
         
         try:
@@ -1781,6 +1920,7 @@ def get_active_cyclists(request):
                 session_km = float(mileage_obj.cumulative_mileage)
             if mileage_obj and mileage_obj.device:
                 device_name = mileage_obj.device.display_name or mileage_obj.device.name
+            session_velos = get_cyclist_session_velos(cyclist)
         except (AttributeError, CyclistDeviceCurrentMileage.DoesNotExist):
             pass
         
@@ -1795,6 +1935,9 @@ def get_active_cyclists(request):
             'id_tag': cyclist.id_tag,
             'mc_username': cyclist.mc_username,
             'session_km': session_km,
+            'session_velos': session_velos,
+            'velos_total': get_cyclist_velos_total(cyclist),
+            'velos_balance': int(cyclist.velos_balance or 0),
             'distance_total': float(cyclist.distance_total or 0),
             'device_name': device_name,
             'last_active': cyclist.last_active.isoformat() if cyclist.last_active else None,
@@ -1802,8 +1945,8 @@ def get_active_cyclists(request):
             'group_short_name': primary_group.short_name if primary_group else None,
         })
     
-    # Sort by session_km
-    active_cyclists.sort(key=lambda x: x['session_km'], reverse=True)
+    # Sort by session Velos
+    active_cyclists.sort(key=lambda x: x['session_velos'], reverse=True)
     active_cyclists = active_cyclists[:limit]
     
     return JsonResponse({
@@ -1854,7 +1997,7 @@ def list_cyclists(request):
     if group_id:
         try:
             group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
             cyclists_qs = cyclists_qs.filter(groups__id__in=group_ids).distinct()
@@ -1882,8 +2025,8 @@ def list_cyclists(request):
             'id_tag': cyclist.id_tag,
             'mc_username': cyclist.mc_username,
             'distance_total': float(cyclist.distance_total or 0),
-            'coins_total': cyclist.coins_total,
-            'coins_spendable': cyclist.coins_spendable,
+            'velos_balance': cyclist.velos_balance,
+            'velos_total': get_cyclist_velos_total(cyclist),
             'last_active': cyclist.last_active.isoformat() if cyclist.last_active else None,
             'group_name': primary_group.name if primary_group else None,
             'group_short_name': primary_group.short_name if primary_group else None,
@@ -1902,6 +2045,8 @@ def list_cyclists(request):
 def list_groups(request):
     """
     Get paginated list of all groups.
+
+    velos_total is summed from HourlyMetric; velos_spendable is the ledger field.
     
     Query parameters:
     - page: Page number (default: 1)
@@ -1951,16 +2096,19 @@ def list_groups(request):
     total_pages = (total_count + page_size - 1) // page_size
     
     offset = (page - 1) * page_size
+    page_groups = list(groups_qs.order_by('name')[offset:offset + page_size])
+    velos_by_group = _calculate_group_velos_from_metrics(page_groups, use_cache=False)
+
     groups_list = []
-    
-    for group in groups_qs.order_by('name')[offset:offset + page_size]:
+    for group in page_groups:
         groups_list.append({
             'group_id': group.id,
             'name': group.name,
             'short_name': group.short_name,
             'group_type': group.group_type.name if group.group_type else None,
             'distance_total': float(group.distance_total or 0),
-            'coins_total': group.coins_total,
+            'velos_total': velos_by_group.get(group.id, 0),
+            'velos_spendable': int(group.velos_spendable or 0),
             'parent_group_id': group.parent.id if group.parent else None,
             'parent_group_name': group.parent.name if group.parent else None,
         })
@@ -2044,6 +2192,8 @@ def get_milestones(request):
 def get_statistics(request):
     """
     Get aggregated statistics (similar to analytics but public API).
+
+    top_groups[].velos_total is the Velos sum from HourlyMetric within the period.
     
     Query parameters:
     - start_date: Start date in format YYYY-MM-DD (optional)
@@ -2092,7 +2242,7 @@ def get_statistics(request):
     if group_id:
         try:
             group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
             metrics_qs = metrics_qs.filter(group_at_time_id__in=group_ids)
@@ -2102,16 +2252,17 @@ def get_statistics(request):
                 "group_id": group_id
             }, status=404)
     
-    # Calculate total distance
+    # Calculate total distance and Velos
     total_distance = metrics_qs.aggregate(
         total=Sum('distance_km')
     )['total'] or Decimal('0.00000')
+    total_velos = int(metrics_qs.aggregate(total=Sum('velos'))['total'] or 0)
     
     # Add active sessions
     if group_id:
         try:
             group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
+            from mgmt.analytics import _get_descendant_group_ids
             group_ids = _get_descendant_group_ids(group)
             group_ids.append(group.id)
             active_sessions = CyclistDeviceCurrentMileage.objects.filter(
@@ -2119,7 +2270,7 @@ def get_statistics(request):
                 last_activity__gte=start_dt,
                 last_activity__lte=end_dt,
                 cumulative_mileage__gt=0
-            ).distinct()
+            ).select_related('cyclist', 'device__configuration').distinct()
         except (ValueError, Group.DoesNotExist):
             active_sessions = CyclistDeviceCurrentMileage.objects.none()
     else:
@@ -2127,41 +2278,50 @@ def get_statistics(request):
             last_activity__gte=start_dt,
             last_activity__lte=end_dt,
             cumulative_mileage__gt=0
-        )
+        ).select_related('cyclist', 'device__configuration')
     
     for session in active_sessions:
         total_distance += session.cumulative_mileage or Decimal('0')
+        total_velos += get_cyclist_session_velos(session.cyclist)
     
-    # Get top groups
-    top_groups = Group.objects.filter(is_visible=True)
-    if group_id:
-        try:
-            group = Group.objects.get(pk=int(group_id))
-            from .analytics import _get_descendant_group_ids
-            group_ids = _get_descendant_group_ids(group)
-            group_ids.append(group.id)
-            top_groups = top_groups.filter(id__in=group_ids)
-        except (ValueError, Group.DoesNotExist):
-            pass
+    # Top groups by Velos in the requested period (HourlyMetric)
+    top_groups_agg = list(
+        metrics_qs.values('group_at_time_id')
+        .annotate(period_velos=Sum('velos'))
+        .filter(period_velos__gt=0)
+        .order_by('-period_velos')[:10]
+    )
+    top_group_ids = [row['group_at_time_id'] for row in top_groups_agg]
+    period_velos_by_group = {
+        row['group_at_time_id']: int(row['period_velos'] or 0)
+        for row in top_groups_agg
+    }
+    groups_by_id = {
+        g.id: g
+        for g in Group.objects.filter(id__in=top_group_ids, is_visible=True).select_related('group_type')
+    }
+
+    top_groups_list = []
+    for group_id in top_group_ids:
+        group = groups_by_id.get(group_id)
+        if group is None:
+            continue
+        top_groups_list.append({
+            'group_id': group.id,
+            'name': group.name,
+            'short_name': group.short_name,
+            'group_type': group.group_type.name if group.group_type else None,
+            'distance_total': float(group.distance_total or 0),
+            'velos_total': period_velos_by_group[group_id],
+        })
     
-    top_groups_list = [
-        {
-            'group_id': g.id,
-            'name': g.name,
-            'short_name': g.short_name,
-            'group_type': g.group_type.name if g.group_type else None,
-            'distance_total': float(g.distance_total or 0),
-        }
-        for g in top_groups.order_by('-distance_total')[:10]
-        if g.distance_total and g.distance_total > 0
-    ]
-    
-    # Get top cyclists
+    # Get top cyclists by Velos in period
     top_cyclists_metrics = metrics_qs.filter(cyclist__isnull=False).values(
         'cyclist_id', 'cyclist__user_id', 'cyclist__id_tag'
     ).annotate(
-        total_distance=Sum('distance_km')
-    ).order_by('-total_distance')[:10]
+        total_distance=Sum('distance_km'),
+        total_velos=Sum('velos'),
+    ).order_by('-total_velos')[:10]
     
     top_cyclists_list = []
     for item in top_cyclists_metrics:
@@ -2170,12 +2330,14 @@ def get_statistics(request):
             'user_id': item.get('cyclist__user_id'),
             'id_tag': item.get('cyclist__id_tag'),
             'distance_period': float(item.get('total_distance') or 0),
+            'velos_period': int(item.get('total_velos') or 0),
         })
     
     return JsonResponse({
         'period_start': start_dt.strftime('%Y-%m-%d'),
         'period_end': end_dt.strftime('%Y-%m-%d'),
         'total_distance': float(total_distance),
+        'total_velos': total_velos,
         'top_groups': top_groups_list,
         'top_cyclists': top_cyclists_list,
     })
@@ -2648,6 +2810,7 @@ def device_heartbeat(request: HttpRequest) -> JsonResponse:
         
         data = json.loads(request.body) if request.body else {}
         device_id = data.get('device_id')
+        boot_reason = data.get('boot_reason')
         
         if not device_id:
             return JsonResponse({"error": _("device_id ist erforderlich")}, status=400)
@@ -2672,6 +2835,13 @@ def device_heartbeat(request: HttpRequest) -> JsonResponse:
         # Update device last_active
         device.last_active = timezone.now()
         device.save()
+
+        from api.services.device_display import (
+            build_device_display_api_payload,
+            get_active_session_for_device,
+            handle_boot_reason,
+        )
+        handle_boot_reason(device, boot_reason)
         
         # Create audit log entry
         DeviceAuditLog.objects.create(
@@ -2682,12 +2852,19 @@ def device_heartbeat(request: HttpRequest) -> JsonResponse:
         
         logger.debug(f"[device_heartbeat] Device {device_id} sent heartbeat")
         
-        return JsonResponse({
+        response_data = {
             "success": True,
             "message": "Heartbeat empfangen",
             "status": health.status,
-            "last_heartbeat": health.last_heartbeat.isoformat() if health.last_heartbeat else None
-        })
+            "last_heartbeat": health.last_heartbeat.isoformat() if health.last_heartbeat else None,
+        }
+        response_data.update(
+            build_device_display_api_payload(
+                device,
+                get_active_session_for_device(device),
+            )
+        )
+        return JsonResponse(response_data)
         
     except json.JSONDecodeError as e:
         logger.error(f"[device_heartbeat] JSON decode error: {str(e)}")
@@ -2832,6 +3009,8 @@ def get_group_rewards(request: HttpRequest) -> JsonResponse:
             'track_name': achievement.track.name,
             'reached_at': achievement.reached_at.isoformat(),
             'reached_distance_km': float(achievement.reached_distance) if achievement.reached_distance else None,
+            'reached_velos': track_reference_velos(achievement.reached_distance)
+            if achievement.reached_distance else None,
             'reward_text': achievement.reward_text or '',
             'is_redeemed': achievement.is_redeemed,
             'redeemed_at': achievement.redeemed_at.isoformat() if achievement.redeemed_at else None,

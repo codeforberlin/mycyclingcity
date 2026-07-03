@@ -10,7 +10,7 @@
 Management command to reset all mileage data in the database.
 
 This command will:
-1. Reset all distance_total and coins_total to 0 for Groups, Cyclists, and Devices
+1. Reset distance_total and Velos ledger fields for Groups and Cyclists
 2. Delete all HourlyMetric entries (historical data)
 3. Delete all CyclistDeviceCurrentMileage entries (current sessions)
 4. Optionally delete EventHistory and TravelHistory entries
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Reset all mileage data: set distance_total/coins_total to 0 and delete historical data'
+    help = 'Reset all mileage data: zero totals/Velos and delete historical metrics'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -84,13 +84,13 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("=" * 60))
         self.stdout.write("")
         self.stdout.write("This will reset:")
-        self.stdout.write(f"  - {group_count} Groups (distance_total, coins_total → 0)")
-        self.stdout.write(f"  - {player_count} Cyclists (distance_total, coins_total → 0)")
+        self.stdout.write(f"  - {group_count} Groups (distance_total, velos_total, velos_spendable → 0)")
+        self.stdout.write(f"  - {player_count} Cyclists (distance_total, velos_balance → 0)")
         self.stdout.write(f"  - {device_count} Devices (distance_total → 0)")
         self.stdout.write(f"  - {hourly_metric_count} HourlyMetric entries (DELETE)")
         self.stdout.write(f"  - {session_count} CyclistDeviceCurrentMileage entries (DELETE)")
         self.stdout.write(f"  - {travel_status_count} GroupTravelStatus entries (current_travel_distance → 0)")
-        self.stdout.write(f"  - {event_status_count} GroupEventStatus entries (current_distance_km → 0)")
+        self.stdout.write(f"  - {event_status_count} GroupEventStatus entries (current_velos → 0)")
         if include_history:
             self.stdout.write(f"  - {event_history_count} EventHistory entries (DELETE)")
             self.stdout.write(f"  - {travel_history_count} TravelHistory entries (DELETE)")
@@ -116,7 +116,8 @@ class Command(BaseCommand):
                 self.stdout.write("Resetting Group totals...")
                 Group.objects.all().update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0
+                    velos_total=0,
+                    velos_spendable=0,
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {group_count} groups"))
 
@@ -124,8 +125,7 @@ class Command(BaseCommand):
                 self.stdout.write("Resetting Cyclist totals...")
                 Cyclist.objects.all().update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0,
-                    coins_spendable=0
+                    velos_balance=0,
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {player_count} cyclists"))
 
@@ -150,15 +150,27 @@ class Command(BaseCommand):
                 self.stdout.write("Resetting GroupTravelStatus entries...")
                 GroupTravelStatus.objects.all().update(
                     current_travel_distance=Decimal('0.00000'),
-                    start_km_offset=Decimal('0.00000')
+                    current_travel_velos=0,
+                    start_km_offset=Decimal('0.00000'),
+                    start_velos_offset=0,
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {travel_status_count} travel status entries"))
+
+                # 6b. Reset LeafGroupTravelContribution
+                from api.models import LeafGroupTravelContribution
+                contribution_count = LeafGroupTravelContribution.objects.count()
+                self.stdout.write("Resetting LeafGroupTravelContribution entries...")
+                LeafGroupTravelContribution.objects.all().update(
+                    current_travel_distance=Decimal('0.00000'),
+                    current_travel_velos=0,
+                )
+                self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {contribution_count} leaf group contribution entries"))
 
                 # 7. Reset GroupEventStatus
                 self.stdout.write("Resetting GroupEventStatus entries...")
                 GroupEventStatus.objects.all().update(
-                    current_distance_km=Decimal('0.00000'),
-                    start_km_offset=Decimal('0.00000')
+                    current_velos=0,
+                    start_velos_offset=0,
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {event_status_count} event status entries"))
 

@@ -367,22 +367,22 @@ class TestComplexHierarchyQueries:
         child_status = GroupEventStatus.objects.create(
             group=child_group,
             event=event,
-            current_distance_km=Decimal('10.00000')
+            current_velos=1000,
         )
-        
+
         parent_status = GroupEventStatus.objects.create(
             group=parent_group,
             event=event,
-            current_distance_km=Decimal('20.00000')
+            current_velos=2000,
         )
-        
-        # Aggregate total distance for event
+
+        # Aggregate total Velos for event
         from django.db.models import Sum
         total = GroupEventStatus.objects.filter(
             event=event
         ).aggregate(
-            total=Sum('current_distance_km')
+            total=Sum('current_velos')
         )['total']
-        
-        assert float(total) == 30.0
+
+        assert total == 3000
 

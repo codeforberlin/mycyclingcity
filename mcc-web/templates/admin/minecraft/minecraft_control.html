@@ -251,31 +251,33 @@ function performMinecraftAction(action, buttonElement) {
     <div id="minecraft-output" class="output-box" style="display:none;"></div>
 </div>
 
-<h2>{% trans 'Minecraft Player Überblick' %}</h2>
+<h2>{% trans 'Minecraft Gruppen-Velos Überblick' %}</h2>
 <table class="minecraft-table">
     <thead>
         <tr>
-            <th>{% trans 'Player' %}</th>
-            <th>{% trans 'DB Coins Gesamt' %}</th>
-            <th>{% trans 'DB Coins Ausgebbar' %}</th>
-            <th>{% trans 'Scoreboard Gesamt' %}</th>
-            <th>{% trans 'Scoreboard Ausgebbar' %}</th>
+            <th>{% trans 'Minecraft-Name' %}</th>
+            <th>{% trans 'Gruppe' %}</th>
+            <th>{% trans 'DB Velos gesamt' %}</th>
+            <th>{% trans 'DB Velos ausgebbar' %}</th>
+            <th>{% trans 'Scoreboard gesamt' %}</th>
+            <th>{% trans 'Scoreboard ausgebbar' %}</th>
             <th>{% trans 'Snapshot Zeit' %}</th>
         </tr>
     </thead>
     <tbody>
-        {% for item in players %}
+        {% for item in group_accounts %}
         <tr>
             <td>{{ item.player }}</td>
-            <td>{{ item.coins_total }}</td>
-            <td>{{ item.coins_spendable }}</td>
+            <td>{{ item.group.name }}</td>
+            <td>{{ item.velos_total }}</td>
+            <td>{{ item.velos_spendable }}</td>
             <td>{{ item.snapshot_total|default:"-" }}</td>
             <td>{{ item.snapshot_spendable|default:"-" }}</td>
             <td>{{ item.snapshot_time|default:"-" }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">{% trans 'Keine Minecraft Player gefunden.' %}</td>
+            <td colspan="7">{% trans 'Keine Gruppen mit Minecraft-Namen gefunden.' %}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -315,7 +317,7 @@ function performMinecraftAction(action, buttonElement) {
             <th>{% trans 'Zeit' %}</th>
             <th>{% trans 'Status' %}</th>
             <th>{% trans 'Typ' %}</th>
-            <th>{% trans 'Player' %}</th>
+            <th>{% trans 'Minecraft-Name' %}</th>
         </tr>
     </thead>
     <tbody>

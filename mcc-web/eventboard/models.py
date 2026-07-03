@@ -52,13 +52,11 @@ class Event(models.Model):
     start_time = models.DateTimeField(null=True, blank=True, verbose_name=_("Startzeitpunkt"))
     end_time = models.DateTimeField(null=True, blank=True, verbose_name=_("Endzeitpunkt"))
     hide_after_date = models.DateTimeField(null=True, blank=True, verbose_name=_("Ab diesem Datum nicht mehr anzeigen"), help_text=_("Events werden nach diesem Datum nicht mehr in der Karte angezeigt, auch wenn sie noch aktiv sind"))
-    target_distance_km = models.DecimalField(
-        max_digits=15, 
-        decimal_places=5, 
-        null=True, 
-        blank=True, 
-        verbose_name=_("Kilometerziel"), 
-        help_text=_("Gesamtes Kilometerziel für dieses Event (optional). Wird für Fortschrittsanzeige verwendet.")
+    target_velos = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Velos-Ziel"),
+        help_text=_("Gesamtes Velos-Ziel für dieses Event (optional). Wird für Fortschrittsanzeige verwendet."),
     )
     update_interval_seconds = models.IntegerField(
         default=30,
@@ -121,13 +119,17 @@ class Event(models.Model):
             return False  # Don't show before start
         return True
 
-    def get_total_distance_km(self):
-        """Calculate total kilometers collected by all groups in this event."""
+    def get_total_velos(self):
+        """Calculate total Velos collected by all groups in this event."""
         from django.db.models import Sum
         total = self.group_statuses.aggregate(
-            total=Sum('current_distance_km')
-        )['total'] or Decimal('0.00000')
-        return total
+            total=Sum('current_velos')
+        )['total'] or 0
+        return int(total)
+
+    def get_total_distance_km(self):
+        """Deprecated alias — returns Velos total for backward-compatible callers."""
+        return Decimal(self.get_total_velos())
 
     def save_event_to_history(self):
         """Save current event progress to history for all participating groups."""
@@ -142,7 +144,7 @@ class Event(models.Model):
                 start_time=start_time,
                 defaults={
                     'end_time': now,
-                    'total_distance_km': status.current_distance_km,
+                    'total_velos': status.current_velos,
                     'best_leaf_group': status.best_leaf_group,
                     'best_leaf_group_goal_reached_at': status.best_leaf_group_goal_reached_at
                 }
@@ -150,20 +152,20 @@ class Event(models.Model):
             # If entry already exists, update it with current data
             if not created:
                 history_entry.end_time = now
-                history_entry.total_distance_km = status.current_distance_km
+                history_entry.total_velos = status.current_velos
                 history_entry.best_leaf_group = status.best_leaf_group
                 history_entry.best_leaf_group_goal_reached_at = status.best_leaf_group_goal_reached_at
                 history_entry.save()
         # Reset event statuses after saving to history
         self.group_statuses.update(
-            current_distance_km=Decimal('0.00000'),
-            start_km_offset=Decimal('0.00000'),
+            current_velos=0,
+            start_velos_offset=0,
             best_leaf_group=None,
             best_leaf_group_goal_reached_at=None
         )
         # Also reset leaf group contributions
         LeafGroupEventContribution.objects.filter(event=self).update(
-            current_event_distance=Decimal('0.00000')
+            current_event_velos=0
         )
     
     def restart_event(self):
@@ -180,44 +182,41 @@ class Event(models.Model):
         
         # Reset all group event statuses
         self.group_statuses.update(
-            current_distance_km=Decimal('0.00000'),
-            start_km_offset=Decimal('0.00000'),
+            current_velos=0,
+            start_velos_offset=0,
             goal_reached_at=None,
             best_leaf_group=None,
             best_leaf_group_goal_reached_at=None
         )
         # Also reset leaf group contributions
         LeafGroupEventContribution.objects.filter(event=self).update(
-            current_event_distance=Decimal('0.00000')
+            current_event_velos=0
         )
     
     def get_progress_percentage(self):
-        """Calculate progress percentage towards target distance."""
-        if not self.target_distance_km:
+        """Calculate progress percentage towards target Velos."""
+        if not self.target_velos:
             return None
-        total = self.get_total_distance_km()
+        total = self.get_total_velos()
         if total == 0:
             return Decimal('0.00')
-        percentage = (total / self.target_distance_km) * Decimal('100.00')
+        percentage = (Decimal(total) / Decimal(self.target_velos)) * Decimal('100.00')
         return min(percentage, Decimal('100.00'))  # Cap at 100%
     
     def get_top_groups(self, limit=3):
         """
         Get top N groups that have reached the goal, sorted by goal_reached_at (who reached first).
-        Only returns groups that have reached the target_distance_km.
+        Only returns groups that have reached the target_velos.
         """
-        if not self.target_distance_km:
+        if not self.target_velos:
             return self.group_statuses.none()
         
-        # Filter groups that have reached the goal (current_distance_km >= target_distance_km)
-        # Sort by goal_reached_at (who reached first - earliest goal_reached_at = first place)
-        # If goal_reached_at is None, use a very late date to push them to the end
         reached_groups = self.group_statuses.filter(
-            current_distance_km__gte=self.target_distance_km,
+            current_velos__gte=self.target_velos,
             goal_reached_at__isnull=False
         ).select_related('group', 'best_leaf_group').order_by(
-            'goal_reached_at',  # Who reached first (earliest goal_reached_at = first place)
-            '-current_distance_km'  # Fallback: higher distance if same time
+            'goal_reached_at',
+            '-current_velos'
         )[:limit]
         
         return reached_groups
@@ -237,17 +236,13 @@ class GroupEventStatus(models.Model):
         related_name='group_statuses',
         verbose_name=_("Event")
     )
-    current_distance_km = models.DecimalField(
-        max_digits=15,
-        decimal_places=5,
-        default=Decimal('0.00000'),
-        verbose_name=_("Aktuelle Distanz (km)")
+    current_velos = models.IntegerField(
+        default=0,
+        verbose_name=_("Aktuelle Velos")
     )
-    start_km_offset = models.DecimalField(
-        max_digits=15,
-        decimal_places=5,
-        default=Decimal('0.00000'),
-        verbose_name=_("Start-Offset (km)")
+    start_velos_offset = models.IntegerField(
+        default=0,
+        verbose_name=_("Start-Offset (Velos)")
     )
     goal_reached_at = models.DateTimeField(
         null=True,
@@ -278,7 +273,7 @@ class GroupEventStatus(models.Model):
         unique_together = [['group', 'event']]
 
     def __str__(self):
-        return f"{self.group.name} - {self.event.name} ({self.current_distance_km:.5f} km)"
+        return f"{self.group.name} - {self.event.name} ({self.current_velos} Velos)"
 
 
 class LeafGroupEventContribution(models.Model):
@@ -307,12 +302,10 @@ class LeafGroupEventContribution(models.Model):
         related_name='leaf_group_contributions',
         verbose_name=_("Event")
     )
-    current_event_distance = models.DecimalField(
-        max_digits=15,
-        decimal_places=5,
-        default=Decimal('0.00000'),
-        verbose_name=_("Aktuelle Event-Distanz (km)"),
-        help_text=_("Die von dieser Leaf-Gruppe während des aktuellen Events zurückgelegte Distanz")
+    current_event_velos = models.IntegerField(
+        default=0,
+        verbose_name=_("Aktuelle Event-Velos"),
+        help_text=_("Die von dieser Leaf-Gruppe während des aktuellen Events erstrampelten Velos")
     )
     updated_at = models.DateTimeField(
         auto_now=True,
@@ -325,11 +318,11 @@ class LeafGroupEventContribution(models.Model):
         unique_together = [['leaf_group', 'event']]
         indexes = [
             models.Index(fields=['leaf_group', 'event']),
-            models.Index(fields=['event', '-current_event_distance']),  # For finding highest contributor
+            models.Index(fields=['event', '-current_event_velos']),  # For finding highest contributor
         ]
     
     def __str__(self):
-        return f"{self.leaf_group.name} - {self.event.name}: {self.current_event_distance} km"
+        return f"{self.leaf_group.name} - {self.event.name}: {self.current_event_velos} Velos"
 
 
 class EventHistory(models.Model):
@@ -348,7 +341,7 @@ class EventHistory(models.Model):
     )
     start_time = models.DateTimeField(verbose_name=_("Startzeitpunkt"))
     end_time = models.DateTimeField(verbose_name=_("Endzeitpunkt"))
-    total_distance_km = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Gesammelte Kilometer"))
+    total_velos = models.IntegerField(default=0, verbose_name=_("Gesammelte Velos"))
     best_leaf_group = models.ForeignKey(
         'api.Group',
         on_delete=models.SET_NULL,
@@ -373,4 +366,4 @@ class EventHistory(models.Model):
         unique_together = [['event', 'group', 'start_time']]
 
     def __str__(self):
-        return f"{self.group.name} - {self.event.name} ({self.total_distance_km:.5f} km)"
+        return f"{self.group.name} - {self.event.name} ({self.total_velos} Velos)"

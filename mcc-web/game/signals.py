@@ -60,8 +60,8 @@ def update_game_session(session_key, session_data=None):
         is_master = session_dict.get('is_master', False)
         device_assignments = session_dict.get('device_assignments', {})
         has_assignments = isinstance(device_assignments, dict) and len(device_assignments) > 0
-        target_km = session_dict.get('current_target_km', 0.0)
-        has_target_km = 'current_target_km' in session_dict and target_km and target_km > 0
+        target_km = session_dict.get('current_target_velos', 0.0)
+        has_target_velos = 'current_target_velos' in session_dict and target_km and target_km > 0
         
         # Update or create GameSession
         GameSession.objects.update_or_create(
@@ -70,7 +70,7 @@ def update_game_session(session_key, session_data=None):
                 'room_code': room_code,
                 'is_master': is_master,
                 'has_assignments': has_assignments,
-                'has_target_km': has_target_km,
+                'has_target_velos': has_target_velos,
             }
         )
         logger.debug(f"✅ Updated GameSession for session_key={session_key[:10]}...")
@@ -96,10 +96,10 @@ def is_game_session_from_dict(session_dict):
     has_master = 'is_master' in session_dict and session_dict.get('is_master')
     
     # 4. User has set a target
-    target_km = session_dict.get('current_target_km', 0.0)
-    has_target_km = 'current_target_km' in session_dict and target_km and target_km > 0
+    target_km = session_dict.get('current_target_velos', 0.0)
+    has_target_velos = 'current_target_velos' in session_dict and target_km and target_km > 0
     
-    return has_room_code or has_assignments or has_master or has_target_km
+    return has_room_code or has_assignments or has_master or has_target_velos
 
 
 @receiver(post_save, sender=Session)

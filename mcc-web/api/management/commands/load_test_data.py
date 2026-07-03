@@ -121,7 +121,7 @@ class Command(BaseCommand):
                         is_visible=group_data.get('is_visible', True),
                         parent=parent,
                         distance_total=Decimal(str(group_data.get('distance_total', 0))),
-                        coins_total=group_data.get('coins_total', 0),
+                        
                     )
                     group.save()
                     
@@ -140,7 +140,7 @@ class Command(BaseCommand):
                             'id_tag': cyclist_data['id_tag'],
                             'is_visible': cyclist_data.get('is_visible', True),
                             'distance_total': Decimal(str(cyclist_data.get('distance_total', 0))),
-                            'coins_total': cyclist_data.get('coins_total', 0),
+                            
                         }
                     )
                     if not created:
@@ -148,7 +148,7 @@ class Command(BaseCommand):
                         cyclist.id_tag = cyclist_data['id_tag']
                         cyclist.is_visible = cyclist_data.get('is_visible', True)
                         cyclist.distance_total = Decimal(str(cyclist_data.get('distance_total', 0)))
-                        cyclist.coins_total = cyclist_data.get('coins_total', 0)
+                        cyclist.velos_balance = cyclist_data.get('velos_balance', 0)
                         cyclist.save()
                     
                     # Assign to groups
@@ -231,7 +231,7 @@ class Command(BaseCommand):
                     
                     primary_group = cyclist.groups.first()
                     if primary_group:
-                        primary_group.add_to_totals(delta_km, 0)
+                        primary_group.add_to_totals(delta_km)
                     
                     # Create a simulated session and immediately save it to HourlyMetric
                     # This simulates the real-world flow: session -> HourlyMetric
@@ -251,9 +251,6 @@ class Command(BaseCommand):
                     if not created:
                         # Update existing metric by adding the session kilometers
                         metric.distance_km += delta_km
-                        # Update group if it changed
-                        if metric.group_at_time != primary_group:
-                            metric.group_at_time = primary_group
                         metric.save()
                     
                     self.stdout.write(f"  ✓ Update: {cyclist.user_id} +{update['distance_delta']} km")

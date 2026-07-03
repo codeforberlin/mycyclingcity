@@ -11,7 +11,7 @@
     <div class="info-hub-modal" onclick="event.stopPropagation()">
         <!-- Header: Project Name and Version -->
         <div class="info-hub-header">
-            <h2 class="info-hub-title">{% trans "Kilometer-Challenge" %}</h2>
+            <h2 class="info-hub-title">{% trans "Velos-Rallye" %}</h2>
             <div class="info-hub-version">
                 <span class="info-hub-version-label">{% trans "Version" %}:</span>
                 <span class="info-hub-version-value">{{ PROJECT_VERSION|default:"dev" }}</span>
@@ -30,29 +30,29 @@
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "Weisen Sie Radler Geräten zu, setzen Sie optional ein Ziel in Kilometern und starten Sie das Spiel. Das System verfolgt automatisch die zurückgelegten Kilometer und berechnet die verdienten Coins." %}
+                                {% trans "Weisen Sie Radler Geräten zu, setzen Sie optional ein Velos-Ziel und starten Sie die Runde. Das System berechnet automatisch die gesammelten Velos anhand der Geräte-Konfiguration." %}
                             </div>
                         </div>
                     </div>
                     <div class="info-hub-accordion-item">
                         <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
-                            <div class="info-hub-accordion-question">{% trans "Was sind Spielräume?" %}</div>
+                            <div class="info-hub-accordion-question">{% trans "Was sind Rallye-Räume?" %}</div>
                             <div class="info-hub-accordion-icon">▼</div>
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "Spielräume ermöglichen es mehreren Spielern, gemeinsam an derselben Challenge teilzunehmen. Der Raum-Ersteller ist der Spielleiter und kann Einstellungen ändern. Alle Teilnehmer sehen die gleichen Ergebnisse in Echtzeit." %}
+                                {% trans "Rallye-Räume ermöglichen es mehreren Radlern, gemeinsam an derselben Velos-Rallye teilzunehmen. Der Raum-Ersteller ist der Rallye-Leiter und kann Einstellungen ändern. Alle Teilnehmer sehen die gleichen Ergebnisse in Echtzeit." %}
                             </div>
                         </div>
                     </div>
                     <div class="info-hub-accordion-item">
                         <div class="info-hub-accordion-header" onclick="toggleInfoHubFAQItem(this)">
-                            <div class="info-hub-accordion-question">{% trans "Wie werden Coins berechnet?" %}</div>
+                            <div class="info-hub-accordion-question">{% trans "Wie werden Velos berechnet?" %}</div>
                             <div class="info-hub-accordion-icon">▼</div>
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "Coins werden basierend auf den zurückgelegten Kilometern und einem individuellen Umrechnungsfaktor jedes Radlers berechnet. Die Formel lautet: Coins = Kilometer × Umrechnungsfaktor." %}
+                                {% trans "Velos werden aus den in der Session gefahrenen Kilometern und der Geräte-Konfiguration (Basis-Velos und Bonus) berechnet. Jedes Gerät kann unterschiedliche Velos pro Kilometer vergeben." %}
                             </div>
                         </div>
                     </div>

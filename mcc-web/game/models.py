@@ -20,7 +20,7 @@ class GameRoom(models.Model):
         unique=True,
         editable=False,
         verbose_name=_("Raum-Code"),
-        help_text=_("Eindeutiger Code für diesen Spielraum")
+        help_text=_("Eindeutiger Code für diesen Rallye-Raum")
     )
     
     master_session_key = models.CharField(
@@ -57,6 +57,20 @@ class GameRoom(models.Model):
         verbose_name=_("Stoppentfernungen"),
         help_text=_("Entfernungen der Radfahrer beim Spielstopp (z.B. {'cyclist1': 150.2})")
     )
+
+    stop_session_velos = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Stopp-Session-Velos"),
+        help_text=_("Eingefrorene Session-Velos beim Spielstopp (z.B. {'cyclist1': 120})"),
+    )
+
+    stop_session_km = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Stopp-Session-km"),
+        help_text=_("Eingefrorene Session-km beim Spielstopp (z.B. {'cyclist1': 1.25})"),
+    )
     
     is_game_stopped = models.BooleanField(
         default=False,
@@ -71,10 +85,40 @@ class GameRoom(models.Model):
         help_text=_("Liste von User-IDs der Radfahrer, die bereits als Gewinner bekanntgegeben wurden")
     )
     
-    current_target_km = models.FloatField(
-        default=0.0,
-        verbose_name=_("Aktuelles Ziel (km)"),
-        help_text=_("Das aktuelle Ziel in Kilometern für dieses Spiel")
+    current_target_velos = models.IntegerField(
+        default=0,
+        verbose_name=_("Aktuelles Ziel (Velos)"),
+        help_text=_("Das aktuelle Velos-Ziel für dieses Spiel")
+    )
+
+    timer_enabled = models.BooleanField(
+        default=False,
+        verbose_name=_("Runden-Timer aktiv"),
+    )
+    round_duration_seconds = models.PositiveIntegerField(
+        default=300,
+        verbose_name=_("Rundendauer (Sekunden)"),
+    )
+    timer_auto_stop = models.BooleanField(
+        default=False,
+        verbose_name=_("Auto-Stopp bei Timer-Ablauf"),
+    )
+    timer_sound_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Timer-Ton aktiv"),
+    )
+    timer_highlight_last_minute = models.BooleanField(
+        default=True,
+        verbose_name=_("Letzte Minute hervorheben"),
+    )
+    round_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Rundenstart"),
+    )
+    timer_expired = models.BooleanField(
+        default=False,
+        verbose_name=_("Timer abgelaufen (Hinweis aktiv)"),
     )
     
     active_sessions = models.JSONField(
@@ -103,8 +147,8 @@ class GameRoom(models.Model):
     )
     
     class Meta:
-        verbose_name = _("Spielraum")
-        verbose_name_plural = _("Spielräume")
+        verbose_name = _("Rallye-Raum")
+        verbose_name_plural = _("Rallye-Räume")
         ordering = ['-created_at']
     
     def __str__(self):
@@ -169,10 +213,10 @@ class GameSession(models.Model):
         help_text=_("Ob diese Sitzung Gerätezuweisungen hat")
     )
     
-    has_target_km = models.BooleanField(
+    has_target_velos = models.BooleanField(
         default=False,
-        verbose_name=_("Hat Ziel-KM"),
-        help_text=_("Ob diese Sitzung ein Zielkilometer gesetzt hat")
+        verbose_name=_("Hat Velos-Ziel"),
+        help_text=_("Ob diese Sitzung ein Velos-Ziel gesetzt hat")
     )
     
     created_at = models.DateTimeField(
@@ -191,7 +235,7 @@ class GameSession(models.Model):
         ordering = ['-last_updated']
         indexes = [
             models.Index(fields=['room_code', 'is_master']),
-            models.Index(fields=['has_assignments', 'has_target_km']),
+            models.Index(fields=['has_assignments', 'has_target_velos']),
         ]
     
     def __str__(self):

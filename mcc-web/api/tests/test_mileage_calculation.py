@@ -200,7 +200,7 @@ class TestCumulativeSums:
         assert parent.distance_total == Decimal('0.00000')
         
         # Add to child
-        child.add_to_totals(Decimal('10.00000'), 0)
+        child.add_to_totals(Decimal('10.00000'))
         child.refresh_from_db()
         parent.refresh_from_db()
         
@@ -208,7 +208,7 @@ class TestCumulativeSums:
         assert parent.distance_total == Decimal('10.00000')
         
         # Add more to child
-        child.add_to_totals(Decimal('5.00000'), 0)
+        child.add_to_totals(Decimal('5.00000'))
         child.refresh_from_db()
         parent.refresh_from_db()
         

@@ -1985,8 +1985,8 @@ msgid "Raum-Code"
 msgstr "Room Code"
 
 #: game/models.py:23
-msgid "Eindeutiger Code für diesen Spielraum"
-msgstr "Unique code for this game room"
+msgid "Eindeutiger Code für diesen Rallye-Raum"
+msgstr "Unique code for this rally room"
 
 #: game/models.py:30
 msgid "Spielleiter-Sitzungsschlüssel"
@@ -2061,12 +2061,12 @@ msgid "Zeitpunkt der letzten Aktivität in diesem Raum"
 msgstr "Time of last activity in this room"
 
 #: game/models.py:106
-msgid "Spielraum"
-msgstr "Game Room"
+msgid "Rallye-Raum"
+msgstr "Rally room"
 
 #: game/models.py:107
-msgid "Spielräume"
-msgstr "Game Rooms"
+msgid "Rallye-Räume"
+msgstr "Rally rooms"
 
 #: game/models.py:148
 msgid "Django Sitzungsschlüssel"
@@ -2400,8 +2400,8 @@ msgid "Zurück"
 msgstr "Back"
 
 #: game/templates/game/join_room.html:150
-msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Spielraum beizutreten."
-msgstr "Enter the 8-digit room code to join a game room."
+msgid "Geben Sie den 8-stelligen Raumcode ein, um einem Rallye-Raum beizutreten."
+msgstr "Enter the 8-digit room code to join a rally room."
 
 #: game/templates/game/mcc_game.html:581
 #: game/templates/game/partials/info_modal.html:14
@@ -2443,10 +2443,10 @@ msgstr "Play together"
 
 #: game/templates/game/mcc_game.html:626
 msgid ""
-"Erstelle einen Spiel-Raum, damit andere Radler an verschiedenen Orten die "
+"Erstelle einen Rallye-Raum, damit andere Radler an verschiedenen Orten die "
 "gleiche Tabelle sehen können."
 msgstr ""
-"Create a game room so other cyclists in different locations can see the same "
+"Create a rally room so other cyclists in different locations can see the same "
 "table."
 
 #: game/templates/game/mcc_game.html:629
@@ -2607,13 +2607,13 @@ msgstr "Error: Function not available. Please reload the page."
 
 #: game/templates/game/mcc_game.html:1856
 #: game/templates/game/mcc_game.html:1920
-msgid "Spiel-Raum beitreten"
-msgstr "Join Game Room"
+msgid "Rallye-Raum beitreten"
+msgstr "Join rally room"
 
 #: game/templates/game/mcc_game.html:1857
 #: game/templates/game/mcc_game.html:1921
-msgid "Tritt meinem Spiel-Raum bei!"
-msgstr "Join my game room!"
+msgid "Tritt meinem Rallye-Raum bei!"
+msgstr "Join my rally room!"
 
 #: game/templates/game/mcc_game.html:1884
 #: game/templates/game/mcc_game.html:1907
@@ -2684,19 +2684,19 @@ msgstr ""
 "coins earned."
 
 #: game/templates/game/partials/info_modal.html:39
-msgid "Was sind Spielräume?"
-msgstr "What are game rooms?"
+msgid "Was sind Rallye-Räume?"
+msgstr "What are rally rooms?"
 
 #: game/templates/game/partials/info_modal.html:44
 msgid ""
-"Spielräume ermöglichen es mehreren Spielern, gemeinsam an derselben "
-"Challenge teilzunehmen. Der Raum-Ersteller ist der Spielleiter und kann "
+"Rallye-Räume ermöglichen es mehreren Radlern, gemeinsam an derselben "
+"Velos-Rallye teilzunehmen. Der Raum-Ersteller ist der Rallye-Leiter und kann "
 "Einstellungen ändern. Alle Teilnehmer sehen die gleichen Ergebnisse in "
 "Echtzeit."
 msgstr ""
-"Game rooms allow multiple players to participate together in the same "
-"challenge. The room creator is the master and can change settings. All "
-"participants see the same results in real-time."
+"Rally rooms allow multiple cyclists to participate together in the same "
+"Velos rally. The room creator is the rally leader and can change settings. "
+"All participants see the same results in real-time."
 
 #: game/templates/game/partials/info_modal.html:50
 msgid "Wie werden Coins berechnet?"

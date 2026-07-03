@@ -28,6 +28,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.urls import reverse
 from api.models import Cyclist, Group
+from api.helpers import get_cyclist_session_velos, get_cyclist_session_km
 from iot.models import Device
 from django.db.models import Q
 from django.db.models.functions import Coalesce
@@ -65,9 +66,255 @@ def format_css_number(value, decimals=1):
     except (ValueError, TypeError):
         return "0" 
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+from datetime import timedelta
 from .models import GameRoom
 
 logger = logging.getLogger(__name__)
+
+TIMER_SETTING_KEYS = (
+    'timer_enabled',
+    'round_duration_seconds',
+    'timer_auto_stop',
+    'timer_sound_enabled',
+    'timer_highlight_last_minute',
+)
+
+
+def _timer_duration_minutes(request) -> int:
+    seconds = int(request.session.get('round_duration_seconds') or 300)
+    return max(1, seconds // 60)
+
+
+def _timer_settings_context(request) -> dict:
+    return {
+        'timer_enabled': bool(request.session.get('timer_enabled')),
+        'timer_duration_minutes': _timer_duration_minutes(request),
+        'timer_auto_stop': bool(request.session.get('timer_auto_stop')),
+        'timer_sound_enabled': bool(request.session.get('timer_sound_enabled', True)),
+    }
+
+
+def _ensure_round_timer_started(request, *, sync_to_room: bool = False) -> None:
+    """Set round_started_at when timer is on and a round is already running."""
+    if not request.session.get('timer_enabled'):
+        return
+    if not request.session.get('start_distances'):
+        return
+    if request.session.get('is_game_stopped'):
+        return
+    existing = request.session.get('round_started_at')
+    if existing and not _parse_round_started_at(existing):
+        request.session['round_started_at'] = None
+        existing = None
+    if existing:
+        return
+    request.session['round_started_at'] = timezone.now().isoformat()
+    request.session['timer_expired'] = False
+    request.session['timer_sound_played'] = False
+    request.session.modified = True
+    if sync_to_room:
+        sync_room_from_session(request)
+
+
+def _is_game_round_active(request) -> bool:
+    """True when a round is running (assignments frozen at start, not stopped)."""
+    if request.session.get('is_game_stopped'):
+        return False
+    return bool(request.session.get('start_distances'))
+
+
+def _format_timer_mmss(total_seconds: int) -> str:
+    seconds = max(0, int(total_seconds))
+    return f'{seconds // 60:02d}:{seconds % 60:02d}'
+
+
+def _ensure_session_start_distances_from_room(request, room) -> None:
+    """Copy running-round state from room when the session was not updated yet."""
+    if not room:
+        return
+    if room.start_distances:
+        request.session['start_distances'] = room.start_distances
+    request.session['is_game_stopped'] = bool(room.is_game_stopped)
+
+
+def _apply_timer_settings_from_post(request) -> None:
+    """Apply timer settings when submitted with start_game or timer settings form."""
+    if 'timer_duration_minutes' not in request.POST and 'timer_enabled' not in request.POST:
+        return
+    request.session['timer_enabled'] = request.POST.get('timer_enabled') in ('1', 'true', 'on')
+    try:
+        minutes = int(request.POST.get('timer_duration_minutes') or 5)
+        minutes = max(1, min(180, minutes))
+    except (TypeError, ValueError):
+        minutes = 5
+    request.session['round_duration_seconds'] = minutes * 60
+    # Unchecked checkboxes are omitted from POST — treat absence as False.
+    request.session['timer_auto_stop'] = request.POST.get('timer_auto_stop') in ('1', 'true', 'on')
+    request.session['timer_sound_enabled'] = request.POST.get('timer_sound_enabled') in (
+        '1', 'true', 'on'
+    )
+    if 'timer_highlight_last_minute' in request.POST or 'timer_duration_minutes' in request.POST:
+        request.session['timer_highlight_last_minute'] = request.POST.get(
+            'timer_highlight_last_minute'
+        ) in ('1', 'true', 'on')
+    request.session.modified = True
+
+
+def _timer_display_context(request, *, game_is_active: bool = False, is_game_stopped: bool = False) -> dict:
+    _ensure_round_timer_started(request)
+    timer_enabled = bool(request.session.get('timer_enabled'))
+    duration = int(request.session.get('round_duration_seconds') or 300)
+    started = _parse_round_started_at(request.session.get('round_started_at'))
+    ends_at_ms = ''
+    timer_preview_seconds = 0
+    remaining_seconds = 0
+    round_running = game_is_active and not is_game_stopped
+    if timer_enabled and duration:
+        if round_running:
+            if not started:
+                started = timezone.now()
+                request.session['round_started_at'] = started.isoformat()
+                request.session.modified = True
+            ends_at = started + timedelta(seconds=duration)
+            ends_at_ms = int(ends_at.timestamp() * 1000)
+            remaining_seconds = max(0, int((ends_at - timezone.now()).total_seconds()))
+        elif not game_is_active:
+            timer_preview_seconds = duration
+            remaining_seconds = duration
+    countdown_display = (
+        _format_timer_mmss(remaining_seconds)
+        if remaining_seconds > 0
+        else '--:--'
+    )
+    progress_percent = 0
+    if timer_enabled and duration and remaining_seconds > 0:
+        progress_percent = min(100, int((remaining_seconds / duration) * 100))
+    return {
+        'timer_enabled': timer_enabled,
+        'round_duration_seconds': duration,
+        'timer_auto_stop': bool(request.session.get('timer_auto_stop')),
+        'timer_sound_enabled': bool(request.session.get('timer_sound_enabled', True)),
+        'timer_highlight_last_minute': bool(request.session.get('timer_highlight_last_minute', True)),
+        'timer_ends_at_ms': ends_at_ms,
+        'timer_preview_seconds': timer_preview_seconds,
+        'remaining_seconds': remaining_seconds,
+        'countdown_display': countdown_display,
+        'progress_percent': progress_percent,
+        'round_running': round_running,
+        'timer_expired': bool(request.session.get('timer_expired')),
+        'game_is_active': game_is_active,
+        'is_game_stopped': is_game_stopped,
+    }
+
+
+def _parse_round_started_at(value):
+    if not value:
+        return None
+    if isinstance(value, timezone.datetime):
+        return value
+    try:
+        parsed = timezone.datetime.fromisoformat(value)
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+    except (TypeError, ValueError):
+        return None
+
+
+def _sync_timer_settings_from_room(request, room):
+    for key in TIMER_SETTING_KEYS:
+        request.session[key] = getattr(room, key)
+    if room.round_started_at:
+        request.session['round_started_at'] = room.round_started_at.isoformat()
+    elif not _is_game_round_active(request):
+        request.session['round_started_at'] = None
+    request.session['timer_expired'] = bool(room.timer_expired)
+
+
+def _sync_timer_settings_to_room(request, room):
+    for key in TIMER_SETTING_KEYS:
+        setattr(room, key, request.session.get(key, getattr(room, key)))
+    room.round_started_at = _parse_round_started_at(request.session.get('round_started_at'))
+    room.timer_expired = bool(request.session.get('timer_expired', False))
+
+
+def _end_round_device_sessions_if_configured(request, *, on_stop: bool):
+    from mgmt.models import GameConfiguration
+    from api.services.device_session import end_game_round_device_sessions
+
+    cfg = GameConfiguration.get_config()
+    if on_stop and not cfg.end_device_sessions_on_round_stop:
+        return
+    if not on_stop and not cfg.end_device_sessions_on_round_start:
+        return
+    assignments = request.session.get('device_assignments', {})
+    if assignments:
+        end_game_round_device_sessions(
+            assignments,
+            reason='game_round_stop' if on_stop else 'game_round_start',
+        )
+
+
+def _freeze_game_round(request):
+    """Freeze displayed Velos (same as manual stop / timer auto-stop)."""
+    device_assignments = request.session.get('device_assignments', {})
+    if device_assignments:
+        user_ids = device_assignments.values()
+        cyclists = Cyclist.objects.filter(user_id__in=user_ids).select_related(
+            'cyclistdevicecurrentmileage__device'
+        )
+        stop_session_velos = {}
+        stop_session_km = {}
+        stop_distances = {}
+        for cyclist in cyclists:
+            uid = cyclist.user_id
+            stop_session_velos[uid] = get_cyclist_session_velos(cyclist)
+            stop_session_km[uid] = float(get_cyclist_session_km(cyclist))
+            stop_distances[uid] = float(cyclist.distance_total)
+        request.session['stop_session_velos'] = stop_session_velos
+        request.session['stop_session_km'] = stop_session_km
+        request.session['stop_distances'] = stop_distances
+        from api.services.device_display import lock_devices_for_round_stop
+        lock_devices_for_round_stop(device_assignments, stop_session_velos)
+    request.session['is_game_stopped'] = True
+    request.session['timer_expired'] = False
+    _end_round_device_sessions_if_configured(request, on_stop=True)
+    request.session.modified = True
+    sync_room_from_session(request)
+
+
+def _maybe_apply_timer_expiry(request) -> bool:
+    """Auto-stop or set timer_expired hint when round time is up.
+
+    Returns True when the client should play the expiry sound once this round.
+    """
+    if not request.session.get('timer_enabled'):
+        return False
+    started = _parse_round_started_at(request.session.get('round_started_at'))
+    if not started:
+        return False
+    duration = int(request.session.get('round_duration_seconds') or 300)
+    if timezone.now() < started + timedelta(seconds=duration):
+        return False
+
+    play_sound = (
+        request.session.get('timer_sound_enabled', True)
+        and not request.session.get('timer_sound_played')
+    )
+    if play_sound:
+        request.session['timer_sound_played'] = True
+        request.session.modified = True
+
+    if not request.session.get('is_game_stopped'):
+        if request.session.get('timer_auto_stop'):
+            _freeze_game_round(request)
+        elif not request.session.get('timer_expired'):
+            request.session['timer_expired'] = True
+            request.session.modified = True
+            sync_room_from_session(request)
+
+    return play_sound
 
 
 # --- Helper Functions for GameRoom ---
@@ -90,8 +337,8 @@ def can_delete_assignment(request, room, cyclist_user_id):
     device_assignments = request.session.get('device_assignments', {})
     return cyclist_user_id in device_assignments.values()
 
-def can_modify_target_km(request, room):
-    """Checks if target kilometers can be modified by the current user."""
+def can_modify_target_velos(request, room):
+    """Checks if target Velos can be modified by the current user."""
     if not room:
         return True  # No room = normal mode, allow modification
     return is_master(request, room)
@@ -121,10 +368,14 @@ def sync_session_from_room(request):
                     del request.session['start_distances']
                 if 'stop_distances' in request.session:
                     del request.session['stop_distances']
+                if 'stop_session_velos' in request.session:
+                    del request.session['stop_session_velos']
+                if 'stop_session_km' in request.session:
+                    del request.session['stop_session_km']
                 if 'announced_winners' in request.session:
                     del request.session['announced_winners']
-                if 'current_target_km' in request.session:
-                    del request.session['current_target_km']
+                if 'current_target_velos' in request.session:
+                    del request.session['current_target_velos']
                 request.session.modified = True
                 return None
             
@@ -132,9 +383,12 @@ def sync_session_from_room(request):
             request.session['device_assignments'] = room.device_assignments or {}
             request.session['start_distances'] = room.start_distances or {}
             request.session['stop_distances'] = room.stop_distances or {}
+            request.session['stop_session_velos'] = room.stop_session_velos or {}
+            request.session['stop_session_km'] = room.stop_session_km or {}
             request.session['is_game_stopped'] = room.is_game_stopped
             request.session['announced_winners'] = room.announced_winners or []
-            request.session['current_target_km'] = room.current_target_km
+            request.session['current_target_velos'] = room.current_target_velos
+            _sync_timer_settings_from_room(request, room)
             # Update master flag - CRITICAL: This must be updated every time we sync
             is_master_flag = is_master(request, room)
             request.session['is_master'] = is_master_flag
@@ -179,9 +433,12 @@ def sync_room_from_session(request):
             room.device_assignments = request.session.get('device_assignments', {})
             room.start_distances = request.session.get('start_distances', {})
             room.stop_distances = request.session.get('stop_distances', {})
+            room.stop_session_velos = request.session.get('stop_session_velos', {})
+            room.stop_session_km = request.session.get('stop_session_km', {})
             room.is_game_stopped = request.session.get('is_game_stopped', False)
             room.announced_winners = request.session.get('announced_winners', [])
-            room.current_target_km = request.session.get('current_target_km', 0.0)
+            room.current_target_velos = int(request.session.get('current_target_velos', 0) or 0)
+            _sync_timer_settings_to_room(request, room)
             
             # Update active sessions list
             if request.session.session_key:
@@ -213,11 +470,7 @@ def game_page(request):
         room_url = f"{base_url}{reverse('game:room_page', args=[room_code])}"
     
     # Get current target_km from session (synced from room if in a room)
-    current_target_km = request.session.get('current_target_km', 0.0)
-    if current_target_km is None:
-        current_target_km = 0.0
-    else:
-        current_target_km = float(current_target_km)
+    current_target_velos = int(request.session.get('current_target_velos', 0) or 0)
     
     # Get master flag (only relevant if in a room, otherwise False)
     # CRITICAL: If in a room, sync first to ensure is_master is up-to-date
@@ -244,16 +497,23 @@ def game_page(request):
         'top_groups': top_groups,
         'room_code': room_code,
         'room_url': room_url,
-        'current_target_km': current_target_km,  # For initializing input field and checkboxes
+        'current_target_velos': current_target_velos,  # For initializing input field and checkboxes
         'is_master': is_master_flag,  # Master flag for template (only relevant if in a room)
+        'timer_duration_minutes': _timer_duration_minutes(request),
     }
+    context.update(_timer_settings_context(request))
     return render(request, 'game/mcc_game.html', context)
 
 # --- NEW HTMX Views ---
 
 @csrf_exempt
 def end_session(request):
-    """Ends the current user session by deleting all session data."""
+    """Ends the current user session by deleting all session data.
+
+    TODO: Fix before re-enabling the "Zurücksetzen" button in game_buttons.html.
+    session.flush() does not reset GameRoom timer/assignment state for other clients;
+    timer checkbox state may reappear incorrectly after reload in room mode.
+    """
     
     # CRITICAL: If in a room, only master can end the session
     room_code = request.session.get('room_code')
@@ -262,7 +522,7 @@ def end_session(request):
             room = GameRoom.objects.get(room_code=room_code, is_active=True)
             if not is_master(request, room):
                 logger.warning(f"❌ Nicht-Master versucht Session zu beenden: {room_code}, Session: {request.session.session_key}")
-                return JsonResponse({"error": _("Nur der Spielleiter kann die Session beenden")}, status=403)
+                return JsonResponse({"error": _("Nur der Rallye-Leiter kann zurücksetzen")}, status=403)
         except GameRoom.DoesNotExist:
             # Room doesn't exist, allow action (user will be redirected)
             pass
@@ -385,7 +645,7 @@ def handle_assignment_form(request):
             # Only master can clear all assignments
             if room and not is_master(request, room):
                 logger.warning(_("❌ Nur der Master kann alle Zuweisungen löschen"))
-                return JsonResponse({"error": _("Nur der Spielleiter kann alle Zuweisungen löschen.")}, status=403)
+                return JsonResponse({"error": _("Nur der Rallye-Leiter kann alle Zuweisungen löschen.")}, status=403)
             
             request.session['device_assignments'] = {}
             request.session['start_distances'] = {}
@@ -409,27 +669,81 @@ def handle_assignment_form(request):
     return render_results_table(request) 
 
 
-def render_target_km_display(request):
-    """Renders the target kilometer display fragment for non-master users (for HTMX triggers)."""
-    # Sync from room if in a shared room
+def render_target_velos_display(request):
+    """Renders the target Velos display fragment for non-master users (for HTMX triggers)."""
     room_code = request.session.get('room_code')
     if room_code:
-        logger.debug(f"🔄 Syncing from room {room_code} for target_km display...")
+        logger.debug(f"🔄 Syncing from room {room_code} for target_velos display...")
         sync_session_from_room(request)
-        # If room was ended, room_code might have been cleared by sync_session_from_room
-        room_code = request.session.get('room_code')  # Re-read in case it was cleared
-    
-    # Get current target_km from session (synced from room if in a room)
-    current_target_km = request.session.get('current_target_km', 0.0)
-    if current_target_km is None:
-        current_target_km = 0.0
-    else:
-        current_target_km = float(current_target_km)
-    
-    context = {
-        'current_target_km': current_target_km,
-    }
-    return render(request, 'game/target_km_fragment.html', context)
+        room_code = request.session.get('room_code')
+
+    current_target_velos = int(request.session.get('current_target_velos', 0) or 0)
+
+    return render(request, 'game/target_velos_fragment.html', {
+        'current_target_velos': current_target_velos,
+    })
+
+
+@csrf_exempt
+def update_round_timer_settings(request):
+    """Save round timer settings (master only in a room)."""
+    room_code = request.session.get('room_code')
+    if room_code:
+        try:
+            room = GameRoom.objects.get(room_code=room_code, is_active=True)
+            if not is_master(request, room):
+                return JsonResponse(
+                    {"error": _("Nur der Rallye-Leiter kann den Timer einstellen.")},
+                    status=403,
+                )
+        except GameRoom.DoesNotExist:
+            pass
+
+    if request.method != 'POST':
+        return JsonResponse({"error": _("Methode nicht erlaubt")}, status=405)
+
+    _apply_timer_settings_from_post(request)
+    if not request.session.get('timer_enabled'):
+        request.session['round_started_at'] = None
+        request.session['timer_expired'] = False
+        request.session['timer_sound_played'] = False
+        request.session.modified = True
+    elif request.session.get('timer_enabled'):
+        _ensure_round_timer_started(request, sync_to_room=bool(request.session.get('room_code')))
+    sync_room_from_session(request)
+    response = render(
+        request,
+        'game/partials/round_timer_settings.html',
+        _timer_settings_context(request),
+    )
+    response['HX-Trigger'] = 'roundTimerRefresh'
+    return response
+
+
+def render_round_timer(request):
+    """HTMX fragment: countdown display for active rounds."""
+    room = sync_session_from_room(request)
+    _ensure_session_start_distances_from_room(request, room)
+    game_is_active = _is_game_round_active(request)
+    is_game_stopped = bool(request.session.get('is_game_stopped', False))
+    _ensure_round_timer_started(
+        request,
+        sync_to_room=bool(request.session.get('room_code')),
+    )
+    play_timer_sound = _maybe_apply_timer_expiry(request)
+    is_game_stopped = bool(request.session.get('is_game_stopped', False))
+    context = _timer_display_context(
+        request,
+        game_is_active=game_is_active,
+        is_game_stopped=is_game_stopped,
+    )
+    context['play_timer_sound'] = play_timer_sound
+    response = render(request, 'game/partials/round_timer_fragment.html', context)
+    if play_timer_sound:
+        response['HX-Trigger-After-Swap'] = json.dumps(
+            {'roundTimerExpired': {'playSound': True}}
+        )
+    return response
 
 
 def render_results_table(request):
@@ -440,16 +754,21 @@ def render_results_table(request):
     if room_code:
         logger.debug(f"🔄 Syncing from room {room_code}...")
         room = sync_session_from_room(request)
-        # If room was ended, room_code might have been cleared by sync_session_from_room
-        room_code = request.session.get('room_code')  # Re-read in case it was cleared
+        room_code = request.session.get('room_code')
+
+    _maybe_apply_timer_expiry(request)
     
     device_assignments = request.session.get('device_assignments', {})
     start_distances = request.session.get('start_distances', {})
-    stop_distances = request.session.get('stop_distances', {})
+    stop_session_velos = request.session.get('stop_session_velos', {})
+    stop_session_km = request.session.get('stop_session_km', {})
     is_game_stopped = request.session.get('is_game_stopped', False)
     
     logger.debug(f"🔍 render_results_table: device_assignments={device_assignments}, room_code={room_code}")
-    logger.debug(f"🔍 Game state: start_distances={start_distances}, stop_distances={stop_distances}, is_game_stopped={is_game_stopped}")
+    logger.debug(
+        f"🔍 Game state: start_distances={start_distances}, stop_session_velos={stop_session_velos}, "
+        f"is_game_stopped={is_game_stopped}"
+    )
     
     # Update interval is now fixed
     update_interval = 10 
@@ -458,37 +777,33 @@ def render_results_table(request):
     logger.debug(f"🔍 game_is_active={game_is_active} (based on start_distances)")
     
     if not device_assignments:
-        # Get target_km from session even if no assignments
-        target_km = request.session.get('current_target_km', 0.0)
-        if target_km is None:
-            target_km = 0.0
-        else:
-            target_km = float(target_km)
-        logger.debug("ℹ️ Keine Zuweisungen, rendere leere Tabelle, target_km=" + str(target_km))
+        target_velos = int(request.session.get('current_target_velos', 0) or 0)
+        logger.debug("ℹ️ Keine Zuweisungen, rendere leere Tabelle, target_velos=" + str(target_velos))
         context = {
             'game_results': [],
             'game_is_active': False,
             'update_interval': update_interval,
             'is_game_stopped': False,
-            'target_km': target_km,
+            'target_velos': target_velos,
             'room_code': room_code,
         }
         return render(request, 'game/results_table_fragment.html', context)
 
     device_names = device_assignments.keys()
-    devices = Device.objects.filter(name__in=device_names).values('name', 'display_name')
-    # Create a mapping from device name to display name
-    device_display_map = {d['name']: (d['display_name'] if d['display_name'] else d['name']) for d in devices}
+    devices = Device.objects.filter(name__in=device_names).select_related('configuration')
+    device_display_map = {
+        d.name: (d.display_name if d.display_name else d.name) for d in devices
+    }
     user_ids = device_assignments.values()
     
     logger.info(f"🔍 Device names: {list(device_names)}, User IDs: {list(user_ids)}")
     
-    # CRITICAL: Get cyclist data including distance_total (not device distance)
-    cyclists = Cyclist.objects.filter(user_id__in=user_ids).values('user_id', 'distance_total', 'coin_conversion_factor')
-    cyclist_data = {c['user_id']: c for c in cyclists}
-    cyclist_factors = {c['user_id']: c['coin_conversion_factor'] for c in cyclists}
+    cyclists = Cyclist.objects.filter(user_id__in=user_ids).select_related(
+        'cyclistdevicecurrentmileage__device'
+    )
+    cyclist_data = {c.user_id: c for c in cyclists}
     
-    logger.info(f"🔍 Found cyclists: {list(cyclist_data.keys())}, cyclist_data: {cyclist_data}")
+    logger.info(f"🔍 Found cyclists: {list(cyclist_data.keys())}")
 
     game_results = []
     
@@ -515,32 +830,23 @@ def render_results_table(request):
         
         cyclist = cyclist_data[user_id]
         
-        # CRITICAL: Use cyclist distance_total, not device distance_total
-        # Convert Decimal to float for consistent calculations
-        current_distance_total = float(cyclist['distance_total'])
-        
         if game_is_active and not is_game_stopped:
-            # Game is running - calculate distance gained since game start
-            start_distance = start_distances.get(user_id, current_distance_total)
-            distance_gained = max(0, current_distance_total - start_distance)
-            logger.debug(f"🔍 Distance calculation (running): user_id={user_id}, current_distance_total={current_distance_total}, start_distance={start_distance}, distance_gained={distance_gained}")
+            session_velos = get_cyclist_session_velos(cyclist)
+            distance_km = float(get_cyclist_session_km(cyclist))
+            logger.debug(
+                f"🔍 Session velos (running): user_id={user_id}, velos={session_velos}, km={distance_km}"
+            )
         elif game_is_active and is_game_stopped:
-            # Game was stopped - use frozen distance at stop time
-            start_distance = start_distances.get(user_id, current_distance_total)
-            stop_distance = stop_distances.get(user_id, current_distance_total)
-            # Use the distance at stop time, not current distance
-            distance_gained = max(0, stop_distance - start_distance)
-            logger.debug(f"🔍 Distance calculation (stopped): user_id={user_id}, stop_distance={stop_distance}, start_distance={start_distance}, distance_gained={distance_gained}")
+            session_velos = int(stop_session_velos.get(user_id, 0))
+            distance_km = float(stop_session_km.get(user_id, 0))
+            logger.debug(
+                f"🔍 Session velos (stopped): user_id={user_id}, velos={session_velos}, km={distance_km}"
+            )
         else:
-            # Before game start, always show 0 km
-            distance_gained = 0
-            logger.debug(f"🔍 Distance calculation (not started): user_id={user_id}, current_distance_total={current_distance_total}, game_is_active={game_is_active}, is_game_stopped={is_game_stopped}, start_distances={start_distances}, distance_gained={distance_gained}")
-            
-        # Default value 100 from settings is used if not found
-        coin_factor = cyclist_factors.get(user_id, settings.DEFAULT_COIN_CONVERSION_FACTOR) 
-        coins_gained = distance_gained * coin_factor
-        
-        # Check if current user can delete this assignment
+            session_velos = 0
+            distance_km = 0.0
+            logger.debug(f"🔍 Session velos (not started): user_id={user_id}")
+
         can_delete = False
         is_own_assignment = False
         if not room:
@@ -570,87 +876,75 @@ def render_results_table(request):
         game_results.append({
             "cyclist_name": user_id,
             "device_name": device_display_name,  # Use display_name instead of name
-            "distance_km": round(distance_gained, 2),
-            "coins": round(coins_gained, 0),
-            "progress_percent": 0.0,  # Will be calculated after target_km is known
+            "distance_km": round(distance_km, 2),
+            "velos": int(session_velos),
+            "progress_percent": 0.0,  # Will be calculated after target_velos is known
             "can_delete": can_delete,  # Flag for template
             "is_own_assignment": is_own_assignment,  # Flag for marking own assignments
             "is_master_cyclist": is_master_cyclist,  # Flag for marking master row
         })
     
-    # Get target_km from GET parameter (can be empty string, 0, or a number)
-    # If no GET parameter, use value from session/room
-    target_km_str = request.GET.get('target_km', '')
-    if target_km_str:
-        # GET parameter provided - check if user can modify
+    target_velos_str = request.GET.get('target_velos', '')
+    if not target_velos_str and request.GET.get('target_km', ''):
+        # Legacy alias: old km presets × 100
+        try:
+            target_velos_str = str(int(float(request.GET.get('target_km')) * 100))
+        except (TypeError, ValueError):
+            target_velos_str = ''
+    if target_velos_str != '':
         if room and not is_master_flag:
-            logger.warning(f"❌ Nur Master kann Zielkilometer ändern")
-            return JsonResponse({"error": _("Nur der Spielleiter kann die Zielkilometer ändern.")}, status=403)
-        
-        # GET parameter provided - use it
-        target_km = float(target_km_str) if target_km_str else 0.0
-        logger.debug(f"🔍 Target KM from GET parameter: {target_km}")
+            logger.warning("❌ Nur Master kann Velos-Ziel ändern")
+            return JsonResponse(
+                {"error": _("Nur der Rallye-Leiter kann das Velos-Ziel ändern.")},
+                status=403,
+            )
+        try:
+            target_velos = max(0, int(float(target_velos_str))) if target_velos_str else 0
+        except (TypeError, ValueError):
+            target_velos = 0
+        logger.debug(f"🔍 Target Velos from GET parameter: {target_velos}")
     else:
-        # No GET parameter - use value from session (which was synced from room if in a room)
-        target_km = request.session.get('current_target_km', 0.0)
-        if target_km is None:
-            target_km = 0.0
-        else:
-            target_km = float(target_km)
-        logger.info(f"🔍 Target KM from session/room: {target_km}, room_code={room_code}")
+        target_velos = int(request.session.get('current_target_velos', 0) or 0)
+        logger.info(f"🔍 Target Velos from session/room: {target_velos}, room_code={room_code}")
     
-    # Sort game results by distance_km (descending - highest first)
-    game_results.sort(key=lambda x: x['distance_km'], reverse=True)
+    # Sort game results by velos (descending - highest first)
+    game_results.sort(key=lambda x: x['velos'], reverse=True)
     
-    # Calculate progress percentage for each result if target is set
-    if target_km > 0:
+    if target_velos > 0:
         for result in game_results:
-            progress = (result['distance_km'] / target_km) * 100
+            progress = (result['velos'] / target_velos) * 100
             result['progress_percent'] = float(min(100.0, round(progress, 1)))
-            # Format progress_percent as string with dot (for CSS compatibility)
-            # CRITICAL: Always use format_css_number() for CSS values to avoid locale issues
             result['progress_percent_str'] = format_css_number(result['progress_percent'], decimals=1)
-            # Debug logging - show calculated progress_percent
-            logger.debug(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, distance_km={result['distance_km']}, target_km={target_km}, progress={progress}, progress_percent={result['progress_percent']}, progress_percent_str={result['progress_percent_str']}")
+            logger.debug(
+                f"📊 Progress: cyclist={result['cyclist_name']}, velos={result['velos']}, "
+                f"target_velos={target_velos}, progress={result['progress_percent']}"
+            )
     else:
         for result in game_results:
             result['progress_percent'] = 0.0
             result['progress_percent_str'] = "0.0"
-            logger.debug(f"📊 Progress calculation: cyclist={result['cyclist_name']}, device={result['device_name']}, target_km=0, progress_percent=0.0")
     
-    # Get previous target_km from session to detect changes
-    previous_target_km = request.session.get('current_target_km', None)
+    previous_target_velos = int(request.session.get('current_target_velos', 0) or 0)
     
-    # Convert to float for comparison (handle None case)
-    if previous_target_km is not None:
-        previous_target_km = float(previous_target_km)
-    else:
-        previous_target_km = 0.0
-    
-    # If target_km changed (either from GET parameter or from room sync), update session
-    # Use a small epsilon for float comparison to handle floating point precision issues
-    if abs(target_km - previous_target_km) > 0.01:
-        logger.debug(f"🔍 Target KM changed: {previous_target_km} -> {target_km}, resetting announced_winners")
+    if target_velos != previous_target_velos:
+        logger.debug(f"🔍 Target Velos changed: {previous_target_velos} -> {target_velos}, resetting announced_winners")
         if 'announced_winners' in request.session:
             del request.session['announced_winners']
-        request.session['current_target_km'] = target_km
+        request.session['current_target_velos'] = target_velos
         request.session.modified = True
         request.session.save()
         
-        # Update GameSession tracking
         from .signals import update_game_session
         update_game_session(request.session.session_key)
         
-        # CRITICAL: If target_km came from GET parameter, sync it to room immediately
-        if target_km_str and room_code:
-            logger.debug(f"🔄 Syncing target_km {target_km} to room {room_code}")
+        if target_velos_str != '' and room_code:
+            logger.debug(f"🔄 Syncing target_velos {target_velos} to room {room_code}")
             sync_room_from_session(request)
     
-    # Find all winners who have reached the target (game continues, no auto-stop)
     winner_names = []
-    if target_km > 0 and not is_game_stopped:
+    if target_velos > 0 and not is_game_stopped:
         for result in game_results:
-            if result['distance_km'] >= target_km:
+            if result['velos'] >= target_velos:
                 winner_names.append(result['cyclist_name'])
     
     # Track which winners have already been announced (to avoid duplicate popups)
@@ -666,7 +960,7 @@ def render_results_table(request):
     logger.debug(f"🔍 Rendering table with {len(game_results)} results: {[r['cyclist_name'] for r in game_results]}")
     
     # Sync to room if in a shared room (only if we have changes, but not if we already synced target_km above)
-    if room_code and not (target_km_str and abs(target_km - previous_target_km) > 0.01):
+    if room_code and not (target_velos_str != '' and target_velos != previous_target_velos):
         sync_room_from_session(request)
     
     # Get master cyclist name for template (if in a room with a master)
@@ -682,12 +976,17 @@ def render_results_table(request):
         'game_is_active': game_is_active, 
         'update_interval': update_interval, 
         'is_game_stopped': is_game_stopped,
-        'target_km': target_km,  # Target kilometers for progress bar
+        'target_velos': target_velos,
         'room_code': room_code,  # Room code for automatic updates
         'is_master': is_master_flag,  # Master flag for template
         'master_cyclist_name': master_cyclist_name,  # Master cyclist name for template
         'current_session_key': current_session_key,  # Current session key for template
     }
+    context.update(_timer_display_context(
+        request,
+        game_is_active=game_is_active,
+        is_game_stopped=is_game_stopped,
+    ))
     logger.debug(f"✅ Returning context with {len(game_results)} game_results, is_master={is_master_flag}, master_cyclist_name={master_cyclist_name}, current_session_key={current_session_key}")
     return render(request, 'game/results_table_fragment.html', context)
 
@@ -695,8 +994,13 @@ def render_results_table(request):
 @csrf_exempt
 def start_game(request):
     """Starts the game and saves the initial distances (reads assignments from session)."""
+    _apply_timer_settings_from_post(request)
+    timer_requested = bool(request.session.get('timer_enabled'))
+
     # Sync from room if in a shared room
     sync_session_from_room(request)
+    # Timer form fields beat stale room flags when submitted with start_game.
+    _apply_timer_settings_from_post(request)
     
     # CRITICAL: Check if user is in a room and if so, only master can start/stop game
     room_code = request.session.get('room_code')
@@ -705,7 +1009,7 @@ def start_game(request):
             room = GameRoom.objects.get(room_code=room_code, is_active=True)
             if not is_master(request, room):
                 logger.warning(f"❌ Nicht-Master versucht Spiel zu starten/stoppen: {room_code}, Session: {request.session.session_key}")
-                return JsonResponse({"error": _("Nur der Spielleiter kann das Spiel starten oder stoppen")}, status=403)
+                return JsonResponse({"error": _("Nur der Rallye-Leiter kann die Runde starten oder stoppen")}, status=403)
         except GameRoom.DoesNotExist:
             # Room doesn't exist, allow action (user will be redirected)
             pass
@@ -715,27 +1019,37 @@ def start_game(request):
         action = request.POST.get('action')
         logger.debug(f"🔍 Action parameter: {action}")
         if action == 'stop':
-            # CRITICAL: Save the distances at stop time to freeze the game results
-            device_assignments = request.session.get('device_assignments', {})
-            if device_assignments:
-                user_ids = device_assignments.values()
-                cyclists = Cyclist.objects.filter(user_id__in=user_ids).values('user_id', 'distance_total')
-                # Store stop distances by cyclist user_id
-                stop_distances = {cyclist['user_id']: float(cyclist['distance_total']) for cyclist in cyclists}
-                request.session['stop_distances'] = stop_distances
-            
-            request.session['is_game_stopped'] = True
-            request.session.modified = True  # CRITICAL: Ensure session is saved
-            # Sync to room if in a shared room
-            sync_room_from_session(request)
+            _freeze_game_round(request)
             logger.debug(_("Spiel via Stopp-Button gestoppt."))
             return JsonResponse({"status": "game_stopped"})
 
         device_assignments = request.session.get('device_assignments', {})
+        from api.services.device_display import unlock_devices_by_names
+        unlock_devices_by_names(device_assignments.keys(), reason='round_start')
         logger.debug(_(f"🔍 Start-Game Request: device_assignments={device_assignments}, session_key={request.session.session_key}"))
         if not device_assignments:
              logger.warning(_("❌ Start fehlgeschlagen: Keine Zuweisungen in der Session gefunden."))
              return JsonResponse({"error": _("Keine Zuweisungen aktiv.")}, status=400) 
+
+        _end_round_device_sessions_if_configured(request, on_stop=False)
+
+        timer_on = timer_requested or bool(request.session.get('timer_enabled'))
+        if room_code:
+            try:
+                room = GameRoom.objects.get(room_code=room_code, is_active=True)
+                timer_on = timer_on or bool(room.timer_enabled)
+            except GameRoom.DoesNotExist:
+                pass
+
+        if timer_on:
+            request.session['timer_enabled'] = True
+            request.session['round_started_at'] = timezone.now().isoformat()
+            request.session['timer_expired'] = False
+            request.session['timer_sound_played'] = False
+        else:
+            request.session['round_started_at'] = None
+            request.session['timer_expired'] = False
+            request.session['timer_sound_played'] = False
 
         # CRITICAL: Use cyclist distances, not device distances
         # Get all cyclists assigned to devices
@@ -748,23 +1062,40 @@ def start_game(request):
         
         request.session['start_distances'] = start_distances
         request.session['is_game_stopped'] = False
-        # CRITICAL: Clear stop_distances when restarting the game
+        # CRITICAL: Clear stop snapshots when restarting the game
         if 'stop_distances' in request.session:
             del request.session['stop_distances']
+        if 'stop_session_velos' in request.session:
+            del request.session['stop_session_velos']
+        if 'stop_session_km' in request.session:
+            del request.session['stop_session_km']
         # CRITICAL: Clear announced winners when starting a new game
         if 'announced_winners' in request.session:
             del request.session['announced_winners']
-        # CRITICAL: Clear current_target_km when starting a new game
-        if 'current_target_km' in request.session:
-            del request.session['current_target_km']
+        # CRITICAL: Clear current_target_velos when starting a new game
+        if 'current_target_velos' in request.session:
+            del request.session['current_target_velos']
         # CRITICAL: Also clear winner_names to ensure fresh start
         request.session.modified = True  # CRITICAL: Ensure session is saved
         # Sync to room if in a shared room
         sync_room_from_session(request)
-        logger.info(_("✅ Spiel gestartet. Startdistanzen (Radler): {start_distances}, announced_winners und current_target_km zurückgesetzt.").format(start_distances=start_distances))
+        logger.info(_("✅ Spiel gestartet. Startdistanzen (Radler): {start_distances}, announced_winners und current_target_velos zurückgesetzt.").format(start_distances=start_distances))
         
         logger.info(_(f"✅ Spiel gestartet. Startdistanzen (Radler): {start_distances}"))
-        return JsonResponse({"status": "game_started"})
+
+        timer_payload = {}
+        if timer_on and start_distances:
+            started = _parse_round_started_at(request.session.get('round_started_at'))
+            duration = int(request.session.get('round_duration_seconds') or 300)
+            if started:
+                ends_at = started + timedelta(seconds=duration)
+                timer_payload = {
+                    'enabled': True,
+                    'ends_at_ms': int(ends_at.timestamp() * 1000),
+                    'duration_seconds': duration,
+                }
+
+        return JsonResponse({'status': 'game_started', 'timer': timer_payload})
         
     return JsonResponse({"error": _("Methode nicht erlaubt")}, status=405)
 
@@ -820,7 +1151,7 @@ def create_room(request):
     from .signals import update_game_session
     update_game_session(request.session.session_key)
     
-    logger.info(_(f"🏠 Neuer Spiel-Raum erstellt: {room.room_code}, Master: {request.session.session_key}"))
+    logger.info(_(f"🏠 Neuer Rallye-Raum erstellt: {room.room_code}, Master: {request.session.session_key}"))
     return redirect('game:room_page', room_code=room.room_code)
 
 
@@ -948,11 +1279,11 @@ def room_page(request, room_code):
         room_url = f"{base_url}{reverse('game:room_page', args=[room_code])}"
         
         # Get current target_km from session (synced from room)
-        current_target_km = request.session.get('current_target_km', 0.0)
-        if current_target_km is None:
-            current_target_km = 0.0
+        current_target_velos = request.session.get('current_target_velos', 0.0)
+        if current_target_velos is None:
+            current_target_velos = 0.0
         else:
-            current_target_km = float(current_target_km)
+            current_target_velos = float(current_target_velos)
         
         # Get master flag
         is_master_flag = request.session.get('is_master', False)
@@ -972,9 +1303,11 @@ def room_page(request, room_code):
             'top_groups': top_groups,
             'room_code': room_code,
             'room_url': room_url,
-            'current_target_km': current_target_km,  # For initializing input field and checkboxes
+            'current_target_velos': current_target_velos,  # For initializing input field and checkboxes
             'is_master': is_master_flag,  # Master flag for template
+            'timer_duration_minutes': _timer_duration_minutes(request),
         }
+        context.update(_timer_settings_context(request))
         return render(request, 'game/mcc_game.html', context)
     except GameRoom.DoesNotExist:
         return render(request, 'game/join_room.html', {
@@ -1014,17 +1347,25 @@ def leave_room(request):
                 
                 room.device_assignments = device_assignments
                 
-                # Update start_distances and stop_distances if game is active
+                # Update start/stop snapshots if game is active
                 start_distances = room.start_distances or {}
                 stop_distances = room.stop_distances or {}
+                stop_session_velos = room.stop_session_velos or {}
+                stop_session_km = room.stop_session_km or {}
                 for cyclist in cyclists_to_remove:
                     if cyclist in start_distances:
                         del start_distances[cyclist]
                     if cyclist in stop_distances:
                         del stop_distances[cyclist]
+                    if cyclist in stop_session_velos:
+                        del stop_session_velos[cyclist]
+                    if cyclist in stop_session_km:
+                        del stop_session_km[cyclist]
                 
                 room.start_distances = start_distances
                 room.stop_distances = stop_distances
+                room.stop_session_velos = stop_session_velos
+                room.stop_session_km = stop_session_km
                 
                 # Remove from session_to_cyclist mapping
                 session_to_cyclist = room.session_to_cyclist or {}
@@ -1060,6 +1401,8 @@ def leave_room(request):
                         room.is_active = False
                 
                 room.save()
+                from api.services.device_display import unlock_devices_by_names
+                unlock_devices_by_names(devices_to_remove, reason='leave_room')
                 logger.debug(f"✅ Zuweisungen entfernt: {devices_to_remove}")
             
             # Clear room-related data from session
@@ -1075,10 +1418,14 @@ def leave_room(request):
                 del request.session['start_distances']
             if 'stop_distances' in request.session:
                 del request.session['stop_distances']
+            if 'stop_session_velos' in request.session:
+                del request.session['stop_session_velos']
+            if 'stop_session_km' in request.session:
+                del request.session['stop_session_km']
             if 'announced_winners' in request.session:
                 del request.session['announced_winners']
-            if 'current_target_km' in request.session:
-                del request.session['current_target_km']
+            if 'current_target_velos' in request.session:
+                del request.session['current_target_velos']
             
             request.session.modified = True
             logger.info(_(f"👋 Raum verlassen: {room_code}, Zuweisungen entfernt: {len(devices_to_remove) if devices_to_remove else 0}"))
@@ -1140,7 +1487,7 @@ def end_room(request):
         room = GameRoom.objects.get(room_code=room_code, is_active=True)
         if not is_master(request, room):
             logger.warning(f"❌ Nicht-Master versucht Raum zu beenden: {room_code}")
-            return JsonResponse({"error": _("Nur der Spielleiter kann den Raum beenden")}, status=403)
+            return JsonResponse({"error": _("Nur der Rallye-Leiter kann den Raum beenden")}, status=403)
         
         room.is_active = False
         room.save()
@@ -1163,7 +1510,7 @@ def transfer_master(request):
         room = GameRoom.objects.get(room_code=room_code, is_active=True)
         if not is_master(request, room):
             logger.warning(f"❌ Nicht-Master versucht Master-Rolle zu übertragen: {room_code}, Session: {request.session.session_key}")
-            return JsonResponse({"error": _("Nur der Spielleiter kann die Rolle übertragen")}, status=403)
+            return JsonResponse({"error": _("Nur der Rallye-Leiter kann die Rolle übertragen")}, status=403)
         
         # Get cyclist user_id from POST (we'll find the session via session_to_cyclist mapping)
         cyclist_user_id = request.POST.get('cyclist_user_id')

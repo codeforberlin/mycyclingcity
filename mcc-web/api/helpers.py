@@ -525,6 +525,138 @@ def _calculate_group_totals_from_metrics(groups: List[Group], use_cache: bool = 
     return result
 
 
+def _cyclist_member_entry(
+    cyclist: Cyclist,
+    cyclist_totals: Dict[int, float],
+    cyclist_velos_totals: Dict[int, int],
+) -> Dict[str, Any]:
+    """Build a single cyclist dict for group hierarchy tables."""
+    total_km = cyclist_totals.get(cyclist.id, 0.0)
+    # Sum of HourlyMetric.velos (mcc_worker syncs active sessions periodically).
+    # Do not add session_velos here — after worker sync the current hour is already included.
+    total_velos = int(cyclist_velos_totals.get(cyclist.id, 0))
+    session_velos = int(get_cyclist_session_velos(cyclist))
+    return {
+        'name': cyclist.user_id,
+        'km': round(total_km, 3),
+        'velos': total_velos,
+        'session_velos': session_velos,
+    }
+
+
+def _group_velos_for_ranking(
+    _group: Group,
+    member_entries: List[Dict[str, Any]],
+    child_entries: Optional[List[Dict[str, Any]]] = None,
+    group_metric_velos: int = 0,
+) -> int:
+    """
+    Velos total for map/ranking group rows from HourlyMetric sums.
+
+    Leaf groups: sum of member metric totals, or group_at_time metrics when members
+    are not loaded (e.g. show_cyclists=False).
+    Parent groups: sum of visible child group totals (or direct members if no children).
+    """
+    members_velos = sum(int(m.get('velos', 0)) for m in member_entries)
+    children_velos = sum(int(c.get('velos', 0)) for c in (child_entries or []))
+    leaf_velos = max(members_velos, int(group_metric_velos or 0))
+
+    if child_entries is not None:
+        if child_entries:
+            return children_velos
+        return leaf_velos
+
+    return leaf_velos
+
+
+def _members_for_group(
+    group: Group,
+    member_filter: Dict[str, Any],
+    show_cyclists: bool,
+) -> List[Dict[str, Any]]:
+    """Return sorted cyclist member entries for a group."""
+    if not show_cyclists:
+        return []
+    members_qs = group.members.filter(**member_filter).select_related(
+        'cyclistdevicecurrentmileage',
+        'cyclistdevicecurrentmileage__device',
+        'cyclistdevicecurrentmileage__device__configuration',
+    )
+    members_list = list(members_qs)
+    cyclist_totals = _calculate_cyclist_totals_from_metrics(members_list, use_cache=True)
+    cyclist_velos_totals = _calculate_cyclist_velos_from_metrics(members_list, use_cache=True)
+    members = [
+        _cyclist_member_entry(m, cyclist_totals, cyclist_velos_totals)
+        for m in members_list
+    ]
+    return sorted(members, key=lambda x: x['velos'], reverse=True)
+
+
+def build_hierarchy_from_parent_groups(
+    parent_groups,
+    kiosk: bool = False,
+    show_cyclists: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Build hierarchy data from a parent-group queryset (map/ranking shared helper).
+
+    All Velos totals come from HourlyMetric (synced by mcc_worker for active sessions).
+    Parent groups: sum of child group metric totals.
+    """
+    group_filter = {'is_visible': True}
+    member_filter = {'is_visible': True}
+    if kiosk:
+        member_filter['distance_total__gt'] = 0
+
+    hierarchy = []
+    groups_for_metrics: List[Group] = []
+    for p_group in parent_groups:
+        groups_for_metrics.append(p_group)
+        groups_for_metrics.extend(list(p_group.children.filter(**group_filter)))
+    group_velos_by_id = _calculate_group_velos_from_metrics(groups_for_metrics, use_cache=True)
+
+    for p_group in parent_groups:
+        direct_members = _members_for_group(p_group, member_filter, show_cyclists)
+
+        subgroups_qs = p_group.children.filter(**group_filter).order_by('name')
+
+        subgroups_data = []
+        for sub in subgroups_qs:
+            sub_member_data = _members_for_group(sub, member_filter, show_cyclists)
+            sub_velos = _group_velos_for_ranking(
+                sub,
+                sub_member_data,
+                group_metric_velos=group_velos_by_id.get(sub.id, 0),
+            )
+            if not kiosk or (sub_velos > 0 or sub_member_data):
+                subgroups_data.append({
+                    'id': sub.id,
+                    'name': sub.name,
+                    'km': round(float(sub.distance_total or 0), 3),
+                    'velos': sub_velos,
+                    'members': sub_member_data,
+                })
+
+        subgroups_data = sorted(subgroups_data, key=lambda x: x['velos'], reverse=True)
+        p_velos = _group_velos_for_ranking(
+            p_group,
+            direct_members,
+            child_entries=subgroups_data,
+            group_metric_velos=group_velos_by_id.get(p_group.id, 0),
+        )
+        if not kiosk or (p_velos > 0 or subgroups_data or direct_members):
+            hierarchy.append({
+                'id': p_group.id,
+                'name': p_group.name,
+                'km': round(float(p_group.distance_total or 0), 3),
+                'velos': p_velos,
+                'direct_members': direct_members,
+                'subgroups': subgroups_data,
+            })
+
+    return sorted(hierarchy, key=lambda x: x['velos'], reverse=True)
+
+
 def build_group_hierarchy(
     target_group: Optional[Group] = None,
     kiosk: bool = False,
@@ -535,7 +667,7 @@ def build_group_hierarchy(
     
     Args:
         target_group: Optional specific group to filter by.
-        kiosk: Whether in kiosk mode (filters groups with distance_total > 0).
+        kiosk: Whether in kiosk mode (hides groups with zero metric Velos).
         show_cyclists: Whether to include cyclist data in the hierarchy.
     
     Returns:
@@ -547,119 +679,12 @@ def build_group_hierarchy(
         parent_groups = Group.objects.filter(id=target_group.id, **group_filter).order_by('name')
     else:
         parent_groups = Group.objects.filter(parent__isnull=True, **group_filter).order_by('name')
-        # In kiosk mode, only show parent groups with distance_total > 0
-        if kiosk:
-            parent_groups = parent_groups.filter(distance_total__gt=0)
-    
-    # Calculate group totals from HourlyMetric for all groups at once
-    all_groups_list = list(parent_groups)
-    # Also collect all subgroups for calculation
-    for p_group in parent_groups:
-        all_groups_list.extend(list(p_group.children.filter(is_visible=True)))
-    
-    group_totals = _calculate_group_totals_from_metrics(all_groups_list, use_cache=True)
-    
-    hierarchy = []
-    for p_group in parent_groups:
-        p_filter = {'is_visible': True}
-        if kiosk:
-            p_filter['distance_total__gt'] = 0
-        
-        direct_members = []
-        if show_cyclists:
-            direct_qs = p_group.members.filter(**p_filter).select_related(
-                'cyclistdevicecurrentmileage'
-            )
-            direct_members_list = list(direct_qs)
-            
-            # Calculate totals from HourlyMetric for all cyclists at once
-            cyclist_totals = _calculate_cyclist_totals_from_metrics(direct_members_list, use_cache=True)
-            
-            direct_members = []
-            for m in direct_members_list:
-                session_km = 0
-                try:
-                    if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
-                        session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
-                except (AttributeError, ValueError, TypeError):
-                    pass
-                # Use total from HourlyMetric instead of distance_total from model
-                total_km = cyclist_totals.get(m.id, 0.0)
-                direct_members.append({
-                    'name': m.user_id,
-                    'km': round(total_km, 3),
-                    'session_km': round(session_km, 3)
-                })
-            
-            # Sort by km (from HourlyMetric) descending
-            direct_members = sorted(direct_members, key=lambda x: x['km'], reverse=True)
-        
-        # Filter subgroups: in kiosk mode, only show groups with distance_total > 0
-        # Sort by name to match the group menu sorting
-        subgroups_qs = p_group.children.filter(is_visible=True).order_by('name')
-        if kiosk:
-            subgroups_qs = subgroups_qs.filter(distance_total__gt=0)
-        
-        subgroups_data = []
-        for sub in subgroups_qs:
-            sub_member_data = []
-            if show_cyclists:
-                m_qs = sub.members.filter(**p_filter).select_related(
-                    'cyclistdevicecurrentmileage'
-                )
-                sub_members_list = list(m_qs)
-                
-                # Calculate totals from HourlyMetric for all cyclists at once
-                cyclist_totals = _calculate_cyclist_totals_from_metrics(sub_members_list, use_cache=True)
-                
-                sub_member_data = []
-                for m in sub_members_list:
-                    session_km = 0
-                    try:
-                        if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
-                            session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
-                    except (AttributeError, ValueError, TypeError):
-                        pass
-                    # Use total from HourlyMetric instead of distance_total from model
-                    total_km = cyclist_totals.get(m.id, 0.0)
-                    sub_member_data.append({
-                        'name': m.user_id,
-                        'km': round(total_km, 3),
-                        'session_km': round(session_km, 3)
-                    })
-                
-                # Sort by km (from HourlyMetric) descending
-                sub_member_data = sorted(sub_member_data, key=lambda x: x['km'], reverse=True)
-            # Use total from HourlyMetric instead of distance_total from model
-            sub_total_km = group_totals.get(sub.id, 0.0)
-            # In kiosk mode, only add subgroup if it has distance_total > 0 or has members with distance_total > 0
-            if not kiosk or (sub_total_km > 0 or len(sub_member_data) > 0):
-                subgroups_data.append({
-                    'id': sub.id,  # Add subgroup ID for filtering
-                    'name': sub.name,
-                    'km': round(sub_total_km, 3),
-                    'members': sub_member_data
-                })
-        
-        # Sort subgroups by distance_total (sorted descending) - no limit
-        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)
-        
-        # Use total from HourlyMetric instead of distance_total from model
-        p_group_total_km = group_totals.get(p_group.id, 0.0)
-        if not kiosk or (p_group_total_km > 0 or subgroups_data or direct_members):
-            hierarchy.append({
-                'id': p_group.id,  # Add group ID for filtering
-                'name': p_group.name,
-                'km': round(p_group_total_km, 3),
-                'direct_members': direct_members,
-                'subgroups': subgroups_data
-            })
-    
-    # Sort hierarchy by km (from HourlyMetric) descending - no limit
-    # This matches the mobile version sorting behavior
-    hierarchy = sorted(hierarchy, key=lambda x: x['km'], reverse=True)
-    
-    return hierarchy
+
+    return build_hierarchy_from_parent_groups(
+        parent_groups,
+        kiosk=kiosk,
+        show_cyclists=show_cyclists,
+    )
 
 
 def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
@@ -686,21 +711,18 @@ def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
         # Get all groups participating in this event
         event_groups = []
         for status in event.group_statuses.select_related('group').all():
-            # In kiosk mode, only show groups with current_distance_km > 0
-            if kiosk and float(status.current_distance_km) <= 0:
+            # In kiosk mode, only show groups with current_velos > 0
+            if kiosk and int(status.current_velos) <= 0:
                 continue
             event_groups.append({
                 'name': status.group.name,
-                'km': round(float(status.current_distance_km), 3),
+                'velos': int(status.current_velos),
                 'group_id': status.group.id
             })
-        # In kiosk mode, only add event if it has groups with distance > 0
+        # In kiosk mode, only add event if it has groups with Velos > 0
         if event_groups and (not kiosk or len(event_groups) > 0):
-            # Sort groups by distance (descending) and limit to top 10
-            event_groups_sorted = sorted(event_groups, key=lambda x: x['km'], reverse=True)[:10]
-            # Calculate total kilometers for this event (from all groups, not just top 10)
-            total_km = sum(g['km'] for g in event_groups)
-            # Check if event has ended (end_time reached)
+            event_groups_sorted = sorted(event_groups, key=lambda x: x['velos'], reverse=True)[:10]
+            total_velos = sum(g['velos'] for g in event_groups)
             is_ended = event.end_time and now > event.end_time
             events_data.append({
                 'id': event.id,
@@ -709,11 +731,365 @@ def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
                 'description': event.description or '',
                 'start_time': event.start_time,
                 'end_time': event.end_time,
-                'total_km': round(total_km, 3),
+                'total_velos': total_velos,
                 'is_ended': is_ended,
                 'groups': event_groups_sorted
             })
     
     return events_data
+
+
+def _get_cyclist_velos_balance(cyclist: Cyclist) -> int:
+    """Return redeemable Velos balance for a cyclist."""
+    return int(cyclist.velos_balance or 0)
+
+
+def get_cyclist_session_velos(cyclist: Cyclist) -> int:
+    """Velos earned in the cyclist's active device session (not yet redeemed)."""
+    from api.velos import calculate_session_velos
+
+    try:
+        session = cyclist.cyclistdevicecurrentmileage
+    except CyclistDeviceCurrentMileage.DoesNotExist:
+        return 0
+    if not session or not session.cumulative_mileage:
+        return 0
+    return calculate_session_velos(session.cumulative_mileage, session.device)
+
+
+def get_cyclist_session_km(cyclist: Cyclist):
+    """Return cumulative session distance in km for the cyclist's active device session."""
+    from decimal import Decimal
+
+    try:
+        session = cyclist.cyclistdevicecurrentmileage
+    except CyclistDeviceCurrentMileage.DoesNotExist:
+        return Decimal('0.00000')
+    return session.cumulative_mileage or Decimal('0.00000')
+
+
+def snapshot_session_velos(cyclist: Cyclist) -> int:
+    """Snapshot session Velos before ending a device session (e.g. game round stop)."""
+    return get_cyclist_session_velos(cyclist)
+
+
+def get_group_velos_ledger(groups: List[Group]) -> Dict[int, int]:
+    """
+    Return permanent group Velos ledger totals (leaderboard ranking source).
+
+    Uses Group.velos_total, not the sum of member velos_balance values.
+    """
+    return {group.id: int(group.velos_total or 0) for group in groups}
+
+
+def _calculate_cyclist_velos_from_metrics(
+    cyclists: List[Cyclist],
+    use_cache: bool = True,
+) -> Dict[int, int]:
+    """Sum HourlyMetric.velos per cyclist (archival/historical totals)."""
+    cyclist_ids = [c.id for c in cyclists]
+    if not cyclist_ids:
+        return {}
+
+    cyclist_ids_str = "-".join(map(str, sorted(cyclist_ids)))
+    cache_key = f'ranking_cyclist_velos_{cyclist_ids_str}_{timezone.now().strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+    cyclist_groups_map: Dict[int, List[int]] = {}
+    for cyclist in cyclists:
+        cyclist_groups_map[cyclist.id] = list(cyclist.groups.values_list('id', flat=True))
+
+    all_group_ids = set()
+    for group_ids in cyclist_groups_map.values():
+        all_group_ids.update(group_ids)
+
+    snapshot_dates = _get_latest_snapshot_date_for_groups(list(all_group_ids))
+    cyclist_snapshot_dates: Dict[int, Optional[timezone.datetime]] = {}
+    for cyclist_id, group_ids in cyclist_groups_map.items():
+        latest_date = None
+        for group_id in group_ids:
+            group_date = snapshot_dates.get(group_id)
+            if group_date and (latest_date is None or group_date > latest_date):
+                latest_date = group_date
+        cyclist_snapshot_dates[cyclist_id] = latest_date
+
+    result: Dict[int, int] = {}
+    for cyclist_id in cyclist_ids:
+        snapshot_date = cyclist_snapshot_dates.get(cyclist_id)
+        metric_filter = {'cyclist_id': cyclist_id}
+        if snapshot_date:
+            metric_filter['timestamp__gt'] = snapshot_date
+        total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+            total=Sum('velos'),
+        )
+        result[cyclist_id] = int(total_metrics['total'] or 0)
+
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+
+    return result
+
+
+def _calculate_group_velos_from_metrics(
+    groups: List[Group],
+    use_cache: bool = True,
+) -> Dict[int, int]:
+    """Sum HourlyMetric.velos by group_at_time (historical group attribution)."""
+    group_ids = [g.id for g in groups]
+    if not group_ids:
+        return {}
+
+    group_ids_str = "-".join(map(str, sorted(group_ids)))
+    cache_key = f'ranking_group_velos_{group_ids_str}_{timezone.now().strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    result: Dict[int, int] = {}
+
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        metric_filter = {'group_at_time_id': group_id}
+        if snapshot_date:
+            metric_filter['timestamp__gt'] = snapshot_date
+        total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+            total=Sum('velos'),
+        )
+        result[group_id] = int(total_metrics['total'] or 0)
+
+    for group in groups:
+        if group.id in result and group.parent and group.parent.id in group_ids:
+            parent_id = group.parent.id
+            result[parent_id] = result.get(parent_id, 0) + result[group.id]
+
+    for group_id in group_ids:
+        result.setdefault(group_id, 0)
+
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+
+    return result
+
+
+def _calculate_group_velos_periods(
+    groups: List[Group],
+    now: Optional[timezone.datetime] = None,
+    use_cache: bool = True,
+) -> Dict[int, Dict[str, int]]:
+    """
+    Aggregate HourlyMetric.velos per group for total/daily/weekly/monthly/yearly windows.
+    """
+    if now is None:
+        now = timezone.now()
+
+    group_ids = [g.id for g in groups]
+    if not group_ids:
+        return {}
+
+    group_ids_str = "-".join(map(str, sorted(group_ids)))
+    cache_key = f'leaderboard_group_velos_{group_ids_str}_{now.strftime("%Y%m%d%H")}'
+    if use_cache:
+        from django.core.cache import cache
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    days_since_monday = now.weekday()
+    week_start = (now - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    result: Dict[int, Dict[str, int]] = {
+        gid: {'total': 0, 'daily': 0, 'weekly': 0, 'monthly': 0, 'yearly': 0}
+        for gid in group_ids
+    }
+
+    period_filters = {
+        'total': {},
+        'daily': {'timestamp__gte': today_start},
+        'weekly': {'timestamp__gte': week_start},
+        'monthly': {'timestamp__gte': month_start},
+        'yearly': {'timestamp__gte': year_start},
+    }
+
+    for group_id in group_ids:
+        snapshot_date = snapshot_dates.get(group_id)
+        for period_name, extra_filter in period_filters.items():
+            metric_filter = {'group_at_time_id': group_id, **extra_filter}
+            if snapshot_date:
+                metric_filter['timestamp__gt'] = snapshot_date
+            total_metrics = HourlyMetric.objects.filter(**metric_filter).aggregate(
+                total=Sum('velos'),
+            )
+            result[group_id][period_name] = int(total_metrics['total'] or 0)
+
+    _propagate_group_velos_periods_to_parents(groups, result)
+
+    if use_cache:
+        from django.core.cache import cache
+        cache.set(cache_key, result, 55)
+
+    return result
+
+
+def _propagate_group_velos_periods_to_parents(
+    groups: List[Group],
+    result: Dict[int, Dict[str, int]],
+) -> None:
+    """Roll up leaf-group HourlyMetric Velos totals to parent groups in *result*."""
+    period_keys = ('total', 'daily', 'weekly', 'monthly', 'yearly')
+
+    def propagate_to_parents(group_id: int, visited: Optional[set] = None) -> None:
+        if visited is None:
+            visited = set()
+        if group_id in visited:
+            return
+        visited.add(group_id)
+
+        for group in groups:
+            if group.id != group_id or not group.parent:
+                continue
+            parent_id = group.parent.id
+            if group_id not in result or parent_id not in result:
+                continue
+            for period_name in period_keys:
+                result[parent_id][period_name] += result[group_id][period_name]
+            propagate_to_parents(parent_id, visited)
+
+    for group in groups:
+        if group.id in result:
+            propagate_to_parents(group.id)
+
+
+def get_cyclist_by_identifier(identifier: str) -> Optional[Cyclist]:
+    """Resolve a cyclist by user_id or id_tag (case-insensitive)."""
+    from django.db.models import Q
+
+    try:
+        return Cyclist.objects.get(
+            Q(user_id__iexact=identifier) | Q(id_tag__iexact=identifier)
+        )
+    except Cyclist.DoesNotExist:
+        return None
+
+
+def _cyclist_effective_snapshot_start(cyclist: Cyclist) -> Optional[timezone.datetime]:
+    group_ids = list(cyclist.groups.values_list('id', flat=True))
+    if not group_ids:
+        return None
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    latest_date = None
+    for group_id in group_ids:
+        group_date = snapshot_dates.get(group_id)
+        if group_date and (latest_date is None or group_date > latest_date):
+            latest_date = group_date
+    return latest_date
+
+
+def get_cyclist_velos_total(cyclist: Cyclist, use_cache: bool = False) -> int:
+    """Lifetime Velos from HourlyMetric (respecting year-end snapshots)."""
+    totals = _calculate_cyclist_velos_from_metrics([cyclist], use_cache=use_cache)
+    return int(totals.get(cyclist.id, 0))
+
+
+def get_cyclist_velos_period(
+    cyclist: Cyclist,
+    start_dt: timezone.datetime,
+    end_dt: timezone.datetime,
+) -> int:
+    """Sum HourlyMetric.velos for a cyclist in a date range plus overlapping session."""
+    period_velos = HourlyMetric.objects.filter(
+        cyclist=cyclist,
+        timestamp__gte=start_dt,
+        timestamp__lte=end_dt,
+        group_at_time__isnull=False,
+    ).aggregate(total=Sum('velos'))['total'] or 0
+
+    try:
+        session = cyclist.cyclistdevicecurrentmileage
+    except CyclistDeviceCurrentMileage.DoesNotExist:
+        return int(period_velos)
+
+    if (
+        session
+        and session.cumulative_mileage
+        and session.last_activity
+        and start_dt <= session.last_activity <= end_dt
+        and (not session.start_time or session.start_time <= end_dt)
+    ):
+        period_velos += get_cyclist_session_velos(cyclist)
+
+    return int(period_velos)
+
+
+def get_cyclist_velos_daily(cyclist: Cyclist, now: Optional[timezone.datetime] = None) -> int:
+    """Velos earned today (metrics + active session)."""
+    if now is None:
+        now = timezone.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    snapshot_date = _cyclist_effective_snapshot_start(cyclist)
+    effective_start = max(today_start, snapshot_date) if snapshot_date else today_start
+
+    daily_velos = HourlyMetric.objects.filter(
+        cyclist=cyclist,
+        timestamp__gte=effective_start,
+        group_at_time__isnull=False,
+    ).aggregate(total=Sum('velos'))['total'] or 0
+
+    try:
+        session = cyclist.cyclistdevicecurrentmileage
+    except CyclistDeviceCurrentMileage.DoesNotExist:
+        return int(daily_velos)
+
+    if (
+        session
+        and session.cumulative_mileage
+        and session.last_activity
+        and session.last_activity >= today_start
+    ):
+        daily_velos += get_cyclist_session_velos(cyclist)
+
+    return int(daily_velos)
+
+
+def build_cyclist_velos_api_fields(
+    cyclist: Cyclist,
+    *,
+    include_session: bool = False,
+    include_daily: bool = False,
+    period_start: Optional[timezone.datetime] = None,
+    period_end: Optional[timezone.datetime] = None,
+) -> Dict[str, int]:
+    """Standard Velos fields for cyclist API responses."""
+    fields: Dict[str, int] = {
+        'velos_balance': _get_cyclist_velos_balance(cyclist),
+        'velos_total': get_cyclist_velos_total(cyclist),
+    }
+    if include_session:
+        fields['session_velos'] = get_cyclist_session_velos(cyclist)
+    if include_daily:
+        fields['velos_daily'] = get_cyclist_velos_daily(cyclist)
+    if period_start and period_end:
+        fields['velos_period'] = get_cyclist_velos_period(cyclist, period_start, period_end)
+    return fields
+
+
+def build_group_velos_api_fields(group: Group) -> Dict[str, int]:
+    """Ledger Velos fields for group API responses."""
+    return {
+        'velos_total': int(group.velos_total or 0),
+        'velos_spendable': int(group.velos_spendable or 0),
+    }
 
 

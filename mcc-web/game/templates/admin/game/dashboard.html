@@ -208,7 +208,7 @@
                     <td>{{ room.inactive_display }}</td>
                     <td>{{ room.participants_count }}</td>
                     <td>{{ room.assignments_count }}</td>
-                    <td>{% if room.current_target_km > 0 %}{{ room.current_target_km|floatformat:1 }} km{% else %}-{% endif %}</td>
+                    <td>{% if room.current_target_velos > 0 %}{{ room.current_target_velos }} Velos{% else %}-{% endif %}</td>
                     <td>
                         <span class="status-badge" style="background-color: {{ room.game_status_color }};">
                             {{ room.game_status }}

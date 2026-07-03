@@ -9,7 +9,7 @@
 {% load i18n leaderboard_filters %}
 {% if active_cyclists %}
     {% for cyclist in active_cyclists %}
-    <span class="inline-block mr-8">
+    <span class="inline-block mr-8" data-session-velos="{{ cyclist.session_velos }}">
         <strong>{{ cyclist.user_id }}</strong>
         {% if not current_filter %}
         {# Only show group short name when no filter is active #}
@@ -18,7 +18,7 @@
         {% endif %}
         {% endif %}
         <span class="mx-2">🚴</span>
-        <span class="text-green-500 font-semibold">{% format_km_de_tag cyclist.session_km 2 %} km</span>
+        <span class="text-green-500 font-semibold">{% format_velos_de_tag cyclist.session_velos %} Velos</span>
     </span>
     {% endfor %}
 {% else %}
@@ -35,7 +35,7 @@
             {% if event.type == 'milestone' %}{% trans "MEILENSTEIN ERREICHT" %}{% else %}{% trans "SITZUNGS-WELTMEISTER" %}{% endif %}
         </h1>
         <h2 style="font-size: 5rem; color: white; margin:10px 0;">{{ event.name }}</h2>
-        <p style="font-size: 2rem;">{% blocktrans with km=event.km %}hat {{ km }} KM in dieser Runde geschafft!{% endblocktrans %}</p>
+        <p style="font-size: 2rem;">{% trans "hat" %} {% format_velos_de_tag event.velos %} {% trans "Velos in dieser Runde gesammelt!" %}</p>
     </div>
 </div>
 <style>

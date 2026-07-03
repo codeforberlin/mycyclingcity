@@ -76,6 +76,21 @@ bool fetchDeviceConfig();
 bool sendHeartbeat();
 
 /**
+ * @brief Set boot_reason for the next heartbeat or update_data request (once).
+ */
+void setPendingBootReason(const char* reason);
+
+/**
+ * @brief Append pending boot_reason to a JSON object and clear it.
+ */
+bool appendPendingBootReasonToJson(JsonObject doc);
+
+/**
+ * @brief Apply server display Velos fields from API JSON (update_data / heartbeat).
+ */
+bool applyDisplayVelosFromResponse(const String& response);
+
+/**
  * @brief Checks if a firmware update is available.
  * 
  * Sends a GET request to /api/device/firmware/info to check if a newer

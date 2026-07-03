@@ -21,6 +21,7 @@ extern void test_data_processing();
 extern void test_json_generation();
 extern void test_rfid_utils();
 extern void test_config_utils();
+extern void test_velos();
 
 void setUp(void) {
     // Set up test environment before each test
@@ -46,6 +47,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_json_generation);
     RUN_TEST(test_rfid_utils);
     RUN_TEST(test_config_utils);
+    RUN_TEST(test_velos);
     
     UNITY_END();
     

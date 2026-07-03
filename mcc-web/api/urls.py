@@ -12,9 +12,6 @@ from . import views
 urlpatterns = [
     path('update-data', views.update_data, name='update_data'),
     path('get-user-id', views.get_user_id, name='get_user_id'),
-    path('get-player-coins/<str:username>', views.get_player_coins, name='get_player_coins'),
-    path('get-cyclist-coins/<str:username>', views.get_cyclist_coins, name='get_cyclist_coins'),
-    path('spend-cyclist-coins', views.spend_cyclist_coins, name='spend_cyclist_coins'),
     path('get-mapped-minecraft-players', views.get_mapped_minecraft_players, name='get_mapped_minecraft_players'),
     path('get-mapped-minecraft-cyclists', views.get_mapped_minecraft_cyclists, name='get_mapped_minecraft_cyclists'),
     
@@ -27,7 +24,10 @@ urlpatterns = [
     
     # Distance/Mileage data endpoints
     path('get-cyclist-distance/<str:identifier>', views.get_cyclist_distance, name='get_cyclist_distance'),
+    path('get-cyclist-velos/<str:identifier>', views.get_cyclist_velos, name='get_cyclist_velos'),
+    path('redeem-cyclist-velos', views.redeem_cyclist_velos_api, name='redeem_cyclist_velos'),
     path('get-group-distance/<str:identifier>', views.get_group_distance, name='get_group_distance'),
+    path('get-group-velos/<str:identifier>', views.get_group_velos, name='get_group_velos'),
     
     # Leaderboard endpoints
     path('get-leaderboard/cyclists', views.get_leaderboard_cyclists, name='get_leaderboard_cyclists'),

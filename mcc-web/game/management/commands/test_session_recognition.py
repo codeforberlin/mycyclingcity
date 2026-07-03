@@ -73,12 +73,12 @@ class Command(BaseCommand):
         device_assignments = session_dict.get('device_assignments', {})
         room_code = session_dict.get('room_code')
         is_master = session_dict.get('is_master', False)
-        target_km = session_dict.get('current_target_km', 0.0)
+        target_km = session_dict.get('current_target_velos', 0.0)
         
         self.stdout.write(f"  - device_assignments: {device_assignments} (type: {type(device_assignments)}, len: {len(device_assignments) if isinstance(device_assignments, dict) else 'N/A'})")
         self.stdout.write(f"  - room_code: {room_code}")
         self.stdout.write(f"  - is_master: {is_master}")
-        self.stdout.write(f"  - current_target_km: {target_km}")
+        self.stdout.write(f"  - current_target_velos: {target_km}")
         
         # Test recognition
         is_game = is_game_session(session)

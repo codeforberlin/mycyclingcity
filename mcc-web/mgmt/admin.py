@@ -10,14 +10,14 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django import forms
 from django.utils.safestring import mark_safe
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _, gettext
 from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, TravelHistory,
     GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution,
-    YearEndSnapshot, YearEndSnapshotDetail
+    YearEndSnapshot, YearEndSnapshotDetail, CyclistVelosRedemption
 )
 from eventboard.models import Event, GroupEventStatus, EventHistory, LeafGroupEventContribution
 from iot.models import (
@@ -40,6 +40,9 @@ import math
 
 logger = logging.getLogger(__name__)
 
+from api.velos import format_velos_de, get_fkm_factor, calculate_session_velos
+from api.travel_velos import get_track_goal_velos, refresh_milestone_position_velos, refresh_track_goal_velos
+
 User = get_user_model()
 
 # --- 1. HELPER FUNCTIONS ---
@@ -49,6 +52,16 @@ def format_km_de(value):
     if value is None: return "0,00 km"
     formatted = f"{float(value):,.2f}"
     return formatted.replace(',', '[TEMP]').replace('.', ',').replace('[TEMP]', '.') + " km"
+
+
+def _get_top_parent_group(group):
+    """Return the root group in the hierarchy for a given group."""
+    visited = set()
+    current = group
+    while current and current.parent_id and current.id not in visited:
+        visited.add(current.id)
+        current = current.parent
+    return current
 
 def get_operator_managed_group_ids(user):
     """
@@ -1463,13 +1476,20 @@ class DeviceConfigurationInline(admin.StackedInline):
             'fields': ('debug_mode', 'test_mode', 'test_distance_km', 'test_interval_seconds', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
         }),
         (_("Hardware"), {
-            'fields': ('wheel_size',)
+            'fields': ('wheel_size', 'paedagogischer_bonus', 'fkm_factor_preview')
         }),
         (_("Firmware"), {
             'fields': ('assigned_firmware', 'last_synced_at')
         }),
     )
-    readonly_fields = ('last_synced_at', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'reported_device_name_display')
+    readonly_fields = ('last_synced_at', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'reported_device_name_display', 'fkm_factor_preview')
+    
+    def fkm_factor_preview(self, obj):
+        if obj and obj.wheel_size:
+            factor = get_fkm_factor(int(obj.wheel_size), float(obj.paedagogischer_bonus or 0))
+            return f"{factor:.3f}"
+        return "—"
+    fkm_factor_preview.short_description = _("FKM-Faktor (Vorschau)")
     
     def get_queryset(self, request):
         """Ensure existing configuration is always loaded."""
@@ -1694,7 +1714,7 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
                            'um den Hex-Code zu ermitteln.'))
         }),
         (_('Statistiken'), {
-            'fields': ('distance_total', 'coins_total')
+            'fields': ('distance_total', 'velos_total', 'velos_spendable', 'mc_username')
         }),
         (_('Verwaltung'), {
             'fields': ('managers', 'comments')
@@ -1924,6 +1944,12 @@ class CyclistAdminForm(forms.ModelForm):
             raise forms.ValidationError({
                 'group': _("Eine Gruppe muss ausgewählt werden. Ein Radler muss immer einer Gruppe zugeordnet werden.")
             })
+
+        from api.velos import is_true_leaf_group
+        if not is_true_leaf_group(group):
+            raise forms.ValidationError({
+                'group': _("Der Radler muss einer Leaf-Gruppe zugeordnet werden (Gruppe ohne Untergruppen).")
+            })
         
         return cleaned_data
     
@@ -1937,11 +1963,24 @@ class CyclistAdminForm(forms.ModelForm):
 @admin.register(Cyclist)
 class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     form = CyclistAdminForm
-    list_display = ('user_id', 'id_tag', 'groups_display', 'distance_total_display', 'last_active', 'is_visible', 'is_km_collection_enabled', 'avatar_preview')
+    list_display = (
+        'user_id', 'id_tag', 'groups_display', 'velos_balance_display',
+        'distance_total_display', 'last_active', 'is_visible', 'is_km_collection_enabled', 'avatar_preview',
+    )
     list_editable = ('is_visible', 'is_km_collection_enabled')
     search_fields = ('user_id', 'id_tag')
-    readonly_fields = ('avatar_preview',)
+    readonly_fields = ('avatar_preview', 'velos_balance')
     list_filter = ('groups', 'is_visible', 'is_km_collection_enabled', 'last_active')
+    actions = ['redeem_velos_action']
+
+    def get_fields(self, request, obj=None):
+        fields = list(super().get_fields(request, obj))
+        if request.user.is_superuser:
+            if 'is_operator_tag' not in fields:
+                fields.append('is_operator_tag')
+        else:
+            fields = [f for f in fields if f != 'is_operator_tag']
+        return fields
     
     def get_queryset(self, request):
         """Filter cyclists based on operator permissions."""
@@ -2004,6 +2043,39 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     distance_total_display.short_description = _("Gesamtkilometer")
     distance_total_display.admin_order_field = 'distance_total'
 
+    def velos_balance_display(self, obj):
+        return f"{format_velos_de(obj.velos_balance)} Velos"
+    velos_balance_display.short_description = _("Velos-Guthaben")
+    velos_balance_display.admin_order_field = 'velos_balance'
+
+    @admin.action(description=_("Velos einlösen (100 %%, Session beenden)"))
+    def redeem_velos_action(self, request, queryset):
+        from api.services.velos_redemption import redeem_cyclist_velos
+        from django.contrib import messages
+
+        redeemed_count = 0
+        for cyclist in queryset:
+            result = redeem_cyclist_velos(cyclist, redeemed_by=request.user)
+            if result.success:
+                redeemed_count += 1
+                self.message_user(
+                    request,
+                    f"{cyclist.user_id}: {result.message}",
+                    level=messages.SUCCESS,
+                )
+            else:
+                self.message_user(
+                    request,
+                    f"{cyclist.user_id}: {result.message}",
+                    level=messages.WARNING,
+                )
+        if redeemed_count:
+            self.message_user(
+                request,
+                _("%(count)s Radler erfolgreich eingelöst.") % {'count': redeemed_count},
+                level=messages.SUCCESS,
+            )
+
     def avatar_preview(self, obj):
         """Generates an HTML preview for the cyclist avatar"""
         if obj.avatar:
@@ -2040,9 +2112,48 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
         # Call parent save_related (though there are no other related objects to save)
         super().save_related(request, form, formsets, change)
 
+@admin.register(CyclistVelosRedemption)
+class CyclistVelosRedemptionAdmin(BaseAdmin):
+    list_display = ('redeemed_at', 'cyclist', 'leaf_group', 'velos_redeemed', 'external_currency', 'redeemed_by')
+    list_filter = ('redeemed_at', 'leaf_group', 'external_currency')
+    search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'note')
+    readonly_fields = (
+        'cyclist', 'leaf_group', 'velos_redeemed', 'redeemed_at', 'redeemed_by', 'note', 'external_currency',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
 @admin.register(CyclistDeviceCurrentMileage)
 class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
-    list_display = ('cyclist', 'top_group_display', 'device', 'cumulative_mileage_display')
+    list_display = (
+        'cyclist_link',
+        'top_group_display',
+        'device_link',
+        'cumulative_mileage_display',
+        'session_velos_display',
+    )
+    list_display_links = ('cumulative_mileage_display',)
+    readonly_fields = (
+        'cyclist_admin_link',
+        'device',
+        'cumulative_mileage',
+        'start_time',
+        'last_activity',
+    )
+    fields = (
+        'cyclist_admin_link',
+        'device',
+        'cumulative_mileage',
+        'start_time',
+        'last_activity',
+    )
     
     def has_module_permission(self, request):
         """Verstecke diese Admin-Klasse für Operatoren."""
@@ -2056,7 +2167,7 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
         from django.db.models.functions import Coalesce
         
         qs = super().get_queryset(request)
-        qs = qs.select_related('cyclist', 'device').prefetch_related('cyclist__groups__parent')
+        qs = qs.select_related('cyclist', 'device', 'device__configuration').prefetch_related('cyclist__groups__parent')
         
         # Annotate with first group name for sorting
         # This allows sorting by the first group's name (as a proxy for top group sorting)
@@ -2082,9 +2193,43 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
         return format_km_de(obj.cumulative_mileage)
     cumulative_mileage_display.short_description = _("Kumulative Kilometer")
     cumulative_mileage_display.admin_order_field = 'cumulative_mileage'
+
+    def session_velos_display(self, obj):
+        """Display session Velos using the device wheel factor."""
+        if not obj.device or obj.cumulative_mileage is None:
+            return f"{format_velos_de(0)} Velos"
+        velos = calculate_session_velos(obj.cumulative_mileage, obj.device)
+        return f"{format_velos_de(velos)} Velos"
+    session_velos_display.short_description = _("Velos")
+
+    def cyclist_link(self, obj):
+        """Link to the cyclist definition in admin."""
+        if not obj or not obj.cyclist:
+            return "-"
+        url = reverse('admin:api_cyclist_change', args=[obj.cyclist.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.cyclist)
+    cyclist_link.short_description = _("Radler")
+    cyclist_link.admin_order_field = 'cyclist__user_id'
+
+    def cyclist_admin_link(self, obj):
+        """Read-only link to cyclist on the session detail page."""
+        if not obj or not obj.cyclist:
+            return "-"
+        url = reverse('admin:api_cyclist_change', args=[obj.cyclist.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.cyclist)
+    cyclist_admin_link.short_description = _("Radler")
+
+    def device_link(self, obj):
+        """Link to the device change page in admin."""
+        if not obj or not obj.device:
+            return "-"
+        url = reverse('admin:iot_device_change', args=[obj.device.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.device)
+    device_link.short_description = _("Gerät")
+    device_link.admin_order_field = 'device__name'
     
     def top_group_display(self, obj):
-        """Display the top parent group of the cyclist."""
+        """Display the top parent group of the cyclist with admin link."""
         if not obj or not obj.cyclist:
             return "-"
         
@@ -2093,18 +2238,29 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
         if not groups.exists():
             return "-"
         
-        # Get top parent names for all groups
-        # Use top_parent_name property which handles parent traversal
-        top_groups = set()
+        top_groups = {}
         for group in groups:
-            top_groups.add(group.top_parent_name)
+            top_group = _get_top_parent_group(group)
+            if top_group:
+                top_groups[top_group.pk] = top_group
         
-        # If all groups have the same top parent, return it
-        if len(top_groups) == 1:
-            return list(top_groups)[0]
+        if not top_groups:
+            return "-"
         
-        # If multiple top groups, return comma-separated list
-        return ", ".join(sorted(top_groups))
+        sorted_top_groups = sorted(top_groups.values(), key=lambda g: g.name)
+        if len(sorted_top_groups) == 1:
+            top_group = sorted_top_groups[0]
+            url = reverse('admin:api_group_change', args=[top_group.pk])
+            return format_html('<a href="{}">{}</a>', url, top_group.name)
+        
+        return format_html_join(
+            ', ',
+            '<a href="{}">{}</a>',
+            (
+                (reverse('admin:api_group_change', args=[top_group.pk]), top_group.name)
+                for top_group in sorted_top_groups
+            ),
+        )
     top_group_display.short_description = _("TOP Gruppe")
     top_group_display.admin_order_field = 'first_group_name'
 
@@ -2116,10 +2272,10 @@ class GroupEventStatusInline(admin.TabularInline):
     can_delete = True  # Allow deletion of group entries
     verbose_name = _("Teilnehmende Gruppe")
     verbose_name_plural = _("Teilnehmende Gruppen")
-    fields = ('group', 'current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
-    readonly_fields = ('current_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
+    fields = ('group', 'current_velos_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
+    readonly_fields = ('current_velos_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display')
     # Exclude fields that are not shown but have defaults - they will be set automatically
-    exclude = ('current_distance_km', 'start_km_offset')
+    exclude = ('current_velos', 'start_velos_offset')
     template = 'admin/eventboard/groupeventstatus_inline.html'
     
     def has_view_permission(self, request, obj=None):
@@ -2440,16 +2596,16 @@ class GroupEventStatusInline(admin.TabularInline):
                     # Set default values for excluded fields if they're missing
                     if form.instance and form.instance.pk and form.cleaned_data:
                         # For existing entries, ensure excluded fields have values
-                        if 'current_distance_km' not in form.cleaned_data:
-                            form.cleaned_data['current_distance_km'] = form.instance.current_distance_km or 0
-                        if 'start_km_offset' not in form.cleaned_data:
-                            form.cleaned_data['start_km_offset'] = form.instance.start_km_offset or 0
+                        if 'current_velos' not in form.cleaned_data:
+                            form.cleaned_data['current_velos'] = form.instance.current_velos or 0
+                        if 'start_velos_offset' not in form.cleaned_data:
+                            form.cleaned_data['start_velos_offset'] = form.instance.start_velos_offset or 0
                     elif form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                         # For new entries, set default values for excluded fields
-                        if 'current_distance_km' not in form.cleaned_data:
-                            form.cleaned_data['current_distance_km'] = 0
-                        if 'start_km_offset' not in form.cleaned_data:
-                            form.cleaned_data['start_km_offset'] = 0
+                        if 'current_velos' not in form.cleaned_data:
+                            form.cleaned_data['current_velos'] = 0
+                        if 'start_velos_offset' not in form.cleaned_data:
+                            form.cleaned_data['start_velos_offset'] = 0
                 
                 logger.debug(f"[GroupEventStatusFormSet.clean] Finished clean")
                 return cleaned_data
@@ -2470,11 +2626,11 @@ class GroupEventStatusInline(admin.TabularInline):
                 
                 for instance in instances:
                     # Ensure excluded fields have default values if not set
-                    if instance.current_distance_km is None:
-                        instance.current_distance_km = 0
-                    if instance.start_km_offset is None:
-                        instance.start_km_offset = 0
-                    logger.debug(f"[GroupEventStatusFormSet.save] Instance {instance.pk}: current_distance_km={instance.current_distance_km}, start_km_offset={instance.start_km_offset}")
+                    if instance.current_velos is None:
+                        instance.current_velos = 0
+                    if instance.start_velos_offset is None:
+                        instance.start_velos_offset = 0
+                    logger.debug(f"[GroupEventStatusFormSet.save] Instance {instance.pk}: current_velos={instance.current_velos}, start_velos_offset={instance.start_velos_offset}")
                 
                 if commit:
                     for instance in instances:
@@ -2485,12 +2641,12 @@ class GroupEventStatusInline(admin.TabularInline):
         
         return GroupEventStatusFormSet
 
-    def current_distance_km_display(self, obj):
-        """Display current_distance_km with German format (comma decimal)."""
-        if obj and obj.current_distance_km is not None:
-            return format_km_de(obj.current_distance_km)
+    def current_velos_display(self, obj):
+        """Display current_velos with German format (comma decimal)."""
+        if obj and obj.current_velos is not None:
+            return format_velos_de(obj.current_velos)
         return format_km_de(0)
-    current_distance_km_display.short_description = _("Aktuelle Distanz (km)")
+    current_velos_display.short_description = _("Aktuelle Velos")
     
     def best_leaf_group_display(self, obj):
         """Display best leaf group with contribution."""
@@ -2891,12 +3047,12 @@ class TravelTrackAdmin(admin.ModelAdmin):
         if not statuses:
             return _("Noch keine Gruppen auf dieser Reiseroute.")
         
-        # Sort in Python: groups with goal_reached_at first (sorted by time), then by distance
+        # Sort in Python: groups with goal_reached_at first (sorted by time), then by Velos
         # IMPORTANT: Groups that reached the goal first should be ranked higher
         statuses.sort(key=lambda s: (
             0 if s.goal_reached_at else 1,  # Groups with goal_reached_at come first (0 < 1)
             s.goal_reached_at if s.goal_reached_at else timezone.now(),  # Earlier time = better rank
-            -float(s.current_travel_distance or 0),  # Higher distance = better (negative for descending)
+            -(int(s.current_travel_velos or 0)),  # Higher Velos = better (negative for descending)
             s.group.name  # Alphabetical as tiebreaker
         ))
         
@@ -2905,11 +3061,13 @@ class TravelTrackAdmin(admin.ModelAdmin):
         html += '<thead><tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">'
         html += f'<th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">{_("Rang")}</th>'
         html += f'<th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">{_("Gruppe")}</th>'
-        html += f'<th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{_("Distanz (km)")}</th>'
+        html += f'<th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{_("Fortschritt (Velos)")}</th>'
         html += f'<th style="padding: 8px; text-align: center; border: 1px solid #dee2e6;">{_("Ziel erreicht")}</th>'
         html += f'<th style="padding: 8px; text-align: center; border: 1px solid #dee2e6;">{_("Reisezeit")}</th>'
         html += '</tr></thead><tbody>'
         
+        goal_velos = get_track_goal_velos(obj)
+
         for rank, status in enumerate(statuses, start=1):
             # Medal emoji for top 3
             rank_display = ""
@@ -2922,15 +3080,14 @@ class TravelTrackAdmin(admin.ModelAdmin):
             else:
                 rank_display = str(rank)
             
-            # IMPORTANT: Cap distance at track total_length_km for consistency with avatar display
-            distance_km = status.current_travel_distance or Decimal('0.00000')
-            if obj.total_length_km and distance_km > obj.total_length_km:
-                distance_km = obj.total_length_km
-            
+            current_velos = int(status.current_travel_velos or 0)
+            if goal_velos > 0 and current_velos > goal_velos:
+                current_velos = goal_velos
+
             # Check if goal is reached
-            goal_reached = "✅" if (obj.total_length_km and distance_km >= obj.total_length_km) else "⏳"
+            goal_reached = "✅" if (goal_velos > 0 and current_velos >= goal_velos) else "⏳"
             travel_duration_display = ""
-            if obj.total_length_km and distance_km >= obj.total_length_km:
+            if goal_velos > 0 and current_velos >= goal_velos:
                 # Goal is reached - calculate travel duration
                 # Use goal_reached_at if available, otherwise use current time as fallback
                 end_time = status.goal_reached_at if status.goal_reached_at else timezone.now()
@@ -3034,7 +3191,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
             html += '<tr>'
             html += f'<td style="padding: 8px; border: 1px solid #dee2e6;">{rank_display}</td>'
             html += f'<td style="padding: 8px; border: 1px solid #dee2e6;">{status.group.name}</td>'
-            html += f'<td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{format_km_de(distance_km)}</td>'
+            html += f'<td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{format_velos_de(current_velos)} Velos</td>'
             html += f'<td style="padding: 8px; text-align: center; border: 1px solid #dee2e6;">{goal_reached}</td>'
             html += f'<td style="padding: 8px; text-align: center; border: 1px solid #dee2e6;">{travel_duration_display if travel_duration_display else "-"}</td>'
             html += '</tr>'
@@ -3100,6 +3257,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
                         gpx = gpxpy.parse(obj.track_file.open())
                         from decimal import Decimal
                         obj.total_length_km = Decimal(str(round(gpx.length_3d() / 1000.0, 5)))
+                        refresh_track_goal_velos(obj, save=False)
                         points = [[p.latitude, p.longitude] for t in gpx.tracks for s in t.segments for p in s.points]
                         obj.geojson_data = json.dumps(points[::5])
                     except Exception as e:
@@ -3162,6 +3320,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
                     gpx = gpxpy.parse(obj.track_file.open())
                     from decimal import Decimal
                     obj.total_length_km = Decimal(str(round(gpx.length_3d() / 1000.0, 5)))
+                    refresh_track_goal_velos(obj, save=False)
                     points = [[p.latitude, p.longitude] for t in gpx.tracks for s in t.segments for p in s.points]
                     obj.geojson_data = json.dumps(points[::5])
                 except Exception as e:
@@ -3276,7 +3435,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
             # Save current state to history before restarting
             now = timezone.now()
             for status in track.group_statuses.all():
-                if status.current_travel_distance > 0:
+                if status.current_travel_distance > 0 or int(status.current_travel_velos or 0) > 0:
                     # Find the most recent 'assigned' entry for this track/group to get the correct start_time
                     # This ensures we link to the correct trip instance when a track is run multiple times
                     assigned_entry = TravelHistory.objects.filter(
@@ -3313,7 +3472,7 @@ class TravelTrackAdmin(admin.ModelAdmin):
         now = timezone.now()
         for track in queryset:
             for status in track.group_statuses.all():
-                if status.current_travel_distance > 0:
+                if status.current_travel_distance > 0 or int(status.current_travel_velos or 0) > 0:
                     # Find the most recent 'assigned' entry for this track/group to get the correct start_time
                     # This ensures we link to the correct trip instance when a track is run multiple times
                     assigned_entry = TravelHistory.objects.filter(
@@ -3504,6 +3663,11 @@ class MilestoneAdmin(admin.ModelAdmin):
         
         return super().changeform_view(request, object_id, form_url, extra_context)
 
+    def save_model(self, request, obj, form, change):
+        if 'distance_km' in form.changed_data or not change:
+            refresh_milestone_position_velos(obj, save=False)
+        super().save_model(request, obj, form, change)
+
     def distance_km_display(self, obj):
         """Display distance_km with German format (comma decimal)."""
         if obj.distance_km is None:
@@ -3613,7 +3777,7 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (_("Reisestatus"), {
-            'fields': ('group', 'track', 'current_travel_distance', 'start_km_offset'),
+            'fields': ('group', 'track', 'current_travel_velos', 'current_travel_distance', 'start_velos_offset'),
         }),
         (_("Leaf-Gruppen Beiträge"), {
             'fields': ('leaf_groups_contributions_display',),
@@ -3684,7 +3848,7 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
         contributions = LeafGroupTravelContribution.objects.filter(
             track=track,
             leaf_group__in=leaf_groups
-        ).select_related('leaf_group').order_by('-current_travel_distance', 'leaf_group__name')
+        ).select_related('leaf_group').order_by('-current_travel_velos', 'leaf_group__name')
         
         if not contributions.exists():
             return _("Noch keine Beiträge von Leaf-Gruppen vorhanden.")
@@ -3694,15 +3858,15 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
         html += '<thead><tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">'
         html += f'<th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">{_("Rang")}</th>'
         html += f'<th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">{_("Leaf-Gruppe")}</th>'
-        html += f'<th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{_("Beitrag (km)")}</th>'
+        html += f'<th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{_("Beitrag (Velos)")}</th>'
         html += f'<th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{_("Anteil")}</th>'
         html += '</tr></thead><tbody>'
         
-        parent_distance = obj.current_travel_distance or Decimal('0.00000')
-        # IMPORTANT: Cap parent_distance at track total_length_km for consistency with avatar display
-        if track.total_length_km and parent_distance > track.total_length_km:
-            parent_distance = track.total_length_km
-        
+        parent_velos = int(obj.current_travel_velos or 0)
+        goal_velos = get_track_goal_velos(track)
+        if goal_velos > 0 and parent_velos > goal_velos:
+            parent_velos = goal_velos
+
         for rank, contrib in enumerate(contributions, start=1):
             # Medal emoji for top 3
             rank_display = ""
@@ -3715,23 +3879,22 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
             else:
                 rank_display = str(rank)
             
-            # IMPORTANT: Cap contribution at track total_length_km for consistency with avatar display
-            contribution_km = contrib.current_travel_distance
-            if track.total_length_km and contribution_km > track.total_length_km:
-                contribution_km = track.total_length_km
-            
+            contribution_velos = int(contrib.current_travel_velos or 0)
+            if goal_velos > 0 and contribution_velos > goal_velos:
+                contribution_velos = goal_velos
+
             # Calculate percentage
             percentage = ""
-            if parent_distance > 0:
-                pct = (contribution_km / parent_distance) * 100
+            if parent_velos > 0:
+                pct = (contribution_velos / parent_velos) * 100
                 percentage = f"{pct:.1f}%"
             else:
                 percentage = "0,0%"
-            
+
             html += '<tr>'
             html += f'<td style="padding: 8px; border: 1px solid #dee2e6;">{rank_display}</td>'
             html += f'<td style="padding: 8px; border: 1px solid #dee2e6;">{contrib.leaf_group.name}</td>'
-            html += f'<td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{format_km_de(contribution_km)}</td>'
+            html += f'<td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{format_velos_de(contribution_velos)} Velos</td>'
             html += f'<td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">{percentage}</td>'
             html += '</tr>'
         
@@ -4317,7 +4480,7 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     list_display = ('name', 'event_type', 'total_distance_km_display', 'groups_count', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date')
     list_editable = ('is_active', 'is_visible_on_map')
     inlines = [GroupEventStatusInline]
-    fields = ('name', 'event_type', 'top_group', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date', 'target_distance_km', 'update_interval_seconds', 'left_logo', 'right_logo')
+    fields = ('name', 'event_type', 'top_group', 'description', 'is_active', 'is_visible_on_map', 'start_time', 'end_time', 'hide_after_date', 'target_velos', 'update_interval_seconds', 'left_logo', 'right_logo')
     list_filter = ('event_type', 'is_active', 'is_visible_on_map')
     search_fields = ('name', 'description')
     actions = ['restart_event', 'save_event_to_history']
@@ -4506,10 +4669,10 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
 
 @admin.register(EventHistory)
 class EventHistoryAdmin(admin.ModelAdmin):
-    list_display = ('event', 'group', 'start_time', 'end_time', 'total_distance_km_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display', 'created_at')
+    list_display = ('event', 'group', 'start_time', 'end_time', 'total_velos_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display', 'created_at')
     list_filter = ('event', 'group', 'start_time', 'end_time')
     search_fields = ('event__name', 'group__name', 'best_leaf_group__name')
-    readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_distance_km', 'best_leaf_group', 'best_leaf_group_goal_reached_at', 'created_at')
+    readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_velos', 'best_leaf_group', 'best_leaf_group_goal_reached_at', 'created_at')
     date_hierarchy = 'end_time'
     
     def best_leaf_group_display(self, obj):
@@ -4571,18 +4734,18 @@ class EventHistoryAdmin(admin.ModelAdmin):
         managed_group_ids = get_operator_managed_group_ids(request.user)
         return obj.group.id in managed_group_ids
 
-    def total_distance_km_display(self, obj):
-        """Display total_distance_km with German format (comma decimal)."""
-        if obj.total_distance_km is None:
-            return format_km_de(0)
-        return format_km_de(obj.total_distance_km)
-    total_distance_km_display.short_description = _("Gesammelte Kilometer")
-    total_distance_km_display.admin_order_field = 'total_distance_km'
+    def total_velos_display(self, obj):
+        """Display total_velos with German format."""
+        if obj is None or obj.total_velos is None:
+            return format_velos_de(0)
+        return f"{format_velos_de(obj.total_velos)} Velos"
+    total_velos_display.short_description = _("Gesammelte Velos")
+    total_velos_display.admin_order_field = 'total_velos'
 
 @admin.register(HourlyMetric)
 class HourlyMetricAdmin(admin.ModelAdmin):
-    list_display = ('timestamp', 'cyclist', 'distance_km_display', 'device', 'group_at_time')
-    readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'group_at_time')
+    list_display = ('timestamp', 'cyclist', 'distance_km_display', 'velos', 'device', 'group_at_time')
+    readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'velos', 'group_at_time')
     list_filter = ('timestamp', 'device', 'cyclist', 'group_at_time')
     search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'device__name')
     
@@ -5427,6 +5590,21 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     formfield_overrides = {models.DecimalField: {'widget': MapInputWidget}}
     inlines = [DeviceConfigurationInline, DeviceConfigurationReportInline]
 
+    def get_fields(self, request, obj=None):
+        fields = list(super().get_fields(request, obj))
+        if request.user.is_superuser and 'is_operator_box' not in fields:
+            insert_at = fields.index('is_km_collection_enabled') + 1 if 'is_km_collection_enabled' in fields else 3
+            fields.insert(insert_at, 'is_operator_box')
+        elif not request.user.is_superuser:
+            fields = [f for f in fields if f != 'is_operator_box']
+        return fields
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if not request.user.is_superuser:
+            readonly = list(readonly) + ['is_operator_box']
+        return readonly
+
     def distance_total_display(self, obj):
         """Display distance_total with German format (comma decimal)."""
         if obj.distance_total is None:
@@ -6007,7 +6185,7 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
     """Standalone admin for DeviceConfiguration with API key generation."""
     
     form = DeviceConfigurationForm
-    readonly_fields = ('reported_device_name_display', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button')
+    readonly_fields = ('reported_device_name_display', 'api_key_status_display', 'api_key_last_rotated', 'generate_api_key_button', 'test_rotation_button', 'force_rotation_button', 'fkm_factor_preview')
     exclude = ('apache_base64_auth_key', 'device_name')  # Remove deprecated Apache Base64 Auth Key field and device_name (use reported name instead)
     
     fieldsets = (
@@ -6035,7 +6213,7 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
             'fields': ('debug_mode', 'test_mode', 'test_distance_km', 'test_interval_seconds', 'deep_sleep_seconds', 'config_fetch_interval_seconds', 'request_config_comparison')
         }),
         (_("Hardware"), {
-            'fields': ('wheel_size',)
+            'fields': ('wheel_size', 'paedagogischer_bonus', 'fkm_factor_preview')
         }),
         (_("Firmware"), {
             'fields': ('assigned_firmware', 'last_synced_at')
@@ -6051,6 +6229,13 @@ class DeviceConfigurationAdmin(admin.ModelAdmin):
             return _("Noch nicht vom Gerät gemeldet")
         return "-"
     reported_device_name_display.short_description = _("Gerätename (vom Gerät gemeldet)")
+    
+    def fkm_factor_preview(self, obj):
+        if obj and obj.wheel_size:
+            factor = get_fkm_factor(int(obj.wheel_size), float(obj.paedagogischer_bonus or 0))
+            return f"{factor:.3f}"
+        return "—"
+    fkm_factor_preview.short_description = _("FKM-Faktor (Vorschau)")
     
     def api_key_status_display(self, obj):
         """Display which API key is currently being used by this device."""
@@ -6293,7 +6478,7 @@ def get_client_ip(request):
 
 
 # --- APPLICATION LOGS ---
-from mgmt.models import LoggingConfig, GunicornConfig, MaintenanceConfig, RequestLog, PerformanceMetric, AlertRule
+from mgmt.models import LoggingConfig, GunicornConfig, MaintenanceConfig, GameConfiguration, RequestLog, PerformanceMetric, AlertRule
 
 
 @admin.register(LoggingConfig)
@@ -6437,6 +6622,47 @@ class MaintenanceConfigAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Prevent deletion."""
         return False
+
+
+@admin.register(GameConfiguration)
+class GameConfigurationAdmin(admin.ModelAdmin):
+    """Singleton settings for game workflow (FEZitty / MCC counters)."""
+
+    list_display = (
+        'device_session_timeout_minutes',
+        'end_device_sessions_on_round_start',
+        'end_device_sessions_on_round_stop',
+        'updated_at',
+        'updated_by',
+    )
+    fieldsets = (
+        (_('Geräte-Sessions'), {
+            'fields': (
+                'device_session_timeout_minutes',
+                'end_device_sessions_on_round_start',
+                'end_device_sessions_on_round_stop',
+            ),
+            'description': _(
+                'Steuert, wann aktive Geräte-Sessions beendet werden. '
+                'Standalone-Radler am Counter (nicht im Game) haben immer Vorrang.'
+            ),
+        }),
+        (_('Information'), {
+            'fields': ('updated_at', 'updated_by'),
+            'classes': ('collapse',),
+        }),
+    )
+    readonly_fields = ('updated_at', 'updated_by')
+
+    def has_add_permission(self, request):
+        return not GameConfiguration.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(GunicornConfig)
@@ -6771,11 +6997,11 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 @admin.register(YearEndSnapshot)
 class YearEndSnapshotAdmin(admin.ModelAdmin):
     list_display = ('group', 'period_type_display', 'snapshot_date', 'period_start_date', 'period_end_date', 
-                    'group_total_km_display', 'group_total_coins', 'is_undone', 'created_by', 'created_at')
+                    'group_total_km_display', 'group_total_velos', 'is_undone', 'created_by', 'created_at')
     list_filter = ('period_type', 'is_undone', 'snapshot_date', 'created_at')
     search_fields = ('group__name',)
     readonly_fields = ('group', 'snapshot_date', 'period_start_date', 'period_end_date', 'period_type',
-                       'group_total_km', 'group_total_coins', 'created_by', 'created_at',
+                       'group_total_km', 'group_total_velos', 'created_by', 'created_at',
                        'is_undone', 'undone_at', 'undone_by', 'details_count', 'details_link')
     date_hierarchy = 'snapshot_date'
     change_list_template = 'admin/api/yearendsnapshot_change_list.html'
@@ -6785,7 +7011,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
             'fields': ('group', 'period_type', 'snapshot_date', 'period_start_date', 'period_end_date')
         }),
         (_("Gespeicherte Werte"), {
-            'fields': ('group_total_km', 'group_total_coins', 'details_count', 'details_link')
+            'fields': ('group_total_km', 'group_total_velos', 'details_count', 'details_link')
         }),
         (_("Erstellt"), {
             'fields': ('created_by', 'created_at')
@@ -6939,7 +7165,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
                     period_end_date=period_end_date,
                     period_type=period_type,
                     group_total_km=top_group.distance_total,
-                    group_total_coins=top_group.coins_total,
+                    group_total_velos=top_group.velos_total,
                     created_by=request.user
                 )
                 
@@ -6949,7 +7175,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
                         snapshot=snapshot,
                         group=group,
                         distance_total=group.distance_total,
-                        coins_total=group.coins_total
+                        velos_total=group.velos_total
                     )
                 
                 # Save cyclist details
@@ -6958,7 +7184,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
                         snapshot=snapshot,
                         cyclist=cyclist,
                         distance_total=cyclist.distance_total,
-                        coins_total=cyclist.coins_total
+                        velos_total=cyclist.velos_balance
                     )
                 
                 # Save device details
@@ -6967,20 +7193,20 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
                         snapshot=snapshot,
                         device=device,
                         distance_total=device.distance_total,
-                        coins_total=0
+                        velos_total=0
                     )
                 
                 # Reset group totals
                 all_groups.update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0
+                    velos_total=0
                 )
                 
                 # Reset cyclist totals
                 all_cyclists.update(
                     distance_total=Decimal('0.00000'),
-                    coins_total=0,
-                    coins_spendable=0
+                    velos_total=0,
+                    velos_balance=0
                 )
                 
                 # Reset device totals
@@ -7056,10 +7282,10 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
 
 @admin.register(YearEndSnapshotDetail)
 class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
-    list_display = ('snapshot', 'entity_display', 'distance_total_display', 'coins_total', 'entity_type')
+    list_display = ('snapshot', 'entity_display', 'distance_total_display', 'velos_total', 'entity_type')
     list_filter = ('snapshot', 'snapshot__group', 'snapshot__snapshot_date')
     search_fields = ('snapshot__group__name', 'group__name', 'cyclist__user_id', 'device__name')
-    readonly_fields = ('snapshot', 'group', 'cyclist', 'device', 'distance_total', 'coins_total', 'entity_type')
+    readonly_fields = ('snapshot', 'group', 'cyclist', 'device', 'distance_total', 'velos_total', 'entity_type')
     date_hierarchy = 'snapshot__snapshot_date'
     
     fieldsets = (
@@ -7070,7 +7296,7 @@ class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
             'fields': ('group', 'cyclist', 'device', 'entity_type')
         }),
         (_("Gespeicherte Werte"), {
-            'fields': ('distance_total', 'coins_total')
+            'fields': ('distance_total', 'velos_total')
         }),
     )
     

@@ -1,0 +1,21 @@
+{% load i18n %}
+<div id="roundTimerContainer" class="round-timer-container"{% if play_timer_sound %} data-play-timer-sound="1"{% endif %}>
+    {% if timer_enabled and round_duration_seconds %}
+        {% if timer_expired %}
+        <div class="round-timer-expired-banner" role="alert">
+            {% trans "Zeit abgelaufen — bitte Runde stoppen" %}
+        </div>
+        {% endif %}
+        <div class="round-timer-display" id="roundTimerDisplay">
+            <span class="round-timer-label">{% trans "Rundenzeit" %}</span>
+            <span class="round-timer-countdown{% if timer_highlight_last_minute and round_running and remaining_seconds <= 60 and remaining_seconds > 0 %} last-minute{% endif %}"
+                  id="roundTimerCountdown"
+                  data-remaining-seconds="{{ remaining_seconds }}"
+                  data-timer-sound-enabled="{% if timer_sound_enabled %}1{% else %}0{% endif %}">{{ countdown_display }}</span>
+            <div class="round-timer-progress-wrap">
+                <div class="round-timer-progress" id="roundTimerProgress"
+                     style="width: {{ progress_percent }}%;"></div>
+            </div>
+        </div>
+    {% endif %}
+</div>

@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 
-from api.models import Cyclist
+from api.models import Group
 from config.logger_utils import get_logger
 from minecraft.models import MinecraftOutboxEvent, MinecraftPlayerScoreboardSnapshot, MinecraftWorkerState
 from minecraft.services.outbox import queue_full_sync
@@ -128,19 +128,17 @@ def minecraft_control(request):
         for snapshot in MinecraftPlayerScoreboardSnapshot.objects.all()
     }
 
-    players = []
-    for cyclist in Cyclist.objects.filter(mc_username__isnull=False).order_by("mc_username"):
-        if not cyclist.mc_username:
-            continue
-        snapshot = snapshots.get(cyclist.mc_username)
-        players.append(
+    group_accounts = []
+    for group in Group.objects.filter(mc_username__isnull=False).exclude(mc_username='').order_by("mc_username"):
+        snapshot = snapshots.get(group.mc_username)
+        group_accounts.append(
             {
-                "player": cyclist.mc_username,
-                "cyclist": cyclist,
-                "coins_total": cyclist.coins_total,
-                "coins_spendable": cyclist.coins_spendable,
-                "snapshot_total": snapshot.coins_total if snapshot else None,
-                "snapshot_spendable": snapshot.coins_spendable if snapshot else None,
+                "player": group.mc_username,
+                "group": group,
+                "velos_total": int(group.velos_total or 0),
+                "velos_spendable": int(group.velos_spendable or 0),
+                "snapshot_total": snapshot.velos_total if snapshot else None,
+                "snapshot_spendable": snapshot.velos_spendable if snapshot else None,
                 "snapshot_time": snapshot.captured_at if snapshot else None,
             }
         )
@@ -163,7 +161,7 @@ def minecraft_control(request):
         "script_exists": script_exists,
         "script_executable": script_executable,
         "outbox_counts": outbox_counts,
-        "players": players,
+        "group_accounts": group_accounts,
         "ws_enabled": settings.MCC_MINECRAFT_WS_ENABLED,
         "worker_state": state,
         "rcon_ok": rcon_ok,
@@ -209,8 +207,8 @@ def minecraft_action(request, action):
             logger.info(f"[minecraft_control] snapshot action started by user={request.user}")
             # Call the function directly instead of using subprocess to avoid PYTHONPATH conflicts
             updated = refresh_scoreboard_snapshot()
-            message = _("Snapshot updated: %(count)s players updated") % {"count": updated}
-            logger.info(f"[minecraft_control] snapshot completed: {updated} players updated")
+            message = _("Snapshot updated: %(count)s groups updated") % {"count": updated}
+            logger.info(f"[minecraft_control] snapshot completed: {updated} groups updated")
             return JsonResponse({"success": True, "message": message})
         except Exception as exc:
             logger.error(f"[minecraft_control] snapshot failed: {exc}", exc_info=True)

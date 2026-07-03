@@ -51,15 +51,14 @@
                 {% elif forloop.counter == 2 %}text-gray-100
                 {% elif forloop.counter == 3 %}text-amber-100
                 {% else %}text-white{% endif %}">
-                {% format_km_de_tag group.daily_km 2 %} km
+                {% format_velos_de_tag group.daily_velos %} {% trans "Velos" %}
             </div>
-            <!-- Total kilometers (smaller) -->
             <div class="text-sm opacity-75
                 {% if forloop.counter == 1 %}text-yellow-200
                 {% elif forloop.counter == 2 %}text-gray-200
                 {% elif forloop.counter == 3 %}text-amber-200
                 {% else %}text-gray-300{% endif %}">
-                {% trans "Gesamt" %}: {% format_km_de_tag group.distance_total 2 %} km
+                {% trans "Gesamt" %}: {% format_velos_de_tag group.velos_total %} {% trans "Velos" %}
             </div>
         </div>
     </div>

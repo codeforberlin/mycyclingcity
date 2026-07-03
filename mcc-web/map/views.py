@@ -33,9 +33,11 @@ from api.models import (
     LeafGroupTravelContribution
 )
 from api.helpers import (
-    _calculate_cyclist_totals_from_metrics,
-    _calculate_group_totals_from_metrics
+    build_events_data,
+    build_hierarchy_from_parent_groups,
+    get_cyclist_session_velos,
 )
+from api.travel_velos import build_travel_status_avatar_fields
 from eventboard.models import Event, GroupEventStatus
 from iot.models import Device
 from api.views import check_milestone_victory
@@ -160,99 +162,10 @@ def map_page(request: HttpRequest) -> HttpResponse:
         target_group_id = None
         selected_group_ids = []  # Ensure selected_group_ids is initialized even when no groups selected
 
-    # Calculate group totals from HourlyMetric for all groups at once (like in build_group_hierarchy)
-    all_groups_list = list(parent_groups)
-    # Also collect all subgroups for calculation
-    for p_group in parent_groups:
-        all_groups_list.extend(list(p_group.children.filter(is_visible=True)))
-    
-    group_totals = _calculate_group_totals_from_metrics(all_groups_list, use_cache=True)
-    
-    hierarchy = []
-    for p_group in parent_groups:
-        p_filter = {'is_visible': True}
-
-        direct_members = []
-        if show_cyclists:
-            direct_qs = p_group.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage')
-            direct_members_list = list(direct_qs)
-            
-            # Calculate totals from HourlyMetric for all cyclists at once
-            cyclist_totals = _calculate_cyclist_totals_from_metrics(direct_members_list, use_cache=True)
-            
-            direct_members = []
-            for m in direct_members_list:
-                session_km = 0
-                try:
-                    if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
-                        session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
-                except (AttributeError, ValueError, TypeError):
-                    pass
-                # Use total from HourlyMetric instead of distance_total from model
-                total_km = cyclist_totals.get(m.id, 0.0)
-                direct_members.append({
-                    'name': m.user_id,
-                    'km': round(total_km, 3),
-                    'session_km': round(session_km, 3)
-                })
-            
-            # Sort by km (from HourlyMetric) descending
-            direct_members = sorted(direct_members, key=lambda x: x['km'], reverse=True)
-
-        # Filter subgroups
-        subgroups_qs = p_group.children.filter(is_visible=True)
-        
-        subgroups_data = []
-        for sub in subgroups_qs:
-            sub_member_data = []
-            if show_cyclists:
-                m_qs = sub.members.filter(**p_filter).select_related('cyclistdevicecurrentmileage')
-                sub_members_list = list(m_qs)
-                
-                # Calculate totals from HourlyMetric for all cyclists at once
-                cyclist_totals = _calculate_cyclist_totals_from_metrics(sub_members_list, use_cache=True)
-                
-                sub_member_data = []
-                for m in sub_members_list:
-                    session_km = 0
-                    try:
-                        if hasattr(m, 'cyclistdevicecurrentmileage') and m.cyclistdevicecurrentmileage:
-                            session_km = float(m.cyclistdevicecurrentmileage.cumulative_mileage)
-                    except (AttributeError, ValueError, TypeError):
-                        pass
-                    # Use total from HourlyMetric instead of distance_total from model
-                    total_km = cyclist_totals.get(m.id, 0.0)
-                    sub_member_data.append({
-                        'name': m.user_id,
-                        'km': round(total_km, 3),
-                        'session_km': round(session_km, 3)
-                    })
-                
-                # Sort by km (from HourlyMetric) descending
-                sub_member_data = sorted(sub_member_data, key=lambda x: x['km'], reverse=True)
-            
-            # Use total from HourlyMetric instead of distance_total from model
-            sub_total_km = group_totals.get(sub.id, 0.0)
-            subgroups_data.append({
-                'name': sub.name,
-                'km': round(sub_total_km, 3),
-                'members': sub_member_data
-            })
-        
-        # Sort subgroups by km (from HourlyMetric) descending - no limit
-        subgroups_data = sorted(subgroups_data, key=lambda x: x['km'], reverse=True)
-
-        # Use total from HourlyMetric instead of distance_total from model
-        p_group_total_km = group_totals.get(p_group.id, 0.0)
-        hierarchy.append({
-            'name': p_group.name,
-            'km': round(p_group_total_km, 3),
-            'direct_members': direct_members,
-            'subgroups': subgroups_data
-        })
-    
-    # Sort hierarchy by km (from HourlyMetric) descending - no limit
-    hierarchy = sorted(hierarchy, key=lambda x: x['km'], reverse=True)
+    hierarchy = build_hierarchy_from_parent_groups(
+        parent_groups.order_by('name'),
+        show_cyclists=show_cyclists,
+    )
 
     # Travel data (Tracks & Avatars)
     # Only show tracks that are currently active (considering start_time and end_time)
@@ -365,42 +278,28 @@ def map_page(request: HttpRequest) -> HttpResponse:
 
     for s in statuses:
         if s.group.is_visible:
-            # For avatar positioning: use only current_travel_distance (not historical)
-            # This ensures avatars are at the start (0 km) when trip is restarted
-            current_km = float(s.current_travel_distance)
-            
-            # For active trips: show only current_travel_distance (not historical)
-            # Historical kilometers are only relevant for completed trips
-            # When trip is restarted, current_travel_distance is 0, so display should also be 0
-            display_km = current_km  # Show only current distance for active trips
+            travel = build_travel_status_avatar_fields(s)
+            current_km = travel['km']
 
-            # IMPORTANT: Cap at total_length_km if goal is reached
-            # This ensures no avatar shows more kilometers than the track length
-            if s.track.total_length_km and current_km >= float(s.track.total_length_km):
-                current_km = float(s.track.total_length_km)
-            
-            # Position is based on current_travel_distance only (0 km = start point)
-            # We round to 2 decimal places for the offset key
             pos_key = f"{s.track.id}_{round(current_km, 2)}"
             count = pos_counts.get(pos_key, 0)
             pos_counts[pos_key] = count + 1
 
-            # Check if group has reached the goal and find highest contributing leaf group
             top_contributor_leaf_group = None
             travel_duration_seconds = None
-            if s.track.total_length_km and current_km >= float(s.track.total_length_km):
-                # Group has reached the goal - find leaf group with highest contribution
+            if travel['goal_reached']:
                 try:
                     top_contribution = LeafGroupTravelContribution.objects.filter(
                         track=s.track,
                         leaf_group__parent=s.group
-                    ).select_related('leaf_group').order_by('-current_travel_distance').first()
+                    ).select_related('leaf_group').order_by('-current_travel_velos').first()
                     
                     if top_contribution:
                         top_contributor_leaf_group = {
                             'name': top_contribution.leaf_group.name,
                             'display_name': top_contribution.leaf_group.get_kiosk_label(),
-                            'contribution_km': float(top_contribution.current_travel_distance),
+                            'contribution_velos': int(top_contribution.current_travel_velos or 0),
+                            'contribution_km': float(top_contribution.current_travel_distance or 0),
                             'logo': top_contribution.leaf_group.logo.url if top_contribution.leaf_group.logo else '/static/map/images/default_group.png'
                         }
                 except Exception as e:
@@ -487,16 +386,19 @@ def map_page(request: HttpRequest) -> HttpResponse:
 
             group_avatars.append({
                 'name': s.group.name,
-                'display_name': s.group.get_kiosk_label(),  # Use short_name if available, otherwise name
-                'parent_group_name': parent_group_name,  # TOP-Gruppe
-                'km': current_km,  # Use current_km for positioning (0 = start point) - capped at total_length_km
+                'display_name': s.group.get_kiosk_label(),
+                'parent_group_name': parent_group_name,
+                'velos': travel['velos'],
+                'goal_velos': travel['goal_velos'],
+                'progress_ratio': travel['progress_ratio'],
+                'km': current_km,
                 'logo': s.group.logo.url if s.group.logo else '/static/map/images/default_group.png',
                 'track_id': s.track.id,
-                'track_total_length_km': float(s.track.total_length_km) if s.track.total_length_km else 0,
+                'track_total_length_km': travel['track_total_length_km'],
                 'offset_index': count,
-                'goal_reached_at': s.goal_reached_at.isoformat() if s.goal_reached_at else None,  # For sorting at finish line
-                'travel_duration_seconds': travel_duration_seconds,  # Travel time from start to goal in seconds
-                'top_contributor_leaf_group': top_contributor_leaf_group  # Leaf group with highest contribution (if goal reached)
+                'goal_reached_at': s.goal_reached_at.isoformat() if s.goal_reached_at else None,
+                'travel_duration_seconds': travel_duration_seconds,
+                'top_contributor_leaf_group': top_contributor_leaf_group,
             })
 
     # Devices with GPS positions
@@ -511,40 +413,7 @@ def map_page(request: HttpRequest) -> HttpResponse:
             'last_active': device.last_active.isoformat() if device.last_active else None
         })
 
-    # Event data - Show events that should be displayed (may include ended events to show results)
-    active_events = Event.objects.filter(is_active=True, is_visible_on_map=True)
-    # Filter by should_be_displayed() instead of is_currently_active()
-    # This allows showing events after end_time until hide_after_date
-    active_events = [e for e in active_events if e.should_be_displayed()]
-    events_data = []
-    now = timezone.now()
-    for event in active_events:
-        # Get all groups participating in this event
-        event_groups = []
-        for status in event.group_statuses.select_related('group').all():
-            event_groups.append({
-                'name': status.group.name,
-                'km': round(float(status.current_distance_km), 3),
-                'group_id': status.group.id
-            })
-        if event_groups:
-            # Sort groups by distance (descending) and limit to top 10
-            event_groups_sorted = sorted(event_groups, key=lambda x: x['km'], reverse=True)[:10]
-            # Calculate total kilometers for this event (from all groups, not just top 10)
-            total_km = sum(g['km'] for g in event_groups)
-            # Check if event has ended (end_time reached)
-            is_ended = event.end_time and now > event.end_time
-            events_data.append({
-                'id': event.id,
-                'name': event.name,
-                'event_type': event.get_event_type_display(),
-                'description': event.description or '',
-                'start_time': event.start_time,
-                'end_time': event.end_time,
-                'total_km': round(total_km, 3),
-                'is_ended': is_ended,
-                'groups': event_groups_sorted
-            })
+    events_data = build_events_data(kiosk=False)
 
     # Get only top-level master groups (parent groups) for the group selector dropdown
     # This limits the dropdown to the highest-level parent groups only
@@ -943,7 +812,7 @@ def get_group_avatars(request):
         if s.group.is_visible and s.group.id not in checked_groups:
             # Only check milestones if the group has actually traveled some distance
             # This prevents unnecessary debug messages when no activity is happening
-            if s.current_travel_distance and s.current_travel_distance > 0:
+            if int(s.current_travel_velos or 0) > 0:
                 # Check milestones for this group
                 # No active_leaf_group available in this context, so pass None
                 check_milestone_victory(s.group, active_leaf_group=None)
@@ -954,43 +823,28 @@ def get_group_avatars(request):
     
     for s in statuses:
         if s.group.is_visible:
-            # For avatar positioning: use only current_travel_distance (not historical)
-            # This ensures avatars are at the start (0 km) when trip is restarted
-            current_km = float(s.current_travel_distance)
-            
-            # IMPORTANT: Cap at total_length_km if goal is reached
-            # This ensures no avatar shows more kilometers than the track length
-            # This prevents display of values greater than the maximum track length
-            if s.track.total_length_km and current_km >= float(s.track.total_length_km):
-                current_km = float(s.track.total_length_km)
-            
-            # For active trips: show only current_travel_distance (not historical)
-            # Historical kilometers are only relevant for completed trips
-            # When trip is restarted, current_travel_distance is 0, so display should also be 0
-            display_km = current_km  # Show only current distance for active trips (capped at goal)
+            travel = build_travel_status_avatar_fields(s)
+            current_km = travel['km']
 
-            # Position is based on current_travel_distance only (0 km = start point)
-            # We round to 2 decimal places for the offset key
             pos_key = f"{s.track.id}_{round(current_km, 2)}"
             count = pos_counts.get(pos_key, 0)
             pos_counts[pos_key] = count + 1
 
-            # Check if group has reached the goal and find highest contributing leaf group
             top_contributor_leaf_group = None
             travel_duration_seconds = None
-            if s.track.total_length_km and current_km >= float(s.track.total_length_km):
-                # Group has reached the goal - find leaf group with highest contribution
+            if travel['goal_reached']:
                 try:
                     top_contribution = LeafGroupTravelContribution.objects.filter(
                         track=s.track,
                         leaf_group__parent=s.group
-                    ).select_related('leaf_group').order_by('-current_travel_distance').first()
+                    ).select_related('leaf_group').order_by('-current_travel_velos').first()
                     
                     if top_contribution:
                         top_contributor_leaf_group = {
                             'name': top_contribution.leaf_group.name,
                             'display_name': top_contribution.leaf_group.get_kiosk_label(),
-                            'contribution_km': float(top_contribution.current_travel_distance),
+                            'contribution_velos': int(top_contribution.current_travel_velos or 0),
+                            'contribution_km': float(top_contribution.current_travel_distance or 0),
                             'logo': top_contribution.leaf_group.logo.url if top_contribution.leaf_group.logo else '/static/map/images/default_group.png'
                         }
                 except Exception as e:
@@ -1077,16 +931,19 @@ def get_group_avatars(request):
 
             group_avatars.append({
                 'name': s.group.name,
-                'display_name': s.group.get_kiosk_label(),  # Use short_name if available, otherwise name
-                'parent_group_name': parent_group_name,  # TOP-Gruppe
-                'km': current_km,  # Use current_km for positioning (0 = start point) - capped at total_length_km
+                'display_name': s.group.get_kiosk_label(),
+                'parent_group_name': parent_group_name,
+                'velos': travel['velos'],
+                'goal_velos': travel['goal_velos'],
+                'progress_ratio': travel['progress_ratio'],
+                'km': current_km,
                 'logo': s.group.logo.url if s.group.logo else '/static/map/images/default_group.png',
                 'track_id': s.track.id,
-                'track_total_length_km': float(s.track.total_length_km) if s.track.total_length_km else 0,
+                'track_total_length_km': travel['track_total_length_km'],
                 'offset_index': count,
-                'goal_reached_at': s.goal_reached_at.isoformat() if s.goal_reached_at else None,  # For sorting at finish line
-                'travel_duration_seconds': travel_duration_seconds,  # Travel time from start to goal in seconds
-                'top_contributor_leaf_group': top_contributor_leaf_group  # Leaf group with highest contribution (if goal reached)
+                'goal_reached_at': s.goal_reached_at.isoformat() if s.goal_reached_at else None,
+                'travel_duration_seconds': travel_duration_seconds,
+                'top_contributor_leaf_group': top_contributor_leaf_group,
             })
 
     return JsonResponse({'avatars': group_avatars})
@@ -1315,7 +1172,9 @@ def map_ticker(request: HttpRequest) -> HttpResponse:
         is_visible=True,
         last_active__isnull=False,
         last_active__gte=active_cutoff
-    ).select_related('cyclistdevicecurrentmileage').prefetch_related('groups')
+    ).select_related(
+        'cyclistdevicecurrentmileage__device__configuration'
+    ).prefetch_related('groups')
     
     target_group = None
     # Support both group_id and group_name parameters
@@ -1428,92 +1287,72 @@ def map_ticker(request: HttpRequest) -> HttpResponse:
                 except:
                     group_short_name = primary_group.name
         
-        # Always include cyclist, even if session_km is 0
+        # Always include cyclist, even if session_velos is 0
         ticker_data.append({
             'id': cyclist.id,
             'user_id': cyclist.user_id,
-            'session_km': s_km,
+            'session_velos': get_cyclist_session_velos(cyclist),
             'total_km': cyclist.distance_total,
             'last_active': cyclist.last_active,
             'group_short_name': group_short_name
         })
     
-    ticker_data = sorted(ticker_data, key=lambda x: x['session_km'], reverse=True)[:10]
+    ticker_data = sorted(ticker_data, key=lambda x: x['session_velos'], reverse=True)[:10]
     
     event_data = None
     if ticker_data:
-        # Check ALL active cyclists for new kilometers
-        # Show popup for EVERY cyclist who reaches a new kilometer to motivate them
-        # If multiple cyclists reach new kilometers simultaneously, prioritize by:
-        # 1. Highest session_km (most kilometers in this session)
-        # 2. Most recently active (if same session_km)
-        cyclists_with_new_km = []
-        
-        # Show popup for EVERY cyclist who reached a new kilometer
-        # Use a queue system to ensure each cyclist gets their popup before any cyclist gets a second one
-        # IMPORTANT: Queue logic is independent and evaluates ticker_data directly
+        # Show popup for every cyclist who earns a new Velo in this session
         event_data = None
-        # Get or initialize the popup queue in session
-        popup_queue_key = 'weltmeister_popup_queue'
+        popup_queue_key = 'weltmeister_velos_popup_queue'
         popup_queue = request.session.get(popup_queue_key, [])
         
-        # Independent queue logic: Check ALL active cyclists in ticker_data for new kilometers
-        # This ensures we don't miss any cyclists, regardless of ticker logic
         import logging
         logger = logging.getLogger(__name__)
         
         if ticker_data:
-            logger.info(f"[map_ticker] 🔍 Checking {len(ticker_data)} active cyclists for new kilometers")
-            logger.info(f"[map_ticker] 📋 Current queue size: {len(popup_queue)} cyclists")
+            logger.info(f"[map_ticker] Checking {len(ticker_data)} active cyclists for new session Velos")
+            logger.info(f"[map_ticker] Current queue size: {len(popup_queue)} cyclists")
             
-            # Build index of existing queue entries
-            existing_cyclist_indices = {}  # Map cyclist_id to index in queue
+            existing_cyclist_indices = {}
             for idx, item in enumerate(popup_queue):
                 existing_cyclist_indices[item['cyclist_id']] = idx
-                logger.debug(f"[map_ticker] Queue entry {idx}: cyclist_id={item['cyclist_id']}, user_id={item['user_id']}, session_km={item['session_km']}")
+                logger.debug(
+                    f"[map_ticker] Queue entry {idx}: cyclist_id={item['cyclist_id']}, "
+                    f"user_id={item['user_id']}, session_velos={item['session_velos']}"
+                )
             
             queue_updated = False
             cyclists_added = 0
             cyclists_updated = 0
             
-            # Check each active cyclist independently
             for cyclist in ticker_data:
-                cyclist_key = f"last_session_km_{cyclist['id']}"
-                # Get last shown km, defaulting to 0 if not set
-                last_shown_km_raw = request.session.get(cyclist_key)
-                if last_shown_km_raw is None:
-                    last_shown_km = 0
-                else:
-                    last_shown_km = int(last_shown_km_raw)
+                cyclist_key = f"last_session_velos_{cyclist['id']}"
+                last_shown_velos = int(request.session.get(cyclist_key, 0))
+                current_session_velos = int(cyclist['session_velos'])
                 
-                current_session_km = float(cyclist['session_km'])
-                current_session_km_int = int(current_session_km)
+                logger.debug(
+                    f"[map_ticker] Queue check: Cyclist {cyclist['user_id']} (ID: {cyclist['id']}): "
+                    f"current={current_session_velos} Velos, last_shown={last_shown_velos} Velos"
+                )
                 
-                logger.debug(f"[map_ticker] Queue check: Cyclist {cyclist['user_id']} (ID: {cyclist['id']}): current={current_session_km_int} km, last_shown={last_shown_km} km")
-                
-                # Check if this cyclist has reached a new whole kilometer
-                if current_session_km_int > last_shown_km:
-                    logger.info(f"[map_ticker] ✅ New kilometer detected for {cyclist['user_id']}: {last_shown_km} -> {current_session_km_int} km")
+                if current_session_velos > last_shown_velos:
+                    logger.info(
+                        f"[map_ticker] New Velos detected for {cyclist['user_id']}: "
+                        f"{last_shown_velos} -> {current_session_velos}"
+                    )
                     
                     cyclist_id = cyclist['id']
-                    session_km_float = float(current_session_km_int)
-                    
-                    # Convert datetime to timestamp for JSON serialization
                     last_active_ts = cyclist['last_active'].timestamp() if cyclist['last_active'] else 0.0
-                    # Convert Decimal to float for JSON serialization
                     total_km_float = float(cyclist['total_km'])
                     
                     if cyclist_id in existing_cyclist_indices:
-                        # Cyclist already in queue
                         existing_idx = existing_cyclist_indices[cyclist_id]
                         existing_entry = popup_queue[existing_idx]
                         
                         if existing_idx == 0:
-                            # Cyclist is at position 0 (next to be shown) - update kilometers but keep position
-                            # This ensures the popup shows the latest kilometer value
                             popup_queue[existing_idx] = {
                                 'cyclist_id': cyclist_id,
-                                'session_km': session_km_float,
+                                'session_velos': current_session_velos,
                                 'key': cyclist_key,
                                 'last_active_timestamp': last_active_ts,
                                 'user_id': cyclist['user_id'],
@@ -1521,16 +1360,19 @@ def map_ticker(request: HttpRequest) -> HttpResponse:
                             }
                             queue_updated = True
                             cyclists_updated += 1
-                            logger.info(f"[map_ticker] 🔒 Updated position 0 cyclist {cyclist['user_id']} (ID: {cyclist_id}): {existing_entry['session_km']} -> {session_km_float} km (position locked)")
+                            logger.info(
+                                f"[map_ticker] Updated position 0 cyclist {cyclist['user_id']} (ID: {cyclist_id}): "
+                                f"{existing_entry['session_velos']} -> {current_session_velos} Velos"
+                            )
                         else:
-                            # Cyclist is not at position 0 - DO NOT update, let them get their popup first
-                            # This ensures fair rotation: each cyclist gets their popup before any cyclist gets a second one
-                            logger.info(f"[map_ticker] ⏸️ Cyclist {cyclist['user_id']} (ID: {cyclist_id}) already in queue at position {existing_idx} with {existing_entry['session_km']} km - skipping update to ensure fair rotation")
+                            logger.info(
+                                f"[map_ticker] Cyclist {cyclist['user_id']} (ID: {cyclist_id}) already in queue "
+                                f"at position {existing_idx} - skipping update"
+                            )
                     else:
-                        # New cyclist - add to queue
                         popup_queue.append({
                             'cyclist_id': cyclist_id,
-                            'session_km': session_km_float,
+                            'session_velos': current_session_velos,
                             'key': cyclist_key,
                             'last_active_timestamp': last_active_ts,
                             'user_id': cyclist['user_id'],
@@ -1538,112 +1380,98 @@ def map_ticker(request: HttpRequest) -> HttpResponse:
                         })
                         queue_updated = True
                         cyclists_added += 1
-                        logger.info(f"[map_ticker] 📝 Added {cyclist['user_id']} (ID: {cyclist_id}) to queue with {session_km_float} km")
-                elif current_session_km_int < last_shown_km:
-                    # Session reset or cyclist restarted - reset tracking
-                    logger.info(f"[map_ticker] ⚠️ Session reset detected for {cyclist['user_id']}: last_shown={last_shown_km} > current={current_session_km_int}, resetting")
-                    request.session[cyclist_key] = current_session_km_int
+                        logger.info(
+                            f"[map_ticker] Added {cyclist['user_id']} (ID: {cyclist_id}) to queue "
+                            f"with {current_session_velos} Velos"
+                        )
+                elif current_session_velos < last_shown_velos:
+                    logger.info(
+                        f"[map_ticker] Session reset for {cyclist['user_id']}: "
+                        f"last_shown={last_shown_velos} > current={current_session_velos}, resetting"
+                    )
+                    request.session[cyclist_key] = current_session_velos
                     request.session.modified = True
             
-            # Save queue to session immediately if it was updated
             if queue_updated:
                 request.session[popup_queue_key] = popup_queue
                 request.session.modified = True
-                logger.info(f"[map_ticker] 📝 Queue saved: {len(popup_queue)} cyclists in queue (added: {cyclists_added}, updated: {cyclists_updated})")
-                # Log all cyclists in queue BEFORE sorting for debugging
-                logger.info(f"[map_ticker] 📋 Queue BEFORE sorting:")
-                for idx, item in enumerate(popup_queue):
-                    logger.info(f"[map_ticker]   Queue[{idx}]: {item['user_id']} (ID: {item['cyclist_id']}) - {item['session_km']} km")
+                logger.info(
+                    f"[map_ticker] Queue saved: {len(popup_queue)} cyclists "
+                    f"(added: {cyclists_added}, updated: {cyclists_updated})"
+                )
             
-        # Sort queue by session_km descending, then by last_active_timestamp descending
-        # IMPORTANT: Position 0 is locked - the cyclist at position 0 cannot be displaced
-        # This ensures fair rotation: each cyclist gets their popup before any cyclist gets a second one
-        # Process queue even if no new kilometers were detected (to show queued cyclists)
         if popup_queue:
-            # Lock position 0 - save the cyclist at position 0
-            locked_cyclist = None
-            if len(popup_queue) > 0:
-                locked_cyclist = popup_queue[0]
-                logger.info(f"[map_ticker] 🔒 Locking position 0: {locked_cyclist['user_id']} (ID: {locked_cyclist['cyclist_id']}) with {locked_cyclist['session_km']} km")
+            locked_cyclist = popup_queue[0] if popup_queue else None
+            if locked_cyclist:
+                logger.info(
+                    f"[map_ticker] Locking position 0: {locked_cyclist['user_id']} "
+                    f"(ID: {locked_cyclist['cyclist_id']}) with {locked_cyclist['session_velos']} Velos"
+                )
             
-            # Sort the rest of the queue (positions 1 and onwards)
             if len(popup_queue) > 1:
                 rest_of_queue = popup_queue[1:]
-                rest_of_queue.sort(key=lambda x: (x['session_km'], x['last_active_timestamp']), reverse=True)
-                # Reconstruct queue with locked position 0
+                rest_of_queue.sort(
+                    key=lambda x: (x['session_velos'], x['last_active_timestamp']),
+                    reverse=True
+                )
                 popup_queue = [locked_cyclist] + rest_of_queue if locked_cyclist else rest_of_queue
             elif locked_cyclist:
-                # Only one cyclist in queue - keep them at position 0
                 popup_queue = [locked_cyclist]
             
-            # Log queue AFTER sorting for debugging
-            logger.info(f"[map_ticker] 📋 Queue AFTER sorting (position 0 locked):")
-            for idx, item in enumerate(popup_queue):
-                lock_indicator = "🔒" if idx == 0 else "  "
-                logger.info(f"[map_ticker]   {lock_indicator} Queue[{idx}]: {item['user_id']} (ID: {item['cyclist_id']}) - {item['session_km']} km")
-            
-            # Get the first cyclist from the queue for this update (always position 0, which is locked)
             best_cyclist_data = popup_queue[0]
             trigger_cyclist_id = best_cyclist_data['cyclist_id']
-            logger.info(f"[map_ticker] 🎯 Selected cyclist from queue: {best_cyclist_data['user_id']} (ID: {trigger_cyclist_id}) with {best_cyclist_data['session_km']} km")
+            logger.info(
+                f"[map_ticker] Selected cyclist from queue: {best_cyclist_data['user_id']} "
+                f"(ID: {trigger_cyclist_id}) with {best_cyclist_data['session_velos']} Velos"
+            )
             
-            # Find the full cyclist data from ticker_data
-            trigger_cyclist = None
-            for cyclist in ticker_data:
-                if cyclist['id'] == trigger_cyclist_id:
-                    trigger_cyclist = cyclist
-                    break
+            trigger_cyclist = next(
+                (c for c in ticker_data if c['id'] == trigger_cyclist_id),
+                None
+            )
             
             if trigger_cyclist:
-                current_session_km = best_cyclist_data['session_km']
-                
-                # Remove this cyclist from the queue (they will get their popup now)
+                current_session_velos = int(best_cyclist_data['session_velos'])
                 popup_queue.pop(0)
-                
-                # Update session: remove from queue and mark as shown
                 request.session[popup_queue_key] = popup_queue
-                request.session[best_cyclist_data['key']] = current_session_km
+                request.session[best_cyclist_data['key']] = current_session_velos
                 request.session.modified = True
                 
-                # Get parent group name for weltmeister popup
                 parent_group_name = None
                 try:
-                    # Find the cyclist's primary group and get its parent
-                    # Use prefetch_related for ManyToMany relationship (groups is ManyToMany)
-                    cyclist_obj = Cyclist.objects.filter(id=trigger_cyclist['id']).prefetch_related('groups').first()
+                    cyclist_obj = Cyclist.objects.filter(
+                        id=trigger_cyclist['id']
+                    ).prefetch_related('groups').first()
                     if cyclist_obj:
                         primary_group = cyclist_obj.groups.first()
                         if primary_group and primary_group.parent_id:
-                            # Load parent group directly from database
                             try:
                                 parent_group = Group.objects.get(id=primary_group.parent_id)
                                 parent_group_name = parent_group.name
                             except Group.DoesNotExist:
                                 pass
                 except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.warning(f"[map_ticker] Error getting parent group for cyclist {trigger_cyclist['id']}: {e}", exc_info=True)
+                    logger.warning(
+                        f"[map_ticker] Error getting parent group for cyclist {trigger_cyclist['id']}: {e}",
+                        exc_info=True
+                    )
                 
                 event_data = {
-                    'type': 'km_update',
+                    'type': 'velos_update',
                     'name': trigger_cyclist['user_id'],
-                    'km': current_session_km,
+                    'velos': current_session_velos,
                     'icon': '👑',
-                    'parent_group_name': parent_group_name  # TOP-Gruppe
+                    'parent_group_name': parent_group_name
                 }
-                # Trophy for milestones (every 100 total kilometers)
                 if int(trigger_cyclist['total_km']) % 100 == 0:
                     event_data['type'] = 'milestone'
                     event_data['icon'] = '🏆'
                 
-                # Debug logging
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"[map_ticker] 🎉 Showing weltmeister popup for {trigger_cyclist['user_id']} with {current_session_km} km (type: {event_data['type']}), parent_group: {parent_group_name}")
-                logger.info(f"[map_ticker] 📋 Remaining cyclists in queue: {len(popup_queue)} (will be shown in next updates)")
+                logger.info(
+                    f"[map_ticker] Showing weltmeister popup for {trigger_cyclist['user_id']} "
+                    f"with {current_session_velos} Velos (type: {event_data['type']})"
+                )
             else:
-                # Cyclist not found in ticker_data (maybe inactive now) - remove from queue
                 popup_queue.pop(0)
                 request.session[popup_queue_key] = popup_queue
                 request.session.modified = True
@@ -1895,18 +1723,12 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                 group_kiosk_label = primary_group.name
         
         # Get session kilometers from CyclistDeviceCurrentMileage
-        session_km = 0.0
-        try:
-            mileage_obj = cyclist.cyclistdevicecurrentmileage
-            if mileage_obj and mileage_obj.cumulative_mileage is not None:
-                session_km = float(mileage_obj.cumulative_mileage)
-        except (AttributeError, CyclistDeviceCurrentMileage.DoesNotExist):
-            session_km = 0.0
+        session_velos = get_cyclist_session_velos(cyclist)
         
         active_cyclists.append({
             'user_id': cyclist.user_id,
-            'group_short_name': group_kiosk_label,  # Use kiosk label (short_name if available, otherwise full name)
-            'session_km': session_km,
+            'group_short_name': group_kiosk_label,
+            'session_velos': session_velos,
         })
     
     # Time thresholds
@@ -2583,12 +2405,11 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                         continue
                     
                     top_parent_groups.append({
-                        'name': subgroup.get_kiosk_label(),  # Use short_name if available, otherwise full name
-                        'total_km': float(subgroup.distance_total),
+                        'name': subgroup.get_kiosk_label(),
+                        'total_velos': int(subgroup.velos_total or 0),
                     })
                 
-                # Already sorted by distance_total from query, but ensure descending order
-                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_km'], reverse=True)[:10]  # Limit to top 10
+                top_parent_groups = sorted(top_parent_groups, key=lambda x: x['total_velos'], reverse=True)[:10]
             
         except Group.DoesNotExist:
             top_parent_groups = []
@@ -2607,37 +2428,28 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             if not are_all_parents_visible(parent):
                 continue
             
-            # Check if parent is visible and has distance_total > 0
-            parent_visible_with_km = parent.is_visible and float(parent.distance_total) > 0
+            parent_visible_with_velos = parent.is_visible and int(parent.velos_total or 0) > 0
             
-            # Check if parent has visible children with distance_total > 0
-            # Also ensure all children's parent groups are visible
             visible_children = []
-            for child in parent.children.filter(is_visible=True, distance_total__gt=0):
-                # Only include child if all its parent groups are visible
+            for child in parent.children.filter(is_visible=True, velos_total__gt=0):
                 if are_all_parents_visible(child):
                     visible_children.append(child)
             
-            children_total = sum(
-                float(child.distance_total) for child in visible_children
-            )
+            children_total = sum(int(child.velos_total or 0) for child in visible_children)
             has_visible_children = children_total > 0
             
-            # Only include parent if it meets one of the conditions
-            if parent_visible_with_km or has_visible_children:
-                # Use the sum of visible children if available, otherwise use parent's distance_total
+            if parent_visible_with_velos or has_visible_children:
                 if has_visible_children:
-                    total_km = children_total
+                    total_velos = children_total
                 else:
-                    total_km = float(parent.distance_total)
+                    total_velos = int(parent.velos_total or 0)
                 
                 parent_data.append({
-                    'name': parent.get_kiosk_label(),  # Use short_name if available, otherwise full name
-                    'total_km': total_km,
+                    'name': parent.get_kiosk_label(),
+                    'total_velos': total_velos,
                 })
         
-        # Sort parent groups by total_km descending - limit to top 10
-        top_parent_groups = sorted(parent_data, key=lambda x: x['total_km'], reverse=True)[:10]
+        top_parent_groups = sorted(parent_data, key=lambda x: x['total_velos'], reverse=True)[:10]
     
     # Daily record holder: Find group with highest value based on sort parameter
     daily_record_holder: Optional[Dict[str, Any]] = None
@@ -2715,19 +2527,14 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     # If a filter is active, only count the filtered parent group's distance_total
     # (which already contains the aggregated sum of all descendants)
     if current_filter:
-        # Filtered view: use the parent group's distance_total
-        # This is the aggregated sum of all its descendants
         try:
             parent_group = Group.objects.get(name=current_filter, is_visible=True)
-            total_km = float(parent_group.distance_total)
+            total_velos = int(parent_group.velos_total or 0)
         except Group.DoesNotExist:
-            # Fallback: use groups_data sum
-            total_km = sum(g['distance_total'] for g in groups_data)
+            total_velos = sum(int(g.get('velos_total', 0)) for g in groups_data)
     else:
-        # Unfiltered view: count only top-level groups (no parent) to avoid double-counting
-        # Top-level groups already contain the aggregated sum of all their descendants
         all_visible_groups = Group.objects.filter(is_visible=True, parent__isnull=True)
-        total_km = sum(float(g.distance_total) for g in all_visible_groups)
+        total_velos = sum(int(g.velos_total or 0) for g in all_visible_groups)
     
     # Generate consistent colors for top parent groups
     # Use a palette of distinct, vibrant colors
@@ -2792,7 +2599,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'yearly_record_holder': yearly_record_holder,
         'yearly_record_value': yearly_record_value,
         'active_count': active_count,
-        'total_km': round(total_km, 3),
+        'total_velos': total_velos,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker

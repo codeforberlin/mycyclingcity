@@ -181,3 +181,11 @@ def format_km_de_tag(context: dict, value: float, decimals: int = 3) -> str:
     
     return _format_number_by_language(value, decimals, language_code)
 
+
+@register.simple_tag(takes_context=True)
+def format_velos_de_tag(context: dict, value: int) -> str:
+    """Format integer Velos with German thousands separators."""
+    from api.velos import format_velos_de
+
+    return format_velos_de(value)
+

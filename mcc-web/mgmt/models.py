@@ -283,6 +283,61 @@ class MaintenanceConfig(models.Model):
         return [ip.strip() for ip in self.ip_whitelist.split('\n') if ip.strip()]
 
 
+class GameConfiguration(models.Model):
+    """
+    Global game and device-session behaviour (singleton).
+    """
+
+    end_device_sessions_on_round_start = models.BooleanField(
+        default=True,
+        verbose_name=_("Geräte-Sessions bei Rundenstart beenden"),
+        help_text=_(
+            "Beim Spiel starten werden aktive Geräte-Sessions der im Game "
+            "konfigurierten Radler beendet (Standalone-Radler am Counter bleiben aktiv)."
+        ),
+    )
+    end_device_sessions_on_round_stop = models.BooleanField(
+        default=True,
+        verbose_name=_("Geräte-Sessions bei Spielstopp beenden"),
+        help_text=_(
+            "Zusätzlich beim Spiel stoppen (oder Timer-Auto-Stopp) Geräte-Sessions beenden."
+        ),
+    )
+    device_session_timeout_minutes = models.PositiveSmallIntegerField(
+        default=5,
+        verbose_name=_("Geräte-Session Timeout (Minuten)"),
+        help_text=_("Inaktivitäts-Timeout für mcc_worker (Counter-Sessions)."),
+    )
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Zuletzt aktualisiert"))
+    updated_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("Aktualisiert von"),
+    )
+
+    class Meta:
+        verbose_name = _("Game Configuration")
+        verbose_name_plural = _("Game Configuration")
+
+    def __str__(self):
+        return "Game Configuration"
+
+    @classmethod
+    def get_config(cls):
+        config, _ = cls.objects.get_or_create(pk=1)
+        return config
+
+    def get_session_timeout_minutes(self):
+        from django.conf import settings
+        minutes = self.device_session_timeout_minutes
+        if minutes and minutes > 0:
+            return minutes
+        return getattr(settings, 'MCC_SESSION_TIMEOUT_MINUTES', 5)
+
+
 # Import performance models
 from mgmt.models_performance import RequestLog, PerformanceMetric, AlertRule
 

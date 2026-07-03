@@ -9,8 +9,8 @@
 {% load i18n map_filters %}
 <div class="flex items-center justify-between px-6">
     <div class="flex items-center gap-2">
-        <span class="text-sm">{% trans "Gesamtkilometer" %}:</span>
-        <span class="text-lg font-bold">{% format_km_de_tag total_km 3 %} km</span>
+        <span class="text-sm">{% trans "Velos gesamt" %}:</span>
+        <span class="text-lg font-bold">{% format_velos_de_tag total_velos %} {% trans "Velos" %}</span>
     </div>
     <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">

@@ -291,3 +291,144 @@ class TestGetFilteredCyclistsView:
         assert 'Tom_Weber' not in content
         assert 'Anna_Mueller' not in content
         assert 'Peter_Fischer' not in content
+
+
+@pytest.mark.django_db
+class TestRoundTimerViews:
+    def test_update_timer_settings_saves_minutes(self, client):
+        session = client.session
+        session.save()
+        url = reverse('game:update_round_timer_settings')
+        response = client.post(url, {
+            'timer_enabled': '1',
+            'timer_duration_minutes': '12',
+            'timer_auto_stop': '1',
+            'timer_sound_enabled': '1',
+        })
+        assert response.status_code == 200
+        assert b'Runden-Timer' in response.content
+        assert client.session['round_duration_seconds'] == 720
+        assert client.session['timer_enabled'] is True
+
+    def test_update_timer_settings_unchecks_auto_stop_and_sound(self, client):
+        session = client.session
+        session['timer_enabled'] = True
+        session['timer_auto_stop'] = True
+        session['timer_sound_enabled'] = True
+        session.save()
+
+        url = reverse('game:update_round_timer_settings')
+        response = client.post(url, {
+            'timer_enabled': '1',
+            'timer_duration_minutes': '5',
+            'timer_auto_stop': '0',
+            'timer_sound_enabled': '0',
+        })
+        assert response.status_code == 200
+        assert client.session['timer_auto_stop'] is False
+        assert client.session['timer_sound_enabled'] is False
+
+    def test_update_timer_settings_preserves_flags_when_timer_disabled(self, client):
+        session = client.session
+        session['timer_enabled'] = True
+        session['timer_auto_stop'] = True
+        session['timer_sound_enabled'] = True
+        session.save()
+
+        url = reverse('game:update_round_timer_settings')
+        response = client.post(url, {
+            'timer_enabled': '0',
+            'timer_duration_minutes': '5',
+            'timer_auto_stop': '1',
+            'timer_sound_enabled': '1',
+        })
+        assert response.status_code == 200
+        assert client.session['timer_enabled'] is False
+        assert client.session['timer_auto_stop'] is True
+        assert client.session['timer_sound_enabled'] is True
+        assert client.session['timer_sound_played'] is False
+
+    def test_update_timer_settings_keeps_checked_flags(self, client):
+        session = client.session
+        session.save()
+        url = reverse('game:update_round_timer_settings')
+        response = client.post(url, {
+            'timer_enabled': '1',
+            'timer_duration_minutes': '5',
+            'timer_auto_stop': '1',
+            'timer_sound_enabled': '1',
+        })
+        assert response.status_code == 200
+        assert client.session['timer_auto_stop'] is True
+        assert client.session['timer_sound_enabled'] is True
+
+    def test_render_round_timer_shows_countdown_when_active(self, client):
+        from django.utils import timezone
+
+        session = client.session
+        session['timer_enabled'] = True
+        session['round_duration_seconds'] = 300
+        session['round_started_at'] = timezone.now().isoformat()
+        session['start_distances'] = {'cyclist1': 0.0}
+        session['is_game_stopped'] = False
+        session.save()
+
+        response = client.get(reverse('game:render_round_timer'))
+        assert response.status_code == 200
+        assert b'roundTimerCountdown' in response.content
+        assert b'Rundenzeit' in response.content
+        import re
+        assert re.search(rb'\d{2}:\d{2}', response.content)
+
+    def test_render_round_timer_no_preview_while_round_running(self, client):
+        session = client.session
+        session['timer_enabled'] = True
+        session['round_duration_seconds'] = 60
+        session['start_distances'] = {'cyclist1': 0.0}
+        session['is_game_stopped'] = False
+        session.save()
+
+        response = client.get(reverse('game:render_round_timer'))
+        assert response.status_code == 200
+        assert b'roundTimerCountdown' in response.content
+        assert b'width: 100%' not in response.content or b'00:' in response.content
+
+    def test_render_round_timer_triggers_sound_once_on_expiry(self, client):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        session = client.session
+        session['timer_enabled'] = True
+        session['timer_sound_enabled'] = True
+        session['round_duration_seconds'] = 60
+        session['round_started_at'] = (timezone.now() - timedelta(seconds=61)).isoformat()
+        session['start_distances'] = {'cyclist1': 0.0}
+        session['is_game_stopped'] = False
+        session.save()
+
+        response = client.get(reverse('game:render_round_timer'))
+        assert response.status_code == 200
+        assert 'roundTimerExpired' in response.get('HX-Trigger-After-Swap', '')
+        assert b'data-play-timer-sound="1"' in response.content
+        assert client.session['timer_sound_played'] is True
+
+        response2 = client.get(reverse('game:render_round_timer'))
+        assert 'roundTimerExpired' not in response2.get('HX-Trigger-After-Swap', '')
+
+    def test_render_round_timer_no_sound_when_disabled(self, client):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        session = client.session
+        session['timer_enabled'] = True
+        session['timer_sound_enabled'] = False
+        session['round_duration_seconds'] = 60
+        session['round_started_at'] = (timezone.now() - timedelta(seconds=61)).isoformat()
+        session['start_distances'] = {'cyclist1': 0.0}
+        session['is_game_stopped'] = False
+        session.save()
+
+        response = client.get(reverse('game:render_round_timer'))
+        assert response.status_code == 200
+        assert 'roundTimerExpired' not in response.get('HX-Trigger-After-Swap', '')
+        assert b'data-play-timer-sound="1"' not in response.content
