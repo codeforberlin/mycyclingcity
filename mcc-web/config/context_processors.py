@@ -60,4 +60,9 @@ def project_version(request):
     """
     return {
         'PROJECT_VERSION': getattr(settings, 'PROJECT_VERSION', 'dev'),
+        'PROJECT_PORTAL_URL': getattr(
+            settings,
+            'PROJECT_PORTAL_URL',
+            'https://adfc-tk.de/mycyclingcity',
+        ),
     }

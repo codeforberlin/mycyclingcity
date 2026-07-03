@@ -390,6 +390,12 @@ def get_project_version() -> str:
 
 PROJECT_VERSION = get_project_version()
 
+# Public project portal (general info, background, links)
+PROJECT_PORTAL_URL = config(
+    'PROJECT_PORTAL_URL',
+    default='https://adfc-tk.de/mycyclingcity',
+)
+
 # Kiosk Leaderboard Update Intervals (in seconds)
 # These control how often HTMX updates the different components
 # Synchronized update intervals - all components update together after cronjob (runs every 60 seconds)

@@ -7303,8 +7303,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return True
         if obj is None:
-            # For list view, get_queryset handles filtering
-            return True
+            return request.user.has_perm('api.view_yearendsnapshot')
         # Check if user manages the group of this snapshot
         managed_group_ids = get_operator_managed_group_ids(request.user)
         return obj.group.id in managed_group_ids
@@ -7380,8 +7379,7 @@ class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return True
         if obj is None:
-            # For list view, get_queryset handles filtering
-            return True
+            return request.user.has_perm('api.view_yearendsnapshotdetail')
         # Check if user manages the group of the snapshot
         managed_group_ids = get_operator_managed_group_ids(request.user)
         return obj.snapshot.group.id in managed_group_ids

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-03 14:30+0200\n"
+"POT-Creation-Date: 2026-07-03 15:35+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1145,7 +1145,7 @@ msgstr ""
 "are still active"
 
 msgid "Velos-Ziel"
-msgstr ""
+msgstr "Velos target"
 
 #, fuzzy
 #| msgid ""
@@ -1894,12 +1894,10 @@ msgid ""
 msgstr "Enter the 8-digit room code to join a rally room."
 
 msgid "Velos-Rallye"
-msgstr ""
+msgstr "Velos Rally"
 
-#, fuzzy
-#| msgid "Radler und Geräte zuweisen → Spiel starten → Kilometer sammeln!"
 msgid "Radler und Geräte zuweisen → Runde starten → Velos sammeln!"
-msgstr "Assign cyclists & devices → Start game → Collect kilometers!"
+msgstr "Assign cyclists & devices → Start round → Collect Velos!"
 
 #, fuzzy
 #| msgid "Rallye-Raum beitreten"
@@ -1927,10 +1925,8 @@ msgstr "End"
 msgid "Tipp: 👑 neben Radlernamen = Rallye-Leiter-Rolle übertragen"
 msgstr "Tip: 👑 next to cyclist name = Transfer master role"
 
-#, fuzzy
-#| msgid "Gemeinsam spielen"
 msgid "Gemeinsam strampeln"
-msgstr "Play together"
+msgstr "Pedal together"
 
 msgid ""
 "Erstelle einen Rallye-Raum, damit andere Radler an verschiedenen Orten die "
@@ -1978,18 +1974,14 @@ msgstr "Are you sure you want to remove this assignment?"
 msgid "Alle Zuweisungen löschen"
 msgstr "Delete all assignments"
 
-#, fuzzy
-#| msgid "Zielkilometer (optional)"
 msgid "Velos-Ziel (optional)"
-msgstr "Target kilometers (optional)"
+msgstr "Velos target (optional)"
 
 msgid "Oder manuell eingeben"
 msgstr "Or enter manually"
 
-#, fuzzy
-#| msgid "Ziel-km eingeben"
 msgid "Velos-Ziel eingeben"
-msgstr "Enter target km"
+msgstr "Enter Velos target"
 
 msgid "Kein Ziel gesetzt"
 msgstr "No target set"
@@ -2074,20 +2066,14 @@ msgstr "No data found."
 msgid "Keine Geräte gefunden"
 msgstr "No data found."
 
-#, fuzzy
-#| msgid "Spiel starten"
 msgid "Runde starten"
-msgstr "Start game"
+msgstr "Start round"
 
-#, fuzzy
-#| msgid "Spiel stoppen"
 msgid "Runde stoppen"
-msgstr "Stop game"
+msgstr "Stop round"
 
-#, fuzzy
-#| msgid "Nur der Spielleiter kann das Spiel starten oder stoppen"
 msgid "Nur der Rallye-Leiter kann die Runde starten oder stoppen."
-msgstr "Only the master can change the target"
+msgstr "Only the rally leader can start or stop the round."
 
 msgid "Version"
 msgstr "Version"
@@ -2098,19 +2084,14 @@ msgstr "Quick guide"
 msgid "Wie funktioniert das Spiel?"
 msgstr "How does the game work?"
 
-#, fuzzy
-#| msgid ""
-#| "Weisen Sie Radler Geräten zu, setzen Sie optional ein Ziel in Kilometern "
-#| "und starten Sie das Spiel. Das System verfolgt automatisch die "
-#| "zurückgelegten Kilometer und berechnet die verdienten Coins."
 msgid ""
 "Weisen Sie Radler Geräten zu, setzen Sie optional ein Velos-Ziel und starten "
 "Sie die Runde. Das System berechnet automatisch die gesammelten Velos anhand "
 "der Geräte-Konfiguration."
 msgstr ""
-"Assign cyclists to devices, optionally set a target in kilometers, and start "
-"the game. The system automatically tracks kilometers traveled and calculates "
-"coins earned."
+"Assign cyclists to devices, optionally set a Velos target, and start the "
+"round. The system automatically calculates collected Velos based on the "
+"device configuration."
 
 msgid "Was sind Rallye-Räume?"
 msgstr "What are rally rooms?"
@@ -2125,19 +2106,20 @@ msgstr ""
 "Velos rally. The room creator is the rally leader and can change settings. "
 "All participants see the same results in real-time."
 
-#, fuzzy
-#| msgid "Wie werden Coins berechnet?"
 msgid "Wie werden Velos berechnet?"
-msgstr "How are coins calculated?"
+msgstr "How are Velos calculated?"
 
 msgid ""
 "Velos werden aus den in der Session gefahrenen Kilometern und der Geräte-"
 "Konfiguration (Basis-Velos und Bonus) berechnet. Jedes Gerät kann "
 "unterschiedliche Velos pro Kilometer vergeben."
 msgstr ""
+"Velos are calculated from the kilometers ridden in the session and the "
+"device configuration (base Velos and bonus). Each device can award different "
+"Velos per kilometer."
 
 msgid "Ausführliche Dokumentation im Wiki"
-msgstr "Full documentation in wiki"
+msgstr "Detailed documentation in the wiki"
 
 msgid "Sprache"
 msgstr "Language"
@@ -2152,33 +2134,25 @@ msgid "Schließen"
 msgstr "Close"
 
 msgid "Zeit abgelaufen — bitte Runde stoppen"
-msgstr ""
+msgstr "Time expired — please stop the round"
 
-#, fuzzy
-#| msgid "Reisezeit"
 msgid "Rundenzeit"
-msgstr "Travel time"
+msgstr "Round time"
 
 msgid "Runden-Timer"
-msgstr ""
+msgstr "Round timer"
 
-#, fuzzy
-#| msgid "Gruppe stimmt nicht überein"
 msgid "Timer aktivieren"
-msgstr "Group does not match"
+msgstr "Enable timer"
 
-#, fuzzy
-#| msgid "Minute(n)"
 msgid "Dauer (Minuten)"
-msgstr "Minute(s)"
+msgstr "Duration (minutes)"
 
 msgid "Bei Ablauf automatisch stoppen"
-msgstr ""
+msgstr "Stop automatically when time expires"
 
-#, fuzzy
-#| msgid "Ablauf"
 msgid "Ton bei Ablauf"
-msgstr "Expiry"
+msgstr "Sound when time expires"
 
 msgid "Gewinner!"
 msgstr "Winner"
@@ -2196,10 +2170,8 @@ msgstr "Are you sure you want to remove this assignment?"
 msgid "Nur Rallye-Leiter"
 msgstr "Master only"
 
-#, fuzzy
-#| msgid "Warte auf Spielstart oder keine Zuweisungen aktiv."
 msgid "Warte auf Rundenstart oder keine Zuweisungen aktiv."
-msgstr "Waiting for game start or no assignments are active."
+msgstr "Waiting for round start or no active assignments."
 
 msgid "Zielkilometer"
 msgstr "Kilometers"
@@ -3190,12 +3162,14 @@ msgid "Was zeigt das Ranking?"
 msgstr "What does the ranking show?"
 
 msgid ""
-"Das Ranking zeigt die aktuelle Kilometerleistung aller Gruppen und "
-"Radfahrer, sortiert nach zurückgelegter Strecke. Sie können nach bestimmten "
-"Gruppen filtern."
+"Das Ranking zeigt die Velos- und Kilometerleistung aller Gruppen und "
+"Radfahrer. Die Sortierung erfolgt nach Velos; Kilometer werden optional in "
+"den Gruppenköpfen mit angezeigt. Sie können nach bestimmten TOP-Gruppen "
+"filtern."
 msgstr ""
-"The ranking shows the current kilometer performance of all groups and "
-"cyclists, sorted by distance traveled. You can filter by specific groups."
+"The ranking shows Velos and kilometers for all groups and cyclists. Results "
+"are sorted by Velos; kilometers can optionally be shown in the group "
+"headers. You can filter by specific top-level groups."
 
 msgid "Wie aktualisiert sich die Karte?"
 msgstr "How does the map update?"
@@ -5659,6 +5633,9 @@ msgstr "Language"
 
 msgid "Privacy Policy"
 msgstr "Privacy Policy"
+
+msgid "Zur MyCyclingCity-Projektseite"
+msgstr "Visit MyCyclingCity project page"
 
 msgid "1. Responsible Party"
 msgstr ""

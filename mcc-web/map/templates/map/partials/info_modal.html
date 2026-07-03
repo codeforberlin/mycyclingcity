@@ -56,7 +56,7 @@
                         </div>
                         <div class="info-hub-accordion-content">
                             <div class="info-hub-accordion-answer">
-                                {% trans "Das Ranking zeigt die aktuelle Kilometerleistung aller Gruppen und Radfahrer, sortiert nach zurückgelegter Strecke. Sie können nach bestimmten Gruppen filtern." %}
+                                {% trans "Das Ranking zeigt die Velos- und Kilometerleistung aller Gruppen und Radfahrer. Die Sortierung erfolgt nach Velos; Kilometer werden optional in den Gruppenköpfen mit angezeigt. Sie können nach bestimmten TOP-Gruppen filtern." %}
                             </div>
                         </div>
                     </div>
@@ -72,6 +72,7 @@
                         </div>
                     </div>
                 </div>
+                {% include "partials/info_hub_project_link.html" %}
                 {% get_current_language as current_lang %}
                 {% if current_lang == 'en' %}
                     <a href="https://codeforberlin.github.io/mycyclingcity/en/guides/map/" target="_blank" class="info-hub-wiki-link">
