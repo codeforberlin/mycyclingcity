@@ -190,6 +190,73 @@
         padding: 40px;
         color: #666;
     }
+    .chart-controls {
+        background: #f8f9fa;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .chart-mode-toggle {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .chart-mode-toggle label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .chart-group-panel {
+        border-top: 1px solid #ddd;
+        padding-top: 12px;
+        margin-top: 8px;
+    }
+    .chart-group-panel-header {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .chart-group-panel-header .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    .chart-group-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 8px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 8px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+    }
+    .chart-group-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+    .chart-group-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .chart-total-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        margin-left: auto;
+    }
 </style>
 {% endblock %}
 
@@ -325,6 +392,34 @@
         </div>
     </div>
     
+    <!-- Chart mode & group visibility -->
+    <div class="chart-controls">
+        <div class="chart-mode-toggle">
+            <span style="font-weight: 600; color: #417690;">{% trans "Chart-Ansicht:" %}</span>
+            <label>
+                <input type="radio" name="chart_mode" value="total" checked>
+                {% trans "Gesamt" %}
+            </label>
+            <label>
+                <input type="radio" name="chart_mode" value="groups">
+                {% trans "Nach Gruppen" %}
+            </label>
+            <label class="chart-total-toggle" id="chartTotalToggleWrap" style="display: none;">
+                <input type="checkbox" id="chartShowTotal" checked>
+                {% trans "Gesamtkurve anzeigen" %}
+            </label>
+        </div>
+        <div id="chartGroupPanel" class="chart-group-panel" style="display: none;">
+            <div class="chart-group-panel-header">
+                <strong>{% trans "Gruppen im Chart" %}</strong>
+                <button type="button" class="btn btn-secondary btn-small" id="chartGroupsAll">{% trans "Alle" %}</button>
+                <button type="button" class="btn btn-secondary btn-small" id="chartGroupsNone">{% trans "Keine" %}</button>
+                <button type="button" class="btn btn-secondary btn-small" id="chartGroupsTop5">{% trans "Top 5" %}</button>
+            </div>
+            <div id="chartGroupList" class="chart-group-list"></div>
+        </div>
+    </div>
+    
     <!-- Charts Section -->
     <div class="charts-section">
         <div class="chart-container">
@@ -408,8 +503,9 @@
     <!-- Export Section -->
     <div class="export-section">
         <h3>{% trans "Export Data" %}</h3>
-        <p>{% trans "Export the filtered report data in your preferred format:" %}</p>
+        <p>{% trans "Rohdaten als CSV/Excel oder den zusammengefassten Analysebericht als PDF exportieren:" %}</p>
         <div class="export-buttons">
+            <a href="#" id="exportPdf" class="btn btn-success">{% trans "Bericht als PDF" %}</a>
             <a href="#" id="exportCsv" class="btn btn-success">{% trans "Export as CSV" %}</a>
             <a href="#" id="exportExcel" class="btn btn-success">{% trans "Export as Excel" %}</a>
         </div>
@@ -531,9 +627,274 @@ function formatMetricWithUnit(value) {
         return true;
     }
     
-    // Chart instances
+    // Chart instances & group-series state
     let dailyChart = null;
     let hourlyChart = null;
+    let chartGroupSeries = { daily: null, hourly: null };
+    let visibleGroupIds = new Set();
+    let showTotalLine = true;
+
+    const CHART_LINE_COLORS = [
+        '#417690', '#28a745', '#e67e22', '#9b59b6', '#e74c3c',
+        '#16a085', '#2980b9', '#f39c12', '#8e44ad', '#c0392b',
+        '#1abc9c', '#2c3e50',
+    ];
+
+    function getChartMode() {
+        const selected = document.querySelector('input[name="chart_mode"]:checked');
+        return selected ? selected.value : 'total';
+    }
+
+    function getGroupType() {
+        const groupTypeToggle = document.getElementById('groupTypeToggle');
+        return groupTypeToggle && groupTypeToggle.checked ? 'top_groups' : 'subgroups';
+    }
+
+    function getChartPrefsKey() {
+        return `analyticsChartPrefs_${getGroupType()}_${getMetricMode()}`;
+    }
+
+    function loadChartPrefs() {
+        try {
+            const raw = localStorage.getItem(getChartPrefsKey());
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function saveChartPrefs() {
+        localStorage.setItem(getChartPrefsKey(), JSON.stringify({
+            chartMode: getChartMode(),
+            visibleGroupIds: Array.from(visibleGroupIds),
+            showTotalLine: showTotalLine,
+        }));
+    }
+
+    function getChartYAxisLabel() {
+        return getMetricMode() === 'km' ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
+    }
+
+    function buildChartOptions() {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    onClick: function(evt, legendItem, legend) {
+                        const chart = legend.chart;
+                        const dataset = chart.data.datasets[legendItem.datasetIndex];
+                        if (dataset && dataset.isTotalLine) {
+                            dataset.hidden = !dataset.hidden;
+                            showTotalLine = !dataset.hidden;
+                            const totalCheckbox = document.getElementById('chartShowTotal');
+                            if (totalCheckbox) {
+                                totalCheckbox.checked = showTotalLine;
+                            }
+                        } else {
+                            const defaultHandler = Chart.defaults.plugins.legend.onClick;
+                            if (defaultHandler) {
+                                defaultHandler.call(this, evt, legendItem, legend);
+                            }
+                            syncGroupPanelFromChart(chart);
+                        }
+                        chart.update();
+                        saveChartPrefs();
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: getChartYAxisLabel() },
+                },
+            },
+        };
+    }
+
+    function syncGroupPanelFromChart(chart) {
+        if (!chart || getChartMode() !== 'groups') return;
+        chart.data.datasets.forEach(dataset => {
+            if (!dataset.groupId) return;
+            const checkbox = document.querySelector(`#chartGroupList input[data-group-id="${dataset.groupId}"]`);
+            if (checkbox) checkbox.checked = !dataset.hidden;
+            if (!dataset.hidden) visibleGroupIds.add(dataset.groupId);
+            else visibleGroupIds.delete(dataset.groupId);
+        });
+        saveChartPrefs();
+    }
+
+    function updateChartModeUI() {
+        const isGroups = getChartMode() === 'groups';
+        const panel = document.getElementById('chartGroupPanel');
+        const totalWrap = document.getElementById('chartTotalToggleWrap');
+        if (panel) panel.style.display = isGroups ? 'block' : 'none';
+        if (totalWrap) totalWrap.style.display = isGroups ? 'inline-flex' : 'none';
+        if (dailyChart) dailyChart.options.plugins.legend.display = isGroups;
+        if (hourlyChart) hourlyChart.options.plugins.legend.display = isGroups;
+    }
+
+    function resolveVisibleGroupIds(seriesData) {
+        const saved = loadChartPrefs();
+        const allIds = (seriesData.groups || []).map(g => g.id);
+        if (saved && Array.isArray(saved.visibleGroupIds) && saved.visibleGroupIds.length > 0) {
+            const valid = new Set(allIds);
+            const restored = saved.visibleGroupIds.filter(id => valid.has(id));
+            if (restored.length > 0) return new Set(restored);
+        }
+        if (allIds.length <= 5) return new Set(allIds);
+        return new Set(seriesData.default_visible_group_ids || allIds.slice(0, 5));
+    }
+
+    function renderGroupPanel(seriesData) {
+        const listEl = document.getElementById('chartGroupList');
+        if (!listEl || !seriesData) return;
+        listEl.innerHTML = '';
+        (seriesData.groups || []).forEach((group, index) => {
+            const color = CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
+            const item = document.createElement('label');
+            item.className = 'chart-group-item';
+            item.innerHTML = `<input type="checkbox" data-group-id="${group.id}" ${visibleGroupIds.has(group.id) ? 'checked' : ''}><span class="chart-group-color" style="background:${color}"></span><span>${group.name}</span>`;
+            item.querySelector('input').addEventListener('change', function() {
+                if (this.checked) visibleGroupIds.add(group.id);
+                else visibleGroupIds.delete(group.id);
+                applyGroupVisibilityToCharts();
+                saveChartPrefs();
+            });
+            listEl.appendChild(item);
+        });
+    }
+
+    function applyGroupVisibilityToCharts() {
+        [dailyChart, hourlyChart].forEach(chart => {
+            if (!chart) return;
+            chart.data.datasets.forEach(dataset => {
+                if (dataset.groupId) dataset.hidden = !visibleGroupIds.has(dataset.groupId);
+            });
+            chart.update();
+        });
+    }
+
+    function buildGroupDatasets(seriesData) {
+        const datasets = [];
+        datasets.push({
+            label: '{% trans "Gesamt" %}',
+            data: seriesData.total || [],
+            borderColor: '#1e293b',
+            backgroundColor: 'rgba(30, 41, 59, 0.08)',
+            borderWidth: 3,
+            borderDash: [6, 4],
+            tension: 0.35,
+            pointRadius: 2,
+            isTotalLine: true,
+            hidden: !showTotalLine,
+        });
+        (seriesData.groups || []).forEach((group, index) => {
+            const color = CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
+            datasets.push({
+                label: group.name,
+                data: group.data,
+                borderColor: color,
+                backgroundColor: color + '1A',
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 1,
+                groupId: group.id,
+                hidden: !visibleGroupIds.has(group.id),
+            });
+        });
+        return datasets;
+    }
+
+    function applyTotalChart(chart, payload, isDaily) {
+        const isKm = getMetricMode() === 'km';
+        chart.data.labels = payload.labels || [];
+        chart.data.datasets = [{
+            label: isDaily
+                ? (isKm ? '{% trans "Daily Distance (km)" %}' : '{% trans "Tägliche Velos" %}')
+                : (isKm ? '{% trans "Hourly Distance (km)" %}' : '{% trans "Stündliche Velos" %}'),
+            data: payload.data || [],
+            borderColor: isDaily ? 'rgb(65, 118, 144)' : 'rgb(40, 167, 69)',
+            backgroundColor: isDaily ? 'rgba(65, 118, 144, 0.1)' : 'rgba(40, 167, 69, 0.1)',
+            tension: 0.4,
+        }];
+        chart.options.plugins.legend.display = false;
+        chart.options.scales.y.title.text = getChartYAxisLabel();
+        chart.update();
+    }
+
+    function applyGroupsChart(chart, seriesData) {
+        chart.data.labels = seriesData.labels || [];
+        chart.data.datasets = buildGroupDatasets(seriesData);
+        chart.options.plugins.legend.display = true;
+        chart.options.scales.y.title.text = getChartYAxisLabel();
+        chart.update();
+    }
+
+    function buildAnalyticsApiQuery(reportType) {
+        const useEventFilter = document.querySelector('input[name="use_event_filter"]')?.checked || false;
+        const useGroupFilter = document.querySelector('input[name="use_group_filter"]')?.checked || false;
+        const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
+        const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
+        const trackId = document.getElementById('track_id')?.value || '';
+        return new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            event_id: eventId,
+            group_id: groupId,
+            cyclist_id: cyclistId,
+            track_id: trackId,
+            use_event_filter: useEventFilter ? 'true' : 'false',
+            use_group_filter: useGroupFilter ? 'true' : 'false',
+            use_cyclist_filter: useCyclistFilter ? 'true' : 'false',
+            use_track_filter: useTrackFilter ? 'true' : 'false',
+            group_type: getGroupType(),
+            metric_mode: getMetricMode(),
+            report_type: reportType,
+        }).toString();
+    }
+
+    function loadChartData(chart, totalReportType, groupReportType, groupKey, totalKey, statusElementId, isDaily) {
+        if (!chart) {
+            updateStatus(statusElementId, 'Error: Chart not initialized', '#f44336');
+            return Promise.resolve();
+        }
+        const isGroups = getChartMode() === 'groups';
+        const reportType = isGroups ? groupReportType : totalReportType;
+        return fetch(`{% url 'admin:api_analytics_data_api' %}?${buildAnalyticsApiQuery(reportType)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (isGroups) {
+                    const seriesData = data[groupKey];
+                    if (!seriesData || !seriesData.labels || seriesData.labels.length === 0) {
+                        updateStatus(statusElementId, '{% trans "No data available" %}', '#ff9800');
+                        return;
+                    }
+                    if (isDaily) {
+                        chartGroupSeries.daily = seriesData;
+                        visibleGroupIds = resolveVisibleGroupIds(seriesData);
+                        renderGroupPanel(seriesData);
+                    } else {
+                        chartGroupSeries.hourly = seriesData;
+                    }
+                    applyGroupsChart(chart, seriesData);
+                } else {
+                    const payload = data[totalKey];
+                    if (!payload || !payload.labels || payload.labels.length === 0) {
+                        updateStatus(statusElementId, '{% trans "No data available" %}', '#ff9800');
+                        return;
+                    }
+                    applyTotalChart(chart, payload, isDaily);
+                }
+                updateStatus(statusElementId, 'Loaded', '#4CAF50');
+            })
+            .catch(error => {
+                console.error('Error loading chart data:', error);
+                updateStatus(statusElementId, 'Error loading data', '#f44336');
+            });
+    }
 
     // Update all metric-dependent labels (km vs. Velos). Defined inside the IIFE
     // so it can access the dailyChart / hourlyChart instances.
@@ -560,209 +921,43 @@ function formatMetricWithUnit(value) {
             const el = document.getElementById(id);
             if (el) el.textContent = metricHeaderText;
         });
-        if (dailyChart && dailyChart.data.datasets[0]) {
-            dailyChart.data.datasets[0].label = isKm ? '{% trans "Daily Distance (km)" %}' : '{% trans "Tägliche Velos" %}';
-            if (dailyChart.options.scales && dailyChart.options.scales.y && dailyChart.options.scales.y.title) {
-                dailyChart.options.scales.y.title.text = isKm ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
-            }
-            dailyChart.update();
-        }
-        if (hourlyChart && hourlyChart.data.datasets[0]) {
-            hourlyChart.data.datasets[0].label = isKm ? '{% trans "Hourly Distance (km)" %}' : '{% trans "Stündliche Velos" %}';
-            if (hourlyChart.options.scales && hourlyChart.options.scales.y && hourlyChart.options.scales.y.title) {
-                hourlyChart.options.scales.y.title.text = isKm ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
-            }
-            hourlyChart.update();
+        if (dailyChart && hourlyChart) {
+            dailyChart.options.scales.y.title.text = getChartYAxisLabel();
+            hourlyChart.options.scales.y.title.text = getChartYAxisLabel();
         }
     }
     
-    // Initialize charts
     function initCharts() {
-        console.log('=== initCharts() called ===');
         const dailyCtx = document.getElementById('dailyChart');
         const hourlyCtx = document.getElementById('hourlyChart');
-        
-        console.log('Daily canvas found:', !!dailyCtx, dailyCtx);
-        console.log('Hourly canvas found:', !!hourlyCtx, hourlyCtx);
-        console.log('Chart.js available:', typeof Chart !== 'undefined');
-        
-        if (!dailyCtx || !hourlyCtx) {
-            console.error('Chart canvases not found!');
-            console.error('Daily canvas:', dailyCtx);
-            console.error('Hourly canvas:', hourlyCtx);
-            throw new Error('Canvas elements not found');
-        }
-        
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js not available!');
-            throw new Error('Chart.js not loaded');
-        }
-        
-        if (dailyChart) {
-            console.log('Destroying existing daily chart');
-            try {
-                dailyChart.destroy();
-            } catch (e) {
-                console.warn('Error destroying daily chart:', e);
-            }
-        }
-        if (hourlyChart) {
-            console.log('Destroying existing hourly chart');
-            try {
-                hourlyChart.destroy();
-            } catch (e) {
-                console.warn('Error destroying hourly chart:', e);
-            }
-        }
-        
-        console.log('Creating daily chart...');
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js not available!');
-            return;
-        }
-        dailyChart = new Chart(dailyCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '{% trans "Tägliche Velos" %}',
-                    data: [],
-                    borderColor: 'rgb(65, 118, 144)',
-                    backgroundColor: 'rgba(65, 118, 144, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: '{% trans "Velos" %}'
-                        }
-                    }
-                }
-            }
-        });
-        console.log('Daily chart created');
-        
-        console.log('Creating hourly chart...');
-        hourlyChart = new Chart(hourlyCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '{% trans "Stündliche Velos" %}',
-                    data: [],
-                    borderColor: 'rgb(40, 167, 69)',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: '{% trans "Velos" %}'
-                        }
-                    }
-                }
-            }
-        });
-        console.log('Hourly chart created');
+        if (!dailyCtx || !hourlyCtx) throw new Error('Canvas elements not found');
+        if (typeof Chart === 'undefined') throw new Error('Chart.js not loaded');
+        if (dailyChart) { try { dailyChart.destroy(); } catch (e) {} }
+        if (hourlyChart) { try { hourlyChart.destroy(); } catch (e) {} }
+        const chartOptions = buildChartOptions();
+        dailyChart = new Chart(dailyCtx, { type: 'line', data: { labels: [], datasets: [] }, options: JSON.parse(JSON.stringify(chartOptions)) });
+        hourlyChart = new Chart(hourlyCtx, { type: 'line', data: { labels: [], datasets: [] }, options: JSON.parse(JSON.stringify(chartOptions)) });
+        updateChartModeUI();
     }
     
-    // Load data
     function loadData() {
         updateMetricLabels();
-        console.log('Loading data with params:', {startDate, endDate, eventId, groupId, cyclistId});
-        
-        // Get filter checkboxes
-        const useEventFilter = document.querySelector('input[name="use_event_filter"]')?.checked || false;
-        const useGroupFilter = document.querySelector('input[name="use_group_filter"]')?.checked || false;
-        const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
-        const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
-        const trackId = document.getElementById('track_id')?.value || '';
-        const metricMode = getMetricMode();
-        const metricParam = `&metric_mode=${metricMode}`;
-        
-        // Load daily data
-        const dailyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=daily${metricParam}`;
-        console.log('Fetching daily data from:', dailyUrl);
-        fetch(dailyUrl)
-            .then(response => {
-                console.log('Daily response status:', response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Daily data received:', data);
-                if (data.daily && data.daily.labels && data.daily.labels.length > 0) {
-                    if (!dailyChart) {
-                        console.error('Daily chart not initialized');
-                        updateStatus('dailyChartStatusText', 'Error: Chart not initialized', '#f44336');
-                        return;
-                    }
-                    dailyChart.data.labels = data.daily.labels;
-                    dailyChart.data.datasets[0].data = data.daily.data;
-                    dailyChart.update();
-                    console.log('Daily chart updated with', data.daily.labels.length, 'data points');
-                    updateStatus('dailyChartStatusText', 'Loaded: ' + data.daily.labels.length + ' data points', '#4CAF50');
-                } else {
-                    console.warn('No daily data in response:', data);
-                    updateStatus('dailyChartStatusText', 'No data available', '#ff9800');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading daily data:', error);
-            });
-        
-        // Load hourly data
-        const hourlyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=hourly${metricParam}`;
-        console.log('Fetching hourly data from:', hourlyUrl);
-        fetch(hourlyUrl)
-            .then(response => {
-                console.log('Hourly response status:', response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Hourly data received:', data);
-                if (data.hourly && data.hourly.labels && data.hourly.labels.length > 0) {
-                    if (!hourlyChart) {
-                        console.error('Hourly chart not initialized');
-                        updateStatus('hourlyChartStatusText', 'Error: Chart not initialized', '#f44336');
-                        return;
-                    }
-                    hourlyChart.data.labels = data.hourly.labels;
-                    hourlyChart.data.datasets[0].data = data.hourly.data;
-                    hourlyChart.update();
-                    console.log('Hourly chart updated with', data.hourly.labels.length, 'data points');
-                    updateStatus('hourlyChartStatusText', 'Loaded: ' + data.hourly.labels.length + ' data points', '#4CAF50');
-                } else {
-                    console.warn('No hourly data in response:', data);
-                    updateStatus('hourlyChartStatusText', 'No data available', '#ff9800');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading hourly data:', error);
-            });
-        
-        // Load aggregated data
+        chartGroupSeries = { daily: null, hourly: null };
+        const savedPrefs = loadChartPrefs();
+        if (savedPrefs) {
+            if (savedPrefs.chartMode) {
+                const modeInput = document.querySelector(`input[name="chart_mode"][value="${savedPrefs.chartMode}"]`);
+                if (modeInput) modeInput.checked = true;
+            }
+            showTotalLine = savedPrefs.showTotalLine !== false;
+            const totalCheckbox = document.getElementById('chartShowTotal');
+            if (totalCheckbox) totalCheckbox.checked = showTotalLine;
+        }
+        updateChartModeUI();
+        Promise.all([
+            loadChartData(dailyChart, 'daily', 'daily_by_group', 'daily_by_group', 'daily', 'dailyChartStatusText', true),
+            loadChartData(hourlyChart, 'hourly', 'hourly_by_group', 'hourly_by_group', 'hourly', 'hourlyChartStatusText', false),
+        ]);
         loadAggregatedData();
     }
     
@@ -990,24 +1185,128 @@ function formatMetricWithUnit(value) {
     }
     
     // Export handlers
+    function getCsrfToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        for (const cookie of cookies) {
+            const trimmed = cookie.trim();
+            if (trimmed.startsWith(name + '=')) {
+                return decodeURIComponent(trimmed.substring(name.length + 1));
+            }
+        }
+        const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return csrfInput ? csrfInput.value : '';
+    }
+
+    function appendExportFields(formData, format) {
+        const useEventFilter = document.querySelector('input[name="use_event_filter"]')?.checked || false;
+        const useGroupFilter = document.querySelector('input[name="use_group_filter"]')?.checked || false;
+        const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
+        const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
+        const trackId = document.getElementById('track_id')?.value || '';
+        const groupTypeToggle = document.getElementById('groupTypeToggle');
+        const groupType = groupTypeToggle && groupTypeToggle.checked ? 'top_groups' : 'subgroups';
+        const metricMode = getMetricMode();
+        const fields = {
+            format: format,
+            start_date: startDate,
+            end_date: endDate,
+            event_id: eventId,
+            group_id: groupId,
+            cyclist_id: cyclistId,
+            track_id: trackId,
+            use_event_filter: useEventFilter ? 'true' : 'false',
+            use_group_filter: useGroupFilter ? 'true' : 'false',
+            use_cyclist_filter: useCyclistFilter ? 'true' : 'false',
+            use_track_filter: useTrackFilter ? 'true' : 'false',
+            group_type: groupType,
+            metric_mode: metricMode,
+        };
+        Object.entries(fields).forEach(([key, value]) => formData.append(key, value));
+    }
+
+    function buildExportQueryString(format) {
+        const formData = new FormData();
+        appendExportFields(formData, format);
+        return new URLSearchParams(formData).toString();
+    }
+
+    async function exportPdfReport() {
+        if (!dailyChart || !hourlyChart) {
+            alert('{% trans "Bitte warten Sie, bis die Charts geladen sind." %}');
+            return;
+        }
+        const exportBtn = document.getElementById('exportPdf');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+        }
+        try {
+            const formData = new FormData();
+            appendExportFields(formData, 'pdf');
+            formData.append('daily_chart_image', dailyChart.toBase64Image('image/png', 1));
+            formData.append('hourly_chart_image', hourlyChart.toBase64Image('image/png', 1));
+
+            const response = await fetch('{% url "admin:api_analytics_export" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || response.statusText);
+            }
+            const blob = await response.blob();
+            let filename = `analytics_report_${startDate}_to_${endDate}.pdf`;
+            const disposition = response.headers.get('Content-Disposition');
+            if (disposition) {
+                const match = disposition.match(/filename="([^"]+)"/);
+                if (match) {
+                    filename = match[1];
+                }
+            }
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+            console.error('PDF export failed:', error);
+            alert('{% trans "PDF-Export fehlgeschlagen." %}');
+        } finally {
+            if (exportBtn) {
+                exportBtn.disabled = false;
+            }
+        }
+    }
+
+    const exportPdfBtn = document.getElementById('exportPdf');
     const exportCsvBtn = document.getElementById('exportCsv');
     const exportExcelBtn = document.getElementById('exportExcel');
+    
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            exportPdfReport();
+        });
+    }
     
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const metricMode = getMetricMode();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=csv&metric_mode=${metricMode}`;
-            window.location.href = url;
+            window.location.href = `{% url 'admin:api_analytics_export' %}?${buildExportQueryString('csv')}`;
         });
     }
     
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const metricMode = getMetricMode();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=excel&metric_mode=${metricMode}`;
-            window.location.href = url;
+            window.location.href = `{% url 'admin:api_analytics_export' %}?${buildExportQueryString('excel')}`;
         });
     }
     
@@ -1071,10 +1370,65 @@ function formatMetricWithUnit(value) {
                 // Add toggle event handler for group type
                 groupTypeToggle.addEventListener('change', function() {
                     console.log('Group type toggle changed:', this.checked);
-                    // Save state to localStorage
                     localStorage.setItem('analyticsGroupTypeToggle', this.checked.toString());
-                    // Immediately reload aggregated data
-                    loadAggregatedData();
+                    loadData();
+                });
+            }
+
+            document.querySelectorAll('input[name="chart_mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    saveChartPrefs();
+                    updateChartModeUI();
+                    loadData();
+                });
+            });
+
+            const chartShowTotal = document.getElementById('chartShowTotal');
+            if (chartShowTotal) {
+                chartShowTotal.addEventListener('change', function() {
+                    showTotalLine = this.checked;
+                    [dailyChart, hourlyChart].forEach(chart => {
+                        if (!chart) return;
+                        const totalDataset = chart.data.datasets.find(ds => ds.isTotalLine);
+                        if (totalDataset) {
+                            totalDataset.hidden = !showTotalLine;
+                            chart.update();
+                        }
+                    });
+                    saveChartPrefs();
+                });
+            }
+
+            const chartGroupsAll = document.getElementById('chartGroupsAll');
+            const chartGroupsNone = document.getElementById('chartGroupsNone');
+            const chartGroupsTop5 = document.getElementById('chartGroupsTop5');
+            if (chartGroupsAll) {
+                chartGroupsAll.addEventListener('click', function() {
+                    if (!chartGroupSeries.daily) return;
+                    visibleGroupIds = new Set(chartGroupSeries.daily.groups.map(g => g.id));
+                    renderGroupPanel(chartGroupSeries.daily);
+                    applyGroupVisibilityToCharts();
+                    saveChartPrefs();
+                });
+            }
+            if (chartGroupsNone) {
+                chartGroupsNone.addEventListener('click', function() {
+                    visibleGroupIds = new Set();
+                    renderGroupPanel(chartGroupSeries.daily);
+                    applyGroupVisibilityToCharts();
+                    saveChartPrefs();
+                });
+            }
+            if (chartGroupsTop5) {
+                chartGroupsTop5.addEventListener('click', function() {
+                    if (!chartGroupSeries.daily) return;
+                    visibleGroupIds = new Set(
+                        chartGroupSeries.daily.default_visible_group_ids ||
+                        chartGroupSeries.daily.groups.slice(0, 5).map(g => g.id)
+                    );
+                    renderGroupPanel(chartGroupSeries.daily);
+                    applyGroupVisibilityToCharts();
+                    saveChartPrefs();
                 });
             }
             

@@ -143,3 +143,96 @@ class TestAnalyticsTotalDistance:
         assert mid_group.name not in leaf_names
 
         assert not top_names & leaf_names
+
+
+@pytest.mark.django_db
+class TestAnalyticsPdfExport:
+    def test_pdf_export_returns_pdf(self, client):
+        admin = User.objects.create_superuser(
+            username='analytics_pdf_admin',
+            email='pdf@example.com',
+            password='testpass123',
+        )
+        client.force_login(admin)
+
+        top_group = GroupFactory(name='PDF Top School', parent=None)
+        leaf_group = GroupFactory(name='PDF Class 1a', parent=top_group)
+        device = DeviceFactory(group=leaf_group)
+        cyclist = CyclistFactory()
+
+        now = timezone.now()
+        HourlyMetricFactory(
+            device=device,
+            cyclist=cyclist,
+            group_at_time=leaf_group,
+            timestamp=now - timedelta(days=2),
+            distance_km=Decimal('3.00000'),
+        )
+
+        start_date = (now - timedelta(days=7)).strftime('%Y-%m-%d')
+        end_date = now.strftime('%Y-%m-%d')
+        url = (
+            f"{reverse('admin:api_analytics_export')}"
+            f"?start_date={start_date}&end_date={end_date}"
+            f"&format=pdf&metric_mode=velos"
+            f"&use_group_filter=false&use_cyclist_filter=false"
+            f"&use_event_filter=false&use_track_filter=false"
+            f"&group_type=top_groups"
+        )
+
+        response = client.get(url)
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'application/pdf'
+        assert response.content[:4] == b'%PDF'
+        assert len(response.content) > 500
+        assert 'attachment' in response['Content-Disposition']
+        assert '.pdf' in response['Content-Disposition']
+
+    def test_pdf_export_post_with_chart_images(self, client):
+        admin = User.objects.create_superuser(
+            username='analytics_pdf_post_admin',
+            email='pdfpost@example.com',
+            password='testpass123',
+        )
+        client.force_login(admin)
+
+        top_group = GroupFactory(name='PDF POST Top School', parent=None)
+        leaf_group = GroupFactory(name='PDF POST Class 1a', parent=top_group)
+        device = DeviceFactory(group=leaf_group)
+        cyclist = CyclistFactory()
+
+        now = timezone.now()
+        HourlyMetricFactory(
+            device=device,
+            cyclist=cyclist,
+            group_at_time=leaf_group,
+            timestamp=now - timedelta(days=2),
+            distance_km=Decimal('3.00000'),
+        )
+
+        start_date = (now - timedelta(days=7)).strftime('%Y-%m-%d')
+        end_date = now.strftime('%Y-%m-%d')
+        tiny_png = (
+            'data:image/png;base64,'
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+        )
+        response = client.post(
+            reverse('admin:api_analytics_export'),
+            data={
+                'format': 'pdf',
+                'start_date': start_date,
+                'end_date': end_date,
+                'metric_mode': 'velos',
+                'use_group_filter': 'false',
+                'use_cyclist_filter': 'false',
+                'use_event_filter': 'false',
+                'use_track_filter': 'false',
+                'group_type': 'top_groups',
+                'daily_chart_image': tiny_png,
+                'hourly_chart_image': tiny_png,
+            },
+        )
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'application/pdf'
+        assert response.content[:4] == b'%PDF'
+        assert len(response.content) > 800

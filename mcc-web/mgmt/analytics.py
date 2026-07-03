@@ -63,6 +63,83 @@ def _event_history_total_to_metric(total_velos, metric_mode: str) -> float:
     return float(velos)
 
 
+def _analytics_params(request):
+    """Unified query parameters from GET or POST."""
+    if request.method == 'POST':
+        return request.POST
+    return request.GET
+
+
+def _fetch_aggregated_analytics(request, group_type: str = 'top_groups') -> Dict[str, Any]:
+    """Reuse analytics_data_api aggregation for PDF/summary exports."""
+    from django.test import RequestFactory
+
+    params = _analytics_params(request).copy()
+    params['report_type'] = 'aggregated'
+    params['group_type'] = group_type
+    params.setdefault('use_group_filter', 'true')
+    params.setdefault('use_cyclist_filter', 'true')
+    params.setdefault('use_event_filter', 'false')
+    params.setdefault('use_track_filter', 'false')
+    params.setdefault('metric_mode', 'velos')
+
+    internal_request = RequestFactory().get('/admin/analytics/data/', params)
+    internal_request.user = request.user
+    response = analytics_data_api(internal_request)
+    if response.status_code != 200:
+        raise ValueError('Analytics aggregation failed')
+    payload = json.loads(response.content)
+    aggregated = payload.get('aggregated')
+    if not aggregated:
+        raise ValueError('Analytics aggregation returned no data')
+    return aggregated
+
+
+def _build_export_meta(request, start_date: str, end_date: str, metric_mode: str) -> Dict[str, Any]:
+    """Build human-readable metadata for export files."""
+    params = _analytics_params(request)
+    filters: List[str] = []
+    use_event = params.get('use_event_filter', 'false').lower() == 'true'
+    use_group = params.get('use_group_filter', 'true').lower() == 'true'
+    use_cyclist = params.get('use_cyclist_filter', 'true').lower() == 'true'
+    use_track = params.get('use_track_filter', 'false').lower() == 'true'
+
+    if use_event and params.get('event_id'):
+        try:
+            event = Event.objects.get(pk=params['event_id'])
+            filters.append(f"{_('Event')}: {event.name}")
+        except Event.DoesNotExist:
+            pass
+    if use_group and params.get('group_id'):
+        try:
+            group = Group.objects.get(pk=params['group_id'])
+            filters.append(f"{_('Gruppe')}: {group.name}")
+        except Group.DoesNotExist:
+            pass
+    if use_cyclist and params.get('cyclist_id'):
+        try:
+            cyclist = Cyclist.objects.get(pk=params['cyclist_id'])
+            filters.append(f"{_('Radler')}: {cyclist.user_id}")
+        except Cyclist.DoesNotExist:
+            pass
+    if use_track and params.get('track_id'):
+        try:
+            track = TravelTrack.objects.get(pk=params['track_id'])
+            filters.append(f"{_('Strecke')}: {track.name}")
+        except TravelTrack.DoesNotExist:
+            pass
+
+    group_type = params.get('group_type', 'top_groups')
+    return {
+        'start_date': start_date,
+        'end_date': end_date,
+        'metric_mode': metric_mode,
+        'generated_at_display': timezone.localtime(timezone.now()).strftime('%d.%m.%Y %H:%M'),
+        'filters': filters,
+        'group_type_label': _('TOP-Gruppen') if group_type == 'top_groups' else _('Leaf-Gruppen'),
+    }
+
+
 # Analytics views as standalone functions
 @staff_member_required
 def analytics_dashboard(request):
@@ -199,6 +276,32 @@ def analytics_data_api(request):
             'labels': [item['day'].strftime('%Y-%m-%d') if item.get('day') else '' for item in daily_data],
             'data': [float(item.get('total_value') or 0) for item in daily_data],
         }
+
+    elif report_type == 'daily_by_group':
+        from mgmt.analytics_charts import build_timeseries_by_group
+
+        response_data['daily_by_group'] = build_timeseries_by_group(
+            metrics_qs,
+            period_annotation={'day': TruncDate('timestamp')},
+            period_key='day',
+            period_label_fmt=lambda dt: dt.strftime('%Y-%m-%d'),
+            group_type=group_type,
+            metric_field=metric_field,
+            sum_output_field=sum_output_field,
+        )
+
+    elif report_type == 'hourly_by_group':
+        from mgmt.analytics_charts import build_timeseries_by_group
+
+        response_data['hourly_by_group'] = build_timeseries_by_group(
+            metrics_qs,
+            period_annotation={'hour': TruncHour('timestamp')},
+            period_key='hour',
+            period_label_fmt=lambda dt: dt.strftime('%Y-%m-%d %H:00'),
+            group_type=group_type,
+            metric_field=metric_field,
+            sum_output_field=sum_output_field,
+        )
     
     elif report_type == 'aggregated':
         # Calculate total_distance and top_groups from HourlyMetric (consistent with Leaderboard)
@@ -1155,19 +1258,52 @@ def analytics_data_api(request):
 
 @staff_member_required
 def export_data(request):
-    """Export filtered data as CSV or Excel."""
+    """Export filtered data as CSV, Excel, or PDF summary report."""
     # Block access for operators
     if not request.user.is_superuser:
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden(_("Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese Funktion."))
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    event_id = request.GET.get('event_id')
-    group_id = request.GET.get('group_id')
-    cyclist_id = request.GET.get('cyclist_id')
-    export_format = request.GET.get('format', 'csv')  # csv or excel
-    metric_mode = _parse_metric_mode(request.GET.get('metric_mode'))
+    params = _analytics_params(request)
+    start_date = params.get('start_date')
+    end_date = params.get('end_date')
+    event_id = params.get('event_id')
+    group_id = params.get('group_id')
+    cyclist_id = params.get('cyclist_id')
+    export_format = params.get('format', 'csv')  # csv, excel, or pdf
+    metric_mode = _parse_metric_mode(params.get('metric_mode'))
     value_column = _('Distance (km)') if metric_mode == 'km' else _('Velos')
+
+    if export_format == 'pdf':
+        try:
+            from mgmt.analytics_pdf import build_analytics_pdf, _decode_chart_image
+
+            group_type = params.get('group_type', 'top_groups')
+            aggregated = _fetch_aggregated_analytics(request, group_type=group_type)
+            meta = _build_export_meta(request, start_date or '', end_date or '', metric_mode)
+            chart_images = {
+                'daily': _decode_chart_image(params.get('daily_chart_image', '')),
+                'hourly': _decode_chart_image(params.get('hourly_chart_image', '')),
+            }
+            pdf_bytes = build_analytics_pdf(aggregated, meta, chart_images=chart_images)
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            safe_start = (start_date or 'start').replace('/', '-')
+            safe_end = (end_date or 'end').replace('/', '-')
+            filename = f'analytics_report_{safe_start}_to_{safe_end}.pdf'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except ImportError:
+            return HttpResponse(
+                _('PDF-Export nicht verfügbar: reportlab ist nicht installiert.'),
+                status=503,
+                content_type='text/plain; charset=utf-8',
+            )
+        except ValueError as exc:
+            logger.exception('Analytics PDF export failed: %s', exc)
+            return HttpResponse(
+                _('PDF-Export fehlgeschlagen.'),
+                status=500,
+                content_type='text/plain; charset=utf-8',
+            )
     
     # Parse dates
     try:
