@@ -776,7 +776,12 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
 
         velos_added = 0
         if distance_delta > 0:
-            velos_added = apply_velos_earn(cyclist_obj, device_obj, distance_delta)
+            velos_added = apply_velos_earn(
+                cyclist_obj,
+                device_obj,
+                distance_delta,
+                cumulative_mileage_after=session.cumulative_mileage,
+            )
             if velos_added > 0:
                 logger.info(
                     "[update_data] Velos added for %s: +%s",

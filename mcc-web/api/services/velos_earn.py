@@ -9,19 +9,52 @@ from decimal import Decimal
 from typing import Optional, Union
 
 from api.models import Cyclist, Group
-from api.velos import calculate_velos_for_device, get_cyclist_leaf_group
+from api.velos import (
+    calculate_incremental_session_velos,
+    calculate_velos_for_device,
+    get_cyclist_leaf_group,
+)
 from config.logger_utils import get_logger
 
 logger = get_logger(__name__)
+
+
+def _delta_velos_for_update(
+    device,
+    distance_delta: Union[Decimal, float, int],
+    cumulative_mileage_after: Optional[Union[Decimal, float, int]],
+) -> int:
+    """Velos credited for a single update using one cumulative rounding boundary.
+
+    When the session's cumulative mileage after this update is known, the delta
+    is computed as the difference of the floored cumulative endpoints. Summed
+    over a session this telescopes to ``floor(total cumulative)``, so the map
+    avatar (sum of deltas) stays identical to the session/toast value and no
+    per-update rounding is lost. Falls back to legacy per-delta rounding when
+    no session context is available.
+    """
+    if cumulative_mileage_after is None:
+        return calculate_velos_for_device(distance_delta, device)
+
+    new_cumulative = Decimal(str(cumulative_mileage_after))
+    previous_cumulative = new_cumulative - Decimal(str(distance_delta))
+    if previous_cumulative < 0:
+        previous_cumulative = Decimal('0')
+    return calculate_incremental_session_velos(previous_cumulative, new_cumulative, device)
 
 
 def apply_velos_earn(
     cyclist: Cyclist,
     device,
     distance_delta: Union[Decimal, float, int],
+    cumulative_mileage_after: Optional[Union[Decimal, float, int]] = None,
 ) -> int:
     """
     Credit Velos to cyclist balance and leaf-group ledger when distance is earned.
+
+    Pass ``cumulative_mileage_after`` (the session's cumulative mileage after
+    this update) so the credited Velos use a single cumulative rounding
+    strategy shared with the session/toast display.
 
     Returns the number of Velos credited (0 if skipped).
     """
@@ -32,7 +65,7 @@ def apply_velos_earn(
         logger.debug("[apply_velos_earn] Skipping operator box device %s", device.name)
         return 0
 
-    delta_velos = calculate_velos_for_device(distance_delta, device)
+    delta_velos = _delta_velos_for_update(device, distance_delta, cumulative_mileage_after)
     if delta_velos <= 0:
         return 0
 

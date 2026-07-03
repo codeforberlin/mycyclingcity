@@ -39,6 +39,46 @@ class TestApplyVelosEarn:
         assert leaf_group.velos_total == 200
         assert leaf_group.velos_spendable == 200
 
+    def test_incremental_updates_match_session_total(self):
+        """Sum of per-update Velos (map avatar) equals single-floor session Velos (toast).
+
+        Many small distance deltas must not accumulate rounding loss: crediting
+        the cumulative difference makes the summed deltas telescope to the same
+        value the session/toast shows (floor of the whole cumulative distance).
+        """
+        from api.velos import calculate_session_velos, calculate_velos_for_device
+
+        leaf_group = GroupFactory(name='Leaf-Round')
+        cyclist = CyclistFactory()
+        cyclist.groups.add(leaf_group)
+        device = DeviceFactory(group=leaf_group)
+        config = device.configuration
+        config.wheel_size = 2075.0  # fractional FKM factor so rounding matters
+        config.paedagogischer_bonus = 0.0
+        config.save()
+
+        deltas = [Decimal('0.023')] * 20
+        cumulative = Decimal('0')
+        summed_avatar_velos = 0
+        for delta in deltas:
+            cumulative += delta
+            summed_avatar_velos += apply_velos_earn(
+                cyclist, device, delta, cumulative_mileage_after=cumulative
+            )
+
+        toast_velos = calculate_session_velos(cumulative, device)
+
+        # Avatar (sum of deltas) is identical to toast (single cumulative floor).
+        assert summed_avatar_velos == toast_velos
+
+        # Group ledger (DB-backed) accumulates the same telescoped total.
+        leaf_group.refresh_from_db()
+        assert leaf_group.velos_total == toast_velos
+
+        # Legacy per-delta rounding would have lost Velos (the original bug).
+        legacy_summed = sum(calculate_velos_for_device(d, device) for d in deltas)
+        assert legacy_summed < toast_velos
+
     def test_skips_operator_box(self):
         leaf_group = GroupFactory(name='Leaf')
         cyclist = CyclistFactory()

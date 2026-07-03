@@ -69,6 +69,24 @@ def calculate_session_velos(cumulative_mileage_km, device) -> int:
     return calculate_velos_for_device(cumulative_mileage_km, device)
 
 
+def calculate_incremental_session_velos(
+    previous_cumulative_km: Union[Decimal, float, int],
+    new_cumulative_km: Union[Decimal, float, int],
+    device,
+) -> int:
+    """Velos gained between two cumulative session distances.
+
+    Rounding happens once on each cumulative endpoint, so a sum of consecutive
+    increments telescopes to ``floor(total cumulative)`` without per-update
+    rounding loss. This keeps the map avatar (sum of per-update deltas) exactly
+    equal to the session/toast value (single floor of the cumulative distance).
+    """
+    return (
+        calculate_session_velos(new_cumulative_km, device)
+        - calculate_session_velos(previous_cumulative_km, device)
+    )
+
+
 def get_session_epoch(session) -> str:
     """Stable identifier for the active device session (ESP display sync)."""
     return session.start_time.isoformat()
