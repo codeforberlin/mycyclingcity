@@ -471,6 +471,7 @@ def map_page(request: HttpRequest) -> HttpResponse:
         'milestone_popup_bg_color': popup_settings.milestone_popup_background_color,
         'milestone_popup_opacity': float(popup_settings.milestone_popup_opacity),
     }
+    context.update(get_external_display_settings_context())
 
     # If HTMX request for table refresh, redirect to ranking app
     if request.headers.get('HX-Request') and request.GET.get('refresh_table'):

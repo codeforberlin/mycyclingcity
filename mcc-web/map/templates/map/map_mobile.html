@@ -117,9 +117,60 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
             font-size: 16px;
             font-weight: 600;
             min-height: 44px; /* Touch-friendly */
+        }
+
+        .table-group-header-metrics {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .table-metric-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .table-metric-cell--velos {
+            font-weight: bold;
+            min-width: 5.5rem;
+        }
+
+        .table-metric-cell--km {
+            font-weight: normal;
+            opacity: 0.9;
+            min-width: 4.5rem;
+        }
+
+        .table-metric-unit {
+            font-weight: inherit;
+            opacity: 0.9;
+            font-size: 0.85em;
+        }
+
+        .table-group-header .table-metric-unit {
+            opacity: 0.85;
+        }
+
+        .table-subgroup-header .table-group-header-metrics {
+            gap: 0.75rem;
+        }
+
+        .table-subgroup-header .table-metric-cell--velos {
+            min-width: 5rem;
+            color: #007bff;
+        }
+
+        .table-subgroup-header .table-metric-cell--km {
+            min-width: 4rem;
+            color: #495057;
         }
 
         .table-group-header:hover {
@@ -1249,7 +1300,18 @@
                             <span class="table-group-toggle-icon">▶</span>
                             🏢 {{ group.name }}
                         </span>
-                        <span style="font-weight: bold;">{% format_velos_de_tag group.velos|default:0 %} {% trans "Velos" %}</span>
+                        <div class="table-group-header-metrics">
+                            <div class="table-metric-cell table-metric-cell--velos">
+                                {% format_velos_de_tag group.velos|default:0 %}
+                                <span class="table-metric-unit">{% trans "Velos" %}</span>
+                            </div>
+                            {% if show_km_in_ranking_headers %}
+                            <div class="table-metric-cell table-metric-cell--km">
+                                {% format_km_de_tag group.km|default:0 km_display_decimals %}
+                                <span class="table-metric-unit">km</span>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="table-group-content">
@@ -1257,7 +1319,18 @@
                         <div class="table-subgroup">
                             <div class="table-subgroup-header">
                                 <span>👥 {{ sub.name }}</span>
-                                <span style="font-weight: bold; color: #007bff;">{% format_velos_de_tag sub.velos|default:0 %} {% trans "Velos" %}</span>
+                                <div class="table-group-header-metrics">
+                                    <div class="table-metric-cell table-metric-cell--velos">
+                                        {% format_velos_de_tag sub.velos|default:0 %}
+                                        <span class="table-metric-unit">{% trans "Velos" %}</span>
+                                    </div>
+                                    {% if show_km_in_ranking_headers %}
+                                    <div class="table-metric-cell table-metric-cell--km">
+                                        {% format_km_de_tag sub.km|default:0 km_display_decimals %}
+                                        <span class="table-metric-unit">km</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             
                             {% if sub.members %}
