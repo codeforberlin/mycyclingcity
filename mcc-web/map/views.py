@@ -37,6 +37,7 @@ from api.helpers import (
     build_hierarchy_from_parent_groups,
     get_cyclist_session_velos,
     sum_display_totals_from_groups_data,
+    get_leaderboard_footer_period_context,
     get_external_display_settings_context,
 )
 from api.travel_velos import build_travel_status_avatar_fields
@@ -2526,6 +2527,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     active_count = len(active_leaf_group_ids)  # Only count leaf-groups, not parent groups
     
     total_km = sum(float(g.get('distance_total', 0) or 0) for g in groups_data)
+    footer_period = get_leaderboard_footer_period_context(groups_data)
     if current_filter:
         try:
             parent_group = Group.objects.get(name=current_filter, is_visible=True)
@@ -2602,6 +2604,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'active_count': active_count,
         'total_velos': total_velos,
         'total_km': total_km,
+        **footer_period,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker

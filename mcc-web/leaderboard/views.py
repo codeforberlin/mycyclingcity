@@ -34,6 +34,7 @@ from api.helpers import (
     get_cyclist_session_velos,
     _calculate_group_velos_periods,
     sum_display_totals_from_groups_data,
+    get_leaderboard_footer_period_context,
     get_external_display_settings_context,
 )
 from api.travel_velos import build_travel_status_avatar_fields
@@ -1190,6 +1191,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     display_totals = sum_display_totals_from_groups_data(groups_data)
     total_velos = display_totals['total_velos']
     total_km = display_totals['total_km']
+    footer_period = get_leaderboard_footer_period_context(groups_data)
     
     external_display = get_external_display_settings_context()
     # Use a palette of distinct, vibrant colors
@@ -1256,6 +1258,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'active_count': active_count,
         'total_velos': total_velos,
         'total_km': total_km,
+        **footer_period,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker

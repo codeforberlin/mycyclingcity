@@ -268,6 +268,15 @@
                 </div>
             </div>
             <div class="filter-row">
+                <div class="filter-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="use_km_mode" name="use_km_mode" value="true" {% if metric_mode == 'km' %}checked{% endif %} style="width: 18px; height: 18px;">
+                        <span>{% trans "Kilometer anzeigen" %}</span>
+                    </label>
+                    <span style="font-size: 13px; color: #666;">{% trans "Standard: Velos" %}</span>
+                </div>
+            </div>
+            <div class="filter-row">
                 <button type="submit" class="btn btn-primary">{% trans "Apply Filters" %}</button>
                 <a href="{% url 'admin:api_analytics_dashboard' %}" class="btn btn-secondary">{% trans "Reset" %}</a>
                 <a href="{% url 'admin:api_analytics_hierarchy' %}?start_date={{ start_date }}&end_date={{ end_date }}{% if event_id %}&event_id={{ event_id }}{% endif %}" class="btn btn-success">{% trans "Hierarchy Breakdown" %}</a>
@@ -280,14 +289,14 @@
         <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer;">
             <input type="checkbox" id="groupTypeToggle" style="width: 20px; height: 20px; cursor: pointer;">
             <span style="font-size: 16px; font-weight: 600;">{% trans "Show Top Groups (Master Groups)" %}</span>
-            <span style="font-size: 14px; color: #666;">({% trans "Uncheck to show Subgroups with Cyclists" %})</span>
+            <span style="font-size: 14px; color: #666;">({% trans "Deaktivieren für Leaf-Gruppen" %})</span>
         </label>
     </div>
     
     <!-- Statistics Cards -->
     <div class="stats-grid" id="statsGrid">
         <div class="stat-card">
-            <h4>{% trans "Total Distance" %}</h4>
+            <h4 id="totalMetricTitle">{% trans "Gesamt-Velos" %}</h4>
             <div class="value" id="totalDistance">-</div>
         </div>
         <div class="stat-card" style="background: linear-gradient(to bottom right, #fbbf24, #f59e0b); color: #1e293b; text-align: center;">
@@ -340,14 +349,14 @@
     
     <!-- Top Lists -->
     <div class="top-list">
-        <h3>{% trans "Top Groups by Mileage" %}</h3>
+        <h3 id="topGroupsTableTitle">{% trans "Gruppen nach Velos" %}</h3>
         <table id="topGroupsTable">
             <thead>
                 <tr>
                     <th>{% trans "Rank" %}</th>
                     <th>{% trans "Group" %}</th>
                     <th>{% trans "Type" %}</th>
-                    <th>{% trans "Distance (km)" %}</th>
+                    <th id="topGroupsMetricHeader">{% trans "Velos" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -359,7 +368,7 @@
     </div>
     
     <div class="top-list">
-        <h3>{% trans "Top Cyclists by Mileage" %}</h3>
+        <h3 id="topCyclistsTableTitle">{% trans "Top Radler nach Velos" %}</h3>
         <table id="topPlayersTable">
             <thead>
                 <tr>
@@ -367,7 +376,7 @@
                     <th>{% trans "Cyclist" %}</th>
                     <th>{% trans "ID Tag" %}</th>
                     <th>{% trans "Group" %}</th>
-                    <th>{% trans "Distance (km)" %}</th>
+                    <th id="topCyclistsMetricHeader">{% trans "Velos" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -379,13 +388,13 @@
     </div>
     
     <div class="top-list">
-        <h3>{% trans "Top Devices by Mileage" %}</h3>
+        <h3 id="topDevicesTableTitle">{% trans "Top Geräte nach Velos" %}</h3>
         <table id="topDevicesTable">
             <thead>
                 <tr>
                     <th>{% trans "Rank" %}</th>
                     <th>{% trans "Device" %}</th>
-                    <th>{% trans "Distance (km)" %}</th>
+                    <th id="topDevicesMetricHeader">{% trans "Velos" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -454,6 +463,41 @@ function formatNumberDE(value, decimals) {
     return integerWithSeparators;
 }
 
+function formatVelosDE(value) {
+    if (value === null || value === undefined || isNaN(value)) {
+        return '0';
+    }
+    const num = Math.round(parseFloat(value));
+    const numStr = String(Math.abs(num));
+    let result = '';
+    for (let i = 0; i < numStr.length; i++) {
+        if (i > 0 && (numStr.length - i) % 3 === 0) {
+            result += '.';
+        }
+        result += numStr[i];
+    }
+    return (num < 0 ? '-' : '') + result;
+}
+
+function getMetricMode() {
+    const kmCheckbox = document.getElementById('use_km_mode');
+    return kmCheckbox && kmCheckbox.checked ? 'km' : 'velos';
+}
+
+function formatMetricValue(value) {
+    if (getMetricMode() === 'km') {
+        return formatNumberDE(value, 2);
+    }
+    return formatVelosDE(value);
+}
+
+function formatMetricWithUnit(value) {
+    if (getMetricMode() === 'km') {
+        return formatNumberDE(value, 2) + ' km';
+    }
+    return formatVelosDE(value) + ' Velos';
+}
+
 (function() {
     console.log('Analytics dashboard script executing');
     // Get filter values
@@ -472,7 +516,6 @@ function formatNumberDE(value, decimals) {
         const checkboxes = form.querySelectorAll('input[type="checkbox"][name^="use_"]');
         checkboxes.forEach(checkbox => {
             if (!checkbox.checked) {
-                // Add hidden input to ensure unchecked checkboxes are sent as false
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
                 hiddenInput.name = checkbox.name;
@@ -480,12 +523,58 @@ function formatNumberDE(value, decimals) {
                 form.appendChild(hiddenInput);
             }
         });
-        return true; // Allow form submission
+        const metricInput = document.createElement('input');
+        metricInput.type = 'hidden';
+        metricInput.name = 'metric_mode';
+        metricInput.value = getMetricMode();
+        form.appendChild(metricInput);
+        return true;
     }
     
     // Chart instances
     let dailyChart = null;
     let hourlyChart = null;
+
+    // Update all metric-dependent labels (km vs. Velos). Defined inside the IIFE
+    // so it can access the dailyChart / hourlyChart instances.
+    function updateMetricLabels() {
+        const isKm = getMetricMode() === 'km';
+        const totalTitle = document.getElementById('totalMetricTitle');
+        if (totalTitle) {
+            totalTitle.textContent = isKm ? '{% trans "Gesamtdistanz" %}' : '{% trans "Gesamt-Velos" %}';
+        }
+        const topGroupsTitle = document.getElementById('topGroupsTableTitle');
+        if (topGroupsTitle) {
+            topGroupsTitle.textContent = isKm ? '{% trans "Gruppen nach Kilometer" %}' : '{% trans "Gruppen nach Velos" %}';
+        }
+        const topCyclistsTitle = document.getElementById('topCyclistsTableTitle');
+        if (topCyclistsTitle) {
+            topCyclistsTitle.textContent = isKm ? '{% trans "Top Radler nach Kilometer" %}' : '{% trans "Top Radler nach Velos" %}';
+        }
+        const topDevicesTitle = document.getElementById('topDevicesTableTitle');
+        if (topDevicesTitle) {
+            topDevicesTitle.textContent = isKm ? '{% trans "Top Geräte nach Kilometer" %}' : '{% trans "Top Geräte nach Velos" %}';
+        }
+        const metricHeaderText = isKm ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
+        ['topGroupsMetricHeader', 'topCyclistsMetricHeader', 'topDevicesMetricHeader'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = metricHeaderText;
+        });
+        if (dailyChart && dailyChart.data.datasets[0]) {
+            dailyChart.data.datasets[0].label = isKm ? '{% trans "Daily Distance (km)" %}' : '{% trans "Tägliche Velos" %}';
+            if (dailyChart.options.scales && dailyChart.options.scales.y && dailyChart.options.scales.y.title) {
+                dailyChart.options.scales.y.title.text = isKm ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
+            }
+            dailyChart.update();
+        }
+        if (hourlyChart && hourlyChart.data.datasets[0]) {
+            hourlyChart.data.datasets[0].label = isKm ? '{% trans "Hourly Distance (km)" %}' : '{% trans "Stündliche Velos" %}';
+            if (hourlyChart.options.scales && hourlyChart.options.scales.y && hourlyChart.options.scales.y.title) {
+                hourlyChart.options.scales.y.title.text = isKm ? '{% trans "Distance (km)" %}' : '{% trans "Velos" %}';
+            }
+            hourlyChart.update();
+        }
+    }
     
     // Initialize charts
     function initCharts() {
@@ -536,7 +625,7 @@ function formatNumberDE(value, decimals) {
             data: {
                 labels: [],
                 datasets: [{
-                    label: '{% trans "Daily Distance (km)" %}',
+                    label: '{% trans "Tägliche Velos" %}',
                     data: [],
                     borderColor: 'rgb(65, 118, 144)',
                     backgroundColor: 'rgba(65, 118, 144, 0.1)',
@@ -556,7 +645,7 @@ function formatNumberDE(value, decimals) {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: '{% trans "Distance (km)" %}'
+                            text: '{% trans "Velos" %}'
                         }
                     }
                 }
@@ -570,7 +659,7 @@ function formatNumberDE(value, decimals) {
             data: {
                 labels: [],
                 datasets: [{
-                    label: '{% trans "Hourly Distance (km)" %}',
+                    label: '{% trans "Stündliche Velos" %}',
                     data: [],
                     borderColor: 'rgb(40, 167, 69)',
                     backgroundColor: 'rgba(40, 167, 69, 0.1)',
@@ -590,7 +679,7 @@ function formatNumberDE(value, decimals) {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: '{% trans "Distance (km)" %}'
+                            text: '{% trans "Velos" %}'
                         }
                     }
                 }
@@ -601,6 +690,7 @@ function formatNumberDE(value, decimals) {
     
     // Load data
     function loadData() {
+        updateMetricLabels();
         console.log('Loading data with params:', {startDate, endDate, eventId, groupId, cyclistId});
         
         // Get filter checkboxes
@@ -609,9 +699,11 @@ function formatNumberDE(value, decimals) {
         const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
         const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
         const trackId = document.getElementById('track_id')?.value || '';
+        const metricMode = getMetricMode();
+        const metricParam = `&metric_mode=${metricMode}`;
         
         // Load daily data
-        const dailyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=daily`;
+        const dailyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=daily${metricParam}`;
         console.log('Fetching daily data from:', dailyUrl);
         fetch(dailyUrl)
             .then(response => {
@@ -641,7 +733,7 @@ function formatNumberDE(value, decimals) {
             });
         
         // Load hourly data
-        const hourlyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=hourly`;
+        const hourlyUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=hourly${metricParam}`;
         console.log('Fetching hourly data from:', hourlyUrl);
         fetch(hourlyUrl)
             .then(response => {
@@ -686,8 +778,9 @@ function formatNumberDE(value, decimals) {
             const useCyclistFilter = document.querySelector('input[name="use_cyclist_filter"]')?.checked || false;
             const useTrackFilter = document.querySelector('input[name="use_track_filter"]')?.checked || false;
             const trackId = document.getElementById('track_id')?.value || '';
+            const metricMode = getMetricMode();
             
-            const aggregatedUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=aggregated&group_type=${groupType}`;
+            const aggregatedUrl = `{% url 'admin:api_analytics_data_api' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&track_id=${trackId}&use_event_filter=${useEventFilter}&use_group_filter=${useGroupFilter}&use_cyclist_filter=${useCyclistFilter}&use_track_filter=${useTrackFilter}&report_type=aggregated&group_type=${groupType}&metric_mode=${metricMode}`;
             console.log('Fetching aggregated data from:', aggregatedUrl);
             fetch(aggregatedUrl)
             .then(response => {
@@ -699,7 +792,7 @@ function formatNumberDE(value, decimals) {
                 if (data.aggregated) {
                     // Update total distance (German format)
                     document.getElementById('totalDistance').textContent = 
-                        formatNumberDE(data.aggregated.total_distance || 0, 2) + ' km';
+                        formatMetricWithUnit(data.aggregated.total_distance || 0);
                     
                     // Update daily record holder
                     const dailyRecordParentEl = document.getElementById('dailyRecordParent');
@@ -714,7 +807,7 @@ function formatNumberDE(value, decimals) {
                             dailyRecordHolderEl.textContent = data.aggregated.daily_record_holder.name || '-';
                         }
                         if (dailyTotalEl) {
-                            dailyTotalEl.textContent = formatNumberDE(data.aggregated.daily_record_value || 0, 2) + ' km';
+                            dailyTotalEl.textContent = formatMetricWithUnit(data.aggregated.daily_record_value || 0);
                         }
                     } else {
                         // Show total even if no record holder
@@ -725,7 +818,7 @@ function formatNumberDE(value, decimals) {
                             dailyRecordHolderEl.textContent = '-';
                         }
                         if (dailyTotalEl) {
-                            dailyTotalEl.textContent = formatNumberDE(data.aggregated.daily_total || 0, 2) + ' km';
+                            dailyTotalEl.textContent = formatMetricWithUnit(data.aggregated.daily_total || 0);
                         }
                     }
                     
@@ -742,7 +835,7 @@ function formatNumberDE(value, decimals) {
                             weeklyRecordHolderEl.textContent = data.aggregated.weekly_record_holder.name || '-';
                         }
                         if (weeklyTotalEl) {
-                            weeklyTotalEl.textContent = formatNumberDE(data.aggregated.weekly_record_value || 0, 2) + ' km';
+                            weeklyTotalEl.textContent = formatMetricWithUnit(data.aggregated.weekly_record_value || 0);
                         }
                     } else {
                         // Show total even if no record holder
@@ -753,7 +846,7 @@ function formatNumberDE(value, decimals) {
                             weeklyRecordHolderEl.textContent = '-';
                         }
                         if (weeklyTotalEl) {
-                            weeklyTotalEl.textContent = formatNumberDE(data.aggregated.weekly_total || 0, 2) + ' km';
+                            weeklyTotalEl.textContent = formatMetricWithUnit(data.aggregated.weekly_total || 0);
                         }
                     }
                     
@@ -770,7 +863,7 @@ function formatNumberDE(value, decimals) {
                             monthlyRecordHolderEl.textContent = data.aggregated.monthly_record_holder.name || '-';
                         }
                         if (monthlyTotalEl) {
-                            monthlyTotalEl.textContent = formatNumberDE(data.aggregated.monthly_record_value || 0, 2) + ' km';
+                            monthlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.monthly_record_value || 0);
                         }
                     } else {
                         // Show total even if no record holder
@@ -781,7 +874,7 @@ function formatNumberDE(value, decimals) {
                             monthlyRecordHolderEl.textContent = '-';
                         }
                         if (monthlyTotalEl) {
-                            monthlyTotalEl.textContent = formatNumberDE(data.aggregated.monthly_total || 0, 2) + ' km';
+                            monthlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.monthly_total || 0);
                         }
                     }
                     
@@ -798,7 +891,7 @@ function formatNumberDE(value, decimals) {
                             yearlyRecordHolderEl.textContent = data.aggregated.yearly_record_holder.name || '-';
                         }
                         if (yearlyTotalEl) {
-                            yearlyTotalEl.textContent = formatNumberDE(data.aggregated.yearly_record_value || 0, 2) + ' km';
+                            yearlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.yearly_record_value || 0);
                         }
                     } else {
                         // Show total even if no record holder
@@ -809,7 +902,7 @@ function formatNumberDE(value, decimals) {
                             yearlyRecordHolderEl.textContent = '-';
                         }
                         if (yearlyTotalEl) {
-                            yearlyTotalEl.textContent = formatNumberDE(data.aggregated.yearly_total || 0, 2) + ' km';
+                            yearlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.yearly_total || 0);
                         }
                     }
                     
@@ -822,7 +915,7 @@ function formatNumberDE(value, decimals) {
                             row.insertCell(0).textContent = index + 1;
                             row.insertCell(1).textContent = group.name || '{% trans "Unknown" %}';
                             row.insertCell(2).textContent = group.type || '';
-                            row.insertCell(3).textContent = formatNumberDE(group.distance || 0, 2);
+                            row.insertCell(3).textContent = formatMetricValue(group.distance || 0);
                         });
                     } else {
                         const row = topGroupsTbody.insertRow();
@@ -842,7 +935,7 @@ function formatNumberDE(value, decimals) {
                             row.insertCell(1).textContent = cyclist.user_id || '';
                             row.insertCell(2).textContent = cyclist.id_tag || '';
                             row.insertCell(3).textContent = cyclist.group || '{% trans "Unknown" %}';
-                            row.insertCell(4).textContent = formatNumberDE(cyclist.distance || 0, 2);
+                            row.insertCell(4).textContent = formatMetricValue(cyclist.distance || 0);
                         });
                     } else {
                         const row = topPlayersTbody.insertRow();
@@ -860,7 +953,7 @@ function formatNumberDE(value, decimals) {
                             const row = topDevicesTbody.insertRow();
                             row.insertCell(0).textContent = index + 1;
                             row.insertCell(1).textContent = device.name || '';
-                            row.insertCell(2).textContent = formatNumberDE(device.distance || 0, 2);
+                            row.insertCell(2).textContent = formatMetricValue(device.distance || 0);
                         });
                     } else {
                         const row = topDevicesTbody.insertRow();
@@ -903,7 +996,8 @@ function formatNumberDE(value, decimals) {
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=csv`;
+            const metricMode = getMetricMode();
+            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=csv&metric_mode=${metricMode}`;
             window.location.href = url;
         });
     }
@@ -911,7 +1005,8 @@ function formatNumberDE(value, decimals) {
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=excel`;
+            const metricMode = getMetricMode();
+            const url = `{% url 'admin:api_analytics_export' %}?start_date=${startDate}&end_date=${endDate}&event_id=${eventId}&group_id=${groupId}&cyclist_id=${cyclistId}&format=excel&metric_mode=${metricMode}`;
             window.location.href = url;
         });
     }
@@ -956,6 +1051,7 @@ function formatNumberDE(value, decimals) {
         try {
             console.log('Calling initCharts()...');
             initCharts();
+            updateMetricLabels();
             console.log('Charts initialized successfully');
             
             updateStatus('dailyChartStatusText', 'Charts created, loading data...', '#2196F3');
@@ -1017,6 +1113,14 @@ function formatNumberDE(value, decimals) {
             
             // Initialize filter selects
             updateFilterSelects();
+
+            // Force the metric-mode checkbox to reflect the URL parameter
+            // (default: Velos = unchecked). Prevents stale browser autofill state.
+            const kmCheckbox = document.getElementById('use_km_mode');
+            if (kmCheckbox) {
+                kmCheckbox.checked = (urlParams.get('metric_mode') || 'velos').toLowerCase() === 'km';
+            }
+            updateMetricLabels();
             
             // Add event listeners to filter checkboxes
             const filterCheckboxes = document.querySelectorAll('input[name^="use_"]');

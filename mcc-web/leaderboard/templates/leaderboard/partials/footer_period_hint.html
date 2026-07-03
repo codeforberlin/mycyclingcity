@@ -1,0 +1,12 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity -->
+{% load i18n %}
+{% if footer_totals_period_mode == 'all_time' %}
+<span class="text-xs opacity-70">{% trans "Zeitraum: gesamte erfasste Zeit" %}</span>
+{% elif footer_totals_period_mode == 'single' %}
+<span class="text-xs opacity-70">{% trans "Zeitraum: seit" %} {{ footer_totals_period_since|date:"d.m.Y" }}</span>
+{% elif footer_totals_period_mode == 'multiple' %}
+<span class="text-xs opacity-70">
+    {% trans "Zeitraum: seit jeweiligem Jahresabschluss" %}
+    ({% for period_date in footer_totals_period_dates %}{{ period_date|date:"d.m.Y" }}{% if not forloop.last %}, {% endif %}{% endfor %})
+</span>
+{% endif %}

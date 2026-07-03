@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Sum, Count, Q, F, DecimalField
+from django.db.models import Sum, Count, Q, F, DecimalField, IntegerField
 from django.db.models.functions import TruncHour, TruncDay, TruncDate
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -37,6 +37,30 @@ from api.models import (
 from eventboard.models import EventHistory, Event
 from iot.models import Device
 from leaderboard.views import _calculate_group_totals_from_metrics
+from api.velos import VELOS_PER_KM
+
+
+def _parse_metric_mode(raw: Optional[str]) -> str:
+    """Return 'velos' (default) or 'km'."""
+    if raw and str(raw).strip().lower() == 'km':
+        return 'km'
+    return 'velos'
+
+
+def _hourly_metric_field(metric_mode: str) -> str:
+    return 'distance_km' if metric_mode == 'km' else 'velos'
+
+
+def _sum_output_field(metric_mode: str):
+    return DecimalField() if metric_mode == 'km' else IntegerField()
+
+
+def _event_history_total_to_metric(total_velos, metric_mode: str) -> float:
+    """Convert EventHistory aggregate (stored as Velos) to the active metric."""
+    velos = int(total_velos or 0)
+    if metric_mode == 'km':
+        return velos / VELOS_PER_KM
+    return float(velos)
 
 
 # Analytics views as standalone functions
@@ -86,6 +110,7 @@ def analytics_dashboard(request):
         'groups': Group.objects.filter(is_visible=True).order_by('name'),
         'cyclists': Cyclist.objects.filter(is_visible=True).order_by('user_id'),
         'tracks': TravelTrack.objects.filter(is_active=True).order_by('name'),
+        'metric_mode': _parse_metric_mode(request.GET.get('metric_mode')),
     }
     
     return render(request, 'admin/api/analytics_dashboard.html', context)
@@ -109,6 +134,9 @@ def analytics_data_api(request):
     use_track_filter = request.GET.get('use_track_filter', 'false').strip().lower() == 'true'
     report_type = request.GET.get('report_type', 'hourly')  # hourly, daily, aggregated
     group_type = request.GET.get('group_type', 'top_groups')  # top_groups or subgroups
+    metric_mode = _parse_metric_mode(request.GET.get('metric_mode'))
+    metric_field = _hourly_metric_field(metric_mode)
+    sum_output_field = _sum_output_field(metric_mode)
     
     # Parse dates with fallback to default range
     if not start_date or not end_date:
@@ -125,56 +153,38 @@ def analytics_data_api(request):
             start_dt = timezone.now() - timedelta(days=30)
             end_dt = timezone.now()
     
-    # Build base queryset with optimized queries
-    metrics_qs = HourlyMetric.objects.filter(
-        timestamp__gte=start_dt,
-        timestamp__lte=end_dt
-    ).select_related('device', 'cyclist', 'group_at_time')
+    filter_kwargs = {
+        'use_event_filter': use_event_filter,
+        'event_id': event_id,
+        'use_group_filter': use_group_filter,
+        'group_id': group_id,
+        'use_cyclist_filter': use_cyclist_filter,
+        'cyclist_id': cyclist_id,
+        'use_track_filter': use_track_filter,
+        'track_id': track_id,
+    }
+
+    # Build base queryset with optimized queries (always scoped to the selected date range)
+    metrics_qs = _build_filtered_hourly_metrics_qs(
+        start_dt,
+        end_dt,
+        select_related=True,
+        **filter_kwargs,
+    )
     
-    # Apply filters only if enabled
-    if use_event_filter and event_id:
-        # Filter by groups participating in event
-        try:
-            event = Event.objects.get(pk=event_id)
-            group_ids = event.group_statuses.values_list('group_id', flat=True)
-            metrics_qs = metrics_qs.filter(group_at_time_id__in=group_ids)
-        except Event.DoesNotExist:
-            pass
-    
-    if use_group_filter and group_id:
-        # Filter by group and all its descendants
-        try:
-            group = Group.objects.get(pk=group_id)
-            descendant_ids = _get_descendant_group_ids(group)
-            metrics_qs = metrics_qs.filter(group_at_time_id__in=descendant_ids)
-        except Group.DoesNotExist:
-            pass
-    
-    if use_cyclist_filter and cyclist_id:
-        metrics_qs = metrics_qs.filter(cyclist_id=cyclist_id)
-    
-    if use_track_filter and track_id:
-        # Filter by groups participating in track
-        try:
-            track = TravelTrack.objects.get(pk=track_id)
-            group_ids = track.group_statuses.values_list('group_id', flat=True)
-            metrics_qs = metrics_qs.filter(group_at_time_id__in=group_ids)
-        except TravelTrack.DoesNotExist:
-            pass
-    
-    response_data = {}
+    response_data = {'metric_mode': metric_mode}
     
     if report_type == 'hourly':
         # Hourly utilization data
         hourly_data = metrics_qs.annotate(
             hour=TruncHour('timestamp')
         ).values('hour').annotate(
-            total_distance=Sum('distance_km', output_field=DecimalField())
+            total_value=Sum(metric_field, output_field=sum_output_field)
         ).order_by('hour')
         
         response_data['hourly'] = {
             'labels': [item['hour'].strftime('%Y-%m-%d %H:00') if item.get('hour') else '' for item in hourly_data],
-            'data': [float(item.get('total_distance') or 0) for item in hourly_data],
+            'data': [float(item.get('total_value') or 0) for item in hourly_data],
         }
     
     elif report_type == 'daily':
@@ -182,12 +192,12 @@ def analytics_data_api(request):
         daily_data = metrics_qs.annotate(
             day=TruncDate('timestamp')
         ).values('day').annotate(
-            total_distance=Sum('distance_km', output_field=DecimalField())
+            total_value=Sum(metric_field, output_field=sum_output_field)
         ).order_by('day')
         
         response_data['daily'] = {
             'labels': [item['day'].strftime('%Y-%m-%d') if item.get('day') else '' for item in daily_data],
-            'data': [float(item.get('total_distance') or 0) for item in daily_data],
+            'data': [float(item.get('total_value') or 0) for item in daily_data],
         }
     
     elif report_type == 'aggregated':
@@ -229,44 +239,19 @@ def analytics_data_api(request):
         # Note: We need to apply filters to the HourlyMetric query, not just the groups
         now = timezone.now()
         
-        # Build base HourlyMetric queryset with filters
-        total_metrics_qs = HourlyMetric.objects.filter(
-            group_at_time__isnull=False
+        # Same date range and filters as charts/top lists (fixes all-time total_distance bug)
+        total_metrics_qs = _build_filtered_hourly_metrics_qs(
+            start_dt,
+            end_dt,
+            require_group_at_time=True,
+            **filter_kwargs,
         )
-        
-        # Apply filters to HourlyMetric query
-        if use_event_filter and event_id:
-            try:
-                event = Event.objects.get(pk=event_id)
-                group_ids = event.group_statuses.values_list('group_id', flat=True)
-                total_metrics_qs = total_metrics_qs.filter(group_at_time_id__in=group_ids)
-            except Event.DoesNotExist:
-                pass
-        
-        if use_group_filter and group_id:
-            try:
-                group = Group.objects.get(pk=group_id)
-                descendant_ids = _get_descendant_group_ids(group)
-                total_metrics_qs = total_metrics_qs.filter(group_at_time_id__in=descendant_ids)
-            except Group.DoesNotExist:
-                pass
-        
-        if use_cyclist_filter and cyclist_id:
-            total_metrics_qs = total_metrics_qs.filter(cyclist_id=cyclist_id)
-        
-        if use_track_filter and track_id:
-            try:
-                track = TravelTrack.objects.get(pk=track_id)
-                group_ids = track.group_statuses.values_list('group_id', flat=True)
-                total_metrics_qs = total_metrics_qs.filter(group_at_time_id__in=group_ids)
-            except TravelTrack.DoesNotExist:
-                pass
         
         # Calculate total distance from HourlyMetric (sum of all top-level groups)
         # Use the same logic as leaderboard to ensure consistency
         # First, get totals per group from HourlyMetric (only direct metrics, no aggregation yet)
         group_totals_from_metrics = total_metrics_qs.values('group_at_time_id').annotate(
-            total=Sum('distance_km', output_field=DecimalField())
+            total=Sum(metric_field, output_field=sum_output_field)
         )
         
         # Build a dictionary of group_id -> total (only direct metrics, no parent aggregation yet)
@@ -324,9 +309,12 @@ def analytics_data_api(request):
                         event_history_qs = event_history_qs.filter(group_id__in=descendant_ids)
                     except Group.DoesNotExist:
                         pass
-                event_history_total = event_history_qs.aggregate(
-                    total=Sum('total_distance_km', output_field=DecimalField())
-                )['total'] or Decimal('0.00000')
+                event_history_total_raw = event_history_qs.aggregate(
+                    total=Sum('total_velos', output_field=IntegerField())
+                )['total'] or 0
+                event_history_total = Decimal(str(
+                    _event_history_total_to_metric(event_history_total_raw, metric_mode)
+                ))
                 total_distance += event_history_total
             except Event.DoesNotExist:
                 pass
@@ -359,12 +347,15 @@ def analytics_data_api(request):
             except TravelTrack.DoesNotExist:
                 pass
         
-        # Get top groups by HourlyMetric total (consistent with Leaderboard)
+        # Groups table: TOP-level only, or leaf groups only (never mixed)
+        groups_qs = _filter_groups_for_analytics_table(groups_qs, group_type)
+
         top_groups = []
-        for g in groups_qs.select_related('group_type')[:50]:  # Get more to filter by total
+        for g in groups_qs.select_related('group_type')[:100]:
             group_total = group_total_dict.get(g.id, 0.0)
             if group_total > 0:
                 top_groups.append({
+                    'group_id': g.id,
                     'name': g.name,
                     'type': g.group_type.name if g.group_type else '',
                     'distance': group_total
@@ -392,11 +383,18 @@ def analytics_data_api(request):
                         pass
                 
                 event_groups = list(event_history_qs.values(
-                    'group__name', 'group__group_type__name'
+                    'group_id', 'group__name', 'group__group_type__name'
                 ).annotate(
-                    total_distance=Sum('total_distance_km', output_field=DecimalField())
-                ).order_by('-total_distance')[:10])
-                
+                    total_distance=Sum('total_velos', output_field=IntegerField())
+                ).order_by('-total_distance'))
+
+                allowed_group_ids = set(
+                    _filter_groups_for_analytics_table(
+                        Group.objects.filter(id__in=[row['group_id'] for row in event_groups]),
+                        group_type,
+                    ).values_list('id', flat=True)
+                )
+
                 # Merge with current group totals
                 # Create a dict from current top_groups
                 group_dict = {}
@@ -405,13 +403,17 @@ def analytics_data_api(request):
                     if key[0]:  # Only add if name exists
                         group_dict[key] = item.get('distance', 0)
                 
-                # Add event history data
+                # Add event history data (same TOP/leaf level as the table)
                 for item in event_groups:
+                    if item.get('group_id') not in allowed_group_ids:
+                        continue
                     # Convert group__group_type__name to string (it may be None)
                     group_type_name = item.get('group__group_type__name') or ''
                     key = (item.get('group__name'), group_type_name)
                     if key[0]:  # Only add if name exists
-                        event_distance = float(item.get('total_distance') or 0)
+                        event_distance = _event_history_total_to_metric(
+                            item.get('total_distance'), metric_mode
+                        )
                         if key in group_dict:
                             # Add event distance to existing group total
                             group_dict[key] += event_distance
@@ -435,7 +437,7 @@ def analytics_data_api(request):
         top_cyclists_qs = metrics_qs.filter(cyclist__isnull=False).values(
             'cyclist__user_id', 'cyclist__id_tag', 'cyclist_id'
         ).annotate(
-            total_distance=Sum('distance_km', output_field=DecimalField())
+            total_distance=Sum(metric_field, output_field=sum_output_field)
         ).order_by('-total_distance')[:10]
         
         # Get cyclist IDs to fetch their groups
@@ -462,8 +464,10 @@ def analytics_data_api(request):
             for item in top_cyclists
         ]
         
-        # If no cyclist data from HourlyMetric, try current cyclist totals as fallback
-        if not top_cyclists or (len(top_cyclists) > 0 and all(c.get('distance', 0) == 0 for c in top_cyclists)):
+        # If no cyclist data from HourlyMetric, try current cyclist totals as fallback (km only)
+        if metric_mode == 'km' and (
+            not top_cyclists or (len(top_cyclists) > 0 and all(c.get('distance', 0) == 0 for c in top_cyclists))
+        ):
             cyclists_qs = Cyclist.objects.filter(is_visible=True)
             if cyclist_id:
                 cyclists_qs = cyclists_qs.filter(pk=cyclist_id)
@@ -495,7 +499,7 @@ def analytics_data_api(request):
         top_devices_qs = metrics_qs.values(
             'device__name', 'device__display_name'
         ).annotate(
-            total_distance=Sum('distance_km', output_field=DecimalField())
+            total_distance=Sum(metric_field, output_field=sum_output_field)
         ).order_by('-total_distance')[:10]
         
         top_devices = list(top_devices_qs)
@@ -507,8 +511,10 @@ def analytics_data_api(request):
             for item in top_devices
         ]
         
-        # If no device data from HourlyMetric, try current device totals as fallback
-        if not top_devices or (len(top_devices) > 0 and all(d.get('distance', 0) == 0 for d in top_devices)):
+        # If no device data from HourlyMetric, try current device totals as fallback (km only)
+        if metric_mode == 'km' and (
+            not top_devices or (len(top_devices) > 0 and all(d.get('distance', 0) == 0 for d in top_devices))
+        ):
             devices_qs = Device.objects.filter(is_visible=True)
             if group_id:
                 try:
@@ -572,7 +578,7 @@ def analytics_data_api(request):
                 pass
         
         daily_metrics = daily_metrics.values('group_at_time').annotate(
-            daily_total=Sum('distance_km')
+            daily_total=Sum(metric_field, output_field=sum_output_field)
         )
         
         # Calculate daily kilometers per group (only for visible groups, like leaderboard)
@@ -729,7 +735,7 @@ def analytics_data_api(request):
                 pass
         
         weekly_metrics = weekly_metrics.values('group_at_time').annotate(
-            weekly_total=Sum('distance_km')
+            weekly_total=Sum(metric_field, output_field=sum_output_field)
         )
         
         # Calculate weekly kilometers per group (only for visible groups)
@@ -875,7 +881,7 @@ def analytics_data_api(request):
                 pass
         
         monthly_metrics = monthly_metrics.values('group_at_time').annotate(
-            monthly_total=Sum('distance_km')
+            monthly_total=Sum(metric_field, output_field=sum_output_field)
         )
         
         # Calculate monthly kilometers per group (only for visible groups)
@@ -1017,7 +1023,7 @@ def analytics_data_api(request):
                 pass
         
         yearly_metrics = yearly_metrics.values('group_at_time').annotate(
-            yearly_total=Sum('distance_km')
+            yearly_total=Sum(metric_field, output_field=sum_output_field)
         )
         
         # Calculate yearly kilometers per group (only for visible groups)
@@ -1125,6 +1131,7 @@ def analytics_data_api(request):
                     yearly_total += Decimal(str(km))
         
         response_data['aggregated'] = {
+            'metric_mode': metric_mode,
             'total_distance': float(total_distance),
             'daily_total': float(daily_total),
             'weekly_total': float(weekly_total),
@@ -1159,6 +1166,8 @@ def export_data(request):
     group_id = request.GET.get('group_id')
     cyclist_id = request.GET.get('cyclist_id')
     export_format = request.GET.get('format', 'csv')  # csv or excel
+    metric_mode = _parse_metric_mode(request.GET.get('metric_mode'))
+    value_column = _('Distance (km)') if metric_mode == 'km' else _('Velos')
     
     # Parse dates
     try:
@@ -1212,7 +1221,7 @@ def export_data(request):
             # Headers
             headers = [
                 'Timestamp', 'Cyclist', 'ID Tag', 'Device', 'Group',
-                'Group Type', 'Distance (km)'
+                'Group Type', str(value_column),
             ]
             ws.append(headers)
             
@@ -1223,6 +1232,11 @@ def export_data(request):
             
             # Data rows
             for metric in metrics_qs:
+                metric_value = (
+                    float(metric.distance_km)
+                    if metric_mode == 'km'
+                    else int(metric.velos or 0)
+                )
                 ws.append([
                     metric.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                     metric.cyclist.user_id if metric.cyclist else '',
@@ -1230,7 +1244,7 @@ def export_data(request):
                     metric.device.display_name or metric.device.name,
                     metric.group_at_time.name if metric.group_at_time else '',
                     metric.group_at_time.group_type.name if metric.group_at_time and metric.group_at_time.group_type else '',
-                    float(metric.distance_km),
+                    metric_value,
                 ])
             
             # Create response
@@ -1256,12 +1270,14 @@ def export_data(request):
         writer = csv.writer(response, delimiter=';')
         writer.writerow([
             'Timestamp', 'Cyclist', 'ID Tag', 'Device', 'Group',
-            'Group Type', 'Distance (km)'
+            'Group Type', str(value_column),
         ])
         
         for metric in metrics_qs:
-            # Format distance with comma as decimal separator for German Excel
-            distance_str = str(float(metric.distance_km)).replace('.', ',')
+            if metric_mode == 'km':
+                value_str = str(float(metric.distance_km)).replace('.', ',')
+            else:
+                value_str = str(int(metric.velos or 0))
             writer.writerow([
                 metric.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                 metric.cyclist.user_id if metric.cyclist else '',
@@ -1269,7 +1285,7 @@ def export_data(request):
                 metric.device.display_name or metric.device.name,
                 metric.group_at_time.name if metric.group_at_time else '',
                 metric.group_at_time.group_type.name if metric.group_at_time and metric.group_at_time.group_type else '',
-                distance_str,
+                value_str,
             ])
         
         return response
@@ -1325,13 +1341,13 @@ def hierarchy_breakdown(request):
                 is_visible=True
             ).annotate(
                 total_distance=Sum(
-                    'event_history__total_distance_km',
+                    'event_history__total_velos',
                     filter=Q(
                         event_history__event=event,
                         event_history__end_time__gte=start_dt,
                         event_history__end_time__lte=end_dt
                     ),
-                    output_field=DecimalField()
+                    output_field=IntegerField()
                 )
             ).filter(total_distance__gt=0).order_by('-total_distance')
             
@@ -1351,13 +1367,13 @@ def hierarchy_breakdown(request):
                 is_visible=True
             ).annotate(
                 total_distance=Sum(
-                    'event_history__total_distance_km',
+                    'event_history__total_velos',
                     filter=Q(
                         event_history__event=event,
                         event_history__end_time__gte=start_dt,
                         event_history__end_time__lte=end_dt
                     ),
-                    output_field=DecimalField()
+                    output_field=IntegerField()
                 )
             ).filter(total_distance__gt=0).order_by('-total_distance')
             
@@ -1395,6 +1411,76 @@ def hierarchy_breakdown(request):
             context['cyclists'] = cyclists
     
     return render(request, 'admin/api/hierarchy_breakdown.html', context)
+
+
+def _filter_groups_for_analytics_table(groups_qs, group_type: str):
+    """
+    Restrict the groups table to one hierarchy level.
+
+    - top_groups: TOP/master groups only (no parent)
+    - subgroups: leaf groups only (no child groups)
+    """
+    from django.db.models import Count
+
+    qs = groups_qs.annotate(_child_count=Count('children'))
+    if group_type == 'top_groups':
+        return qs.filter(parent__isnull=True)
+    return qs.filter(_child_count=0)
+
+
+def _build_filtered_hourly_metrics_qs(
+    start_dt: datetime,
+    end_dt: datetime,
+    *,
+    use_event_filter: bool = False,
+    event_id: str = '',
+    use_group_filter: bool = False,
+    group_id: str = '',
+    use_cyclist_filter: bool = False,
+    cyclist_id: str = '',
+    use_track_filter: bool = False,
+    track_id: str = '',
+    require_group_at_time: bool = False,
+    select_related: bool = False,
+):
+    """HourlyMetric queryset for analytics with date range and optional filters."""
+    qs = HourlyMetric.objects.filter(
+        timestamp__gte=start_dt,
+        timestamp__lte=end_dt,
+    )
+    if require_group_at_time:
+        qs = qs.filter(group_at_time__isnull=False)
+    if select_related:
+        qs = qs.select_related('device', 'cyclist', 'group_at_time')
+
+    if use_event_filter and event_id:
+        try:
+            event = Event.objects.get(pk=event_id)
+            group_ids = event.group_statuses.values_list('group_id', flat=True)
+            qs = qs.filter(group_at_time_id__in=group_ids)
+        except Event.DoesNotExist:
+            pass
+
+    if use_group_filter and group_id:
+        try:
+            group = Group.objects.get(pk=group_id)
+            descendant_ids = _get_descendant_group_ids(group)
+            qs = qs.filter(group_at_time_id__in=descendant_ids)
+        except Group.DoesNotExist:
+            pass
+
+    if use_cyclist_filter and cyclist_id:
+        qs = qs.filter(cyclist_id=cyclist_id)
+
+    if use_track_filter and track_id:
+        try:
+            track = TravelTrack.objects.get(pk=track_id)
+            group_ids = track.group_statuses.values_list('group_id', flat=True)
+            qs = qs.filter(group_at_time_id__in=group_ids)
+        except TravelTrack.DoesNotExist:
+            pass
+
+    return qs
 
 
 def _get_descendant_group_ids(group: Group) -> List[int]:

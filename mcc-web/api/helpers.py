@@ -54,6 +54,56 @@ def sum_display_totals_from_groups_data(groups_data: List[Dict[str, Any]]) -> Di
     }
 
 
+def get_leaderboard_footer_period_context(
+    groups_data: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Describe the time window used for footer total Velos/km (HourlyMetric sums).
+
+    Totals count metrics after each group's latest YearEndSnapshot, or all time
+    when no snapshot exists. Returns template-friendly mode + dates.
+    """
+    from datetime import date, timedelta
+
+    group_ids = [int(g['id']) for g in groups_data if g.get('id')]
+    if not group_ids:
+        return {
+            'footer_totals_period_mode': 'none',
+            'footer_totals_period_since': None,
+            'footer_totals_period_dates': [],
+        }
+
+    snapshot_dates = _get_latest_snapshot_date_for_groups(group_ids)
+    unique_calendar_dates = sorted({
+        snapshot_date.date()
+        for snapshot_date in snapshot_dates.values()
+        if snapshot_date is not None
+    })
+
+    if not unique_calendar_dates:
+        return {
+            'footer_totals_period_mode': 'all_time',
+            'footer_totals_period_since': None,
+            'footer_totals_period_dates': [],
+        }
+
+    if len(unique_calendar_dates) == 1:
+        # HourlyMetric uses timestamp__gt snapshot_date → effective start is next day
+        effective_start: date = unique_calendar_dates[0] + timedelta(days=1)
+        return {
+            'footer_totals_period_mode': 'single',
+            'footer_totals_period_since': effective_start,
+            'footer_totals_period_dates': [],
+        }
+
+    effective_starts = [d + timedelta(days=1) for d in unique_calendar_dates]
+    return {
+        'footer_totals_period_mode': 'multiple',
+        'footer_totals_period_since': None,
+        'footer_totals_period_dates': effective_starts,
+    }
+
+
 def are_all_parents_visible(group: Group) -> bool:
     """
     Check if all parent groups in the hierarchy are visible.
