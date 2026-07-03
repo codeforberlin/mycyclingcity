@@ -24,6 +24,51 @@
     /* Kiosk-spezifische Anpassungen */
     .rk-kiosk-mode .rk-toggle-icon { display: none; }
     .rk-kiosk-mode .rk-group-header { cursor: default; }
+
+    .rk-group-header-metrics {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 2rem;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+    .rk-metric-cell {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .rk-metric-cell--velos {
+        font-weight: bold;
+        min-width: 7.5rem;
+    }
+    .rk-metric-cell--km {
+        font-weight: normal;
+        opacity: 0.9;
+        min-width: 6.5rem;
+    }
+    .rk-metric-unit {
+        font-weight: inherit;
+        opacity: 0.9;
+        font-size: 0.85em;
+    }
+    .rk-subgroup-row {
+        font-size: 1.2rem;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    .rk-subgroup-row .rk-group-header-metrics {
+        gap: 1.5rem;
+    }
+    .rk-subgroup-row .rk-metric-cell--velos {
+        min-width: 6.5rem;
+    }
+    .rk-subgroup-row .rk-metric-cell--km {
+        min-width: 5.5rem;
+    }
 </style>
 
 <div class="rk-table-wrapper {% if is_kiosk %}rk-kiosk-mode{% endif %}" style="max-width: 1200px; margin: auto;">
@@ -36,19 +81,37 @@
     <div class="rk-group-container" id="rk-group-{{ forloop.counter }}">
         <div class="rk-group-header" onclick="rkToggleGroup('rk-group-{{ forloop.counter }}')">
             <span><span class="rk-toggle-icon"></span>🏢 {{ group.name }}</span>
-            <span style="font-weight: bold;">{% format_velos_de_tag group.velos|default:0 %} {% trans "Velos" %}</span>
+            <div class="rk-group-header-metrics">
+                <div class="rk-metric-cell rk-metric-cell--velos">
+                    {% format_velos_de_tag group.velos|default:0 %}
+                    <span class="rk-metric-unit">{% trans "Velos" %}</span>
+                </div>
+                {% if show_km_in_ranking_headers %}
+                <div class="rk-metric-cell rk-metric-cell--km">
+                    {% format_km_de_tag group.km|default:0 km_display_decimals %}
+                    <span class="rk-metric-unit">km</span>
+                </div>
+                {% endif %}
+            </div>
         </div>
         
         <div class="rk-group-content">
             {% for sub in group.subgroups %}
             <div class="rk-subgroup-container" data-group-id="{{ sub.id }}" data-parent-id="{{ group.id }}" style="border-left: 6px solid #1877f2; margin: 10px 0; padding: 12px; background: #f8f9fa; border-radius: 0 8px 8px 0;">
-                <div style="font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between;">
-                    {% if not target_group %}
+                <div class="rk-subgroup-row">
                     <span>👥 {{ sub.name }}</span>
-                    {% else %}
-                    <span>👥 {% trans "Cyclists" %}</span>
-                    {% endif %}
-                    <span>{% format_velos_de_tag sub.velos|default:0 %} {% trans "Velos" %}</span>
+                    <div class="rk-group-header-metrics">
+                        <div class="rk-metric-cell rk-metric-cell--velos">
+                            {% format_velos_de_tag sub.velos|default:0 %}
+                            <span class="rk-metric-unit">{% trans "Velos" %}</span>
+                        </div>
+                        {% if show_km_in_ranking_headers %}
+                        <div class="rk-metric-cell rk-metric-cell--km">
+                            {% format_km_de_tag sub.km|default:0 km_display_decimals %}
+                            <span class="rk-metric-unit">km</span>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 
                 {% if show_cyclists and sub.members %}

@@ -36,6 +36,8 @@ from api.helpers import (
     build_events_data,
     build_hierarchy_from_parent_groups,
     get_cyclist_session_velos,
+    sum_display_totals_from_groups_data,
+    get_external_display_settings_context,
 )
 from api.travel_velos import build_travel_status_avatar_fields
 from eventboard.models import Event, GroupEventStatus
@@ -2522,19 +2524,17 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     # This matches what the ticker displays
     active_count = len(active_leaf_group_ids)  # Only count leaf-groups, not parent groups
     
-    # Calculate total kilometers across all visible groups (like Admin Report)
-    # This should match the Admin Report's total_distance calculation
-    # If a filter is active, only count the filtered parent group's distance_total
-    # (which already contains the aggregated sum of all descendants)
+    total_km = sum(float(g.get('distance_total', 0) or 0) for g in groups_data)
     if current_filter:
         try:
             parent_group = Group.objects.get(name=current_filter, is_visible=True)
             total_velos = int(parent_group.velos_total or 0)
         except Group.DoesNotExist:
-            total_velos = sum(int(g.get('velos_total', 0)) for g in groups_data)
+            total_velos = sum(int(g.get('velos_total', 0) or 0) for g in groups_data)
     else:
         all_visible_groups = Group.objects.filter(is_visible=True, parent__isnull=True)
         total_velos = sum(int(g.velos_total or 0) for g in all_visible_groups)
+    external_display = get_external_display_settings_context()
     
     # Generate consistent colors for top parent groups
     # Use a palette of distinct, vibrant colors
@@ -2600,12 +2600,14 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'yearly_record_value': yearly_record_value,
         'active_count': active_count,
         'total_velos': total_velos,
+        'total_km': total_km,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker
         'sort_by': sort_by,  # Pass sort parameter to template
         'parent_color_map': parent_color_map,  # Pass color map to template
     }
+    context.update(external_display)
     
     # If HTMX request, check what to return
     if request.headers.get('HX-Request'):

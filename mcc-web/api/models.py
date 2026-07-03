@@ -104,6 +104,49 @@ class MapPopupSettings(models.Model):
         settings, _ = cls.objects.get_or_create(pk=1)
         return settings
 
+
+class ExternalDisplaySettings(models.Model):
+    """Admin-controlled display options for public GUIs (leaderboard, ranking)."""
+
+    show_km_in_leaderboard_footer = models.BooleanField(
+        default=True,
+        verbose_name=_("Kilometer im Leaderboard-Footer"),
+        help_text=_(
+            "Zeigt die Summe der Kilometer (HourlyMetric) neben den Velos im Footer "
+            "von Leaderboard und Kiosk-Leaderboard an."
+        ),
+    )
+    show_km_in_ranking_headers = models.BooleanField(
+        default=True,
+        verbose_name=_("Kilometer in Ranking-Gruppenköpfen"),
+        help_text=_(
+            "Zeigt Kilometer zusätzlich zu Velos in den Kopfzeilen der Ranking-Hierarchie."
+        ),
+    )
+    km_display_decimals = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        verbose_name=_("Kilometer Dezimalstellen"),
+        help_text=_("Anzahl Dezimalstellen für Kilometer-Anzeigen in externen GUIs (0–2)."),
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert am"))
+
+    class Meta:
+        verbose_name = _("Externe GUI-Anzeige")
+        verbose_name_plural = _("Externe GUI-Anzeige")
+
+    def __str__(self):
+        return _("Anzeige-Einstellungen (Leaderboard-Footer: %(footer)s, Ranking: %(ranking)s)") % {
+            'footer': _('ja') if self.show_km_in_leaderboard_footer else _('nein'),
+            'ranking': _('ja') if self.show_km_in_ranking_headers else _('nein'),
+        }
+
+    @classmethod
+    def get_settings(cls):
+        """Get or create the singleton settings instance."""
+        settings, _ = cls.objects.get_or_create(pk=1)
+        return settings
+
 # --- GROUP TYPE ---
 class GroupType(models.Model):
     """Defines the type of a group (e.g., 'Schule', 'Klasse')."""

@@ -33,6 +33,8 @@ from api.helpers import (
     _get_latest_snapshot_date_for_groups,
     get_cyclist_session_velos,
     _calculate_group_velos_periods,
+    sum_display_totals_from_groups_data,
+    get_external_display_settings_context,
 )
 from api.travel_velos import build_travel_status_avatar_fields
 from decimal import Decimal
@@ -1185,9 +1187,11 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
     
     # Total Velos across all displayed leaf groups (same tiles as groups_data).
     # Top-level parents have no direct HourlyMetric rows; summing leaf velos_total is correct.
-    total_velos = sum(g['velos_total'] for g in groups_data)
+    display_totals = sum_display_totals_from_groups_data(groups_data)
+    total_velos = display_totals['total_velos']
+    total_km = display_totals['total_km']
     
-    # Generate consistent colors for top parent groups
+    external_display = get_external_display_settings_context()
     # Use a palette of distinct, vibrant colors
     parent_colors = [
         '#3b82f6',  # blue-500
@@ -1251,6 +1255,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'yearly_record_value': yearly_record_value,
         'active_count': active_count,
         'total_velos': total_velos,
+        'total_km': total_km,
         'now': now,
         'current_filter': current_filter,  # Pass parent_name for UI display
         'active_cyclists': active_cyclists,  # Pass active cyclists for ticker
@@ -1260,6 +1265,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
         'devices_json': json.dumps(devices_data),  # JSON string for JavaScript
         'milestones_json': json.dumps(milestones_data),  # JSON string for JavaScript
     }
+    context.update(external_display)
     
     # If HTMX request, check what to return
     if request.headers.get('HX-Request'):

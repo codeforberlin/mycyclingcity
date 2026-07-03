@@ -17,7 +17,7 @@ from api.models import (
     Cyclist, Group, GroupType, HourlyMetric, TravelTrack, Milestone, GroupTravelStatus, 
     CyclistDeviceCurrentMileage, TravelHistory,
     GroupMilestoneAchievement, MapPopupSettings, LeafGroupTravelContribution,
-    YearEndSnapshot, YearEndSnapshotDetail, CyclistVelosRedemption
+    YearEndSnapshot, YearEndSnapshotDetail, CyclistVelosRedemption, ExternalDisplaySettings
 )
 from eventboard.models import Event, GroupEventStatus, EventHistory, LeafGroupEventContribution
 from iot.models import (
@@ -5939,6 +5939,44 @@ class FirmwareImageAdmin(admin.ModelAdmin):
             from django.http import HttpResponseRedirect
             from django.urls import reverse
             return HttpResponseRedirect(reverse('admin:iot_firmwareimage_changelist'))
+
+
+@admin.register(ExternalDisplaySettings)
+class ExternalDisplaySettingsAdmin(admin.ModelAdmin):
+    """Singleton admin for km display in public GUIs."""
+
+    list_display = (
+        'show_km_in_leaderboard_footer',
+        'show_km_in_ranking_headers',
+        'km_display_decimals',
+        'updated_at',
+    )
+
+    fieldsets = (
+        (_('Kilometer-Anzeige'), {
+            'fields': (
+                'show_km_in_leaderboard_footer',
+                'show_km_in_ranking_headers',
+                'km_display_decimals',
+            ),
+            'description': _(
+                'Steuert, ob und wie Kilometer (aus HourlyMetric) zusätzlich zu Velos '
+                'in Leaderboard-Footer und Ranking angezeigt werden. Velos bleiben '
+                'die primäre Wettbewerbsmetrik.'
+            ),
+        }),
+        (_('Zeitstempel'), {
+            'fields': ('updated_at',),
+            'classes': ('collapse',),
+        }),
+    )
+    readonly_fields = ('updated_at',)
+
+    def has_add_permission(self, request):
+        return not ExternalDisplaySettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(MapPopupSettings)

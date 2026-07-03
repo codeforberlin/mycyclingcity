@@ -29,6 +29,31 @@ from iot.models import Device
 logger = logging.getLogger(__name__)
 
 
+def get_external_display_settings_context() -> Dict[str, Any]:
+    """Return admin-controlled km display flags for external GUIs."""
+    from api.models import ExternalDisplaySettings
+
+    settings_obj = ExternalDisplaySettings.get_settings()
+    return {
+        'show_km_in_leaderboard_footer': settings_obj.show_km_in_leaderboard_footer,
+        'show_km_in_ranking_headers': settings_obj.show_km_in_ranking_headers,
+        'km_display_decimals': settings_obj.km_display_decimals,
+    }
+
+
+def sum_display_totals_from_groups_data(groups_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Sum Velos and km from leaderboard-style group dicts (filtered view).
+
+    Uses the same per-group values already prepared for the UI (HourlyMetric-based
+    where applicable).
+    """
+    return {
+        'total_velos': sum(int(g.get('velos_total', 0) or 0) for g in groups_data),
+        'total_km': sum(float(g.get('distance_total', 0) or 0) for g in groups_data),
+    }
+
+
 def are_all_parents_visible(group: Group) -> bool:
     """
     Check if all parent groups in the hierarchy are visible.
@@ -569,6 +594,25 @@ def _group_velos_for_ranking(
     return leaf_velos
 
 
+def _group_km_for_ranking(
+    _group: Group,
+    member_entries: List[Dict[str, Any]],
+    child_entries: Optional[List[Dict[str, Any]]] = None,
+    group_metric_km: float = 0.0,
+) -> float:
+    """Km total for map/ranking group rows (HourlyMetric-based, mirrors Velos logic)."""
+    members_km = sum(float(m.get('km', 0) or 0) for m in member_entries)
+    children_km = sum(float(c.get('km', 0) or 0) for c in (child_entries or []))
+    leaf_km = max(members_km, float(group_metric_km or 0))
+
+    if child_entries is not None:
+        if child_entries:
+            return children_km
+        return leaf_km
+
+    return leaf_km
+
+
 def _members_for_group(
     group: Group,
     member_filter: Dict[str, Any],
@@ -614,6 +658,7 @@ def build_hierarchy_from_parent_groups(
         groups_for_metrics.append(p_group)
         groups_for_metrics.extend(list(p_group.children.filter(**group_filter)))
     group_velos_by_id = _calculate_group_velos_from_metrics(groups_for_metrics, use_cache=True)
+    group_km_by_id = _calculate_group_totals_from_metrics(groups_for_metrics, use_cache=True)
 
     for p_group in parent_groups:
         direct_members = _members_for_group(p_group, member_filter, show_cyclists)
@@ -628,11 +673,16 @@ def build_hierarchy_from_parent_groups(
                 sub_member_data,
                 group_metric_velos=group_velos_by_id.get(sub.id, 0),
             )
+            sub_km = _group_km_for_ranking(
+                sub,
+                sub_member_data,
+                group_metric_km=group_km_by_id.get(sub.id, 0.0),
+            )
             if not kiosk or (sub_velos > 0 or sub_member_data):
                 subgroups_data.append({
                     'id': sub.id,
                     'name': sub.name,
-                    'km': round(float(sub.distance_total or 0), 3),
+                    'km': round(float(sub_km), 3),
                     'velos': sub_velos,
                     'members': sub_member_data,
                 })
@@ -644,11 +694,17 @@ def build_hierarchy_from_parent_groups(
             child_entries=subgroups_data,
             group_metric_velos=group_velos_by_id.get(p_group.id, 0),
         )
+        p_km = _group_km_for_ranking(
+            p_group,
+            direct_members,
+            child_entries=subgroups_data,
+            group_metric_km=group_km_by_id.get(p_group.id, 0.0),
+        )
         if not kiosk or (p_velos > 0 or subgroups_data or direct_members):
             hierarchy.append({
                 'id': p_group.id,
                 'name': p_group.name,
-                'km': round(float(p_group.distance_total or 0), 3),
+                'km': round(float(p_km), 3),
                 'velos': p_velos,
                 'direct_members': direct_members,
                 'subgroups': subgroups_data,

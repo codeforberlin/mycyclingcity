@@ -8,9 +8,13 @@
 
 {% load i18n map_filters %}
 <div class="flex items-center justify-between px-6">
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
         <span class="text-sm">{% trans "Velos gesamt" %}:</span>
         <span class="text-lg font-bold">{% format_velos_de_tag total_velos %} {% trans "Velos" %}</span>
+        {% if show_km_in_leaderboard_footer %}
+        <span class="text-sm opacity-75 ml-6">{% trans "Kilometer gesamt" %}:</span>
+        <span class="text-base font-semibold opacity-90">{% format_km_de_tag total_km km_display_decimals %} km</span>
+        {% endif %}
     </div>
     <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">

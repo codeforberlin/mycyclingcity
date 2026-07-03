@@ -18,7 +18,7 @@ from typing import Any, Optional
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from api.models import Group
-from api.helpers import build_group_hierarchy, build_events_data
+from api.helpers import build_group_hierarchy, build_events_data, get_external_display_settings_context
 
 
 def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
@@ -189,6 +189,7 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
         'show_cyclists': show_cyclists,
         'events_data': events_data,
     }
+    context.update(get_external_display_settings_context())
     
     # If HTMX request for table refresh, return only table fragment
     if request.headers.get('HX-Request') and request.GET.get('refresh_table'):
