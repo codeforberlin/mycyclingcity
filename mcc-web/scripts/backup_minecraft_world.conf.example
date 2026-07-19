@@ -1,0 +1,49 @@
+# MyCyclingCity Minecraft World Backup Konfiguration
+# Kopieren nach backup_minecraft_world.conf und Werte anpassen.
+#
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Minecraft-Server-Verzeichnis (enthält world / world_nether / world_the_end)
+# Lokal (Beispiel):  /data/games/minecraft_server
+# Extern (MCC):      /data/games/mcc/mc-srv
+MC_SERVER_DIR="/data/games/mcc/mc-srv"
+
+# Welche Ordner relativ zu MC_SERVER_DIR gesichert werden (Leerzeichen-getrennt)
+# Extern MCC: nur Overworld MyCyclingCity (Nether/End nicht benötigt)
+MC_WORLD_DIRS="MyCyclingCity"
+
+# Lokales Backup-Ziel (muss schreibbar sein – NICHT unter /data/games oder /data/appl,
+# diese werden künftig per Integrity-Check geprüft und sollen im Betrieb unverändert bleiben)
+BACKUP_LOCAL_DIR="/data/var/mcc/backups/minecraft"
+LOG_DIR="/data/var/mcc/logs"
+
+# Aufbewahrung: Anzahl Stunden-Backups (stündlich → 48 = 2 Tage)
+BACKUP_RETENTION_COUNT=48
+
+# RCON (für save-off / save-all flush / save-on im laufenden Betrieb)
+RCON_HOST="127.0.0.1"
+RCON_PORT="25575"
+# Passwort setzen ODER leer lassen und aus MCC-.env laden lassen
+RCON_PASSWORD=""
+# Optional: .env der MCC-Web-App (MCC_MINECRAFT_RCON_*)
+MCC_ENV_FILE="/data/appl/mcc/mcc-web/.env"
+
+# Python mit mcrcon (Standard: MCC-venv)
+PYTHON_BIN="/data/appl/mcc/venv/bin/python3"
+
+# Sekunden warten nach save-all flush, bevor kopiert wird
+SAVE_FLUSH_WAIT_SECONDS=5
+
+# Optional: zusätzliche Dateien/Ordner relativ zu MC_SERVER_DIR mitsichern
+# MC_EXTRA_PATHS="server.properties plugins/LuckPerms"
+
+# Rechte (User-Trennung mcc / mccweb + Integrity-Check):
+# - Keine Backup-/Log-Dateien unter /data/games oder /data/appl anlegen
+# - mccweb darf NICHT als mcc arbeiten (kein sudo -u mcc)
+# - Cron als mcc + Schreibrecht nur unter /data/var/mcc:
+#     setfacl -m u:mcc:rwx /data/var/mcc/backups /data/var/mcc/backups/minecraft /data/var/mcc/logs
+#     setfacl -d -m u:mcc:rwx /data/var/mcc/backups/minecraft /data/var/mcc/logs
+# - Alternativ Cron als mccweb + Lese-ACL auf Welt (als root/mcc):
+#     ./setup_minecraft_backup_acl.sh /data/games/mcc/mc-srv/MyCyclingCity mccweb
+

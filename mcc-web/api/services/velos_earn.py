@@ -84,7 +84,9 @@ def apply_velos_earn(
     leaf_group.refresh_from_db(fields=['velos_total', 'velos_spendable', 'mc_username'])
 
     if leaf_group.mc_username:
-        push_group_velos_to_minecraft(
+        from minecraft.services.team_registration import push_team_velos_to_minecraft
+
+        push_team_velos_to_minecraft(
             leaf_group,
             spendable_delta=delta_velos,
         )
@@ -103,28 +105,12 @@ def push_group_velos_to_minecraft(
     spendable_delta: Optional[int] = None,
     spendable_action: str = "add",
 ) -> bool:
-    """Queue Minecraft scoreboard sync for a leaf group's Velos ledger."""
-    if not group.mc_username:
-        return False
+    """Queue Minecraft scoreboard sync for a registered team's spendable Velos."""
+    from minecraft.services.team_registration import push_team_velos_to_minecraft
 
-    try:
-        from minecraft.services.outbox import queue_group_velos_update
-
-        group.refresh_from_db(fields=['velos_total', 'velos_spendable'])
-        queue_group_velos_update(
-            player=group.mc_username,
-            velos_total=int(group.velos_total),
-            velos_spendable=int(group.velos_spendable),
-            reason="db_update",
-            spendable_action=spendable_action,
-            spendable_delta=spendable_delta,
-        )
-        logger.info(
-            "[push_group_velos_to_minecraft] Queued Velos for group %s (mc=%s)",
-            group.name,
-            group.mc_username,
-        )
-        return True
-    except Exception as exc:
-        logger.error("[push_group_velos_to_minecraft] Failed: %s", exc)
-        return False
+    return push_team_velos_to_minecraft(
+        group,
+        spendable_delta=spendable_delta,
+        spendable_action=spendable_action,
+        reason="db_update",
+    )

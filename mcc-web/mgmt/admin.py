@@ -337,12 +337,130 @@ def calculate_distance_from_gps(track_geojson_data, gps_latitude, gps_longitude)
 class GroupTravelStatusInline(admin.TabularInline):
     """Displays all groups traveling on this track"""
     model = GroupTravelStatus
-    extra = 1
+    extra = 0
+    min_num = 0
+    validate_min = False
     verbose_name = _("Teilnehmende Gruppe")
-    verbose_name_plural = _("Teilnehmende Gruppen")
+    verbose_name_plural = _(
+        "Teilnehmende Gruppen (optional – Leaf-Gruppen können direkt beim Anlegen oder später zugewiesen werden)"
+    )
     fields = ('group', 'current_travel_distance_display', 'abort_trip_action')
     readonly_fields = ('current_travel_distance_display', 'abort_trip_action')
-    
+
+    def get_extra(self, request, obj=None, **kwargs):
+        """Always show one empty row for adding groups."""
+        return 1
+
+    def has_add_permission(self, request, obj=None):
+        """Allow operators to assign groups when they can manage the route."""
+        if request.user.is_superuser:
+            return True
+        if not request.user.has_perm('api.add_grouptravelstatus'):
+            return False
+        if obj is None:
+            return True
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        if obj.assigned_to_group_id and obj.assigned_to_group_id in managed_group_ids:
+            return True
+        if not obj.group_statuses.exists():
+            return True
+        return obj.group_statuses.filter(group__id__in=managed_group_ids).exists()
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.change_grouptravelstatus')
+        if isinstance(obj, GroupTravelStatus):
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            return obj.group_id in managed_group_ids
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is None:
+            return request.user.has_perm('api.delete_grouptravelstatus')
+        if isinstance(obj, GroupTravelStatus):
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            return obj.group_id in managed_group_ids
+        return True
+
+    def get_formset(self, request, obj=None, **kwargs):
+        """Customize formset to prevent accidental removal of groups with kilometers."""
+        self._track_obj = obj
+        from api.models import GroupTravelStatus
+
+        formset = super().get_formset(request, obj, **kwargs)
+
+        class GroupTravelStatusFormSet(formset):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                for form in self.forms:
+                    if 'group' in form.fields:
+                        form.fields['group'].required = False
+
+            def clean(self):
+                """Validate deletions and ignore empty add rows (zero groups allowed)."""
+                super().clean()
+
+                for form in self.forms:
+                    group_value = None
+                    delete_value = False
+                    if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
+                        group_value = form.data.get(form.add_prefix('group'))
+                        delete_value = form.data.get(form.add_prefix('DELETE'))
+
+                    if form.errors and not group_value and not delete_value:
+                        form.errors.clear()
+                        if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
+                            delete_key = form.add_prefix('DELETE')
+                            if hasattr(form.data, '_mutable'):
+                                form.data._mutable = True
+                            form.data[delete_key] = True
+
+                    if form.cleaned_data:
+                        group = form.cleaned_data.get('group')
+                        delete = form.cleaned_data.get('DELETE', False)
+                        if not group and not delete:
+                            form.cleaned_data['DELETE'] = True
+                            form.errors.clear()
+
+                    if form in self.deleted_forms and form.instance.pk:
+                        if (
+                            form.instance.current_travel_distance
+                            and form.instance.current_travel_distance > 0
+                        ):
+                            from django.forms import ValidationError
+                            raise ValidationError(
+                                _("Die Gruppe '{}' hat bereits {} Reisekilometer. "
+                                  "Bitte verwenden Sie die 'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen.").format(
+                                    form.instance.group.name,
+                                    format_km_de(form.instance.current_travel_distance),
+                                )
+                            )
+
+            def save(self, commit=True):
+                """Delete marked rows first; skip empty add rows without a group."""
+                if commit:
+                    for form in self.deleted_forms:
+                        if form.instance and form.instance.pk:
+                            form.instance.delete()
+
+                instances = super().save(commit=False)
+                valid_instances = [
+                    instance for instance in instances
+                    if instance.group_id
+                ]
+
+                if commit:
+                    for instance in valid_instances:
+                        instance.save()
+                    self.save_m2m()
+
+                return valid_instances
+
+        return GroupTravelStatusFormSet
 
     def current_travel_distance_display(self, obj):
         """Display current_travel_distance with German format (comma decimal)."""
@@ -371,60 +489,34 @@ class GroupTravelStatusInline(admin.TabularInline):
     abort_trip_action.short_description = _("Aktionen")
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Filter groups to only show managed groups for operators and customize display."""
+        """Filter groups: managed scope + not already assigned to another route."""
         if db_field.name == 'group':
             if not request.user.is_superuser:
                 managed_group_ids = get_operator_managed_group_ids(request.user)
                 queryset = Group.objects.filter(
                     id__in=managed_group_ids,
-                    is_visible=True
+                    is_visible=True,
                 ).order_by('name')
             else:
-                queryset = Group.objects.filter(
-                    is_visible=True
-                ).order_by('name')
-            
+                queryset = Group.objects.filter(is_visible=True).order_by('name')
+
+            busy_qs = GroupTravelStatus.objects.all()
+            track_obj = getattr(self, '_track_obj', None)
+            if track_obj and track_obj.pk:
+                busy_qs = busy_qs.exclude(track=track_obj)
+            queryset = queryset.exclude(id__in=busy_qs.values_list('group_id', flat=True))
+
             kwargs['queryset'] = queryset
-            
-            # Get the form field from super()
+
             field = super().formfield_for_foreignkey(db_field, request, **kwargs)
-            
-            # Override label_from_instance to show only group name
+
             def label_from_instance(obj):
-                """Return only the group name, without the group type."""
                 return obj.name
-            
+
             field.label_from_instance = label_from_instance
             return field
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
-    
-    def get_formset(self, request, obj=None, **kwargs):
-        """Customize formset to prevent accidental removal of groups with kilometers."""
-        from django.forms import BaseInlineFormSet
-        from api.models import GroupTravelStatus
-        
-        formset = super().get_formset(request, obj, **kwargs)
-        
-        class GroupTravelStatusFormSet(formset):
-            def clean(self):
-                """Validate that groups with existing kilometers are not accidentally removed."""
-                super().clean()
-                
-                for form in self.forms:
-                    # Check if form is marked for deletion
-                    if form in self.deleted_forms and form.instance.pk:
-                        if form.instance.current_travel_distance and form.instance.current_travel_distance > 0:
-                            from django.forms import ValidationError
-                            raise ValidationError(
-                                _("Die Gruppe '{}' hat bereits {} Reisekilometer. "
-                                  "Bitte verwenden Sie die 'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen.").format(
-                                    form.instance.group.name,
-                                    format_km_de(form.instance.current_travel_distance)
-                                )
-                            )
-        
-        return GroupTravelStatusFormSet
-    
+
     class Media:
         js = ('admin/js/grouptravelstatus_inline.js',)
 
@@ -1387,17 +1479,33 @@ CONFIRM_KM_JS = f"""
 <script>
 document.addEventListener('DOMContentLoaded', function() {{
     const kmFields = document.querySelectorAll('input[name="distance_total"], input[name="cumulative_mileage"]');
+    const velosFields = document.querySelectorAll('input[name="velos_balance"]');
     const form = document.querySelector('form');
-    if (kmFields.length > 0 && form) {{
+    if (form && (kmFields.length > 0 || velosFields.length > 0)) {{
         kmFields.forEach(f => {{ f.dataset.orig = f.value; }});
+        velosFields.forEach(f => {{ f.dataset.orig = f.value; }});
         form.addEventListener('submit', function(e) {{
-            let changed = false;
+            let kmChanged = false;
+            let velosChanged = false;
             kmFields.forEach(f => {{
                 let cur = parseFloat(f.value) || 0;
                 let ori = parseFloat(f.dataset.orig) || 0;
-                if (Math.abs(cur - ori) > 0.0001) changed = true;
+                if (Math.abs(cur - ori) > 0.0001) kmChanged = true;
             }});
-            if (changed && !confirm("{_('ACHTUNG: Kilometerstand manuell ändern?')}")) {{
+            velosFields.forEach(f => {{
+                let cur = parseInt(f.value, 10) || 0;
+                let ori = parseInt(f.dataset.orig, 10) || 0;
+                if (cur !== ori) velosChanged = true;
+            }});
+            let message = null;
+            if (kmChanged && velosChanged) {{
+                message = "{_('ACHTUNG: Kilometerstand und Velos-Guthaben manuell ändern?')}";
+            }} else if (kmChanged) {{
+                message = "{_('ACHTUNG: Kilometerstand manuell ändern?')}";
+            }} else if (velosChanged) {{
+                message = "{_('ACHTUNG: Velos-Guthaben manuell ändern?')}";
+            }}
+            if (message && !confirm(message)) {{
                 e.preventDefault();
                 document.querySelectorAll('.submit-row input').forEach(b => b.disabled = false);
             }}
@@ -1697,6 +1805,16 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
         ]
         return custom_urls + urls
     
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return (
+            request.user.has_perm('api.view_group')
+            or request.user.has_perm('api.add_group')
+            or request.user.has_perm('api.change_group')
+            or request.user.has_perm('api.delete_group')
+        )
+    
     def changelist_view(self, request, extra_context=None):
         """Add bulk create button to changelist."""
         extra_context = extra_context or {}
@@ -1969,9 +2087,19 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     )
     list_editable = ('is_visible', 'is_km_collection_enabled')
     search_fields = ('user_id', 'id_tag')
-    readonly_fields = ('avatar_preview', 'velos_balance')
+    readonly_fields = ('avatar_preview',)
     list_filter = ('groups', 'is_visible', 'is_km_collection_enabled', 'last_active')
     actions = ['redeem_velos_action']
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return (
+            request.user.has_perm('api.view_cyclist')
+            or request.user.has_perm('api.add_cyclist')
+            or request.user.has_perm('api.change_cyclist')
+            or request.user.has_perm('api.delete_cyclist')
+        )
 
     def get_fields(self, request, obj=None):
         fields = list(super().get_fields(request, obj))
@@ -2765,8 +2893,8 @@ class TravelTrackAdminForm(forms.ModelForm):
                 # Feld als required setzen
                 self.fields['assigned_to_group'].required = True
                 self.fields['assigned_to_group'].help_text = _(
-                    "Wählen Sie eine TOP-Gruppe aus. Eine Reise muss immer einer TOP-Gruppe zugeordnet werden, "
-                    "damit Sie sie nach dem Speichern sehen können."
+                    "TOP-Gruppe für Berechtigungen (Pflicht für Operatoren). "
+                    "Teilnehmende Leaf-Gruppen können nach dem Speichern der Route zugewiesen werden."
                 )
             else:
                 # Falls der Operator keine TOP-Gruppen hat, leeres Queryset
@@ -2855,6 +2983,12 @@ class TravelTrackAdmin(admin.ModelAdmin):
     inlines = [MilestoneInline, GroupTravelStatusInline, LeafGroupTravelContributionInline]
     fields = ('name', 'assigned_to_group', 'track_file', 'total_length_km', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time', 'geojson_data', 'top_groups_ranking_display')
     readonly_fields = ('total_length_km', 'top_groups_ranking_display')
+
+    def get_inlines(self, request, obj):
+        """New routes: milestones + participating groups; leaf contributions only after save."""
+        if obj is None:
+            return [MilestoneInline, GroupTravelStatusInline]
+        return self.inlines
     
     def get_form(self, request, obj=None, **kwargs):
         """Override get_form to pass request to form and convert datetime values."""
@@ -6897,6 +7031,22 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                 'add_url': None,
                 'view_only': True,
             },
+            {
+                'name': _('EconomyShopGUI Import'),
+                'object_name': 'EconomyShopGUI Import',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:minecraft_import_shop'),
+                'add_url': None,
+                'view_only': True,
+            },
+            {
+                'name': _('Shop-Artikel durchsuchen'),
+                'object_name': 'Shop Item Search',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:minecraft_minecraftshopitem_changelist'),
+                'add_url': None,
+                'view_only': True,
+            },
         ]
         app_dict['minecraft']['models'] = minecraft_management_models + app_dict['minecraft']['models']
     
@@ -7023,7 +7173,10 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     # Sort apps by custom ordering, then alphabetically for others
     # Convert lazy translation strings to actual strings for comparison
     app_list.sort(key=lambda x: (app_ordering.get(str(x['name']), 50), str(x['name']).lower()))
-    
+
+    # Hide empty app sections (e.g. "Gruppen & Radler" when operator has no group/cyclist perms)
+    app_list = [app for app in app_list if app.get('models')]
+
     return app_list
 
 admin.site.get_app_list = get_app_list_with_custom_ordering.__get__(admin.site, type(admin.site))
@@ -7401,7 +7554,24 @@ from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
 from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
 from mgmt.views_deployment import backup_control, create_backup, download_backup
 from mgmt.maintenance_control import maintenance_control, maintenance_action
-from minecraft.admin_views import minecraft_control, minecraft_action
+from minecraft.admin_views import (
+    minecraft_action,
+    minecraft_control,
+    minecraft_deactivate_team,
+    minecraft_import_shop,
+    minecraft_reactivate_team,
+    minecraft_register_team,
+)
+from minecraft.preset_views import (
+    minecraft_preset_add,
+    minecraft_preset_delete,
+    minecraft_preset_duplicate,
+    minecraft_preset_edit,
+    minecraft_preset_export,
+    minecraft_preset_import,
+    minecraft_preset_list,
+    minecraft_run_preset,
+)
 
 _original_get_urls = admin.site.get_urls
 def get_urls_with_custom_views():
@@ -7432,7 +7602,23 @@ def get_urls_with_custom_views():
         path('maintenance/action/<str:action>/', admin.site.admin_view(maintenance_action), name='mgmt_maintenance_action'),
         # Minecraft control URLs
         path('minecraft/', admin.site.admin_view(minecraft_control), name='minecraft_control'),
+        path('minecraft/import-shop/', admin.site.admin_view(minecraft_import_shop), name='minecraft_import_shop'),
         path('minecraft/action/<str:action>/', admin.site.admin_view(minecraft_action), name='minecraft_action'),
+        path(
+            'minecraft/preset/<int:preset_id>/run/',
+            admin.site.admin_view(minecraft_run_preset),
+            name='minecraft_run_preset',
+        ),
+        path('minecraft/presets/', admin.site.admin_view(minecraft_preset_list), name='minecraft_preset_list'),
+        path('minecraft/presets/add/', admin.site.admin_view(minecraft_preset_add), name='minecraft_preset_add'),
+        path('minecraft/presets/<int:preset_id>/edit/', admin.site.admin_view(minecraft_preset_edit), name='minecraft_preset_edit'),
+        path('minecraft/presets/<int:preset_id>/duplicate/', admin.site.admin_view(minecraft_preset_duplicate), name='minecraft_preset_duplicate'),
+        path('minecraft/presets/<int:preset_id>/delete/', admin.site.admin_view(minecraft_preset_delete), name='minecraft_preset_delete'),
+        path('minecraft/presets/export/', admin.site.admin_view(minecraft_preset_export), name='minecraft_preset_export'),
+        path('minecraft/presets/import/', admin.site.admin_view(minecraft_preset_import), name='minecraft_preset_import'),
+        path('minecraft/register/<int:group_id>/', admin.site.admin_view(minecraft_register_team), name='minecraft_register_team'),
+        path('minecraft/deactivate/<int:registration_id>/', admin.site.admin_view(minecraft_deactivate_team), name='minecraft_deactivate_team'),
+        path('minecraft/reactivate/<int:registration_id>/', admin.site.admin_view(minecraft_reactivate_team), name='minecraft_reactivate_team'),
         # Firmware import URL (already handled by FirmwareImageAdmin.get_urls, but kept for consistency)
     ]
     return custom_urls + urls

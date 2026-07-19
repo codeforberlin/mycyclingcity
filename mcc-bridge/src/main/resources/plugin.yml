@@ -1,0 +1,22 @@
+name: MCC-Bridge
+version: '${version}'
+main: de.sailab.mycyclingcity.mccbridge.MccBridgePlugin
+api-version: '26.1'
+load: STARTUP
+authors: [SAI-Lab]
+description: MyCyclingCity Velos bridge (Vault economy + MCC WebSocket)
+website: https://github.com/sailab/mycyclingcity
+# Vault API must exist; MCC-Bridge registers the Velos economy before EconomyShopGUI starts.
+softdepend: [Vault, VaultUnlocked, LuckPerms]
+loadbefore: [EconomyShopGUI, EconomyShopGUI-Premium]
+
+commands:
+  mccbridge:
+    description: MCC-Bridge admin commands
+    permission: mccbridge.admin
+    usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>
+
+permissions:
+  mccbridge.admin:
+    description: MCC-Bridge administration
+    default: op

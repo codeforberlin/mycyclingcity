@@ -9,7 +9,8 @@ from django.db import transaction
 
 from api.models import Group
 from config.logger_utils import get_logger
-from minecraft.services.outbox import queue_group_velos_update
+from minecraft.services.outbox import queue_team_velos_update
+from minecraft.services.team_registration import get_active_registration_by_mc_username
 
 
 logger = get_logger("minecraft")
@@ -22,13 +23,16 @@ def spend_group_velos_from_minecraft(mc_username: str, amount: int) -> str:
 
     Returns: ok | group_not_found | invalid_amount
     """
+    registration = get_active_registration_by_mc_username(mc_username)
+    if not registration:
+        return "group_not_found"
+
+    group = registration.group
     group = (
         Group.objects.select_for_update()
-        .filter(mc_username__iexact=mc_username)
+        .filter(pk=group.pk)
         .first()
     )
-    if not group:
-        return "group_not_found"
 
     try:
         spend_amount = int(amount)
@@ -41,10 +45,9 @@ def spend_group_velos_from_minecraft(mc_username: str, amount: int) -> str:
     Group.objects.filter(pk=group.pk).update(velos_spendable=new_spendable)
     group.refresh_from_db(fields=['velos_total', 'velos_spendable', 'mc_username'])
 
-    if group.mc_username:
-        queue_group_velos_update(
-            player=group.mc_username,
-            velos_total=int(group.velos_total or 0),
+    if registration.is_active:
+        queue_team_velos_update(
+            player=registration.mc_username,
             velos_spendable=int(group.velos_spendable or 0),
             reason="minecraft_spend",
             spendable_action="set",

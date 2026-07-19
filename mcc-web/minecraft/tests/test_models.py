@@ -87,15 +87,26 @@ class TestMinecraftOutboxEvent:
             event_type=MinecraftOutboxEvent.EVENT_UPDATE_PLAYER_COINS,
             payload={"player": "testplayer"},
         )
-        
+
         error_message = "Connection failed"
         event.mark_failed(error_message)
         event.refresh_from_db()
-        
+
         assert event.status == MinecraftOutboxEvent.STATUS_FAILED
         assert event.processed_at is not None
         assert error_message in event.last_error
-    
+
+    def test_mark_retry_keeps_pending(self):
+        event = MinecraftOutboxEvent.objects.create(
+            event_type=MinecraftOutboxEvent.EVENT_UPDATE_TEAM_VELOS,
+            payload={"player": "x"},
+        )
+        event.mark_retry("[Errno 111] Connection refused")
+        event.refresh_from_db()
+        assert event.status == MinecraftOutboxEvent.STATUS_PENDING
+        assert "Connection refused" in event.last_error
+        assert event.processed_at is not None
+
     def test_mark_failed_truncates_long_error(self):
         """Test that mark_failed truncates very long error messages."""
         event = MinecraftOutboxEvent.objects.create(
@@ -171,7 +182,7 @@ class TestMinecraftPlayerScoreboardSnapshot:
             velos_spendable=500,
         )
 
-        assert str(snapshot) == "testplayer (500/1000)"
+        assert str(snapshot) == "testplayer (500 ausgebbar)"
 
     def test_unique_together_player_name(self):
         """Test that player_name is unique."""

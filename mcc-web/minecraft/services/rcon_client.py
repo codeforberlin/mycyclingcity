@@ -61,7 +61,46 @@ def check_connection() -> tuple[bool, str, str]:
 
 def ensure_objective(name: str, display_name: str | None = None) -> None:
     display = display_name or name
-    _send_command(f'scoreboard objectives add {name} dummy "{display}"')
+    try:
+        _send_command(f'scoreboard objectives add {name} dummy "{display}"')
+    except MCRconException:
+        _send_command(f'scoreboard objectives modify {name} displayname "{display}"')
+
+
+VALID_DISPLAY_SLOTS = frozenset(
+    {
+        "list",
+        "sidebar",
+        "below_name",
+        "team_black",
+        "team_dark_blue",
+        "team_dark_green",
+        "team_dark_aqua",
+        "team_dark_red",
+        "team_dark_purple",
+        "team_gold",
+        "team_gray",
+        "team_dark_gray",
+        "team_blue",
+        "team_green",
+        "team_aqua",
+        "team_red",
+        "team_light_purple",
+        "team_yellow",
+        "team_white",
+    }
+)
+
+
+def set_objective_display(objective: str, slot: str = "sidebar") -> None:
+    """Show an objective in a scoreboard slot (e.g. sidebar)."""
+    normalized = (slot or "sidebar").strip().lower()
+    if normalized not in VALID_DISPLAY_SLOTS:
+        raise ValueError(f"Invalid scoreboard display slot: {slot}")
+    logger.debug(
+        f"[minecraft_rcon] set_objective_display objective={objective} slot={normalized}"
+    )
+    _send_command(f"scoreboard objectives setdisplay {normalized} {objective}")
 
 
 def set_player_score(player: str, objective: str, value: int) -> None:
@@ -72,6 +111,44 @@ def set_player_score(player: str, objective: str, value: int) -> None:
 def add_player_score(player: str, objective: str, value: int) -> None:
     logger.debug(f"[minecraft_rcon] add_player_score player={player} objective={objective} delta={value}")
     _send_command(f"scoreboard players add {player} {objective} {int(value)}")
+
+
+def reset_player_score(player: str, objective: str) -> None:
+    logger.debug(
+        f"[minecraft_rcon] reset_player_score player={player} objective={objective}"
+    )
+    _send_command(f"scoreboard players reset {player} {objective}")
+
+
+def run_command(command: str) -> str:
+    """Execute a single RCON command and return the server response."""
+    return _send_command(command.strip())
+
+
+def run_commands(commands: list[str], *, stop_on_error: bool = True) -> tuple[bool, str]:
+    """
+    Execute RCON commands in order.
+
+    Returns (success, formatted log). Stops on the first failing command unless
+    stop_on_error is False.
+    """
+    log_lines: list[str] = []
+    had_error = False
+    for raw in commands:
+        command = (raw or "").strip()
+        if not command:
+            continue
+        try:
+            response = run_command(command)
+            log_lines.append(f"{command} -> {response or '(ok)'}")
+        except MCRconException as exc:
+            log_lines.append(f"{command} -> FEHLER: {exc}")
+            had_error = True
+            if stop_on_error:
+                return False, "\n".join(log_lines)
+    if not log_lines:
+        return True, "(keine Befehle)"
+    return not had_error, "\n".join(log_lines)
 
 
 def get_player_score(player: str, objective: str) -> int | None:

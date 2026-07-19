@@ -1,0 +1,148 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .minecraft-import {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .config-form {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .config-form label {
+        display: inline-block;
+        min-width: 220px;
+        font-weight: bold;
+    }
+    .config-form .field-row {
+        margin-bottom: 12px;
+    }
+    .import-panel {
+        border-top: 1px solid #eee;
+        margin-top: 18px;
+        padding-top: 18px;
+    }
+</style>
+<script>
+(function () {
+    function preserveDirectoryPaths(inputId) {
+        var input = document.getElementById(inputId);
+        if (!input) {
+            return;
+        }
+        input.addEventListener("change", function () {
+            var dt = new DataTransfer();
+            for (var i = 0; i < input.files.length; i++) {
+                var file = input.files[i];
+                var rel = file.webkitRelativePath || file.name;
+                dt.items.add(new File([file], rel, {
+                    type: file.type,
+                    lastModified: file.lastModified,
+                }));
+            }
+            input.files = dt.files;
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+        preserveDirectoryPaths("shop_files");
+        preserveDirectoryPaths("section_files");
+    });
+})();
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:minecraft_control' %}">{% trans 'Minecraft Steuerung' %}</a>
+    &rsaquo; {% trans 'EconomyShopGUI importieren' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-import">
+    <h1>{{ title }}</h1>
+
+    <p>
+        {% blocktrans with categories=shop_category_count items=shop_item_count %}
+        Aktuell {{ categories }} Kategorien und {{ items }} aktive Artikel im MCC-Katalog.
+        {% endblocktrans %}
+        <a href="{% url 'admin:minecraft_minecraftshopcategory_changelist' %}">{% trans 'Katalog verwalten' %}</a>
+        ·
+        <a href="{% url 'admin:minecraft_minecraftshopitem_changelist' %}">{% trans 'Alle Artikel durchsuchen' %}</a>
+    </p>
+
+    <form method="get" action="{% url 'admin:minecraft_minecraftshopitem_changelist' %}" class="config-form" style="margin-bottom: 15px;">
+        <div class="field-row">
+            <label for="shop_item_search">{% trans 'Artikel suchen' %}:</label>
+            <input type="search" id="shop_item_search" name="q" size="40"
+                   placeholder="{% trans 'Material, Name, Item-Key, Loc…' %}">
+            <button type="submit" class="button default">{% trans 'Suchen' %}</button>
+        </div>
+    </form>
+
+    <div class="config-form">
+        <p>
+            {% trans 'Unterverzeichnisse unter shops/ werden unterstützt (z. B. Mobs/spawn_eggs.yml). Die Section-ID entspricht dem relativen Pfad ohne Endung.' %}
+        </p>
+        <ul>
+            <li><code>plugins/EconomyShopGUI/shops/**/*.yml</code> — {% trans 'Shop-Artikel' %}</li>
+            <li><code>plugins/EconomyShopGUI/sections/**/*.yml</code> — {% trans 'Kategorienamen & Sortierung (optional)' %}</li>
+        </ul>
+
+        {% if server_import_enabled %}
+        <div class="import-panel">
+            <h2>{% trans 'Vom MC-Server importieren' %}</h2>
+            <p>
+                {% trans 'Liest rekursiv alle YAML-Dateien vom konfigurierten shops/-Pfad' %}
+                (<code>{{ esgui_shops_dir }}</code>{% if esgui_sections_dir %}, {% trans 'Sections' %}: <code>{{ esgui_sections_dir }}</code>{% endif %}).
+            </p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="import_source" value="server">
+                <div class="field-row">
+                    <label for="replace_items_server">{% trans 'Bestehende Artikel ersetzen' %}:</label>
+                    <input type="checkbox" id="replace_items_server" name="replace_items">
+                </div>
+                <button type="submit" class="button default">{% trans 'Jetzt vom Server importieren' %}</button>
+            </form>
+        </div>
+        {% else %}
+        <p><em>{% trans 'Server-Import: MCC_MINECRAFT_ESGUI_SHOPS_DIR in .env setzen (Pfad zum shops/-Ordner auf diesem Rechner).' %}</em></p>
+        {% endif %}
+
+        <div class="import-panel">
+            <h2>{% trans 'YAML hochladen' %}</h2>
+            <p>{% trans 'Wähle den shops/-Ordner (nicht den EconomyShopGUI-Hauptordner). Unterpfade wie Mobs/spawn_eggs.yml bleiben erhalten.' %}</p>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="import_source" value="upload">
+                <div class="field-row">
+                    <label for="shop_files">{% trans 'Shop-Ordner oder -Dateien' %}:</label>
+                    <input type="file" id="shop_files" name="shop_files" accept=".yml,.yaml" multiple webkitdirectory directory required>
+                </div>
+                <div class="field-row">
+                    <label for="section_files">{% trans 'Sections-Ordner oder -Dateien' %}:</label>
+                    <input type="file" id="section_files" name="section_files" accept=".yml,.yaml" multiple webkitdirectory directory>
+                </div>
+                <div class="field-row">
+                    <label for="replace_items">{% trans 'Bestehende Artikel ersetzen' %}:</label>
+                    <input type="checkbox" id="replace_items" name="replace_items">
+                    <small>{% trans 'Pro Kategorie alle vorhandenen Artikel löschen und neu importieren' %}</small>
+                </div>
+                <button type="submit" class="button default">{% trans 'Aus EconomyShopGUI importieren' %}</button>
+                <a class="button" href="{% url 'admin:minecraft_control' %}">{% trans 'Zurück zur Minecraft Steuerung' %}</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

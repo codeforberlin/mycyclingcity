@@ -129,13 +129,17 @@ INSTALLED_APPS = [
     'leaderboard',
 ]
 
-ASGI_APPLICATION = 'config.asgi.application'
 try:
     import channels  # noqa: F401
-    if 'channels' not in INSTALLED_APPS:
-        INSTALLED_APPS.append('channels')
-except Exception:
-    pass
+
+    _CHANNELS_AVAILABLE = True
+except ImportError:
+    _CHANNELS_AVAILABLE = False
+
+if _CHANNELS_AVAILABLE and 'channels' not in INSTALLED_APPS:
+    INSTALLED_APPS.append('channels')
+
+ASGI_APPLICATION = 'config.asgi.application'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -410,20 +414,51 @@ MCC_MINECRAFT_RCON_PORT = config('MCC_MINECRAFT_RCON_PORT', default=25575, cast=
 MCC_MINECRAFT_RCON_PASSWORD = config('MCC_MINECRAFT_RCON_PASSWORD', default='SECRET')
 MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL', default='player_coins_total')  # deprecated
 MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE = config('MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE', default='player_coins_spendable')  # deprecated
-MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL', default='group_velos_total')
-MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_SPENDABLE = config('MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_SPENDABLE', default='group_velos_spendable')
+MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL', default='group_velos_total')  # deprecated
+MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_SPENDABLE = config(
+    'MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_SPENDABLE', default='group_velos_spendable'
+)  # deprecated alias
+MCC_MINECRAFT_SCOREBOARD_TEAM_SPENDABLE = config(
+    'MCC_MINECRAFT_SCOREBOARD_TEAM_SPENDABLE', default='team_velos_spendable'
+)
+MCC_MINECRAFT_SCOREBOARD_TEAM_DISPLAY_NAME_DEFAULT = config(
+    'MCC_MINECRAFT_SCOREBOARD_TEAM_DISPLAY_NAME_DEFAULT', default='Velo-Arena'
+)
+MCC_MINECRAFT_SCOREBOARD_DISPLAY_SLOT = config(
+    'MCC_MINECRAFT_SCOREBOARD_DISPLAY_SLOT', default='sidebar'
+)
 MCC_MINECRAFT_WORKER_POLL_INTERVAL = config('MCC_MINECRAFT_WORKER_POLL_INTERVAL', default=1, cast=int)  # Deprecated: Only used as fallback
-MCC_MINECRAFT_WORKER_FALLBACK_POLL_INTERVAL = config('MCC_MINECRAFT_WORKER_FALLBACK_POLL_INTERVAL', default=30, cast=int)  # Fallback polling interval (seconds)
-MCC_MINECRAFT_WORKER_SOCKET_TIMEOUT = config('MCC_MINECRAFT_WORKER_SOCKET_TIMEOUT', default=5.0, cast=float)  # Socket wait timeout (seconds)
+# Deprecated: blind fallback sleep removed (dropped socket notifies). Kept for env compatibility.
+MCC_MINECRAFT_WORKER_FALLBACK_POLL_INTERVAL = config('MCC_MINECRAFT_WORKER_FALLBACK_POLL_INTERVAL', default=30, cast=int)
+# Idle wait on Unix notify socket; on timeout the worker re-polls the outbox then listens again.
+MCC_MINECRAFT_WORKER_SOCKET_TIMEOUT = config('MCC_MINECRAFT_WORKER_SOCKET_TIMEOUT', default=5.0, cast=float)
 MCC_MINECRAFT_RCON_HEALTH_INTERVAL = config('MCC_MINECRAFT_RCON_HEALTH_INTERVAL', default=30, cast=int)
 MCC_MINECRAFT_SNAPSHOT_INTERVAL = config('MCC_MINECRAFT_SNAPSHOT_INTERVAL', default=60, cast=int)
 MCC_MINECRAFT_SNAPSHOT_UPDATE_DB_SPENDABLE = config('MCC_MINECRAFT_SNAPSHOT_UPDATE_DB_SPENDABLE', default=True, cast=bool)
 MCC_MINECRAFT_OUTBOX_DONE_TTL_DAYS = config('MCC_MINECRAFT_OUTBOX_DONE_TTL_DAYS', default=7, cast=int)
 MCC_MINECRAFT_OUTBOX_FAILED_TTL_DAYS = config('MCC_MINECRAFT_OUTBOX_FAILED_TTL_DAYS', default=30, cast=int)
 MCC_MINECRAFT_OUTBOX_MAX_EVENTS = config('MCC_MINECRAFT_OUTBOX_MAX_EVENTS', default=50000, cast=int)
+# Backoff before retrying a pending outbox event after a transient RCON/Minecraft failure
+MCC_MINECRAFT_OUTBOX_RETRY_BACKOFF_SECONDS = config(
+    'MCC_MINECRAFT_OUTBOX_RETRY_BACKOFF_SECONDS', default=5, cast=int
+)
 MCC_MINECRAFT_WS_ENABLED = config('MCC_MINECRAFT_WS_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_WS_SHARED_SECRET = config('MCC_MINECRAFT_WS_SHARED_SECRET', default='SECRET')
 MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS = config('MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS', default='', cast=Csv())
+MCC_MINECRAFT_WS_BIND_HOST = config('MCC_MINECRAFT_WS_BIND_HOST', default='0.0.0.0')
+MCC_MINECRAFT_WS_PORT = config('MCC_MINECRAFT_WS_PORT', default=8002, cast=int)
+MCC_MINECRAFT_WS_PUBLIC_HOST = config('MCC_MINECRAFT_WS_PUBLIC_HOST', default='')
+MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=True, cast=bool)
+MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')
+MCC_MINECRAFT_ESGUI_SHOPS_DIR = config('MCC_MINECRAFT_ESGUI_SHOPS_DIR', default='')
+MCC_MINECRAFT_ESGUI_SECTIONS_DIR = config('MCC_MINECRAFT_ESGUI_SECTIONS_DIR', default='')
+
+if _CHANNELS_AVAILABLE:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 MCC_APP_API_KEY = config('MCC_APP_API_KEY', default='MCC-APP-API-KEY-SECRET')
 # Must point to the location where the file actually exists (e.g., static/game/sound/)
 MCC_GAME_SOUND = BASE_DIR / 'game' / 'static' / 'game' / 'sound' / 'bonus-sound-with-bell.mp3'

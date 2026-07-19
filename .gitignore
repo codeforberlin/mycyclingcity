@@ -171,3 +171,7 @@ SECURITY_AUDIT.md
 mcc-web/db.sqlite3-shm
 mcc-web/db.sqlite3-wal
 mcc-web/mcc-web.pid
+
+# mcc-bridge - Gradle
+mcc-bridge/build/
+mcc-bridge/.gradle/

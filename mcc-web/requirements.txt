@@ -13,3 +13,6 @@ qrcode[pil]==7.4.2
 psutil==6.1.1
 mcrcon==0.7.0
 reportlab==4.4.0
+channels==4.2.2
+daphne==4.1.2
+PyYAML==6.0.2

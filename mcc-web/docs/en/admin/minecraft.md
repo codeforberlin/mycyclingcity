@@ -26,6 +26,8 @@ The Minecraft module synchronizes **group Velos** between MyCyclingCity and a Mi
 
 - Signed events from Minecraft plugins
 - `SPEND_GROUP_VELOS` (legacy alias: `SPEND_COINS`)
+- `GET_TEAM_VELOS`, `SYNC_SHOP_CATALOG`
+- `HEARTBEAT` (presence keep-alive for Admin shop-push; updates `last_seen`)
 
 ### 5. Snapshot System
 

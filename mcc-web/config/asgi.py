@@ -11,11 +11,12 @@ try:
     from channels.routing import ProtocolTypeRouter, URLRouter
     from django.conf import settings
     from minecraft.routing import websocket_urlpatterns
+    from minecraft.ws_internal import build_http_application
 
     if settings.MCC_MINECRAFT_WS_ENABLED:
         application = ProtocolTypeRouter(
             {
-                "http": django_asgi_app,
+                "http": build_http_application(django_asgi_app),
                 "websocket": URLRouter(websocket_urlpatterns),
             }
         )

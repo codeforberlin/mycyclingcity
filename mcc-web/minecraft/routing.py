@@ -5,4 +5,5 @@ from minecraft.consumers import MinecraftEventConsumer
 
 websocket_urlpatterns = [
     path("ws/minecraft/events", MinecraftEventConsumer.as_asgi()),
+    path("ws/minecraft/events/", MinecraftEventConsumer.as_asgi()),
 ]

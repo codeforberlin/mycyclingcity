@@ -1,0 +1,42 @@
+{
+  "_comment": "Phase-A Lasttest: 4 feste Geräte/Radler-Paare. wheel_size in mm (20\"=1596, 24\"=1916).",
+  "pairs": [
+    {
+      "device_id": "mcc-test-001",
+      "id_tag": "ketteD",
+      "cyclist_name": "KetteD",
+      "wheel_size": 1596.0
+    },
+    {
+      "device_id": "mcc-test-002",
+      "id_tag": "dynamoD",
+      "cyclist_name": "DynamoD",
+      "wheel_size": 1596.0
+    },
+    {
+      "device_id": "mcc-test-003",
+      "id_tag": "speicheD",
+      "cyclist_name": "SpeicheD",
+      "wheel_size": 1916.0
+    },
+    {
+      "device_id": "mcc-test-004",
+      "id_tag": "kurbelD",
+      "cyclist_name": "KurbelD",
+      "wheel_size": 1916.0
+    }
+  ],
+  "devices": [
+    "mcc-test-001",
+    "mcc-test-002",
+    "mcc-test-003",
+    "mcc-test-004"
+  ],
+  "id_tags": [
+    "ketteD",
+    "dynamoD",
+    "speicheD",
+    "kurbelD"
+  ],
+  "send_interval": 5
+}

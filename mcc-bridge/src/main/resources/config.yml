@@ -1,0 +1,37 @@
+# MCC-Bridge configuration
+# Connects Paper server to MyCyclingCity Django WebSocket + Vault economy.
+
+mcc:
+  # MCC server LAN IP (192.168.90.2), Daphne port 8002 — no Apache/TLS required
+  websocket_url: "ws://192.168.90.2:8002/ws/minecraft/events"
+  # Must match MCC_MINECRAFT_WS_SHARED_SECRET in /data/appl/mcc/.env
+  shared_secret: "CHANGE_ME"
+  server_id: "velo-stadt-1"
+  reconnect_seconds: 15
+  # Signed HEARTBEAT to MCC so Admin "Shop push" stays enabled (MCC STALE_AFTER=5min)
+  # 0 = disabled; values 1–14 are raised to 15
+  heartbeat_seconds: 60
+  catalog_sync_on_connect: true
+  # Apply MCC catalog prices to EconomyShopGUI after each pull
+  esgui_sync_on_catalog: true
+  # Create missing shop items via /editshop additem (use with care)
+  esgui_add_missing_items: false
+  esgui_default_sell_price: -1
+  esgui_reload_after_sync: true
+  # If /sreload is unavailable, disable+enable EconomyShopGUI to reload shop YAML
+  esgui_reload_cycle_fallback: true
+
+vault:
+  currency_name: "Velos"
+  currency_symbol: " Velos"
+
+team:
+  # How to map a Minecraft player to a team scoreboard name (Group.mc_username):
+  # luckperms = first matching parent group from team_groups
+  # config = lookup in player_overrides, then team_groups by primary group name
+  resolution: luckperms
+  team_groups:
+    team_alpha: TeamAlpha
+    team_beta: TeamBeta
+  player_overrides:
+    # Steve: TeamAlpha

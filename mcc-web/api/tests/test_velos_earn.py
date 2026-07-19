@@ -91,8 +91,16 @@ class TestApplyVelosEarn:
         assert cyclist.velos_balance == 0
         assert leaf_group.velos_total == 0
 
-    def test_queues_minecraft_for_group_mc_username(self):
+    def test_queues_minecraft_for_registered_group(self):
         leaf_group = GroupFactory(name='Leaf', mc_username='team_alpha')
+        from minecraft.models import MinecraftTeamRegistration
+
+        MinecraftTeamRegistration.objects.create(
+            group=leaf_group,
+            mc_username='team_alpha',
+            is_active=True,
+            was_ever_registered=True,
+        )
         cyclist = CyclistFactory()
         cyclist.groups.add(leaf_group)
         device = DeviceFactory(group=leaf_group)
@@ -104,12 +112,27 @@ class TestApplyVelosEarn:
         apply_velos_earn(cyclist, device, Decimal('1.0'))
 
         event = MinecraftOutboxEvent.objects.filter(
-            event_type=MinecraftOutboxEvent.EVENT_UPDATE_GROUP_VELOS,
+            event_type=MinecraftOutboxEvent.EVENT_UPDATE_TEAM_VELOS,
         ).first()
         assert event is not None
         assert event.payload['player'] == 'team_alpha'
-        assert event.payload['velos_total'] == 100
         assert event.payload['spendable_delta'] == 100
+
+    def test_does_not_queue_minecraft_without_registration(self):
+        leaf_group = GroupFactory(name='Leaf', mc_username='team_alpha')
+        cyclist = CyclistFactory()
+        cyclist.groups.add(leaf_group)
+        device = DeviceFactory(group=leaf_group)
+        config = device.configuration
+        config.wheel_size = 2300.0
+        config.paedagogischer_bonus = 0.0
+        config.save()
+
+        apply_velos_earn(cyclist, device, Decimal('1.0'))
+
+        assert not MinecraftOutboxEvent.objects.filter(
+            event_type=MinecraftOutboxEvent.EVENT_UPDATE_TEAM_VELOS,
+        ).exists()
 
 
 @pytest.mark.unit

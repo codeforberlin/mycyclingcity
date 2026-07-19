@@ -55,6 +55,30 @@ Environment-Variablen:
 /data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
+## backup_minecraft_world.sh
+
+Stündliches Backup der Minecraft-Welten im laufenden Betrieb (RCON `save-off` → `save-all flush` → `tar.gz` → `save-on`).
+
+### Installation / Cron
+
+```bash
+cp scripts/backup_minecraft_world.conf.example scripts/backup_minecraft_world.conf
+# optional: RCON_PASSWORD setzen, sonst aus MCC-.env oder server.properties
+chmod +x scripts/backup_minecraft_world.sh scripts/install_minecraft_backup_cron.sh
+
+# Cron: jede Stunde zur Minute :05
+/data/appl/mcc/mcc-web/scripts/install_minecraft_backup_cron.sh
+
+# Manuell testen
+/data/appl/mcc/mcc-web/scripts/backup_minecraft_world.sh --dry-run
+/data/appl/mcc/mcc-web/scripts/backup_minecraft_world.sh
+```
+
+- **Welt**: `/data/games/minecraft_server/{world,world_nether,world_the_end}`
+- **Archive**: `/data/var/mcc/backups/minecraft/mc_world_YYYYMMDD_HHMMSS.tar.gz`
+- **Retention**: letzte 48 Stunden-Backups (konfigurierbar)
+- **Logs**: `/data/var/mcc/logs/minecraft_backup_YYYYMMDD.log`
+
 ## backup_mcc.sh
 
 Backup-Script für MyCyclingCity Datenbank und wichtige Daten (ohne Logfiles) via rsync über SSH.

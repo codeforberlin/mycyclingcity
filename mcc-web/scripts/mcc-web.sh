@@ -30,6 +30,13 @@ GUNICORN_CONFIG="$PROJECT_DIR/config/gunicorn_config.py"
 PIDFILE="$TMP_DIR/mcc-web.pid"
 LOG_FILE="$LOG_DIR/mcc-web-script.log"
 MINECRAFT_SCRIPT="$PROJECT_DIR/scripts/minecraft.sh"
+MINECRAFT_WS_SCRIPT="$PROJECT_DIR/scripts/minecraft_ws.sh"
+
+if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]]; then
+    ENV_FILE="/data/appl/mcc/.env"
+else
+    ENV_FILE="$PROJECT_DIR/.env"
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -168,6 +175,38 @@ kill_all_worker_processes() {
     else
         echo -e "${GREEN}✓ No remaining worker processes found${NC}" >&2
         log_line "INFO" "No remaining worker processes found"
+    fi
+}
+
+is_minecraft_ws_enabled() {
+    if [ ! -f "$ENV_FILE" ]; then
+        return 1
+    fi
+    local enabled
+    enabled=$(grep -E '^MCC_MINECRAFT_WS_ENABLED=' "$ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    [ "$enabled" = "true" ] || [ "$enabled" = "1" ] || [ "$enabled" = "yes" ]
+}
+
+start_minecraft_ws() {
+    if ! is_minecraft_ws_enabled; then
+        log_line "INFO" "Minecraft WebSocket disabled in .env; skipping start"
+        return 0
+    fi
+    if [ -x "$MINECRAFT_WS_SCRIPT" ]; then
+        if "$MINECRAFT_WS_SCRIPT" start >/dev/null 2>&1; then
+            log_line "INFO" "Started Minecraft WebSocket server"
+        else
+            log_line "WARN" "minecraft_ws.sh start returned non-zero"
+        fi
+    else
+        log_line "WARN" "minecraft_ws.sh not found or not executable: $MINECRAFT_WS_SCRIPT"
+    fi
+}
+
+stop_minecraft_ws() {
+    if [ -x "$MINECRAFT_WS_SCRIPT" ]; then
+        "$MINECRAFT_WS_SCRIPT" stop >/dev/null 2>&1 || true
+        log_line "INFO" "Stopped Minecraft WebSocket server"
     fi
 }
 
@@ -323,6 +362,7 @@ start() {
             "$MINECRAFT_SCRIPT" snapshot-start >/dev/null 2>&1 || true
             log_line "INFO" "Started Minecraft workers after server start"
         fi
+        start_minecraft_ws
         return 0
     else
         echo -e "${RED}✗ Failed to start server${NC}"
@@ -355,6 +395,7 @@ stop() {
             }
             log_line "INFO" "Called minecraft.sh stop-all (workers may still be running)"
         fi
+        stop_minecraft_ws
         
         # ALWAYS kill by name - this is the most reliable method
         # This ensures all workers are terminated even if minecraft.sh fails
@@ -390,6 +431,7 @@ stop() {
             echo -e "${BLUE}Gunicorn is stopped, now stopping Minecraft workers...${NC}"
             log_line "INFO" "Gunicorn confirmed stopped, stopping workers"
             kill_all_worker_processes
+            stop_minecraft_ws
             return 0
         fi
         sleep 1
@@ -438,6 +480,7 @@ stop() {
     # ALWAYS kill by name - this is the most reliable method
     # This ensures all workers are terminated even if scripts fail or processes restart
     kill_all_worker_processes
+    stop_minecraft_ws
     
     return 0
 }
@@ -492,6 +535,15 @@ status() {
         if command -v ps >/dev/null 2>&1; then
             echo ""
             ps -p "$PID" -o pid,ppid,user,start,time,cmd 2>/dev/null || true
+        fi
+        if [ -x "$MINECRAFT_WS_SCRIPT" ]; then
+            echo ""
+            echo -e "${BLUE}Minecraft WebSocket:${NC}"
+            if "$MINECRAFT_WS_SCRIPT" status 2>/dev/null; then
+                :
+            else
+                echo -e "${RED}✗ WebSocket server is not running${NC}"
+            fi
         fi
         return 0
     else
