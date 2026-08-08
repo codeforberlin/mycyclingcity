@@ -1,0 +1,219 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_session_dashboard_assets.html" %}
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_builder_sessions' %}">{% trans 'Bau-Sessions' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mc-session-dash" data-kind="builder">
+    <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.25rem;">{{ title }}</h1>
+    <p style="color:#64748b;margin:0 0 1rem;">
+        {% blocktrans with min=global_default_duration add=global_add_minutes %}Standard: Start {{ min }} Min. · Zeit +{{ add }} Min. (pro Account anpassbar){% endblocktrans %}
+    </p>
+
+    {% if cards %}
+    <div class="mc-bulk-bar" data-bulk-gamemode>
+        <span class="mc-bulk-label">{% trans 'Alle Sessions' %}</span>
+        <div class="mc-bulk-modes">
+            <form method="post" class="mc-bulk-start-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="start_all">
+                <label class="mc-spawn-check" title="{% trans 'Beim Start zum Welt-Spawn statt letzter Position' %}">
+                    <input type="checkbox" name="teleport_to_spawn" value="1">
+                    {% trans 'Spawn' %}
+                </label>
+                <button type="submit" class="mc-btn mc-btn-start mc-btn-bulk-start" data-action="start_all"
+                        {% if not idle_session_count %}disabled{% endif %}>
+                    {% trans 'Alle starten' %}
+                </button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="spawn_all">
+                <button type="submit" class="mc-btn mc-btn-mode" data-action="spawn_all"
+                        {% if not active_session_count %}disabled{% endif %}>
+                    {% trans 'Alle zum Spawn' %}
+                </button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_all_gamemode">
+                <input type="hidden" name="mode" value="survival">
+                <button type="submit" class="mc-btn mc-btn-mode" data-action="set_all_gamemode" data-mode="survival"
+                        {% if not active_session_count %}disabled{% endif %}>
+                    {% trans 'Survival' %}
+                </button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_all_gamemode">
+                <input type="hidden" name="mode" value="adventure">
+                <button type="submit" class="mc-btn mc-btn-mode" data-action="set_all_gamemode" data-mode="adventure"
+                        {% if not active_session_count %}disabled{% endif %}>
+                    {% trans 'Adventure' %}
+                </button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_all_gamemode">
+                <input type="hidden" name="mode" value="spectator">
+                <button type="submit" class="mc-btn mc-btn-mode mc-btn-spectator" data-action="set_all_gamemode" data-mode="spectator"
+                        {% if not active_session_count %}disabled{% endif %}>
+                    {% trans 'Spectator' %}
+                </button>
+            </form>
+            <form method="post" class="mc-bulk-kick-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="kick_all">
+                <button type="submit" class="mc-btn mc-btn-kick mc-btn-bulk-kick" data-action="kick_all"
+                        {% if not active_session_count %}disabled{% endif %}>
+                    {% trans 'Alle kicken' %}
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not cards %}
+    <p>{% trans 'Keine aktiven Bau-Team-Registrierungen.' %}</p>
+    {% else %}
+    <div class="mc-session-grid">
+        {% for card in cards %}
+        <div class="mc-session-card{% if card.is_active %} is-active{% endif %}{% if card.waiting_in_lobby %} is-waiting{% endif %}"
+             data-account="{{ card.account_name }}"
+             data-remaining="{{ card.remaining_seconds }}"
+             data-play-gamemode="{{ card.play_gamemode }}">
+            <div class="mc-label">{{ card.label }}</div>
+            <div class="mc-sub">{{ card.account_name }}{% if card.ms_username %} ← {{ card.ms_username }}{% endif %}</div>
+            {% if card.ms_username %}
+            <div class="mc-proxy{% if card.waiting_in_lobby %} is-waiting{% endif %}"
+                 data-proxy-status
+                 data-proxy-state="{{ card.proxy_state }}"
+                 data-waiting="{% if card.waiting_in_lobby %}1{% else %}0{% endif %}">
+                {% if card.waiting_in_lobby %}
+                <span class="mc-wait-badge">{% trans 'Warteraum' %}</span>
+                {% endif %}
+                <span data-proxy-label>
+                  {% if card.proxy_label %}{{ card.proxy_label }}{% else %}—{% endif %}
+                </span>
+            </div>
+            {% else %}
+            <div class="mc-proxy mc-proxy-missing">{% trans 'Kein Microsoft-Login' %}</div>
+            {% endif %}
+            {% if card.is_waitlist_assigned %}
+            <div class="mc-sub" style="color:#0f766e;font-weight:600;">
+              {% blocktrans with ticket=card.waitlist_ticket mins=card.start_minutes %}Warteliste #{{ ticket }} · {{ mins }} Min.{% endblocktrans %}
+              {% if card.waitlist_guest %} · {{ card.waitlist_guest }}{% endif %}
+            </div>
+            {% endif %}
+            {% include "admin/minecraft/_session_card_times.html" %}
+
+            <div class="mc-countdown" data-countdown{% if not card.is_active %} style="display:none;"{% endif %}>
+                {% if card.is_active %}--:--{% endif %}
+            </div>
+            <div class="mc-status-idle{% if card.waiting_in_lobby %} is-waiting{% endif %}"
+                 data-status-label{% if card.is_active %} style="display:none;"{% endif %}>
+                {% if card.waiting_in_lobby %}{% trans 'Bereit zum Start' %}{% else %}{% trans 'Bereit' %}{% endif %}
+            </div>
+
+            {% if builder_session_active_hint %}
+            <div class="mc-pfand" data-pfand{% if not card.is_active %} style="display:none;"{% endif %}>
+                {{ builder_session_active_hint }}
+            </div>
+            {% endif %}
+
+            <div class="mc-actions">
+                <div class="mc-actions-row">
+                    <form method="post" class="mc-start-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="start">
+                        <input type="hidden" name="account" value="{{ card.account_name }}">
+                        <label class="mc-spawn-check" title="{% trans 'Zum Welt-Spawn statt letzter Position' %}">
+                            <input type="checkbox" name="teleport_to_spawn" value="1"
+                                   {% if card.is_active %}disabled{% endif %}>
+                            {% trans 'Spawn' %}
+                        </label>
+                        <button type="submit" class="mc-btn mc-btn-start" data-action="start"
+                                {% if card.is_active %}disabled{% endif %}>
+                            {% trans 'Start' %}
+                        </button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_time">
+                        <input type="hidden" name="account" value="{{ card.account_name }}">
+                        <button type="submit" class="mc-btn mc-btn-add" data-action="add_time"
+                                {% if not card.is_active %}disabled{% endif %}>
+                            {% blocktrans with min=card.add_minutes %}+{{ min }} Min.{% endblocktrans %}
+                        </button>
+                    </form>
+                </div>
+                <div class="mc-actions-row mc-gamemode-row" data-gamemode-row>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_gamemode">
+                        <input type="hidden" name="mode" value="survival">
+                        <input type="hidden" name="account" value="{{ card.account_name }}">
+                        <button type="submit" class="mc-btn mc-btn-mode{% if card.play_gamemode == 'survival' %} is-current{% endif %}"
+                                data-action="set_gamemode" data-mode="survival"
+                                {% if not card.is_active %}disabled{% endif %}>
+                            {% trans 'Survival' %}
+                        </button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_gamemode">
+                        <input type="hidden" name="mode" value="adventure">
+                        <input type="hidden" name="account" value="{{ card.account_name }}">
+                        <button type="submit" class="mc-btn mc-btn-mode{% if card.play_gamemode == 'adventure' %} is-current{% endif %}"
+                                data-action="set_gamemode" data-mode="adventure"
+                                {% if not card.is_active %}disabled{% endif %}>
+                            {% trans 'Adventure' %}
+                        </button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_gamemode">
+                        <input type="hidden" name="mode" value="spectator">
+                        <input type="hidden" name="account" value="{{ card.account_name }}">
+                        <button type="submit" class="mc-btn mc-btn-mode{% if card.play_gamemode == 'spectator' %} is-current{% endif %}"
+                                data-action="set_gamemode" data-mode="spectator"
+                                {% if not card.is_active %}disabled{% endif %}>
+                            {% trans 'Spectator' %}
+                        </button>
+                    </form>
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="kick">
+                    <input type="hidden" name="account" value="{{ card.account_name }}">
+                    <button type="submit" class="mc-btn mc-btn-kick" data-action="kick"
+                            {% if not card.is_active %}disabled{% endif %}>
+                        {% trans 'Kick' %}
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+<script>
+document.body.setAttribute('data-session-poll-url', '{{ poll_url|escapejs }}');
+document.body.setAttribute('data-proxy-presence-poll-seconds', '{{ proxy_presence_poll_seconds }}');
+document.body.setAttribute('data-proxy-presence-poll-fast-seconds', '{{ proxy_presence_poll_fast_seconds }}');
+</script>
+{% endblock %}

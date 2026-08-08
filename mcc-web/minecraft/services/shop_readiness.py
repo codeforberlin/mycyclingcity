@@ -476,7 +476,7 @@ def check_shop_readiness(
             ok=False,
             severity="warning",
             detail="; ".join(str(part) for part in parts),
-            hint=_("Artikel im Katalog bearbeiten"),
+            hint=_("Shop-Betrieb → Artikel ohne Velos-Preis auf mindestens 1 setzen"),
         )
     elif items > 0:
         _add_check(

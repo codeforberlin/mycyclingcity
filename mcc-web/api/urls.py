@@ -7,6 +7,9 @@
 
 #
 from django.urls import path
+from minecraft.api_views import mcc_counter_scan
+from minecraft.waitlist_views import minecraft_waitlist_public_display
+
 from . import views
 
 urlpatterns = [
@@ -14,7 +17,13 @@ urlpatterns = [
     path('get-user-id', views.get_user_id, name='get_user_id'),
     path('get-mapped-minecraft-players', views.get_mapped_minecraft_players, name='get_mapped_minecraft_players'),
     path('get-mapped-minecraft-cyclists', views.get_mapped_minecraft_cyclists, name='get_mapped_minecraft_cyclists'),
-    
+    path('mcc-counter/scan/', mcc_counter_scan, name='mcc_counter_scan'),
+    path(
+        'minecraft/waitlist/<str:token>/display/',
+        minecraft_waitlist_public_display,
+        name='minecraft_waitlist_public_display',
+    ),
+
     # New endpoints for the map system
     path('get-travel-locations', views.get_travel_locations, name='get_travel_locations'),
     

@@ -1,0 +1,120 @@
+# VeloArena race motion test – lane geometry only (no cyclists).
+# Copy to velo_arena_race.toml and adjust coordinates for your arena world.
+# Minecraft server (local / Wirk): /data/games/mcc/mc-srv
+#
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Cyclists are assigned at runtime via CLI (--assign lane_id:cyclist),
+# later via Minecraft/Game GUI. This file is READ only; the script never
+# writes scoreboards or Django database rows.
+
+tick_interval_seconds = 0.1
+# Only apply Motion when the cart moved at least this far (blocks) since last tick.
+motion_min_distance = 0.03
+lap_cooldown_ticks = 30
+actionbar_enabled = true
+# Prefer /data/var/mcc/tmp when MCC workers run on the same host.
+rcon_lock_path = "/data/var/mcc/tmp/mcc-minecraft-rcon.lock"
+rcon_lock_timeout_seconds = 2.0
+
+# Default start impulse direction (unit vector, scaled by effective speed).
+default_impulse_x = 0.0
+default_impulse_y = 0.0
+default_impulse_z = 1.0
+
+# Distance → Motion mapping (used with --sim-distance):
+# effective_mps = sim_rate * device_factor
+# IoT pulses every sim_update_interval_seconds (like Device.send_interval);
+# Motion holds last rate between pulses while the tick loop stays ~0.1s.
+# motion_speed = clamp(held_mps / 20, min, max)
+reference_mps = 2.0
+min_motion_speed = 0.08
+max_motion_speed = 0.55
+sim_update_interval_seconds = 5.0
+
+# Floating rider name via text_display passenger (not minecart CustomName).
+cart_name_visible = true
+
+# TOP-3 best times (local JSON, not Django). Console only — no arena holograms.
+best_times_file = "arena_best_times.json"
+
+# Physical lanes on the arena (stable ids for GUI/CLI assignment).
+[[lanes]]
+id = "lane_1"
+name = "Bahn 1"
+tag = "velo_lane_1"
+color = "blue"
+start_x = -52.0
+start_y = -60.0
+start_z = -2.0
+yaw = 0.0
+pitch = 0.0
+base_speed = 0.4
+finish_x_min = -53.5
+finish_x_max = -49.5
+finish_z_trigger = 1.0
+impulse_x = 0.0
+impulse_y = 0.0
+impulse_z = 1.0
+# Optional: world sign block that shows the assigned rider (place sign in world first).
+# sign_x = -51.0
+# sign_y = -59.0
+# sign_z = -3.0
+
+[[lanes]]
+id = "lane_2"
+name = "Bahn 2"
+tag = "velo_lane_2"
+color = "green"
+start_x = -52.0
+start_y = -60.0
+start_z = -2.0
+yaw = 0.0
+pitch = 0.0
+base_speed = 0.4
+finish_x_min = -53.5
+finish_x_max = -49.5
+finish_z_trigger = 1.0
+impulse_x = 0.0
+impulse_y = 0.0
+impulse_z = 1.0
+# sign_x = -49.0
+# sign_y = -59.0
+# sign_z = -3.0
+
+[[lanes]]
+id = "lane_3"
+name = "Bahn 3"
+tag = "velo_lane_3"
+color = "yellow"
+start_x = -52.0
+start_y = -60.0
+start_z = -2.0
+yaw = 0.0
+pitch = 0.0
+base_speed = 0.4
+finish_x_min = -53.5
+finish_x_max = -49.5
+finish_z_trigger = 1.0
+impulse_x = 0.0
+impulse_y = 0.0
+impulse_z = 1.0
+
+[[lanes]]
+id = "lane_4"
+name = "Bahn 4"
+tag = "velo_lane_4"
+color = "red"
+start_x = -52.0
+start_y = -60.0
+start_z = -2.0
+yaw = 0.0
+pitch = 0.0
+base_speed = 0.4
+finish_x_min = -53.5
+finish_x_max = -49.5
+finish_z_trigger = 1.0
+impulse_x = 0.0
+impulse_y = 0.0
+impulse_z = 1.0

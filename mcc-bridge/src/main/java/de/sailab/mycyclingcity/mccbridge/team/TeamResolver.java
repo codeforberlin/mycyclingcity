@@ -26,9 +26,21 @@ public class TeamResolver {
             return Optional.empty();
         }
 
-        String override = config.playerOverrides().get(player.getName());
-        if (override != null && !override.isBlank()) {
-            return Optional.of(override);
+        String playerName = player.getName();
+        Map<String, String> overrides = config.playerOverrides();
+        if (overrides != null && !overrides.isEmpty()) {
+            String override = overrides.get(playerName);
+            if (override == null || override.isBlank()) {
+                for (Map.Entry<String, String> entry : overrides.entrySet()) {
+                    if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(playerName)) {
+                        override = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            if (override != null && !override.isBlank()) {
+                return Optional.of(override);
+            }
         }
 
         if ("luckperms".equalsIgnoreCase(config.resolution()) && luckPerms != null) {

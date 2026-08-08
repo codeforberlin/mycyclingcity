@@ -12,6 +12,8 @@ MAX_COMMANDS = 50
 MAX_COMMAND_LENGTH = 256
 
 DEPRECATED_GAMERULE_HINTS: dict[str, str] = {
+    "doDaylightCycle": "advance_time",
+    "doWeatherCycle": "advance_weather",
     "mobGriefing": "mob_griefing",
     "doMobSpawning": "spawn_monsters",
     "doFireTick": "fire_spread_radius_around_player",
@@ -21,6 +23,17 @@ DEPRECATED_GAMERULE_HINTS: dict[str, str] = {
     "doEntityDrops": "entity_drops",
     "doMobLoot": "mob_drops",
 }
+
+
+def normalize_preset_commands(commands: list[str] | None) -> list[str]:
+    """Map legacy camelCase gamerule names to Minecraft 1.21.11+ snake_case."""
+    normalized: list[str] = []
+    for command in commands or []:
+        updated = command
+        for deprecated, modern in DEPRECATED_GAMERULE_HINTS.items():
+            updated = re.sub(rf"\b{re.escape(deprecated)}\b", modern, updated)
+        normalized.append(updated)
+    return normalized
 
 
 def commands_to_text(commands: list[str] | None) -> str:

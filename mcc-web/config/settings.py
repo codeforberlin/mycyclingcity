@@ -52,15 +52,30 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-YOUR_SECRET_KEY_HERE'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='mycyclingcity.net,127.0.0.1', cast=Csv())
-##ALLOWED_HOSTS = ['*']
+# Gunicorn:8001 is not public (Apache terminates HTTPS on 443). Allow any Host
+# so LAN IPs work without editing config. Override via .env only if needed.
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
-# Add HTTPS origin of external domain
+# Canonical public DNS names (CSRF / WebSocket helpers; not a substitute for ALLOWED_HOSTS).
+MCC_PUBLIC_HOSTNAMES = [
+    'mycyclingcity.de',
+    'admin.mycyclingcity.de',
+    'api.mycyclingcity.de',
+    'game.mycyclingcity.de',
+    'map.mycyclingcity.de',
+    'mycyclingcity.net',
+]
+
+# HTTPS origins behind Apache. Override via .env only for staging/alternate domains.
+_CSRF_DEFAULT = ','.join(f'https://{h}' for h in MCC_PUBLIC_HOSTNAMES)
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://mycyclingcity.net',
-    cast=Csv()
+    default=_CSRF_DEFAULT,
+    cast=Csv(),
 )
+
+# AJAX dashboards (Bau-/Spieler-Sessions) expect JSON on CSRF failure, not HTML 403.
+CSRF_FAILURE_VIEW = 'config.csrf.csrf_failure'
 
 # 2. SSL/HTTPS-Proxy-Header (CRITICAL for security)
 # This tells Django to trust the 'X-Forwarded-Proto' header,
@@ -412,6 +427,140 @@ MCC_KIOSK_FOOTER_UPDATE_INTERVAL = config('MCC_KIOSK_FOOTER_UPDATE_INTERVAL', de
 MCC_MINECRAFT_RCON_HOST = config('MCC_MINECRAFT_RCON_HOST', default='127.0.0.1')
 MCC_MINECRAFT_RCON_PORT = config('MCC_MINECRAFT_RCON_PORT', default=25575, cast=int)
 MCC_MINECRAFT_RCON_PASSWORD = config('MCC_MINECRAFT_RCON_PASSWORD', default='SECRET')
+# Shared file lock for bridge worker + arena motion worker (same RCON port).
+MCC_MINECRAFT_RCON_LOCK_PATH = config(
+    'MCC_MINECRAFT_RCON_LOCK_PATH',
+    default=str(DATA_DIR / 'tmp' / 'mcc-minecraft-rcon.lock'),
+)
+MCC_MINECRAFT_RCON_LOCK_TIMEOUT = config('MCC_MINECRAFT_RCON_LOCK_TIMEOUT', default=2.0, cast=float)
+# Velocity / Velocircon (proxy send: limbo ↔ paper)
+MCC_MINECRAFT_VELOCITY_RCON_HOST = config(
+    'MCC_MINECRAFT_VELOCITY_RCON_HOST', default='127.0.0.1'
+)
+MCC_MINECRAFT_VELOCITY_RCON_PORT = config(
+    'MCC_MINECRAFT_VELOCITY_RCON_PORT', default=25576, cast=int
+)
+MCC_MINECRAFT_VELOCITY_RCON_PASSWORD = config(
+    'MCC_MINECRAFT_VELOCITY_RCON_PASSWORD', default='SECRET'
+)
+MCC_MINECRAFT_VELOCITY_PAPER_SERVER = config(
+    'MCC_MINECRAFT_VELOCITY_PAPER_SERVER', default='mycyclingcity'
+)
+MCC_MINECRAFT_VELOCITY_LIMBO_SERVER = config(
+    'MCC_MINECRAFT_VELOCITY_LIMBO_SERVER', default='limbo'
+)
+# Velocity / Limbo install dirs (Admin GUI process control via scripts/minecraft_proxy.sh)
+MCC_MINECRAFT_VELOCITY_DIR = config(
+    'MCC_MINECRAFT_VELOCITY_DIR', default='/data/games/mcc/proxy'
+)
+MCC_MINECRAFT_LIMBO_DIR = config(
+    'MCC_MINECRAFT_LIMBO_DIR', default='/data/games/mcc/limbo'
+)
+MCC_MINECRAFT_VELOCITY_PIDFILE = config(
+    'MCC_MINECRAFT_VELOCITY_PIDFILE',
+    default=str(DATA_DIR / 'tmp' / 'minecraft-velocity.pid'),
+)
+MCC_MINECRAFT_LIMBO_PIDFILE = config(
+    'MCC_MINECRAFT_LIMBO_PIDFILE',
+    default=str(DATA_DIR / 'tmp' / 'minecraft-limbo.pid'),
+)
+MCC_MINECRAFT_VELOCITY_LOG = config(
+    'MCC_MINECRAFT_VELOCITY_LOG',
+    default=str(DATA_DIR / 'logs' / 'minecraft-velocity.log'),
+)
+MCC_MINECRAFT_LIMBO_LOG = config(
+    'MCC_MINECRAFT_LIMBO_LOG',
+    default=str(DATA_DIR / 'logs' / 'minecraft-limbo.log'),
+)
+# Paper (mc-srv) process control via scripts/minecraft_paper.sh
+MCC_MINECRAFT_PAPER_DIR = config(
+    'MCC_MINECRAFT_PAPER_DIR', default='/data/games/mcc/mc-srv'
+)
+MCC_MINECRAFT_PAPER_PIDFILE = config(
+    'MCC_MINECRAFT_PAPER_PIDFILE',
+    default=str(DATA_DIR / 'tmp' / 'minecraft-paper.pid'),
+)
+MCC_MINECRAFT_PAPER_LOG = config(
+    'MCC_MINECRAFT_PAPER_LOG',
+    default=str(DATA_DIR / 'logs' / 'minecraft-paper.log'),
+)
+MCC_MINECRAFT_PAPER_JAR_MATCH = config(
+    'MCC_MINECRAFT_PAPER_JAR_MATCH', default='paper-'
+)
+MCC_MINECRAFT_PAPER_JAR_NAME = config(
+    'MCC_MINECRAFT_PAPER_JAR_NAME', default='paper-26.1.2-74.jar'
+)
+MCC_MINECRAFT_PAPER_STOP_WAIT = config(
+    'MCC_MINECRAFT_PAPER_STOP_WAIT', default=90, cast=int
+)
+# Paper overworld folder / Chunky world name (server.properties level-name)
+MCC_MINECRAFT_PAPER_WORLD = config(
+    'MCC_MINECRAFT_PAPER_WORLD', default='MyCyclingCity'
+)
+# Default vertical span for new WorldGuard protected regions (inclusive block Y).
+# Matches modern overworld build limits (−64 … 320); override only if the world differs.
+MCC_MINECRAFT_WORLD_MIN_Y = config('MCC_MINECRAFT_WORLD_MIN_Y', default=-64, cast=int)
+MCC_MINECRAFT_WORLD_MAX_Y = config('MCC_MINECRAFT_WORLD_MAX_Y', default=320, cast=int)
+# Session auth: online = Velocity send + Microsoft login; authme = legacy forcelogin
+MCC_MINECRAFT_SESSION_AUTH_MODE = config(
+    'MCC_MINECRAFT_SESSION_AUTH_MODE', default='online'
+)
+# Paper overworld root for Auth-Failover playerdata copy (UUID files).
+MCC_MINECRAFT_PAPER_WORLD_ROOT = config(
+    'MCC_MINECRAFT_PAPER_WORLD_ROOT',
+    default='/data/games/mcc/mc-srv/MyCyclingCity',
+)
+MCC_MINECRAFT_FAILOVER_BACKUP_ROOT = config(
+    'MCC_MINECRAFT_FAILOVER_BACKUP_ROOT',
+    default='/data/var/mcc/failover-backups',
+)
+# After Start, ignore missing Paper presence briefly (Velocity send / world join / mouse focus)
+MCC_MINECRAFT_SESSION_PRESENCE_GRACE_SECONDS = config(
+    'MCC_MINECRAFT_SESSION_PRESENCE_GRACE_SECONDS', default=60, cast=float
+)
+# VeloArena motion (Phase 1): lane TOML + JSON control state for operator GUI ↔ worker.
+MCC_MINECRAFT_ARENA_RACE_CONFIG = config('MCC_MINECRAFT_ARENA_RACE_CONFIG', default='')
+# Arena race defaults (operator may change per event; stored in arena state JSON).
+# Modes: laps | velos | dual
+MCC_MINECRAFT_ARENA_DEFAULT_RACE_MODE = config(
+    'MCC_MINECRAFT_ARENA_DEFAULT_RACE_MODE', default='dual'
+)
+MCC_MINECRAFT_ARENA_DEFAULT_TARGET_LAPS = config(
+    'MCC_MINECRAFT_ARENA_DEFAULT_TARGET_LAPS', default=5, cast=int
+)
+MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS = config(
+    'MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS', default=180, cast=int
+)
+MCC_MINECRAFT_ARENA_STATE_PATH = config(
+    'MCC_MINECRAFT_ARENA_STATE_PATH',
+    default=str(DATA_DIR / 'tmp' / 'arena_race_state.json'),
+)
+# Floating minecart labels: name_only (spectator HUD carries status) or full (legacy).
+MCC_MINECRAFT_ARENA_CART_LABEL_MODE = config(
+    'MCC_MINECRAFT_ARENA_CART_LABEL_MODE', default='name_only'
+)
+MCC_MINECRAFT_ARENA_LIVE_HUD_ENABLED = config(
+    'MCC_MINECRAFT_ARENA_LIVE_HUD_ENABLED', default=True, cast=bool
+)
+MCC_MINECRAFT_ARENA_LIVE_OBJECTIVE = config(
+    'MCC_MINECRAFT_ARENA_LIVE_OBJECTIVE', default='ArenaLive'
+)
+MCC_MINECRAFT_ARENA_LIVE_HUD_INTERVAL_S = config(
+    'MCC_MINECRAFT_ARENA_LIVE_HUD_INTERVAL_S', default=1.0, cast=float
+)
+MCC_MINECRAFT_ARENA_LIVE_HUD_POLL_S = config(
+    'MCC_MINECRAFT_ARENA_LIVE_HUD_POLL_S', default=0.5, cast=float
+)
+MCC_MINECRAFT_ARENA_BOSSBAR_ENABLED = config(
+    'MCC_MINECRAFT_ARENA_BOSSBAR_ENABLED', default=True, cast=bool
+)
+MCC_MINECRAFT_ARENA_BOSSBAR_ID = config(
+    'MCC_MINECRAFT_ARENA_BOSSBAR_ID', default='mcc:arena_live'
+)
+# Cap IoT/API-Live pulse interval for arena motion (devices may report 60s).
+MCC_MINECRAFT_ARENA_MAX_PULSE_INTERVAL_S = config(
+    'MCC_MINECRAFT_ARENA_MAX_PULSE_INTERVAL_S', default=5.0, cast=float
+)
 MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_COINS_TOTAL', default='player_coins_total')  # deprecated
 MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE = config('MCC_MINECRAFT_SCOREBOARD_COINS_SPENDABLE', default='player_coins_spendable')  # deprecated
 MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL = config('MCC_MINECRAFT_SCOREBOARD_GROUP_VELOS_TOTAL', default='group_velos_total')  # deprecated
@@ -424,8 +573,23 @@ MCC_MINECRAFT_SCOREBOARD_TEAM_SPENDABLE = config(
 MCC_MINECRAFT_SCOREBOARD_TEAM_DISPLAY_NAME_DEFAULT = config(
     'MCC_MINECRAFT_SCOREBOARD_TEAM_DISPLAY_NAME_DEFAULT', default='Velo-Arena'
 )
+# Legacy default; when sidebar is enabled, Velos are shown via Bau team slot instead.
 MCC_MINECRAFT_SCOREBOARD_DISPLAY_SLOT = config(
     'MCC_MINECRAFT_SCOREBOARD_DISPLAY_SLOT', default='sidebar'
+)
+# Vanilla scoreboard teams used only to scope who sees the existing Velos sidebar
+# (no second objective). Bau → sees Velos; Arena/Reporter → no sidebar.
+MCC_MINECRAFT_SCOREBOARD_BUILDER_TEAM = config(
+    'MCC_MINECRAFT_SCOREBOARD_BUILDER_TEAM', default='mcc_bau'
+)
+MCC_MINECRAFT_SCOREBOARD_BUILDER_COLOR = config(
+    'MCC_MINECRAFT_SCOREBOARD_BUILDER_COLOR', default='blue'
+)
+MCC_MINECRAFT_SCOREBOARD_ARENA_TEAM = config(
+    'MCC_MINECRAFT_SCOREBOARD_ARENA_TEAM', default='mcc_arena'
+)
+MCC_MINECRAFT_SCOREBOARD_ARENA_COLOR = config(
+    'MCC_MINECRAFT_SCOREBOARD_ARENA_COLOR', default='gray'
 )
 MCC_MINECRAFT_WORKER_POLL_INTERVAL = config('MCC_MINECRAFT_WORKER_POLL_INTERVAL', default=1, cast=int)  # Deprecated: Only used as fallback
 # Deprecated: blind fallback sleep removed (dropped socket notifies). Kept for env compatibility.
@@ -448,10 +612,55 @@ MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS = config('MCC_MINECRAFT_WS_ALLOWED_SERVER_ID
 MCC_MINECRAFT_WS_BIND_HOST = config('MCC_MINECRAFT_WS_BIND_HOST', default='0.0.0.0')
 MCC_MINECRAFT_WS_PORT = config('MCC_MINECRAFT_WS_PORT', default=8002, cast=int)
 MCC_MINECRAFT_WS_PUBLIC_HOST = config('MCC_MINECRAFT_WS_PUBLIC_HOST', default='')
-MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=True, cast=bool)
+MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')
 MCC_MINECRAFT_ESGUI_SHOPS_DIR = config('MCC_MINECRAFT_ESGUI_SHOPS_DIR', default='')
 MCC_MINECRAFT_ESGUI_SECTIONS_DIR = config('MCC_MINECRAFT_ESGUI_SECTIONS_DIR', default='')
+
+# Minecraft play / builder session control (AuthMe + RCON)
+MCC_MINECRAFT_PLAYER_SESSION_MINUTES = config('MCC_MINECRAFT_PLAYER_SESSION_MINUTES', default=15, cast=int)
+MCC_MINECRAFT_BUILDER_SESSION_MINUTES = config('MCC_MINECRAFT_BUILDER_SESSION_MINUTES', default=90, cast=int)
+MCC_MINECRAFT_SESSION_ADD_MINUTES = config('MCC_MINECRAFT_SESSION_ADD_MINUTES', default=15, cast=int)
+MCC_MINECRAFT_PLAYER_START_EMERALDS = config('MCC_MINECRAFT_PLAYER_START_EMERALDS', default=4, cast=int)
+MCC_MINECRAFT_SESSION_WORKER_INTERVAL = config(
+    'MCC_MINECRAFT_SESSION_WORKER_INTERVAL', default=5, cast=int
+)
+MCC_MINECRAFT_LOBBY_X = config('MCC_MINECRAFT_LOBBY_X', default=0, cast=float)
+MCC_MINECRAFT_LOBBY_Y = config('MCC_MINECRAFT_LOBBY_Y', default=64, cast=float)
+MCC_MINECRAFT_LOBBY_Z = config('MCC_MINECRAFT_LOBBY_Z', default=0, cast=float)
+# Shared AuthMe password when creating play accounts via Admin (authme register)
+MCC_MINECRAFT_PLAY_ACCOUNT_PASSWORD = config('MCC_MINECRAFT_PLAY_ACCOUNT_PASSWORD', default='')
+# Builder AuthMe password; falls back to play password when empty
+MCC_MINECRAFT_BUILDER_ACCOUNT_PASSWORD = config('MCC_MINECRAFT_BUILDER_ACCOUNT_PASSWORD', default='')
+# Auto-run bootstrap preset when a builder session starts (then force adventure)
+MCC_MINECRAFT_BUILDER_SESSION_BOOTSTRAP_ENABLED = config(
+    'MCC_MINECRAFT_BUILDER_SESSION_BOOTSTRAP_ENABLED', default=True, cast=bool
+)
+MCC_MINECRAFT_BUILDER_BOOTSTRAP_PRESET_SLUG = config(
+    'MCC_MINECRAFT_BUILDER_BOOTSTRAP_PRESET_SLUG', default='builder-session-bootstrap'
+)
+# Auto-run bootstrap preset when a player session starts (then force adventure)
+MCC_MINECRAFT_PLAYER_SESSION_BOOTSTRAP_ENABLED = config(
+    'MCC_MINECRAFT_PLAYER_SESSION_BOOTSTRAP_ENABLED', default=True, cast=bool
+)
+MCC_MINECRAFT_PLAYER_BOOTSTRAP_PRESET_SLUG = config(
+    'MCC_MINECRAFT_PLAYER_BOOTSTRAP_PRESET_SLUG', default='player-session-bootstrap'
+)
+# After Velocity send / AuthMe forcelogin, wait for player on Paper (mouse focus lag)
+MCC_MINECRAFT_SESSION_LOGIN_WAIT_SECONDS = config(
+    'MCC_MINECRAFT_SESSION_LOGIN_WAIT_SECONDS', default=45, cast=float
+)
+# Short wait during Freigabe HTTP request; longer retries happen via pending bootstrap
+MCC_MINECRAFT_SESSION_LOGIN_QUICK_WAIT_SECONDS = config(
+    'MCC_MINECRAFT_SESSION_LOGIN_QUICK_WAIT_SECONDS', default=0.5, cast=float
+)
+MCC_MINECRAFT_SESSION_LOGIN_POLL_SECONDS = config(
+    'MCC_MINECRAFT_SESSION_LOGIN_POLL_SECONDS', default=0.25, cast=float
+)
+# Dashboard tile poll while a player is still in the Velocity limbo waiting room
+MCC_MINECRAFT_PROXY_PRESENCE_POLL_FAST_SECONDS = config(
+    'MCC_MINECRAFT_PROXY_PRESENCE_POLL_FAST_SECONDS', default=2, cast=int
+)
 
 if _CHANNELS_AVAILABLE:
     CHANNEL_LAYERS = {

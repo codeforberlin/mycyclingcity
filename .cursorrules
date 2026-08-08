@@ -75,10 +75,39 @@ This is a **Mono-Repo** containing two main sub-projects:
 
 ### Python/Django
 - **Virtual Environment**: Stored locally in user's home directory (not in project folder)
-- **Project Path**: `/data/games/mcc/mcc-web` (production)
+- **Project Path**: `/data/appl/mcc/mcc-web` (production; often a symlink to a versioned dir)
 - **Development Path**: `mcc-web/` (relative to repo root)
-- **Settings**: `mcc-web/config/settings.py`
-- **Environment Variables**: Use `python-decouple` (`.env` file in `mcc-web/`)
+- **Settings (source of truth for app config)**: `mcc-web/config/settings.py`
+- **Secrets / env-diff only**: `.env` via `python-decouple`
+  - Production: `/data/appl/mcc/.env`
+  - Development: `mcc-web/.env`
+
+### Configuration Placement (CRITICAL)
+
+**Normal application configuration belongs in Django settings** (`mcc-web/config/settings.py`), with sensible defaults in code. Do **not** put ordinary config in `.env`.
+
+**`.env` is ONLY for:**
+1. **Secrets** (passwords, `SECRET_KEY`, API keys, RCON password, DB credentials, tokens)
+2. **Values that genuinely differ** between development and production (e.g. `DEBUG`, paths, hostnames that are environment-specific when unavoidable)
+
+**Do NOT put in `.env`:**
+- Feature defaults, timeouts, UI/behavior flags, bind addresses that should be the same policy everywhere
+- Lists you would otherwise keep editing per LAN IP (prefer defaults like `ALLOWED_HOSTS = ["*"]` in settings when Gunicorn:8001 is not public; production traffic is Apache:443)
+
+**Override pattern:** `config("KEY", default=<value from settings policy>)` — `.env` may override; absence of the key must yield the correct default from `settings.py`.
+
+**Ops/runtime knobs** that operators change without redeploy (e.g. Gunicorn workers/bind via Admin `GunicornConfig`) may live in the DB; document defaults in model/`settings.py`, not in `.env`.
+
+### Admin GUI & Role-Based Access (CRITICAL)
+
+**Every Admin menu function / custom admin page must be implemented for role-based administration.** Do not gate features only on `is_superuser` unless the action is truly system-critical (e.g. server process control).
+
+Required pattern for new Admin UI (tiles, custom views, model admins):
+1. Define a **Django permission** (codename on the relevant model `Meta.permissions`, or reuse an existing one).
+2. Check access via a helper (e.g. `user.has_perm(...)` / project helpers in `*_permissions.py`) on the view and when showing the menu tile.
+3. Expose the permission so operators can assign it in **Admin → Groups / Users** to any auth group — **no venue- or institution-specific role names in code**.
+4. Convenience auth groups (if created by migrations/setup commands) must use **generic** names (e.g. `minecraft_arena_sim`, `mcc_operator`), never site-specific brand/venue names.
+5. Menu entries in `get_app_list` / custom index must appear for users who hold the permission, including staff who have only that permission (sim-only / limited roles).
 
 ## Project-Specific Rules
 

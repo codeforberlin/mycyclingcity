@@ -19,7 +19,7 @@ from pathlib import Path
 
 # Server socket
 # Can be overridden by environment variable from database config
-bind = os.environ.get("GUNICORN_BIND", "127.0.0.1:8001")
+bind = os.environ.get("GUNICORN_BIND", "0.0.0.0:8001")
 backlog = 2048
 
 # Worker processes
@@ -37,7 +37,7 @@ if worker_class == "gthread":
 else:
     threads = 1  # sync worker class doesn't use threads
 worker_connections = 1000
-timeout = 30
+timeout = int(os.environ.get("GUNICORN_TIMEOUT", "90"))
 keepalive = 2
 
 # Logging

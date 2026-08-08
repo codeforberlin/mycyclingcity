@@ -1,0 +1,387 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .wl-wrap { max-width: 1100px; }
+  .wl-tabs { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+  .wl-tab { padding:0.5rem 1rem; border-radius:8px; border:1px solid #cbd5e1; text-decoration:none; color:#334155; background:#fff; }
+  .wl-tab.active { background:#0f766e; color:#fff; border-color:#0f766e; }
+  .wl-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1rem; margin-bottom:1rem; }
+  .wl-grid { display:grid; grid-template-columns:1fr; gap:1rem; }
+  @media (min-width: 900px) { .wl-grid { grid-template-columns: 1fr 1fr; } }
+  .wl-form label { display:block; font-weight:600; margin:0.35rem 0 0.15rem; }
+  .wl-form input, .wl-form select, .wl-form textarea { width:100%; max-width:100%; padding:0.45rem 0.55rem; border:1px solid #cbd5e1; border-radius:8px; }
+  .wl-table { width:100%; border-collapse:collapse; }
+  .wl-table th, .wl-table td { border-bottom:1px solid #e2e8f0; padding:0.45rem 0.35rem; text-align:left; vertical-align:top; }
+  .wl-actions { display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center; }
+  .wl-btn { border:none; border-radius:8px; padding:0.45rem 0.75rem; cursor:pointer; font-weight:600; }
+  .wl-btn-primary { background:#059669; color:#fff; }
+  .wl-btn-danger { background:#dc2626; color:#fff; }
+  .wl-btn-secondary { background:#2563eb; color:#fff; }
+  .wl-meta { color:#64748b; font-size:0.9rem; }
+  .wl-links a { margin-right:1rem; }
+  .wl-ticket-row { display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap; }
+  .wl-ticket-row input { flex:1; min-width:8rem; }
+  .wl-ticket-big {
+    font-size:2.75rem; font-weight:800; letter-spacing:0.08em; color:#0f766e;
+    font-variant-numeric: tabular-nums; line-height:1.1; margin:0.35rem 0;
+  }
+  .wl-ticket-list { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem; }
+  .wl-ticket-chip {
+    background:#ecfdf5; border:1px solid #99f6e4; color:#115e59;
+    border-radius:8px; padding:0.4rem 0.7rem; font-weight:700; font-size:1.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="wl-wrap">
+  <h1>{{ title }}</h1>
+  <p class="wl-meta">
+    {% blocktrans with min=player_min_velos rate=player_velos_per_minute mins=default_player_minutes %}
+    Spiel-Einlösung: mindestens {{ min }} Velos → {{ mins }} Min. ({{ rate }} Velos/Min.)
+    {% endblocktrans %}
+  </p>
+
+  <div class="wl-card wl-links">
+    <strong>{% trans 'Anzeigen' %}:</strong>
+    <a href="{{ staff_display_url }}" target="_blank" rel="noopener">{% trans 'Operator-Anzeige (mit Login)' %}</a>
+    {% if config.waitlist_public_enabled %}
+      <a href="{{ public_url }}" target="_blank" rel="noopener">{% trans 'Öffentliche Anzeige (anonym)' %}</a>
+    {% else %}
+      <span class="wl-meta">{% trans 'Öffentliche Anzeige ist deaktiviert (Integration → Warteliste).' %}</span>
+    {% endif %}
+    <span class="wl-meta">· {% trans 'Öffentliche URL-Token in Minecraft → Integration konfigurieren.' %}</span>
+  </div>
+
+  <div class="wl-card">
+    <p style="margin:0;">
+      <strong>{% trans 'Ablauf' %}:</strong>
+      {% trans '1) Ticket in die Warteliste eintragen → 2) Arena/Team zuweisen → 3) Freigabe (AuthMe-Login) erst unter' %}
+      {% if tab == 'builder' %}
+        <a href="{{ builder_sessions_url }}">{% trans 'Bau-Sessions' %}</a>
+      {% else %}
+        <a href="{{ player_sessions_url }}">{% trans 'Spieler-Sessions' %}</a>
+      {% endif %}
+      {% trans ', wenn der PC bereits mit dem Account verbunden ist (Login-Bildschirm). Die Warteliste startet keine Session selbst.' %}
+    </p>
+  </div>
+
+  <div class="wl-tabs">
+    {% if can_player %}
+      <a class="wl-tab{% if tab == 'player' %} active{% endif %}" href="?tab=player">{% trans 'Spiel-Warteliste' %}</a>
+    {% endif %}
+    {% if can_builder %}
+      <a class="wl-tab{% if tab == 'builder' %} active{% endif %}" href="?tab=builder">{% trans 'Bau-Warteliste' %}</a>
+    {% endif %}
+  </div>
+
+  <div class="wl-card">
+    <h2>{% trans 'Ticketnummer für Flyer' %}</h2>
+    <p class="wl-meta" style="margin-top:0;">
+      {% trans 'Nummer erzeugen und auf den Flyer schreiben. Später dieselbe Nummer beim Eintragen in die Warteliste verwenden.' %}
+    </p>
+    {% if prefill_ticket %}
+      <div class="wl-ticket-big">#{{ prefill_ticket }}</div>
+      <p class="wl-meta">{% trans 'Diese Nummer ist ins Formular übernommen.' %}</p>
+    {% endif %}
+    {% if generated_tickets %}
+      <div class="wl-ticket-list">
+        {% for t in generated_tickets %}
+          <span class="wl-ticket-chip">#{{ t }}</span>
+        {% endfor %}
+      </div>
+      <p class="wl-meta">{% trans 'Bitte die Nummern auf die Flyer schreiben.' %}</p>
+    {% endif %}
+    <form method="post" class="wl-form" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="action" value="generate_ticket">
+      <div class="wl-ticket-row">
+        <div>
+          <label for="ticket_count">{% trans 'Anzahl' %}</label>
+          <input id="ticket_count" name="ticket_count" type="number" min="1" max="50" value="1" style="width:6rem;">
+        </div>
+        <button class="wl-btn wl-btn-secondary" type="submit">{% trans 'Nummer(n) erzeugen' %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="wl-grid">
+    <div class="wl-card">
+      <h2>{% if tab == 'builder' %}{% trans 'Eintrag hinzufügen (Bau)' %}{% else %}{% trans 'Eintrag hinzufügen (Spiel)' %}{% endif %}</h2>
+      <form method="post" class="wl-form">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="{{ tab }}">
+        {% if tab == 'player' %}
+          <input type="hidden" name="action" value="add_player">
+          <label for="ticket_number">{% trans 'Ticket-Nummer (vom Flyer)' %}</label>
+          <div class="wl-ticket-row">
+            <input id="ticket_number" name="ticket_number" inputmode="numeric" placeholder="1234" value="{{ prefill_ticket }}">
+            <button class="wl-btn wl-btn-secondary" type="submit" name="action" value="generate_ticket" formnovalidate>{% trans 'Erzeugen' %}</button>
+          </div>
+          <label for="guest_label">{% trans 'Interner Name (nur Operator)' %}</label>
+          <input id="guest_label" name="guest_label" placeholder="Lisa M.">
+          <label for="velos_cost">{% trans 'Velos' %}</label>
+          <input id="velos_cost" name="velos_cost" type="number" min="{{ player_min_velos }}" step="1" value="{{ player_min_velos }}" required>
+          <label for="internal_note">{% trans 'Interne Notiz' %}</label>
+          <input id="internal_note" name="internal_note">
+          <p class="wl-meta">{% trans 'Leere Ticket-Nummer → automatisch beim Hinzufügen erzeugen.' %}</p>
+        {% else %}
+          <input type="hidden" name="action" value="add_builder">
+          <label for="ticket_number">{% trans 'Ticket-Nummer' %}</label>
+          <div class="wl-ticket-row">
+            <input id="ticket_number" name="ticket_number" inputmode="numeric" value="{{ prefill_ticket }}">
+            <button class="wl-btn wl-btn-secondary" type="submit" name="action" value="generate_ticket" formnovalidate>{% trans 'Erzeugen' %}</button>
+          </div>
+          <label for="guest_label">{% trans 'Interner Name / Team (nur Operator)' %}</label>
+          <input id="guest_label" name="guest_label" placeholder="Klasse 4a">
+          <label for="duration_minutes">{% trans 'Session-Dauer (Min.)' %}</label>
+          <input id="duration_minutes" name="duration_minutes" type="number" min="1" step="1" placeholder="90">
+          <label for="internal_note">{% trans 'Interne Notiz' %}</label>
+          <input id="internal_note" name="internal_note">
+        {% endif %}
+        <p style="margin-top:0.75rem;"><button class="wl-btn wl-btn-primary" type="submit">{% trans 'Zur Warteliste hinzufügen' %}</button></p>
+      </form>
+    </div>
+
+    <div class="wl-card">
+      <h2>{% trans 'Freie Slots' %}</h2>
+      {% if tab == 'player' %}
+        {% if free_play_accounts %}
+          <ul>
+            {% for account in free_play_accounts %}
+              <li>{{ account.label }} ({{ account.short_name }})</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>{% trans 'Keine freien Spiel-PCs.' %}</p>
+        {% endif %}
+      {% else %}
+        {% if free_builder_teams %}
+          <ul>
+            {% for reg in free_builder_teams %}
+              <li>{{ reg.group.name }} ({{ reg.mc_username }})</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>{% trans 'Keine freien Bau-PCs.' %}</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="wl-card">
+    <h2>{% trans 'Wartende' %}</h2>
+    {% if tab == 'player' %}
+      {% if player_waiting %}
+        <table class="wl-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{% trans 'Ticket' %}</th>
+              <th>{% trans 'Intern' %}</th>
+              <th>{% trans 'Velos' %}</th>
+              <th>{% trans 'Min.' %}</th>
+              <th>{% trans 'Aktion' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in player_waiting %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td><strong>{{ entry.ticket_number }}</strong></td>
+              <td>{{ entry.guest_label|default:"—" }}</td>
+              <td>{{ entry.velos_cost }}</td>
+              <td>{{ entry.duration_minutes }}</td>
+              <td>
+                <div class="wl-actions">
+                  <form method="post" style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="player">
+                    <input type="hidden" name="action" value="assign_player">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <select name="play_account" required>
+                      <option value="">{% trans 'Arena…' %}</option>
+                      {% for account in free_play_accounts %}
+                        <option value="{{ account.short_name }}">{{ account.label }}</option>
+                      {% endfor %}
+                    </select>
+                    <button class="wl-btn wl-btn-secondary" type="submit">{% trans 'Zuweisen' %}</button>
+                  </form>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="player">
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-danger" type="submit">{% trans 'Abbruch' %}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>{% trans 'Keine wartenden Spieler.' %}</p>
+      {% endif %}
+    {% else %}
+      {% if builder_waiting %}
+        <table class="wl-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{% trans 'Ticket' %}</th>
+              <th>{% trans 'Intern' %}</th>
+              <th>{% trans 'Min.' %}</th>
+              <th>{% trans 'Aktion' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in builder_waiting %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td><strong>{{ entry.ticket_number }}</strong></td>
+              <td>{{ entry.guest_label|default:"—" }}</td>
+              <td>{{ entry.duration_minutes }}</td>
+              <td>
+                <div class="wl-actions">
+                  <form method="post" style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="builder">
+                    <input type="hidden" name="action" value="assign_builder">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <select name="builder_team" required>
+                      <option value="">{% trans 'Bau-PC…' %}</option>
+                      {% for reg in free_builder_teams %}
+                        <option value="{{ reg.mc_username }}">{{ reg.group.name }}</option>
+                      {% endfor %}
+                    </select>
+                    <button class="wl-btn wl-btn-secondary" type="submit">{% trans 'Zuweisen' %}</button>
+                  </form>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="builder">
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-danger" type="submit">{% trans 'Abbruch' %}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>{% trans 'Keine wartenden Bau-Teams.' %}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="wl-card">
+    <h2>{% trans 'Zugewiesen — Freigabe in Session-Menü' %}</h2>
+    {% if tab == 'player' %}
+      {% if player_assigned %}
+        <table class="wl-table">
+          <thead>
+            <tr>
+              <th>{% trans 'Ticket' %}</th>
+              <th>{% trans 'Intern' %}</th>
+              <th>{% trans 'Arena' %}</th>
+              <th>{% trans 'Min.' %}</th>
+              <th>{% trans 'Aktion' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in player_assigned %}
+            <tr>
+              <td><strong>{{ entry.ticket_number }}</strong></td>
+              <td>{{ entry.guest_label|default:"—" }}</td>
+              <td>{{ entry.assigned_play_account.label }} ({{ entry.assigned_play_account.short_name }})</td>
+              <td>{{ entry.duration_minutes }}</td>
+              <td>
+                <div class="wl-actions">
+                  <a class="wl-btn wl-btn-primary" href="{{ player_sessions_url }}">{% trans 'Zu Spieler-Sessions' %}</a>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="player">
+                    <input type="hidden" name="action" value="unassign">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-secondary" type="submit">{% trans 'Zuweisung aufheben' %}</button>
+                  </form>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="player">
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-danger" type="submit">{% trans 'Abbruch' %}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>{% trans 'Keine zugewiesenen Spieler.' %}</p>
+      {% endif %}
+    {% else %}
+      {% if builder_assigned %}
+        <table class="wl-table">
+          <thead>
+            <tr>
+              <th>{% trans 'Ticket' %}</th>
+              <th>{% trans 'Intern' %}</th>
+              <th>{% trans 'Bau-PC' %}</th>
+              <th>{% trans 'Min.' %}</th>
+              <th>{% trans 'Aktion' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in builder_assigned %}
+            <tr>
+              <td><strong>{{ entry.ticket_number }}</strong></td>
+              <td>{{ entry.guest_label|default:"—" }}</td>
+              <td>{{ entry.assigned_builder_registration.group.name }} ({{ entry.assigned_builder_registration.mc_username }})</td>
+              <td>{{ entry.duration_minutes }}</td>
+              <td>
+                <div class="wl-actions">
+                  <a class="wl-btn wl-btn-primary" href="{{ builder_sessions_url }}">{% trans 'Zu Bau-Sessions' %}</a>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="builder">
+                    <input type="hidden" name="action" value="unassign">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-secondary" type="submit">{% trans 'Zuweisung aufheben' %}</button>
+                  </form>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="builder">
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button class="wl-btn wl-btn-danger" type="submit">{% trans 'Abbruch' %}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>{% trans 'Keine zugewiesenen Bau-Teams.' %}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

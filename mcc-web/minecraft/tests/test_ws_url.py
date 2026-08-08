@@ -9,6 +9,10 @@ from minecraft.services.ws_url import build_ws_events_url, resolve_ws_url_host
 
 @pytest.mark.unit
 class TestWsUrl:
+    @pytest.fixture(autouse=True)
+    def _clear_ws_public_host(self, settings):
+        settings.MCC_MINECRAFT_WS_PUBLIC_HOST = ""
+
     def test_loopback_bind_uses_private_ip_from_allowed_hosts(self):
         host = resolve_ws_url_host(
             "127.0.0.1",
@@ -36,6 +40,11 @@ class TestWsUrl:
             ["mycyclingcity.de", "127.0.0.1"],
         )
         assert host == "mycyclingcity.de"
+
+    def test_wildcard_allowed_hosts_ignored_for_url(self):
+        host = resolve_ws_url_host("0.0.0.0", ["*"])
+        assert host != "*"
+        assert host  # falls back to MCC_PUBLIC_HOSTNAMES or 127.0.0.1
 
     def test_public_bind_uses_bind_host(self):
         host = resolve_ws_url_host(

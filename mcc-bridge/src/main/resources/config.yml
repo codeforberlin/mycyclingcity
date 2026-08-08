@@ -2,8 +2,8 @@
 # Connects Paper server to MyCyclingCity Django WebSocket + Vault economy.
 
 mcc:
-  # MCC server LAN IP (192.168.90.2), Daphne port 8002 — no Apache/TLS required
-  websocket_url: "ws://192.168.90.2:8002/ws/minecraft/events"
+  # Local / Wirk: MCC host (127.0.0.1 or LAN IP), Daphne port 8002 — no Apache/TLS required
+  websocket_url: "ws://127.0.0.1:8002/ws/minecraft/events"
   # Must match MCC_MINECRAFT_WS_SHARED_SECRET in /data/appl/mcc/.env
   shared_secret: "CHANGE_ME"
   server_id: "velo-stadt-1"
@@ -29,9 +29,9 @@ team:
   # How to map a Minecraft player to a team scoreboard name (Group.mc_username):
   # luckperms = first matching parent group from team_groups
   # config = lookup in player_overrides, then team_groups by primary group name
-  resolution: luckperms
+  resolution: config
   team_groups:
     team_alpha: TeamAlpha
     team_beta: TeamBeta
   player_overrides:
-    # Steve: TeamAlpha
+    # mccpc01: Kette

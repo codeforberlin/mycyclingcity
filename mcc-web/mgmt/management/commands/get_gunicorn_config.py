@@ -77,12 +77,12 @@ class Command(BaseCommand):
                 self.stdout.write('GUNICORN_WORKERS=0')
                 self.stdout.write('GUNICORN_THREADS=2')
                 self.stdout.write('GUNICORN_WORKER_CLASS=gthread')
-                self.stdout.write('GUNICORN_BIND=127.0.0.1:8001')
+                self.stdout.write('GUNICORN_BIND=0.0.0.0:8001')
                 sys.stderr.write('GUNICORN_LOG_LEVEL=info\n')
                 sys.stderr.write('GUNICORN_WORKERS=0\n')
                 sys.stderr.write('GUNICORN_THREADS=2\n')
                 sys.stderr.write('GUNICORN_WORKER_CLASS=gthread\n')
-                sys.stderr.write('GUNICORN_BIND=127.0.0.1:8001\n')
+                sys.stderr.write('GUNICORN_BIND=0.0.0.0:8001\n')
             else:
                 import json
                 self.stdout.write(json.dumps({
@@ -90,6 +90,6 @@ class Command(BaseCommand):
                     'workers': 0,
                     'threads': 2,
                     'worker_class': 'gthread',
-                    'bind_address': '127.0.0.1:8001',
+                    'bind_address': '0.0.0.0:8001',
                 }))
             return 0

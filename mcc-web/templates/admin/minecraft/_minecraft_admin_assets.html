@@ -1,0 +1,441 @@
+{% load i18n %}
+<style>
+    .minecraft-control {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .status-box {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .status-box.running {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .status-box.stopped {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .action-buttons button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .action-buttons button.danger {
+        background: #dc3545;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.success {
+        background: #28a745;
+        color: white;
+        border: none;
+    }
+    .action-buttons button.warning {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+    }
+    .action-buttons button.info {
+        background: #17a2b8;
+        color: white;
+        border: none;
+    }
+    .action-buttons .ws-button-row {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        vertical-align: middle;
+    }
+    .shop-readiness-panel {
+        background: white;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 15px 0 20px 0;
+        border: 1px solid #ddd;
+    }
+    .shop-readiness-summary {
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 12px;
+    }
+    .shop-readiness-summary.ok { color: #155724; }
+    .shop-readiness-summary.warning { color: #856404; }
+    .shop-readiness-summary.error { color: #721c24; }
+    .shop-readiness-checks {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .shop-readiness-checks li {
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    .shop-readiness-checks li.severity-ok {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    .shop-readiness-checks li.severity-warning {
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+    }
+    .shop-readiness-checks li.severity-error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+    .shop-readiness-checks .check-label {
+        font-weight: bold;
+    }
+    .shop-readiness-checks .check-hint {
+        display: block;
+        margin-top: 4px;
+        color: #555;
+        font-size: 12px;
+    }
+    .shop-readiness-checks .check-action {
+        margin-left: 8px;
+    }
+    .output-box {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        max-height: 250px;
+        overflow-y: auto;
+        margin-top: 15px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    table.minecraft-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin-top: 15px;
+    }
+    table.minecraft-table th, table.minecraft-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 13px;
+    }
+    .config-form {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .config-form label {
+        display: inline-block;
+        min-width: 180px;
+        font-weight: bold;
+    }
+    .config-form .field-row {
+        margin-bottom: 10px;
+    }
+    .preset-group {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+    }
+    .preset-group h3 {
+        margin-top: 0;
+        font-size: 15px;
+    }
+    .preset-buttons button {
+        margin: 4px 6px 4px 0;
+    }
+    .preset-description {
+        font-size: 12px;
+        color: #666;
+        margin: 4px 0 8px 0;
+    }
+    .free-rcon-form {
+        background: white;
+        padding: 20px;
+        border-radius: 4px;
+        margin: 20px 0;
+        border: 1px solid #ddd;
+    }
+    .free-rcon-form .field-row {
+        margin-bottom: 14px;
+    }
+    .free-rcon-form label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+    .free-rcon-form input[type="text"] {
+        width: 100%;
+        max-width: 640px;
+        padding: 14px 16px;
+        font-size: 18px;
+        box-sizing: border-box;
+    }
+    .free-rcon-form button[type="submit"] {
+        margin-top: 8px;
+        padding: 16px 28px;
+        font-size: 18px;
+        min-height: 56px;
+        cursor: pointer;
+    }
+</style>
+<script>
+function performMinecraftAction(action, buttonElement) {
+    var confirmMessage = '';
+    if (action === 'stop' || action === 'snapshot-stop' || action === 'ws-stop') {
+        if (action === 'stop') {
+            confirmMessage = '{% trans "Worker wirklich stoppen?" %}';
+        } else if (action === 'snapshot-stop') {
+            confirmMessage = '{% trans "Snapshot Worker wirklich stoppen?" %}';
+        } else {
+            confirmMessage = '{% trans "WebSocket-Server wirklich stoppen?" %}';
+        }
+    } else if (action === 'restart') {
+        confirmMessage = '{% trans "Worker wirklich neu starten?" %}';
+    } else if (action === 'sync') {
+        confirmMessage = '{% trans "Scoreboards jetzt manuell aus der Datenbank befüllen?" %}';
+    }
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+
+    var button = buttonElement || (window.event ? window.event.target : null);
+    if (!button) {
+        console.error('Could not find button element');
+        return;
+    }
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Bitte warten..." %}';
+
+    var outputBox = document.getElementById('minecraft-output');
+    if (outputBox) {
+        outputBox.style.display = 'block';
+        outputBox.textContent = '{% trans "Aktion wird ausgeführt..." %}';
+    }
+
+    fetch('{% url "admin:minecraft_action" "ACTION_PLACEHOLDER" %}'.replace('ACTION_PLACEHOLDER', action), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || data.message || 'HTTP ' + response.status);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            var displayText = data.output || data.message || '{% trans "Aktion abgeschlossen" %}';
+            outputBox.textContent = displayText;
+            outputBox.style.display = 'block';
+            outputBox.style.color = data.success !== false ? '#4ec9b0' : '#f48771';
+        }
+        setTimeout(function() { location.reload(); }, 2000);
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            outputBox.textContent = '{% trans "Fehler" %}: ' + error.message;
+            outputBox.style.color = '#f48771';
+        }
+    });
+}
+
+function performShopReadinessCheck(buttonElement) {
+    var button = buttonElement;
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Bitte warten..." %}';
+
+    var panel = document.getElementById('shop-readiness-panel');
+    var summaryEl = document.getElementById('shop-readiness-summary');
+    var checksEl = document.getElementById('shop-readiness-checks');
+    if (panel) {
+        panel.style.display = 'block';
+    }
+    if (summaryEl) {
+        summaryEl.textContent = '{% trans "Prüfung läuft..." %}';
+        summaryEl.className = 'shop-readiness-summary';
+    }
+    if (checksEl) {
+        checksEl.innerHTML = '';
+    }
+
+    fetch('{% url "admin:minecraft_action" "shop-check" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.json().then(function(data) {
+                throw new Error(data.error || data.message || 'HTTP ' + response.status);
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (!panel || !summaryEl || !checksEl) {
+            return;
+        }
+
+        var summary = data.summary || {errors: 0, warnings: 0, passed: 0};
+        var summaryClass = data.ok ? (summary.warnings > 0 ? 'warning' : 'ok') : 'error';
+        var summaryText;
+        if (data.ok && summary.warnings === 0) {
+            summaryText = '{% trans "Shop-Betrieb: Alle Prüfungen bestanden" %}';
+        } else if (data.ok) {
+            summaryText = '{% trans "Shop-Betrieb: Betreibbar mit Warnungen" %} (' + summary.warnings + ' {% trans "Warnung(en)" %})';
+        } else {
+            summaryText = '{% trans "Shop-Betrieb: Nicht bereit" %} (' + summary.errors + ' {% trans "Fehler" %}, ' + summary.warnings + ' {% trans "Warnung(en)" %})';
+        }
+        summaryEl.textContent = summaryText;
+        summaryEl.className = 'shop-readiness-summary ' + summaryClass;
+
+        (data.checks || []).forEach(function(check) {
+            var item = document.createElement('li');
+            item.className = 'severity-' + (check.severity || 'ok');
+            var icon = check.severity === 'error' ? '✗' : (check.severity === 'warning' ? '⚠' : '✓');
+            var html = '<span class="check-label">' + icon + ' ' + check.label + '</span><br>' + check.detail;
+            if (check.hint) {
+                html += '<span class="check-hint">' + check.hint;
+                if (check.action) {
+                    html += ' <button type="button" class="button small check-action" data-action="' + check.action + '">{% trans "Beheben" %}</button>';
+                }
+                html += '</span>';
+            }
+            item.innerHTML = html;
+            checksEl.appendChild(item);
+        });
+
+        checksEl.querySelectorAll('.check-action').forEach(function(actionButton) {
+            actionButton.addEventListener('click', function() {
+                performMinecraftAction(actionButton.getAttribute('data-action'), actionButton);
+            });
+        });
+    })
+    .catch(function(error) {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (summaryEl) {
+            summaryEl.textContent = '{% trans "Fehler" %}: ' + error.message;
+            summaryEl.className = 'shop-readiness-summary error';
+        }
+    });
+}
+
+function performTeamAction(url, buttonElement, confirmMessage) {
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+    var button = buttonElement;
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Bitte warten..." %}';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json().then(data => ({ ok: response.ok, data: data })))
+    .then(result => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (!result.ok) {
+            alert(result.data.error || '{% trans "Fehler" %}');
+            return;
+        }
+        location.reload();
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        alert('{% trans "Fehler" %}: ' + error.message);
+    });
+}
+
+function performPresetAction(presetId, presetName, buttonElement, requiresConfirm) {
+    if (requiresConfirm !== false) {
+        var confirmMessage = '{% trans "RCON-Preset ausführen?" %}'.replace('?', ': „' + presetName + '“?');
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+    }
+
+    var button = buttonElement;
+    var originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '{% trans "Bitte warten..." %}';
+
+    var outputBox = document.getElementById('minecraft-output');
+    if (outputBox) {
+        outputBox.style.display = 'block';
+        outputBox.textContent = '{% trans "Preset wird ausgeführt..." %}';
+    }
+
+    fetch('{% url "admin:minecraft_run_preset" 0 %}'.replace('/0/', '/' + presetId + '/'), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json().then(data => ({ ok: response.ok, data: data })))
+    .then(result => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            var displayText = result.data.output || result.data.message || result.data.error || '{% trans "Fertig" %}';
+            outputBox.textContent = displayText;
+            outputBox.style.color = result.ok ? '#4ec9b0' : '#f48771';
+        }
+        if (!result.ok) {
+            alert(result.data.error || '{% trans "Fehler" %}');
+        }
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = originalText;
+        if (outputBox) {
+            outputBox.textContent = '{% trans "Fehler" %}: ' + error.message;
+            outputBox.style.color = '#f48771';
+        }
+    });
+}
+
+function confirmFreeRconSubmit(form) {
+    var input = form.querySelector('[name="rcon_command"]');
+    var command = input ? input.value.trim() : '';
+    if (!command) {
+        alert('{% trans "RCON-Befehl darf nicht leer sein." %}');
+        return false;
+    }
+    return confirm('{% trans "Freien RCON-Befehl wirklich senden?" %}\n\n' + command);
+}
+</script>

@@ -1,0 +1,158 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_shop_ops' %}">{% trans 'Shop-Betrieb' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-control">
+    <div id="minecraft-output" class="output-box" style="display:none;"></div>
+</div>
+
+<h2>{% trans 'Shop-Betrieb' %}</h2>
+<p>
+    {% trans 'Prüft Infrastruktur, Velos-Konsistenz (Datenbank ↔ Scoreboard) und Shop-Katalog.' %}
+    {% trans 'Der Shop nutzt velos_spendable aus der Datenbank — das Scoreboard muss per Worker synchron gehalten werden.' %}
+</p>
+<p>
+    <button type="button" class="button default" onclick="performShopReadinessCheck(this)">
+        {% trans 'Shop-Betrieb prüfen' %}
+    </button>
+</p>
+<div id="shop-readiness-panel" class="shop-readiness-panel" style="display:none;">
+    <div id="shop-readiness-summary" class="shop-readiness-summary"></div>
+    <ul id="shop-readiness-checks" class="shop-readiness-checks"></ul>
+</div>
+
+<h2>{% trans 'Shop-Katalog' %}</h2>
+<p>
+    {% blocktrans with categories=shop_category_count items=shop_item_count %}
+    {{ categories }} Kategorien, {{ items }} aktive Artikel.
+    {% endblocktrans %}
+    <a href="{% url 'admin:minecraft_minecraftshopcategory_changelist' %}">{% trans 'Katalog verwalten' %}</a>
+    ·
+    <a href="{% url 'admin:minecraft_minecraftshopitem_changelist' %}">{% trans 'Alle Artikel durchsuchen' %}</a>
+    ·
+    <a href="{% url 'admin:minecraft_import_shop' %}">{% trans 'EconomyShopGUI importieren' %}</a>
+</p>
+<form method="get" action="{% url 'admin:minecraft_minecraftshopitem_changelist' %}" class="config-form" style="margin-top: 10px;">
+    <div class="field-row">
+        <label for="shop_item_search">{% trans 'Artikel suchen' %}:</label>
+        <input type="search" id="shop_item_search" name="q" size="40"
+               placeholder="{% trans 'Material, Name, super_pickaxe, page1.items…' %}">
+        <button type="submit" class="button default">{% trans 'Suchen' %}</button>
+    </div>
+    <small>{% trans 'Durchsucht alle Shop-Artikel global — unabhängig von Kategorie und Seitenblätterung.' %}</small>
+</form>
+<p>
+    {% if shop_bridge_connected %}
+        {% blocktrans with servers=shop_bridge_servers|join:", " %}
+        MCC-Bridge verbunden ({{ servers }}).
+        {% endblocktrans %}
+    {% else %}
+        <em>{% trans 'Keine MCC-Bridge-WebSocket-Verbindung — Shop-Push nicht möglich.' %}</em>
+    {% endif %}
+</p>
+<p>
+    <button type="button" class="button default" onclick="performMinecraftAction('push-shop', this)" {% if not shop_bridge_connected %}disabled{% endif %}>
+        {% trans 'Shop-Preise an Minecraft pushen' %}
+    </button>
+    <small>{% trans 'Überträgt den MCC-Katalog nach EconomyShopGUI auf dem MC-Server.' %}</small>
+</p>
+
+<h2>{% trans 'Artikel ohne Velos-Preis' %}</h2>
+<p>
+    {% trans 'Kostenlose Artikel (0 Velos) sind nicht erlaubt. Hier sehen Sie alle Shop-Artikel ohne gültigen Kaufpreis.' %}
+</p>
+{% if zero_price_count %}
+<p>
+    <strong>
+        {% blocktrans count counter=zero_price_count %}
+        {{ counter }} Artikel mit 0 Velos gefunden.
+        {% plural %}
+        {{ counter }} Artikel mit 0 Velos gefunden.
+        {% endblocktrans %}
+    </strong>
+</p>
+<form method="post" action="{% url 'admin:minecraft_shop_ops' %}" style="margin-bottom: 1em;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="assign_min_velos">
+    <button type="submit" class="button default">
+        {% blocktrans with min=min_velos %}Alle auf mindestens {{ min }} Velo setzen{% endblocktrans %}
+    </button>
+</form>
+<table class="minecraft-table">
+    <thead>
+        <tr>
+            <th>{% trans 'Kategorie' %}</th>
+            <th>{% trans 'Material' %}</th>
+            <th>{% trans 'Anzeigename' %}</th>
+            <th>{% trans 'Item-Key' %}</th>
+            <th>{% trans 'Item-Loc' %}</th>
+            <th>{% trans 'Aktiv' %}</th>
+            <th>{% trans 'Preis' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in zero_price_items %}
+        <tr>
+            <td>{{ item.category.name }}</td>
+            <td><code>{{ item.material }}</code></td>
+            <td>{{ item.display_name|default:"—" }}</td>
+            <td><code>{{ item.esgui_item_key|default:"—" }}</code></td>
+            <td><code>{{ item.esgui_item_loc }}</code></td>
+            <td>{% if item.enabled %}{% trans 'Ja' %}{% else %}{% trans 'Nein' %}{% endif %}</td>
+            <td>{{ item.buy_price_velos }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if zero_price_truncated %}
+<p>
+    <em>
+        {% blocktrans count counter=zero_price_truncated %}
+        … und {{ counter }} weiterer Artikel (wird beim Setzen ebenfalls aktualisiert).
+        {% plural %}
+        … und {{ counter }} weitere Artikel (werden beim Setzen ebenfalls aktualisiert).
+        {% endblocktrans %}
+    </em>
+</p>
+{% endif %}
+{% else %}
+<p><em>{% trans 'Keine Artikel mit 0 Velos — alle Preise sind gesetzt.' %}</em></p>
+{% endif %}
+
+{% if shop_catalog_preview.categories %}
+<table class="minecraft-table">
+    <thead>
+        <tr>
+            <th>{% trans 'Kategorie' %}</th>
+            <th>{% trans 'Section' %}</th>
+            <th>{% trans 'Artikel' %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for category in shop_catalog_preview.categories %}
+        <tr>
+            <td>{{ category.name }}</td>
+            <td><code>{{ category.section }}</code></td>
+            <td>{{ category.items|length }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>{% trans 'Noch keine Shop-Kategorien angelegt.' %}</em></p>
+{% endif %}
+{% endblock %}

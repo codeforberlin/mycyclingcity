@@ -52,7 +52,10 @@ class TestRconPresetsService:
 
         assert success is True
         assert "Tag" in message
-        mock_run_commands.assert_called_once_with(["time set day", "weather clear"])
+        mock_run_commands.assert_called_once_with(
+            ["time set day", "weather clear"],
+            stop_on_error=True,
+        )
 
     @patch("minecraft.services.rcon_presets.rcon_client.run_commands")
     def test_run_preset_failure(self, mock_run_commands):

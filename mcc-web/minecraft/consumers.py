@@ -48,11 +48,20 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
         touch_bridge_connection(server_id)
 
     @database_sync_to_async
-    def _active_mc_usernames(self) -> list[str]:
-        return list(active_registrations().values_list("mc_username", flat=True))
+    def _active_team_mappings(self) -> list[dict]:
+        rows = []
+        for reg in active_registrations():
+            rows.append(
+                {
+                    "mc_username": reg.mc_username,
+                    "ms_username": (reg.ms_username or "").strip(),
+                }
+            )
+        return rows
 
     async def _push_all_team_mappings(self, server_id: str) -> None:
-        for mc_username in await self._active_mc_usernames():
+        for row in await self._active_team_mappings():
+            mc_username = row["mc_username"]
             await self.send_json(
                 {
                     "type": "PUSH_TEAM_MAPPING",
@@ -61,6 +70,16 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
                     "mc_username": mc_username,
                 }
             )
+            ms = row.get("ms_username") or ""
+            if ms:
+                await self.send_json(
+                    {
+                        "type": "PUSH_PLAYER_OVERRIDE",
+                        "server_id": server_id,
+                        "ms_username": ms,
+                        "mc_username": mc_username,
+                    }
+                )
 
     async def receive_json(self, content, **kwargs):
         if not settings.MCC_MINECRAFT_WS_ENABLED:

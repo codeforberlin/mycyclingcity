@@ -22,6 +22,7 @@ from minecraft.services.preset_commands import (
     validate_commands,
 )
 from minecraft.services.preset_permissions import (
+    user_can_access_minecraft_city,
     user_can_access_minecraft_control,
     user_can_delete_preset,
     user_can_edit_preset,
@@ -44,7 +45,10 @@ logger = get_logger("minecraft")
 def _minecraft_access_required(view_func):
     @staff_member_required
     def wrapper(request, *args, **kwargs):
-        if not user_can_access_minecraft_control(request.user):
+        if not (
+            user_can_access_minecraft_control(request.user)
+            or user_can_access_minecraft_city(request.user)
+        ):
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
 

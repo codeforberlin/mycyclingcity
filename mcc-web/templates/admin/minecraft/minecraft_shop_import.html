@@ -63,7 +63,7 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
-    &rsaquo; <a href="{% url 'admin:minecraft_control' %}">{% trans 'Minecraft Steuerung' %}</a>
+    &rsaquo; <a href="{% url 'admin:minecraft_shop_ops' %}">{% trans 'Shop-Betrieb' %}</a>
     &rsaquo; {% trans 'EconomyShopGUI importieren' %}
 </div>
 {% endblock %}
@@ -140,7 +140,7 @@
                     <small>{% trans 'Pro Kategorie alle vorhandenen Artikel löschen und neu importieren' %}</small>
                 </div>
                 <button type="submit" class="button default">{% trans 'Aus EconomyShopGUI importieren' %}</button>
-                <a class="button" href="{% url 'admin:minecraft_control' %}">{% trans 'Zurück zur Minecraft Steuerung' %}</a>
+                <a class="button" href="{% url 'admin:minecraft_shop_ops' %}">{% trans 'Zurück zum Shop-Betrieb' %}</a>
             </form>
         </div>
     </div>

@@ -452,6 +452,14 @@ class Cyclist(models.Model):
 
     is_visible = models.BooleanField(default=True, verbose_name=_("In Map/Game anzeigen"))
     is_km_collection_enabled = models.BooleanField(default=True, verbose_name=_("Kilometer-Erfassung aktiv"), help_text=_("Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"))
+    is_arena_sim_allowed = models.BooleanField(
+        default=False,
+        verbose_name=_("Arena-/API-Simulation erlaubt"),
+        help_text=_(
+            "Nur freigegebene Radler dürfen in der Arena-Simulation "
+            "(intern oder über die API) verwendet werden."
+        ),
+    )
     is_operator_tag = models.BooleanField(
         default=False,
         verbose_name=_("Operator-RFID-Tag"),

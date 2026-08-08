@@ -1,0 +1,525 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .wb-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.5rem;
+    max-width: 720px;
+  }
+  .wb-panel h2 { margin-top: 0; }
+  .wb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem 1rem;
+    margin: 0.75rem 0 1rem;
+  }
+  .wb-grid label { display: block; font-size: 12px; color: #64748b; margin-bottom: 0.2rem; }
+  .wb-grid input[type="number"],
+  .wb-grid input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+  }
+  .wb-actions { margin-top: 0.75rem; }
+  .wb-actions button, .wb-actions .button { margin: 0 0.35rem 0.35rem 0; }
+  .wb-hint { color: #475569; font-size: 13px; margin: 0.35rem 0 0.75rem; }
+  .wb-presets { margin: 0.5rem 0 0.75rem; }
+  .rg-coord-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+  }
+  .rg-builders {
+    max-height: 160px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+  }
+  .rg-builders label { display: block; margin: 0.2rem 0; font-size: 13px; color: #334155; }
+  .rg-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 0.5rem 0 1rem; }
+  .rg-table th, .rg-table td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid #e2e8f0; }
+  .rg-table form { display: inline; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_city' %}">{% trans 'Stadtsteuerung' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<ul class="messagelist">
+  {% for message in messages %}
+  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<div class="minecraft-control">
+    <div style="margin-bottom: 10px;">
+        <strong>{% trans 'RCON Verbindung' %}:</strong>
+        {% if rcon_ok %}
+            <span style="color: #155724;">{% trans 'Verbunden' %}</span>
+            {% if rcon_mode != 'auth' %}
+                <br><small>{% trans 'Authentifizierung nicht geprüft (Thread-Modus)' %}</small>
+            {% endif %}
+        {% else %}
+            <span style="color: #721c24;">{% trans 'Nicht erreichbar' %}</span>
+            {% if rcon_error %}
+                <br><small>{% trans 'Fehler' %}: {{ rcon_error }}</small>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div id="minecraft-output" class="output-box" style="display:none;"></div>
+</div>
+
+<div class="wb-panel">
+  <h2>{% trans 'Spielbereich (World Border)' %}</h2>
+  <p class="wb-hint">
+    {% trans 'Quadratischer Vanilla-Border für die Overworld. Gilt für alle Spieler (Bau und Arena). Größe = Kantenlänge in Blöcken (1000 → ca. 1000×1000).' %}
+  </p>
+  <p class="wb-hint">
+    {% blocktrans with half=world_border_half x=world_border.world_border_center_x z=world_border.world_border_center_z size=world_border.world_border_size %}
+    Vorschau: ±{{ half }} Blöcke um ({{ x }} / {{ z }}) → ca. {{ size }}×{{ size }}.
+    {% endblocktrans %}
+    {% if world_border.world_border_enabled %}
+      <strong>{% trans 'Status Config' %}:</strong> {% trans 'aktiv' %}
+    {% else %}
+      <strong>{% trans 'Status Config' %}:</strong> {% trans 'deaktiviert' %}
+    {% endif %}
+  </p>
+
+  <form method="post" action="{% url 'admin:minecraft_city' %}">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="world_border">
+    <div class="wb-grid">
+      <div>
+        <label for="id_wb_cx">{% trans 'Zentrum X' %}</label>
+        <input id="id_wb_cx" type="number" step="any" name="world_border_center_x" value="{{ world_border.world_border_center_x }}">
+      </div>
+      <div>
+        <label for="id_wb_cz">{% trans 'Zentrum Z' %}</label>
+        <input id="id_wb_cz" type="number" step="any" name="world_border_center_z" value="{{ world_border.world_border_center_z }}">
+      </div>
+      <div>
+        <label for="id_wb_size">{% trans 'Größe (Blöcke)' %}</label>
+        <input id="id_wb_size" type="number" min="1" step="1" name="world_border_size" value="{{ world_border.world_border_size }}">
+      </div>
+      <div>
+        <label for="id_wb_warn">{% trans 'Warnung (Blöcke)' %}</label>
+        <input id="id_wb_warn" type="number" min="0" step="1" name="world_border_warning_distance" value="{{ world_border.world_border_warning_distance }}">
+      </div>
+      <div>
+        <label for="id_wb_dmg">{% trans 'Schaden / s' %}</label>
+        <input id="id_wb_dmg" type="number" min="0" step="0.1" name="world_border_damage_amount" value="{{ world_border.world_border_damage_amount }}">
+      </div>
+    </div>
+
+    <div class="wb-presets">
+      <strong>{% trans 'Schnellwahl Größe' %}:</strong>
+      {% for size in world_border_presets %}
+      <button type="submit" class="button" name="action" value="preset"
+              formaction="{% url 'admin:minecraft_city' %}"
+              onclick="this.form.preset_size.value='{{ size }}';">{{ size }}</button>
+      {% endfor %}
+      <input type="hidden" name="preset_size" value="">
+    </div>
+
+    <div class="wb-actions">
+      <button type="submit" class="button default" name="action" value="apply">{% trans 'Anwenden' %}</button>
+      <button type="submit" class="button" name="action" value="save">{% trans 'Nur speichern' %}</button>
+      <button type="submit" class="button" name="action" value="status">{% trans 'Status lesen' %}</button>
+      <button type="submit" class="button" name="action" value="center_spawn">{% trans 'Auf Spawn zentrieren' %}</button>
+      <button type="submit" class="button" name="action" value="disable"
+              onclick="return confirm('{% trans "World Border deaktivieren (Welt praktisch unbegrenzt)?" %}');">
+        {% trans 'Deaktivieren' %}
+      </button>
+    </div>
+  </form>
+
+  {% if world_border_status %}
+  <p class="wb-hint" style="margin-top:1rem;">
+    <strong>{% trans 'Live' %}:</strong>
+    {% if world_border_status.size != None %}
+      {{ world_border_status.size }} {% trans 'Blöcke' %}
+      {% if world_border_status.enabled %}({% trans 'aktiv' %}){% else %}({% trans 'weit / deaktiviert' %}){% endif %}
+    {% else %}
+      {{ world_border_status.raw }}
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
+
+<div class="wb-panel">
+  <h2>{% trans 'Welt vorgenerieren (Chunky)' %}</h2>
+  <p class="wb-hint">
+    {% trans 'Vorgeneriert Chunks im quadratischen Border-Bereich (Plugin Chunky). Belastung der CPU — ideal bei wenig Spielern. Fortschritt manuell abfragen; Start blockiert die Seite nicht bis zur Fertigstellung.' %}
+  </p>
+  <p class="wb-hint">
+    {% blocktrans with world=chunky_selection.world x=chunky_selection.center_x z=chunky_selection.center_z r=chunky_selection.radius edge=chunky_selection.edge %}
+    Auswahl aus Border-Config: Welt {{ world }}, Zentrum ({{ x }} / {{ z }}), Chunky-Radius {{ r }} → ca. {{ edge }}×{{ edge }} Blöcke.
+    {% endblocktrans %}
+    <br>{% trans 'Hinweis: Border-Größe 1000 (Kantenlänge) entspricht Chunky-Radius 500.' %}
+  </p>
+
+  <form method="post" action="{% url 'admin:minecraft_city' %}">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="chunky_pregen">
+    <div class="wb-grid">
+      <div>
+        <label for="id_chunky_radius">{% trans 'Radius-Override (Blöcke)' %}</label>
+        <input id="id_chunky_radius" type="number" min="1" step="1" name="chunky_radius"
+               value="{{ chunky_selection.radius }}"
+               title="{% trans 'Leer = Border-Größe / 2' %}">
+      </div>
+      <div>
+        <label for="id_chunky_quiet">{% trans 'Quiet-Intervall (s)' %}</label>
+        <input id="id_chunky_quiet" type="number" min="1" step="1" name="chunky_quiet"
+               value="{{ chunky_quiet_default }}">
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="use_live_worldborder">
+          {% trans 'Live-Vanilla-Border verwenden (chunky worldborder) statt Config-Zentrum/Radius' %}
+        </label>
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button default" name="action" value="start"
+              onclick="return confirm('{% blocktrans with r=chunky_selection.radius edge=chunky_selection.edge %}Chunky starten? Radius {{ r }} (ca. {{ edge }}×{{ edge }}). Kann lange dauern und die CPU belasten.{% endblocktrans %}');">
+        {% trans 'Starten' %}
+      </button>
+      <button type="submit" class="button" name="action" value="pause">{% trans 'Pause' %}</button>
+      <button type="submit" class="button" name="action" value="continue">{% trans 'Fortsetzen' %}</button>
+      <button type="submit" class="button" name="action" value="progress">{% trans 'Fortschritt' %}</button>
+      <button type="submit" class="button" name="action" value="cancel"
+              onclick="return confirm('{% trans "Chunky-Task wirklich abbrechen? Fortschritt geht verloren." %}');">
+        {% trans 'Abbrechen' %}
+      </button>
+    </div>
+  </form>
+
+  {% if chunky_progress %}
+  <pre class="wb-hint" style="margin-top:1rem; white-space:pre-wrap; background:#0f172a; color:#e2e8f0; padding:0.75rem; border-radius:6px;">{% if chunky_progress.raw %}{{ chunky_progress.raw }}{% else %}{{ chunky_progress.error }}{% endif %}</pre>
+  {% endif %}
+</div>
+
+{% if can_manage_coreprotect %}
+<div class="wb-panel">
+  <h2>{% trans 'CoreProtect (Spieler-Rücksetzen)' %}</h2>
+  <p class="wb-hint">
+    {% trans 'Rollback macht Block-Aktionen eines Spielers in der Zeitspanne rückgängig (Anti-Griefing). Restore stellt einen Rollback wieder her. Ohne Radius würde CoreProtect nur 10 Blöcke nutzen — hier immer #global bzw. Weltname.' %}
+  </p>
+  <form method="post" action="{% url 'admin:minecraft_city' %}">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="coreprotect">
+    <div class="wb-grid">
+      <div style="grid-column: 1 / -1;">
+        <label for="id_co_user">{% trans 'Spieler (MS-Login)' %}</label>
+        <input id="id_co_user" type="text" name="co_user" list="co_user_list"
+               maxlength="16" placeholder="mccpc01"
+               pattern="[A-Za-z0-9_]{1,16}">
+        <datalist id="co_user_list">
+          {% for name in co_known_users %}
+          <option value="{{ name }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label for="id_co_time_preset">{% trans 'Zeit-Preset' %}</label>
+        <select id="id_co_time_preset" name="co_time_preset">
+          {% for value, label in co_time_presets %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_co_time">{% trans 'Zeit frei (optional)' %}</label>
+        <input id="id_co_time" type="text" name="co_time" placeholder="2h30m"
+               title="{% trans 'Überschreibt das Preset, wenn gesetzt' %}">
+      </div>
+      <div>
+        <label for="id_co_radius">{% trans 'Radius' %}</label>
+        <select id="id_co_radius" name="co_radius">
+          {% for r in co_radii %}
+          <option value="{{ r }}" {% if r == '#global' %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_co_action">{% trans 'Aktion' %}</label>
+        <select id="id_co_action" name="co_action">
+          <option value="rollback" selected>{% trans 'Rollback (rückgängig)' %}</option>
+          <option value="restore">{% trans 'Restore (wiederherstellen)' %}</option>
+        </select>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="co_blocks_only" checked>
+          {% trans 'Nur Blöcke (a:block)' %}
+        </label>
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button" name="action" value="preview">{% trans 'Vorschau' %}</button>
+      <button type="submit" class="button default" name="action" value="apply"
+              onclick="return confirm('{% trans "CoreProtect Live-Aktion wirklich ausführen? Kann die Welt stark verändern und dauern." %}');">
+        {% trans 'Ausführen' %}
+      </button>
+      <button type="submit" class="button" name="action" value="undo" formnovalidate
+              onclick="return confirm('{% trans "Letzte CoreProtect-Aktion rückgängig machen (co undo)?" %}');">
+        {% trans 'Undo letzte Aktion' %}
+      </button>
+    </div>
+  </form>
+  {% if co_output %}
+  <pre class="wb-hint" style="margin-top:1rem; white-space:pre-wrap; background:#0f172a; color:#e2e8f0; padding:0.75rem; border-radius:6px;">{{ co_output }}</pre>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if can_manage_protected_regions %}
+<div class="wb-panel">
+  <h2>{% trans 'Geschützte Regionen (WorldGuard)' %}</h2>
+  <p class="wb-hint">
+    {% trans 'Cuboid-Regionen mit Bau-Schutz. Mitglieder = verknüpfte Bau-Accounts (MS-Login). Koordinaten manuell oder von einem online Spieler übernehmen. „Anwenden“ setzt Selection (WorldEdit), definiert die Region und synct Members.' %}
+  </p>
+
+  {% if protected_regions %}
+  <table class="rg-table">
+    <thead>
+      <tr>
+        <th>{% trans 'ID' %}</th>
+        <th>{% trans 'Bereich' %}</th>
+        <th>{% trans 'Members' %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for region in protected_regions %}
+      <tr>
+        <td>
+          <strong>{{ region.region_id }}</strong>
+          {% if region.display_name %}<br><span class="wb-hint">{{ region.display_name }}</span>{% endif %}
+        </td>
+        <td>
+          {{ region.min_x }},{{ region.min_y }},{{ region.min_z }}
+          → {{ region.max_x }},{{ region.max_y }},{{ region.max_z }}
+          <br><span class="wb-hint">{{ region.world }}</span>
+        </td>
+        <td>
+          {% for b in region.builders.all %}
+            {{ b.ms_username|default:b.mc_username }}{% if not forloop.last %}, {% endif %}
+          {% empty %}
+            <span class="wb-hint">—</span>
+          {% endfor %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'admin:minecraft_city' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="protected_region">
+            <input type="hidden" name="rg_pk" value="{{ region.pk }}">
+            <button type="submit" class="button small" name="action" value="load">{% trans 'Laden' %}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="wb-hint">{% trans 'Noch keine Regionen in der Datenbank.' %}</p>
+  {% endif %}
+
+  <form method="post" action="{% url 'admin:minecraft_city' %}">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="protected_region">
+    <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+    <div class="wb-grid">
+      <div>
+        <label for="id_rg_region_id">{% trans 'Region-ID' %}</label>
+        <input id="id_rg_region_id" type="text" name="rg_region_id" required
+               maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,62}"
+               value="{{ rg_draft.region_id }}">
+      </div>
+      <div>
+        <label for="id_rg_display_name">{% trans 'Anzeigename' %}</label>
+        <input id="id_rg_display_name" type="text" name="rg_display_name"
+               maxlength="120" value="{{ rg_draft.display_name }}">
+      </div>
+      <div>
+        <label for="id_rg_world">{% trans 'Welt' %}</label>
+        <input id="id_rg_world" type="text" name="rg_world" required
+               maxlength="64" value="{{ rg_draft.world|default:rg_paper_world }}">
+      </div>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_min_x">{% trans 'Min X' %}</label>
+          <input id="id_rg_min_x" type="number" step="1" name="rg_min_x" required value="{{ rg_draft.min_x }}">
+        </div>
+        <div>
+          <label for="id_rg_min_y">{% trans 'Min Y' %}</label>
+          <input id="id_rg_min_y" type="number" step="1" name="rg_min_y" required value="{{ rg_draft.min_y }}">
+        </div>
+        <div>
+          <label for="id_rg_min_z">{% trans 'Min Z' %}</label>
+          <input id="id_rg_min_z" type="number" step="1" name="rg_min_z" required value="{{ rg_draft.min_z }}">
+        </div>
+      </div>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_max_x">{% trans 'Max X' %}</label>
+          <input id="id_rg_max_x" type="number" step="1" name="rg_max_x" required value="{{ rg_draft.max_x }}">
+        </div>
+        <div>
+          <label for="id_rg_max_y">{% trans 'Max Y' %}</label>
+          <input id="id_rg_max_y" type="number" step="1" name="rg_max_y" required value="{{ rg_draft.max_y }}">
+        </div>
+        <div>
+          <label for="id_rg_max_z">{% trans 'Max Z' %}</label>
+          <input id="id_rg_max_z" type="number" step="1" name="rg_max_z" required value="{{ rg_draft.max_z }}">
+        </div>
+      </div>
+      <p class="wb-hint" style="grid-column: 1 / -1; margin: 0;">
+        {% blocktrans with min_y=rg_world_min_y max_y=rg_world_max_y %}Y steht standardmäßig auf voller Welthöhe ({{ min_y }} … {{ max_y }}); Spieler-Pos setzt nur X/Z. Y bei Bedarf anpassen.{% endblocktrans %}
+      </p>
+      <div style="grid-column: 1 / -1;">
+        <label for="id_rg_notes">{% trans 'Notiz' %}</label>
+        <input id="id_rg_notes" type="text" name="rg_notes" maxlength="255" value="{{ rg_draft.notes }}">
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="rg_protect_build" {% if rg_draft.protect_build %}checked{% endif %}>
+          {% trans 'Bauen schützen (WG-Standard; Nicht-Mitglieder blockiert)' %}
+        </label>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>{% trans 'Bau-Accounts (WorldGuard-Members)' %}</label>
+        <div class="rg-builders">
+          {% for reg in rg_builder_choices %}
+          <label>
+            <input type="checkbox" name="rg_builders" value="{{ reg.pk }}"
+              {% if reg.pk in rg_draft.builder_ids %}checked{% endif %}>
+            {{ reg.ms_username }}
+            {% if reg.group %} ({{ reg.group.name }}){% endif %}
+            — {{ reg.mc_username }}
+          </label>
+          {% empty %}
+          <span class="wb-hint">{% trans 'Keine aktiven Bau-Accounts mit MS-Login.' %}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label for="id_rg_player">{% trans 'Spieler für Position' %}</label>
+        <input id="id_rg_player" type="text" name="rg_player" list="rg_player_list"
+               maxlength="16" value="{{ rg_draft.player }}"
+               pattern="[A-Za-z0-9_]{0,16}" placeholder="mccpc01">
+        <datalist id="rg_player_list">
+          {% for reg in rg_builder_choices %}
+          <option value="{{ reg.ms_username }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='min';">
+        {% trans 'Min = Spieler-Pos' %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='max';">
+        {% trans 'Max = Spieler-Pos' %}
+      </button>
+      <input type="hidden" name="rg_corner" value="min">
+      <button type="submit" class="button" name="action" value="save">{% trans 'Nur speichern' %}</button>
+      <button type="submit" class="button default" name="action" value="apply"
+              onclick="return confirm('{% trans "Region auf dem Server anwenden (WorldEdit/WorldGuard)?" %}');">
+        {% trans 'Anwenden (WG)' %}
+      </button>
+      <button type="submit" class="button" name="action" value="sync_members">{% trans 'Nur Members sync' %}</button>
+      {% if rg_draft.pk %}
+      <label style="display:inline-block; margin:0 0.5rem;">
+        <input type="checkbox" name="rg_remove_server" checked>
+        {% trans 'Auch aus WorldGuard löschen' %}
+      </label>
+      <button type="submit" class="button" name="action" value="delete" formnovalidate
+              onclick="return confirm('{% trans "Region wirklich löschen?" %}');">
+        {% trans 'Löschen' %}
+      </button>
+      {% endif %}
+    </div>
+  </form>
+  {% if rg_output %}
+  <pre class="wb-hint" style="margin-top:1rem; white-space:pre-wrap; background:#0f172a; color:#e2e8f0; padding:0.75rem; border-radius:6px;">{{ rg_output }}</pre>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2>{% trans 'Stadt-Steuerung (Welt-Presets)' %}</h2>
+<p>
+    {% trans 'Ein-Klick-RCON-Befehle für Tageszeit, Wetter und Spielregeln.' %}
+    <a href="{% url 'admin:minecraft_preset_list' %}">{% trans 'Presets verwalten' %}</a>
+    {% if perms.minecraft.add_minecraftrconpreset %}
+    · <a href="{% url 'admin:minecraft_preset_add' %}">{% trans '+ Neues Preset' %}</a>
+    {% endif %}
+</p>
+{% if rcon_preset_groups %}
+    {% for group in rcon_preset_groups %}
+    <div class="preset-group">
+        <h3>{{ group.label }}</h3>
+        <div class="preset-buttons">
+            {% for preset in group.presets %}
+            <div style="display: inline-block; margin-bottom: 8px; margin-right: 12px; vertical-align: top;">
+                <div>
+                    {% if perms.minecraft.run_rconpreset %}
+                    <button type="button" class="button default"
+                            onclick="performPresetAction({{ preset.id }}, '{{ preset.name|escapejs }}', this, {{ preset.requires_confirmation|yesno:'true,false' }})">
+                        {{ preset.name }}
+                    </button>
+                    {% else %}
+                    <span class="button default" style="opacity:0.6;">{{ preset.name }}</span>
+                    {% endif %}
+                    {% if perms.minecraft.change_minecraftrconpreset %}
+                        {% if not preset.is_system or perms.minecraft.change_system_rconpreset %}
+                        <a class="button small" href="{% url 'admin:minecraft_preset_edit' preset.id %}?next={% url 'admin:minecraft_city' %}" title="{% trans 'Bearbeiten' %}">✎</a>
+                        {% endif %}
+                    {% endif %}
+                    {% if perms.minecraft.add_minecraftrconpreset %}
+                    <form method="post" action="{% url 'admin:minecraft_preset_duplicate' preset.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="button small" title="{% trans 'Duplizieren' %}">⧉</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% if preset.description %}
+                <div class="preset-description">{{ preset.description|truncatechars:60 }}</div>
+                {% endif %}
+                {% if preset.last_run_at %}
+                <div class="preset-description">
+                    {% trans 'Zuletzt' %}: {{ preset.last_run_at|date:"d.m. H:i" }}
+                    {% if preset.last_run_success %}✓{% else %}✗{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<p><em>{% trans 'Keine aktiven Presets. Bitte unter „Presets verwalten“ anlegen oder aktivieren.' %}</em></p>
+{% endif %}
+{% endblock %}

@@ -5,409 +5,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<style>
-    .minecraft-control {
-        background: #f5f5f5;
-        padding: 20px;
-        border-radius: 4px;
-        margin: 20px 0;
-    }
-    .status-box {
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-    }
-    .status-box.running {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-    }
-    .status-box.stopped {
-        background: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-    }
-    .action-buttons button {
-        margin: 5px;
-        padding: 10px 20px;
-        font-size: 14px;
-        cursor: pointer;
-    }
-    .action-buttons button.danger {
-        background: #dc3545;
-        color: white;
-        border: none;
-    }
-    .action-buttons button.success {
-        background: #28a745;
-        color: white;
-        border: none;
-    }
-    .action-buttons button.warning {
-        background: #ffc107;
-        color: #212529;
-        border: none;
-    }
-    .action-buttons button.info {
-        background: #17a2b8;
-        color: white;
-        border: none;
-    }
-    .action-buttons .ws-button-row {
-        display: inline-flex;
-        flex-wrap: nowrap;
-        vertical-align: middle;
-    }
-    .shop-readiness-panel {
-        background: white;
-        border-radius: 4px;
-        padding: 15px;
-        margin: 15px 0 20px 0;
-        border: 1px solid #ddd;
-    }
-    .shop-readiness-summary {
-        font-size: 15px;
-        font-weight: bold;
-        margin-bottom: 12px;
-    }
-    .shop-readiness-summary.ok { color: #155724; }
-    .shop-readiness-summary.warning { color: #856404; }
-    .shop-readiness-summary.error { color: #721c24; }
-    .shop-readiness-checks {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-    .shop-readiness-checks li {
-        padding: 8px 10px;
-        margin-bottom: 6px;
-        border-radius: 4px;
-        font-size: 13px;
-    }
-    .shop-readiness-checks li.severity-ok {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-    }
-    .shop-readiness-checks li.severity-warning {
-        background: #fff3cd;
-        border: 1px solid #ffeeba;
-    }
-    .shop-readiness-checks li.severity-error {
-        background: #f8d7da;
-        border: 1px solid #f5c6cb;
-    }
-    .shop-readiness-checks .check-label {
-        font-weight: bold;
-    }
-    .shop-readiness-checks .check-hint {
-        display: block;
-        margin-top: 4px;
-        color: #555;
-        font-size: 12px;
-    }
-    .shop-readiness-checks .check-action {
-        margin-left: 8px;
-    }
-    .output-box {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        padding: 15px;
-        border-radius: 4px;
-        font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 12px;
-        max-height: 250px;
-        overflow-y: auto;
-        margin-top: 15px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-    table.minecraft-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        margin-top: 15px;
-    }
-    table.minecraft-table th, table.minecraft-table td {
-        padding: 8px;
-        border-bottom: 1px solid #eee;
-        text-align: left;
-        font-size: 13px;
-    }
-    .config-form {
-        background: white;
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-    }
-    .config-form label {
-        display: inline-block;
-        min-width: 180px;
-        font-weight: bold;
-    }
-    .config-form .field-row {
-        margin-bottom: 10px;
-    }
-    .preset-group {
-        background: white;
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 15px;
-    }
-    .preset-group h3 {
-        margin-top: 0;
-        font-size: 15px;
-    }
-    .preset-buttons button {
-        margin: 4px 6px 4px 0;
-    }
-    .preset-description {
-        font-size: 12px;
-        color: #666;
-        margin: 4px 0 8px 0;
-    }
-</style>
-<script>
-function performMinecraftAction(action, buttonElement) {
-    var confirmMessage = '';
-    if (action === 'stop' || action === 'snapshot-stop' || action === 'ws-stop') {
-        if (action === 'stop') {
-            confirmMessage = '{% trans "Worker wirklich stoppen?" %}';
-        } else if (action === 'snapshot-stop') {
-            confirmMessage = '{% trans "Snapshot Worker wirklich stoppen?" %}';
-        } else {
-            confirmMessage = '{% trans "WebSocket-Server wirklich stoppen?" %}';
-        }
-    } else if (action === 'restart') {
-        confirmMessage = '{% trans "Worker wirklich neu starten?" %}';
-    } else if (action === 'sync') {
-        confirmMessage = '{% trans "Scoreboards jetzt manuell aus der Datenbank befüllen?" %}';
-    }
-    if (confirmMessage && !confirm(confirmMessage)) {
-        return;
-    }
-
-    var button = buttonElement || (window.event ? window.event.target : null);
-    if (!button) {
-        console.error('Could not find button element');
-        return;
-    }
-    var originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = '{% trans "Bitte warten..." %}';
-
-    var outputBox = document.getElementById('minecraft-output');
-    if (outputBox) {
-        outputBox.style.display = 'block';
-        outputBox.textContent = '{% trans "Aktion wird ausgeführt..." %}';
-    }
-
-    fetch('{% url "admin:minecraft_action" "ACTION_PLACEHOLDER" %}'.replace('ACTION_PLACEHOLDER', action), {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(data => {
-                throw new Error(data.error || data.message || 'HTTP ' + response.status);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (outputBox) {
-            // Show output, message, or fallback
-            var displayText = data.output || data.message || '{% trans "Aktion abgeschlossen" %}';
-            outputBox.textContent = displayText;
-            outputBox.style.display = 'block';
-            outputBox.style.color = data.success !== false ? '#4ec9b0' : '#f48771';
-        }
-        // Reload after a short delay to show the message
-        setTimeout(function() { location.reload(); }, 2000);
-    })
-    .catch(error => {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (outputBox) {
-            outputBox.textContent = '{% trans "Fehler" %}: ' + error.message;
-            outputBox.style.color = '#f48771';
-        }
-    });
-}
-
-function performShopReadinessCheck(buttonElement) {
-    var button = buttonElement;
-    var originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = '{% trans "Bitte warten..." %}';
-
-    var panel = document.getElementById('shop-readiness-panel');
-    var summaryEl = document.getElementById('shop-readiness-summary');
-    var checksEl = document.getElementById('shop-readiness-checks');
-    if (panel) {
-        panel.style.display = 'block';
-    }
-    if (summaryEl) {
-        summaryEl.textContent = '{% trans "Prüfung läuft..." %}';
-        summaryEl.className = 'shop-readiness-summary';
-    }
-    if (checksEl) {
-        checksEl.innerHTML = '';
-    }
-
-    fetch('{% url "admin:minecraft_action" "shop-check" %}', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(function(response) {
-        if (!response.ok) {
-            return response.json().then(function(data) {
-                throw new Error(data.error || data.message || 'HTTP ' + response.status);
-            });
-        }
-        return response.json();
-    })
-    .then(function(data) {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (!panel || !summaryEl || !checksEl) {
-            return;
-        }
-
-        var summary = data.summary || {errors: 0, warnings: 0, passed: 0};
-        var summaryClass = data.ok ? (summary.warnings > 0 ? 'warning' : 'ok') : 'error';
-        var summaryText;
-        if (data.ok && summary.warnings === 0) {
-            summaryText = '{% trans "Shop-Betrieb: Alle Prüfungen bestanden" %}';
-        } else if (data.ok) {
-            summaryText = '{% trans "Shop-Betrieb: Betreibbar mit Warnungen" %} (' + summary.warnings + ' {% trans "Warnung(en)" %})';
-        } else {
-            summaryText = '{% trans "Shop-Betrieb: Nicht bereit" %} (' + summary.errors + ' {% trans "Fehler" %}, ' + summary.warnings + ' {% trans "Warnung(en)" %})';
-        }
-        summaryEl.textContent = summaryText;
-        summaryEl.className = 'shop-readiness-summary ' + summaryClass;
-
-        (data.checks || []).forEach(function(check) {
-            var item = document.createElement('li');
-            item.className = 'severity-' + (check.severity || 'ok');
-            var icon = check.severity === 'error' ? '✗' : (check.severity === 'warning' ? '⚠' : '✓');
-            var html = '<span class="check-label">' + icon + ' ' + check.label + '</span><br>' + check.detail;
-            if (check.hint) {
-                html += '<span class="check-hint">' + check.hint;
-                if (check.action) {
-                    html += ' <button type="button" class="button small check-action" data-action="' + check.action + '">{% trans "Beheben" %}</button>';
-                }
-                html += '</span>';
-            }
-            item.innerHTML = html;
-            checksEl.appendChild(item);
-        });
-
-        checksEl.querySelectorAll('.check-action').forEach(function(actionButton) {
-            actionButton.addEventListener('click', function() {
-                performMinecraftAction(actionButton.getAttribute('data-action'), actionButton);
-            });
-        });
-    })
-    .catch(function(error) {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (summaryEl) {
-            summaryEl.textContent = '{% trans "Fehler" %}: ' + error.message;
-            summaryEl.className = 'shop-readiness-summary error';
-        }
-    });
-}
-
-function performTeamAction(url, buttonElement, confirmMessage) {
-    if (confirmMessage && !confirm(confirmMessage)) {
-        return;
-    }
-    var button = buttonElement;
-    var originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = '{% trans "Bitte warten..." %}';
-
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json().then(data => ({ ok: response.ok, data: data })))
-    .then(result => {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (!result.ok) {
-            alert(result.data.error || '{% trans "Fehler" %}');
-            return;
-        }
-        location.reload();
-    })
-    .catch(error => {
-        button.disabled = false;
-        button.textContent = originalText;
-        alert('{% trans "Fehler" %}: ' + error.message);
-    });
-}
-
-function performPresetAction(presetId, presetName, buttonElement, requiresConfirm) {
-    if (requiresConfirm !== false) {
-        var confirmMessage = '{% trans "RCON-Preset ausführen?" %}'.replace('?', ': „' + presetName + '“?');
-        if (!confirm(confirmMessage)) {
-            return;
-        }
-    }
-
-    var button = buttonElement;
-    var originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = '{% trans "Bitte warten..." %}';
-
-    var outputBox = document.getElementById('minecraft-output');
-    if (outputBox) {
-        outputBox.style.display = 'block';
-        outputBox.textContent = '{% trans "Preset wird ausgeführt..." %}';
-    }
-
-    fetch('{% url "admin:minecraft_run_preset" 0 %}'.replace('/0/', '/' + presetId + '/'), {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json().then(data => ({ ok: response.ok, data: data })))
-    .then(result => {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (outputBox) {
-            var displayText = result.data.output || result.data.message || result.data.error || '{% trans "Fertig" %}';
-            outputBox.textContent = displayText;
-            outputBox.style.color = result.ok ? '#4ec9b0' : '#f48771';
-        }
-        if (!result.ok) {
-            alert(result.data.error || '{% trans "Fehler" %}');
-        }
-    })
-    .catch(error => {
-        button.disabled = false;
-        button.textContent = originalText;
-        if (outputBox) {
-            outputBox.textContent = '{% trans "Fehler" %}: ' + error.message;
-            outputBox.style.color = '#f48771';
-        }
-    });
-}
-</script>
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -441,6 +39,92 @@ function performPresetAction(presetId, presetName, buttonElement, requiresConfir
         {% endif %}
     </div>
 
+    <div class="status-box {% if session_status.running %}running{% else %}stopped{% endif %}">
+        {% if session_status.running %}
+            <strong>✓ {% trans 'Session Worker läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Session Worker gestoppt' %}</strong>
+        {% endif %}
+        {% if session_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ session_status.error }}</small>
+        {% endif %}
+    </div>
+
+    <div class="status-box {% if arena_status.running %}running{% else %}stopped{% endif %}">
+        {% if arena_status.running %}
+            <strong>✓ {% trans 'Arena-Motion-Worker läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Arena-Motion-Worker gestoppt' %}</strong>
+        {% endif %}
+        {% if arena_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ arena_status.error }}</small>
+        {% endif %}
+    </div>
+
+    {% if can_manage_minecraft_proxy %}
+    <div class="status-box {% if paper_status.running %}running{% else %}stopped{% endif %}">
+        {% if paper_status.running %}
+            <strong>✓ {% trans 'Paper läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Paper gestoppt' %}</strong>
+        {% endif %}
+        {% if paper_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ paper_status.error }}</small>
+        {% elif paper_status.output %}
+            <br><small>{{ paper_status.output|linebreaksbr }}</small>
+        {% endif %}
+        <br><small><a href="{% url 'admin:mgmt_log_file_viewer' paper_log_key %}?tail=true">{% trans 'Log anzeigen' %}</a></small>
+    </div>
+
+    <div class="status-box {% if limbo_status.running %}running{% else %}stopped{% endif %}">
+        {% if limbo_status.running %}
+            <strong>✓ {% trans 'Limbo läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Limbo gestoppt' %}</strong>
+        {% endif %}
+        {% if limbo_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ limbo_status.error }}</small>
+        {% elif limbo_status.output %}
+            <br><small>{{ limbo_status.output|linebreaksbr }}</small>
+        {% endif %}
+        <br><small><a href="{% url 'admin:mgmt_log_file_viewer' limbo_log_key %}?tail=true">{% trans 'Log anzeigen' %}</a></small>
+    </div>
+
+    <div class="status-box {% if velocity_status.running %}running{% else %}stopped{% endif %}">
+        {% if velocity_status.running %}
+            <strong>✓ {% trans 'Velocity läuft' %}</strong>
+        {% else %}
+            <strong>✗ {% trans 'Velocity gestoppt' %}</strong>
+        {% endif %}
+        {% if velocity_status.error %}
+            <br><small>{% trans 'Fehler' %}: {{ velocity_status.error }}</small>
+        {% elif velocity_status.output %}
+            <br><small>{{ velocity_status.output|linebreaksbr }}</small>
+        {% endif %}
+        <br><small>
+            <strong>{% trans 'Proxy-RCON (Velocircon)' %}:</strong>
+            {% if velocity_rcon_ok %}
+                <span style="color: #155724;">{% trans 'Verbunden' %}</span>
+                {% if velocity_rcon_endpoint %}
+                    <code>{{ velocity_rcon_endpoint }}</code>
+                {% endif %}
+                {% if velocity_rcon_mode != 'auth' %}
+                    — {% trans 'nur Port-Check' %}
+                {% endif %}
+            {% else %}
+                <span style="color: #721c24;">{% trans 'Nicht erreichbar' %}</span>
+                {% if velocity_rcon_endpoint %}
+                    <code>{{ velocity_rcon_endpoint }}</code>
+                {% endif %}
+                {% if velocity_rcon_error %}
+                    — {{ velocity_rcon_error }}
+                {% endif %}
+            {% endif %}
+        </small>
+        <br><small><a href="{% url 'admin:mgmt_log_file_viewer' velocity_log_key %}?tail=true">{% trans 'Log anzeigen' %}</a></small>
+    </div>
+    {% endif %}
+
     <div class="status-box {% if ws_status.running %}running{% else %}stopped{% endif %}">
         {% if ws_status.running %}
             <strong>✓ {% trans 'WebSocket-Server läuft' %}</strong>
@@ -470,7 +154,7 @@ function performPresetAction(presetId, presetName, buttonElement, requiresConfir
     </div>
 
     <div style="margin-bottom: 10px;">
-        <strong>{% trans 'RCON Verbindung' %}:</strong>
+        <strong>{% trans 'Paper-RCON Verbindung' %}:</strong>
         {% if rcon_ok %}
             <span style="color: #155724;">{% trans 'Verbunden' %}</span>
             {% if rcon_mode != 'auth' %}
@@ -526,6 +210,18 @@ function performPresetAction(presetId, presetName, buttonElement, requiresConfir
         <button class="button danger" onclick="performMinecraftAction('stop', this)">{% trans 'Worker stoppen' %}</button>
         <button class="button success" onclick="performMinecraftAction('snapshot-start', this)">{% trans 'Snapshot Worker starten' %}</button>
         <button class="button danger" onclick="performMinecraftAction('snapshot-stop', this)">{% trans 'Snapshot Worker stoppen' %}</button>
+        <button class="button success" onclick="performMinecraftAction('session-start', this)">{% trans 'Session Worker starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('session-stop', this)">{% trans 'Session Worker stoppen' %}</button>
+        <button class="button success" onclick="performMinecraftAction('arena-start', this)">{% trans 'Arena-Motion-Worker starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('arena-stop', this)">{% trans 'Arena-Motion-Worker stoppen' %}</button>
+        {% if can_manage_minecraft_proxy %}
+        <button class="button success" onclick="performMinecraftAction('paper-start', this)">{% trans 'Paper starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('paper-stop', this)">{% trans 'Paper stoppen' %}</button>
+        <button class="button success" onclick="performMinecraftAction('limbo-start', this)">{% trans 'Limbo starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('limbo-stop', this)">{% trans 'Limbo stoppen' %}</button>
+        <button class="button success" onclick="performMinecraftAction('velocity-start', this)">{% trans 'Velocity starten' %}</button>
+        <button class="button danger" onclick="performMinecraftAction('velocity-stop', this)">{% trans 'Velocity stoppen' %}</button>
+        {% endif %}
         <span class="ws-button-row">
             <button class="button success" onclick="performMinecraftAction('ws-start', this)" {% if not ws_enabled %}disabled title="{% trans 'WebSocket in den Einstellungen deaktiviert' %}"{% endif %}>{% trans 'WebSocket starten' %}</button>
             <button class="button danger" onclick="performMinecraftAction('ws-stop', this)">{% trans 'WebSocket stoppen' %}</button>
@@ -544,6 +240,21 @@ function performPresetAction(presetId, presetName, buttonElement, requiresConfir
 
     <div id="minecraft-output" class="output-box" style="display:none;"></div>
 </div>
+
+{% if can_run_free_rcon %}
+<h2>{% trans 'Freier RCON-Befehl' %}</h2>
+<form method="post" class="free-rcon-form" onsubmit="return confirmFreeRconSubmit(this);">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="free_rcon">
+    <div class="field-row">
+        <label for="rcon_command">{% trans 'Befehl' %}:</label>
+        <input type="text" id="rcon_command" name="rcon_command" maxlength="500"
+               placeholder="{% trans 'z. B. list oder time query daytime' %}" autocomplete="off">
+    </div>
+    <button type="submit" class="button default">{% trans 'RCON senden' %}</button>
+    <p class="help">{% trans 'Wird ohne Preset direkt an den Minecraft-Server gesendet. Nur für Operatoren.' %}</p>
+</form>
+{% endif %}
 
 <h2>{% trans 'Scoreboard-Konfiguration' %}</h2>
 <form method="post" class="config-form">
@@ -574,133 +285,6 @@ function performPresetAction(presetId, presetName, buttonElement, requiresConfir
     </div>
     <button type="submit" class="button default">{% trans 'Konfiguration speichern' %}</button>
 </form>
-
-<h2>{% trans 'Stadt-Steuerung (Welt-Presets)' %}</h2>
-<p>
-    {% trans 'Ein-Klick-RCON-Befehle für Tageszeit, Wetter und Spielregeln.' %}
-    <a href="{% url 'admin:minecraft_preset_list' %}">{% trans 'Presets verwalten' %}</a>
-    {% if perms.minecraft.add_minecraftrconpreset %}
-    · <a href="{% url 'admin:minecraft_preset_add' %}">{% trans '+ Neues Preset' %}</a>
-    {% endif %}
-</p>
-{% if rcon_preset_groups %}
-    {% for group in rcon_preset_groups %}
-    <div class="preset-group">
-        <h3>{{ group.label }}</h3>
-        <div class="preset-buttons">
-            {% for preset in group.presets %}
-            <div style="display: inline-block; margin-bottom: 8px; margin-right: 12px; vertical-align: top;">
-                <div>
-                    {% if perms.minecraft.run_rconpreset %}
-                    <button type="button" class="button default"
-                            onclick="performPresetAction({{ preset.id }}, '{{ preset.name|escapejs }}', this, {{ preset.requires_confirmation|yesno:'true,false' }})">
-                        {{ preset.name }}
-                    </button>
-                    {% else %}
-                    <span class="button default" style="opacity:0.6;">{{ preset.name }}</span>
-                    {% endif %}
-                    {% if perms.minecraft.change_minecraftrconpreset %}
-                        {% if not preset.is_system or perms.minecraft.change_system_rconpreset %}
-                        <a class="button small" href="{% url 'admin:minecraft_preset_edit' preset.id %}?next={% url 'admin:minecraft_control' %}" title="{% trans 'Bearbeiten' %}">✎</a>
-                        {% endif %}
-                    {% endif %}
-                    {% if perms.minecraft.add_minecraftrconpreset %}
-                    <form method="post" action="{% url 'admin:minecraft_preset_duplicate' preset.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="button small" title="{% trans 'Duplizieren' %}">⧉</button>
-                    </form>
-                    {% endif %}
-                </div>
-                {% if preset.description %}
-                <div class="preset-description">{{ preset.description|truncatechars:60 }}</div>
-                {% endif %}
-                {% if preset.last_run_at %}
-                <div class="preset-description">
-                    {% trans 'Zuletzt' %}: {{ preset.last_run_at|date:"d.m. H:i" }}
-                    {% if preset.last_run_success %}✓{% else %}✗{% endif %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endfor %}
-{% else %}
-<p><em>{% trans 'Keine aktiven Presets. Bitte unter „Presets verwalten“ anlegen oder aktivieren.' %}</em></p>
-{% endif %}
-
-<h2>{% trans 'Shop-Betrieb' %}</h2>
-<p>
-    {% trans 'Prüft Infrastruktur, Velos-Konsistenz (Datenbank ↔ Scoreboard) und Shop-Katalog.' %}
-    {% trans 'Der Shop nutzt velos_spendable aus der Datenbank — das Scoreboard muss per Worker synchron gehalten werden.' %}
-</p>
-<p>
-    <button type="button" class="button default" onclick="performShopReadinessCheck(this)">
-        {% trans 'Shop-Betrieb prüfen' %}
-    </button>
-</p>
-<div id="shop-readiness-panel" class="shop-readiness-panel" style="display:none;">
-    <div id="shop-readiness-summary" class="shop-readiness-summary"></div>
-    <ul id="shop-readiness-checks" class="shop-readiness-checks"></ul>
-</div>
-
-<h2>{% trans 'Shop-Katalog' %}</h2>
-<p>
-    {% blocktrans with categories=shop_category_count items=shop_item_count %}
-    {{ categories }} Kategorien, {{ items }} aktive Artikel.
-    {% endblocktrans %}
-    <a href="{% url 'admin:minecraft_minecraftshopcategory_changelist' %}">{% trans 'Katalog verwalten' %}</a>
-    ·
-    <a href="{% url 'admin:minecraft_minecraftshopitem_changelist' %}">{% trans 'Alle Artikel durchsuchen' %}</a>
-    ·
-    <a href="{% url 'admin:minecraft_import_shop' %}">{% trans 'EconomyShopGUI importieren' %}</a>
-</p>
-<form method="get" action="{% url 'admin:minecraft_minecraftshopitem_changelist' %}" class="config-form" style="margin-top: 10px;">
-    <div class="field-row">
-        <label for="shop_item_search">{% trans 'Artikel suchen' %}:</label>
-        <input type="search" id="shop_item_search" name="q" size="40"
-               placeholder="{% trans 'Material, Name, super_pickaxe, page1.items…' %}">
-        <button type="submit" class="button default">{% trans 'Suchen' %}</button>
-    </div>
-    <small>{% trans 'Durchsucht alle Shop-Artikel global — unabhängig von Kategorie und Seitenblätterung.' %}</small>
-</form>
-<p>
-    {% if shop_bridge_connected %}
-        {% blocktrans with servers=shop_bridge_servers|join:", " %}
-        MCC-Bridge verbunden ({{ servers }}).
-        {% endblocktrans %}
-    {% else %}
-        <em>{% trans 'Keine MCC-Bridge-WebSocket-Verbindung — Shop-Push nicht möglich.' %}</em>
-    {% endif %}
-</p>
-<p>
-    <button type="button" class="button default" onclick="performMinecraftAction('push-shop', this)" {% if not shop_bridge_connected %}disabled{% endif %}>
-        {% trans 'Shop-Preise an Minecraft pushen' %}
-    </button>
-    <small>{% trans 'Überträgt den MCC-Katalog nach EconomyShopGUI auf dem MC-Server.' %}</small>
-</p>
-{% if shop_catalog_preview.categories %}
-<table class="minecraft-table">
-    <thead>
-        <tr>
-            <th>{% trans 'Kategorie' %}</th>
-            <th>{% trans 'Section' %}</th>
-            <th>{% trans 'Artikel' %}</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for category in shop_catalog_preview.categories %}
-        <tr>
-            <td>{{ category.name }}</td>
-            <td><code>{{ category.section }}</code></td>
-            <td>{{ category.items|length }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p><em>{% trans 'Noch keine Shop-Kategorien angelegt.' %}</em></p>
-{% endif %}
 
 <h2>{% trans 'Noch nicht registrierte Teams' %}</h2>
 <p class="help">

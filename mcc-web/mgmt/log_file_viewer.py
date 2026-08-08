@@ -67,12 +67,140 @@ LOG_FILES = {
         'display_name': _('Minecraft Application Logs'),
         'description': _('All logs from the Minecraft application'),
     },
+    'minecraft_velocity': {
+        'name': 'minecraft-velocity.log',
+        'display_name': _('Velocity Proxy Logs'),
+        'description': _('Stdout/stderr from the Velocity proxy process'),
+    },
+    'minecraft_limbo': {
+        'name': 'minecraft-limbo.log',
+        'display_name': _('Limbo Waiting Room Logs'),
+        'description': _('Stdout/stderr from the Limbo waiting-room process'),
+    },
+    'minecraft_paper': {
+        'name': 'minecraft-paper.log',
+        'display_name': _('Paper Server Logs'),
+        'description': _('Stdout/stderr from the Paper (mc-srv) process'),
+    },
     'django': {
         'name': 'django.log',
         'display_name': _('Django Framework Logs'),
         'description': _('Only WARNING, ERROR and CRITICAL logs from the Django framework'),
     },
 }
+
+# ANSI / console junk from Minecraft Java processes when captured without a TTY
+_ANSI_ESCAPE_RE = re.compile(r'\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\].*?(?:\x07|\x1b\\)')
+_MAX_LOG_LINE_CHARS = 4000
+# Cap how much of a log file is loaded into the Admin viewer (avoids OOM on jline spam).
+_MAX_LOG_READ_BYTES = 2_000_000
+
+
+def _sanitize_log_line(line: str) -> str:
+    """Strip ANSI/CR and truncate absurdly long lines (e.g. jline prompt spam)."""
+    line = line.replace('\r', '')
+    line = _ANSI_ESCAPE_RE.sub('', line)
+    if len(line) > _MAX_LOG_LINE_CHARS:
+        return line[:_MAX_LOG_LINE_CHARS] + '… [truncated]'
+    return line
+
+
+def _normalize_log_level(level: str) -> str:
+    level = (level or 'UNKNOWN').upper()
+    if level == 'WARN':
+        return 'WARNING'
+    return level
+
+
+def _read_log_lines(file_path: Path) -> list[str]:
+    """Read log lines; for huge files only the trailing window is loaded."""
+    size = file_path.stat().st_size
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        if size > _MAX_LOG_READ_BYTES:
+            f.seek(size - _MAX_LOG_READ_BYTES)
+            f.readline()  # drop partial first line
+        return f.readlines()
+
+
+def parse_log_line(line):
+    """Parse a log line and extract level, timestamp, module, message."""
+    line = _sanitize_log_line(line)
+
+    # Try to match verbose format: LEVEL YYYY-MM-DD HH:MM:SS,mmm MODULE PID TID MESSAGE
+    verbose_pattern = r'^(\w+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3})\s+(\S+)\s+\d+\s+\d+\s+(.+)$'
+    match = re.match(verbose_pattern, line)
+    
+    if match:
+        level, timestamp, module, message = match.groups()
+        return {
+            'level': _normalize_log_level(level),
+            'timestamp': timestamp,
+            'module': module,
+            'message': message,
+            'raw': line
+        }
+    
+    # Try to match simple format: [LEVEL] YYYY-MM-DD HH:MM:SS LOGGER: MESSAGE
+    simple_pattern = r'^\[(\w+)\]\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(\S+):\s+(.+)$'
+    match = re.match(simple_pattern, line)
+    
+    if match:
+        level, timestamp, logger, message = match.groups()
+        return {
+            'level': _normalize_log_level(level),
+            'timestamp': timestamp,
+            'module': logger,
+            'message': message,
+            'raw': line
+        }
+
+    # Paper / Velocity console: [HH:MM:SS LEVEL]: message
+    mc_console = r'^\[(\d{2}:\d{2}:\d{2})\s+(\w+)\]:\s*(.*)$'
+    match = re.match(mc_console, line)
+    if match:
+        timestamp, level, message = match.groups()
+        return {
+            'level': _normalize_log_level(level),
+            'timestamp': timestamp,
+            'module': '',
+            'message': message,
+            'raw': line,
+        }
+
+    # Paper native latest.log: [HH:MM:SS] [Thread/LEVEL]: message
+    paper_native = r'^\[(\d{2}:\d{2}:\d{2})\]\s+\[([^/\]]+)/(\w+)\]:\s*(.*)$'
+    match = re.match(paper_native, line)
+    if match:
+        timestamp, thread, level, message = match.groups()
+        return {
+            'level': _normalize_log_level(level),
+            'timestamp': timestamp,
+            'module': thread,
+            'message': message,
+            'raw': line,
+        }
+
+    # Limbo: [HH:MM:SS Info] message  (no colon after bracket)
+    limbo_console = r'^\[(\d{2}:\d{2}:\d{2})\s+(\w+)\]\s+(.*)$'
+    match = re.match(limbo_console, line)
+    if match:
+        timestamp, level, message = match.groups()
+        return {
+            'level': _normalize_log_level(level),
+            'timestamp': timestamp,
+            'module': '',
+            'message': message,
+            'raw': line,
+        }
+    
+    # Fallback: return raw line
+    return {
+        'level': 'UNKNOWN',
+        'timestamp': '',
+        'module': '',
+        'message': line,
+        'raw': line
+    }
 
 
 def _is_safe_log_filename(filename):
@@ -111,46 +239,6 @@ def get_log_file_path(file_key):
         if candidate.exists():
             return candidate
     return None
-
-
-def parse_log_line(line):
-    """Parse a log line and extract level, timestamp, module, message."""
-    # Try to match verbose format: LEVEL YYYY-MM-DD HH:MM:SS,mmm MODULE PID TID MESSAGE
-    verbose_pattern = r'^(\w+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3})\s+(\S+)\s+\d+\s+\d+\s+(.+)$'
-    match = re.match(verbose_pattern, line)
-    
-    if match:
-        level, timestamp, module, message = match.groups()
-        return {
-            'level': level,
-            'timestamp': timestamp,
-            'module': module,
-            'message': message,
-            'raw': line
-        }
-    
-    # Try to match simple format: [LEVEL] YYYY-MM-DD HH:MM:SS LOGGER: MESSAGE
-    simple_pattern = r'^\[(\w+)\]\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(\S+):\s+(.+)$'
-    match = re.match(simple_pattern, line)
-    
-    if match:
-        level, timestamp, logger, message = match.groups()
-        return {
-            'level': level,
-            'timestamp': timestamp,
-            'module': logger,
-            'message': message,
-            'raw': line
-        }
-    
-    # Fallback: return raw line
-    return {
-        'level': 'UNKNOWN',
-        'timestamp': '',
-        'module': '',
-        'message': line,
-        'raw': line
-    }
 
 
 @staff_member_required
@@ -236,10 +324,9 @@ def log_file_viewer(request, file_key, rotated_index=None):
     tail = request.GET.get('tail', '').strip().lower() == 'true'
     auto_refresh = request.GET.get('auto_refresh', '').strip().lower() == 'true'
     
-    # Read file
+    # Read file (trailing window only if the file is huge)
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            all_lines = f.readlines()
+        all_lines = _read_log_lines(file_path)
     except Exception as e:
         return render(request, 'admin/mgmt/log_file_viewer.html', {
             'title': _('Fehler beim Lesen der Log-Datei'),
@@ -330,8 +417,7 @@ def log_file_api(request, file_key):
     lines_count = int(request.GET.get('lines', 50))
     
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            all_lines = f.readlines()
+        all_lines = _read_log_lines(file_path)
         
         # Get last N lines
         last_lines = all_lines[-lines_count:]

@@ -36,6 +36,8 @@ Detaillierte Anleitungen für spezifische Features:
 - [Live-Karte](guides/map.md) - Interaktive Karte mit Echtzeit-Tracking
 - [Spiel (Kilometer-Challenge)](guides/game.md) - Spiel-Räume und Challenge-System
 - [Kiosk Spezifikation](guides/kiosk_specification.md) - Kiosk Dashboard Spezifikation
+- [Velo-Arena Scoreboard-Modi](guides/velo_arena_scoreboard_modes.md) - Motion, Bau-Velos, Spectator TOP, Avatare
+- [Velo-Arena Implementierungskonzept](guides/velo_arena_implementation.md) - Phasenplan (**Prio 1: Echtzeit-Motion**)
 
 ## Projekt-Übersicht
 

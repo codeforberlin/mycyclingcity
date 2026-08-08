@@ -26,8 +26,10 @@ def ensure_team_scoreboard_objective() -> str:
     rcon_client.ensure_objective(objective, display_name)
     config = MinecraftIntegrationConfig.get_config()
     if config.sidebar_enabled:
-        slot = getattr(settings, "MCC_MINECRAFT_SCOREBOARD_DISPLAY_SLOT", "sidebar") or "sidebar"
-        rcon_client.set_objective_display(objective, slot)
+        from minecraft.services.sidebar_visibility import apply_builder_sidebar_display
+
+        # Existing Velos objective only — visibility limited to Bau accounts.
+        apply_builder_sidebar_display(objective)
     return objective
 
 
@@ -65,23 +67,48 @@ def sync_all_registered_teams() -> int:
 
 
 def register_team_on_server(registration: MinecraftTeamRegistration) -> None:
-    from minecraft.services.bridge_team_mapping import push_team_mapping_to_bridge
+    from django.conf import settings
+
+    from minecraft.services.bridge_team_mapping import (
+        push_player_override_to_bridge,
+        push_team_mapping_to_bridge,
+    )
+    from minecraft.services.builder_account_provision import register_builder_account_on_minecraft
     from minecraft.services.luckperms_sync import apply_luckperms_for_registration
 
     sync_registration_spendable(registration)
-    lp_ok, lp_log = apply_luckperms_for_registration(registration)
-    if not lp_ok:
-        registration.last_sync_error = (lp_log or "")[:5000]
+
+    if getattr(settings, "MCC_MINECRAFT_LP_SYNC_ENABLED", False):
+        lp_ok, lp_log = apply_luckperms_for_registration(registration)
+        if not lp_ok:
+            registration.last_sync_error = (lp_log or "")[:5000]
+            registration.save(update_fields=["last_sync_error"])
+            raise RuntimeError(f"LuckPerms sync failed: {lp_log}")
+        registration.last_sync_error = ""
         registration.save(update_fields=["last_sync_error"])
-        raise RuntimeError(f"LuckPerms sync failed: {lp_log}")
-    registration.last_sync_error = ""
-    registration.save(update_fields=["last_sync_error"])
+    else:
+        registration.last_sync_error = ""
+        registration.save(update_fields=["last_sync_error"])
+
+    auth_mode = (getattr(settings, "MCC_MINECRAFT_SESSION_AUTH_MODE", "online") or "online").lower()
+    if auth_mode == "authme" and not registration.authme_is_registered:
+        register_builder_account_on_minecraft(registration)
+        registration.refresh_from_db()
+
     push_team_mapping_to_bridge(registration.mc_username)
+    ms = (registration.ms_username or "").strip()
+    if ms:
+        push_player_override_to_bridge(ms, registration.mc_username)
 
 
 def unregister_team_on_server(mc_username: str) -> None:
+    from django.conf import settings
+
     from minecraft.models import MinecraftTeamRegistration
-    from minecraft.services.bridge_team_mapping import remove_team_mapping_from_bridge
+    from minecraft.services.bridge_team_mapping import (
+        remove_player_override_from_bridge,
+        remove_team_mapping_from_bridge,
+    )
     from minecraft.services.luckperms_sync import remove_luckperms_for_registration
 
     registration = (
@@ -90,8 +117,12 @@ def unregister_team_on_server(mc_username: str) -> None:
         .first()
     )
     if registration:
-        remove_luckperms_for_registration(registration)
+        if getattr(settings, "MCC_MINECRAFT_LP_SYNC_ENABLED", False):
+            remove_luckperms_for_registration(registration)
         remove_team_mapping_from_bridge(mc_username)
+        ms = (registration.ms_username or "").strip()
+        if ms:
+            remove_player_override_from_bridge(ms)
     reset_team_scoreboard_entry(mc_username)
 
 

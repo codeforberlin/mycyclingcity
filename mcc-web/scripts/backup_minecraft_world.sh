@@ -72,8 +72,8 @@ if [[ -z "${CONFIG_FILE}" ]]; then
 fi
 
 # Defaults (überschreibbar durch Konfig)
-MC_SERVER_DIR="/data/games/minecraft_server"
-MC_WORLD_DIRS="world world_nether world_the_end"
+MC_SERVER_DIR="/data/games/mcc/mc-srv"
+MC_WORLD_DIRS="MyCyclingCity"
 BACKUP_LOCAL_DIR="/data/var/mcc/backups/minecraft"
 LOG_DIR="/data/var/mcc/logs"
 BACKUP_RETENTION_COUNT=48

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  {% load i18n %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 1rem; }
+    .card { background: rgba(30,41,59,0.92); border: 1px solid #334155; border-radius: 16px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+    .ticket { font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em; }
+    .badge { display:inline-block; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.8rem; font-weight:700; }
+    .badge-wait { background:#1d4ed8; }
+    .badge-active { background:#047857; }
+    .badge-free { background:#065f46; }
+    .badge-busy { background:#b45309; }
+    .slot-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; }
+    .slot { border:1px solid #475569; border-radius:12px; padding:0.75rem; text-align:center; }
+    .muted { color:#94a3b8; font-size:0.9rem; }
+    .queue-item { display:flex; justify-content:space-between; gap:0.75rem; padding:0.55rem 0; border-bottom:1px solid #334155; }
+    .queue-item:last-child { border-bottom:none; }
+    .admin-link { color:#93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="waitlist-display" data-poll-url="{{ poll_url }}">
+    <header style="margin-bottom:1rem;">
+      <h1 style="font-size:1.75rem; font-weight:800; margin:0;">{{ title }}</h1>
+      {% if is_public %}
+        <p class="muted">{% trans 'Bitte Ticket-Nummer beachten. Persönliche Daten werden nicht angezeigt.' %}</p>
+      {% else %}
+        <p class="muted">
+          {% trans 'Operator-Ansicht mit internen Details.' %}
+          {% if manage_url %}<a class="admin-link" href="{{ manage_url }}">{% trans 'Warteliste verwalten' %}</a>{% endif %}
+        </p>
+      {% endif %}
+    </header>
+
+    <section class="card">
+      <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 0.75rem;">{% trans 'Spiel-PCs' %}</h2>
+      <div class="slot-grid" id="player-slots">
+        {% for slot in payload.player_slots %}
+          <div class="slot">
+            <div class="muted">{{ slot.label }}</div>
+            <div class="badge {% if slot.status == 'free' %}badge-free{% else %}badge-busy{% endif %}">
+              {% if slot.status == 'free' %}{% trans 'Frei' %}{% else %}{% trans 'Belegt' %}{% endif %}
+            </div>
+            {% if slot.ticket_number %}
+              <div style="margin-top:0.35rem;" class="ticket">#{{ slot.ticket_number }}</div>
+            {% endif %}
+          </div>
+        {% empty %}
+          <p class="muted">{% trans 'Keine Spiel-PCs konfiguriert.' %}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 0.75rem;">{% trans 'Spiel-Warteliste' %}</h2>
+      <div id="player-queue">
+        {% for item in payload.player_queue %}
+          <div class="queue-item">
+            <div>
+              <span class="muted">{% trans 'Platz' %} {{ item.position }}</span>
+              <div class="ticket">#{{ item.ticket_number }}</div>
+              {% if include_private and item.guest_label %}
+                <div class="muted">{{ item.guest_label }}</div>
+              {% endif %}
+            </div>
+            <div><span class="badge badge-wait">{% trans 'Wartend' %}</span></div>
+          </div>
+        {% empty %}
+          <p class="muted">{% trans 'Niemand wartet.' %}</p>
+        {% endfor %}
+      </div>
+      <div id="player-active" style="margin-top:0.75rem;">
+        {% for item in payload.player_active %}
+          <div class="queue-item">
+            <div>
+              <div class="ticket">#{{ item.ticket_number }}</div>
+              {% if include_private and item.guest_label %}<div class="muted">{{ item.guest_label }}</div>{% endif %}
+              {% if item.slot_label %}<div class="muted">→ {{ item.slot_label }}</div>{% endif %}
+            </div>
+            <div><span class="badge badge-active">{% trans 'Aktiv' %}</span></div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 0.75rem;">{% trans 'Bau-PCs' %}</h2>
+      <div class="slot-grid" id="builder-slots">
+        {% for slot in payload.builder_slots %}
+          <div class="slot">
+            <div class="muted">{{ slot.label }}</div>
+            <div class="badge {% if slot.status == 'free' %}badge-free{% else %}badge-busy{% endif %}">
+              {% if slot.status == 'free' %}{% trans 'Frei' %}{% else %}{% trans 'Belegt' %}{% endif %}
+            </div>
+            {% if slot.ticket_number %}
+              <div style="margin-top:0.35rem;" class="ticket">#{{ slot.ticket_number }}</div>
+            {% endif %}
+          </div>
+        {% empty %}
+          <p class="muted">{% trans 'Keine Bau-PCs registriert.' %}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 0.75rem;">{% trans 'Bau-Warteliste' %}</h2>
+      <div id="builder-queue">
+        {% for item in payload.builder_queue %}
+          <div class="queue-item">
+            <div>
+              <span class="muted">{% trans 'Platz' %} {{ item.position }}</span>
+              <div class="ticket">#{{ item.ticket_number }}</div>
+              {% if include_private and item.guest_label %}
+                <div class="muted">{{ item.guest_label }}</div>
+              {% endif %}
+            </div>
+            <div><span class="badge badge-wait">{% trans 'Wartend' %}</span></div>
+          </div>
+        {% empty %}
+          <p class="muted">{% trans 'Niemand wartet.' %}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <p class="muted" id="last-update">{% trans 'Aktualisiert:' %} {{ payload.server_time }}</p>
+  </div>
+
+  <script>
+    (function () {
+      const root = document.getElementById('waitlist-display');
+      const pollUrl = root.dataset.pollUrl;
+      const includePrivate = {{ include_private|yesno:"true,false" }};
+
+      function esc(s) {
+        return String(s ?? '').replace(/[&<>"']/g, function (c) {
+          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+        });
+      }
+
+      function renderQueue(containerId, items, activeContainerId, activeItems, showPrivate) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!items.length) {
+          el.innerHTML = '<p class="muted">{% trans "Niemand wartet." %}</p>';
+        } else {
+          el.innerHTML = items.map(function (item) {
+            const guest = (showPrivate && item.guest_label)
+              ? '<div class="muted">' + esc(item.guest_label) + '</div>' : '';
+            return '<div class="queue-item"><div><span class="muted">{% trans "Platz" %} ' + esc(item.position) +
+              '</span><div class="ticket">#' + esc(item.ticket_number) + '</div>' + guest +
+              '</div><div><span class="badge badge-wait">{% trans "Wartend" %}</span></div></div>';
+          }).join('');
+        }
+        const activeEl = document.getElementById(activeContainerId);
+        if (!activeEl) return;
+        activeEl.innerHTML = (activeItems || []).map(function (item) {
+          const guest = (showPrivate && item.guest_label)
+            ? '<div class="muted">' + esc(item.guest_label) + '</div>' : '';
+          const slot = item.slot_label ? '<div class="muted">→ ' + esc(item.slot_label) + '</div>' : '';
+          return '<div class="queue-item"><div><div class="ticket">#' + esc(item.ticket_number) + '</div>' +
+            guest + slot + '</div><div><span class="badge badge-active">{% trans "Aktiv" %}</span></div></div>';
+        }).join('');
+      }
+
+      function renderSlots(containerId, slots) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!slots.length) return;
+        el.innerHTML = slots.map(function (slot) {
+          const busy = slot.status !== 'free';
+          const ticket = slot.ticket_number
+            ? '<div style="margin-top:0.35rem;" class="ticket">#' + esc(slot.ticket_number) + '</div>' : '';
+          return '<div class="slot"><div class="muted">' + esc(slot.label) + '</div>' +
+            '<div class="badge ' + (busy ? 'badge-busy' : 'badge-free') + '">' +
+            (busy ? '{% trans "Belegt" %}' : '{% trans "Frei" %}') + '</div>' + ticket + '</div>';
+        }).join('');
+      }
+
+      function poll() {
+        fetch(pollUrl, { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            renderQueue('player-queue', data.player_queue || [], 'player-active', data.player_active || [], includePrivate);
+            renderQueue('builder-queue', data.builder_queue || [], null, null, includePrivate);
+            renderSlots('player-slots', data.player_slots || []);
+            renderSlots('builder-slots', data.builder_slots || []);
+            const lu = document.getElementById('last-update');
+            if (lu) lu.textContent = '{% trans "Aktualisiert:" %} ' + (data.server_time || '');
+          })
+          .catch(function () {});
+      }
+
+      setInterval(poll, 8000);
+    })();
+  </script>
+</body>
+</html>

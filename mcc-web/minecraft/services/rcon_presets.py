@@ -13,6 +13,7 @@ from django.utils.translation import gettext as _
 
 from minecraft.models import MinecraftRconPreset
 from minecraft.services import rcon_client
+from minecraft.services.preset_commands import normalize_preset_commands
 from minecraft.services.preset_permissions import user_can_run_preset
 
 
@@ -102,7 +103,7 @@ def run_preset(
     if user is not None and not user_can_run_preset(user, preset):
         return False, _("Keine Berechtigung, dieses Preset auszuführen.")
 
-    commands = list(preset.commands or [])
+    commands = normalize_preset_commands(list(preset.commands or []))
     if test_first_only and commands:
         commands = commands[:1]
 

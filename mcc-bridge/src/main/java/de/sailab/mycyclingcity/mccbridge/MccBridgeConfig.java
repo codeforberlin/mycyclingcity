@@ -23,7 +23,7 @@ public final class MccBridgeConfig {
     private String resolution;
     private Map<String, String> staticTeamGroups = Collections.emptyMap();
     private final Map<String, String> runtimeTeamGroups = new LinkedHashMap<>();
-    private Map<String, String> playerOverrides;
+    private Map<String, String> playerOverrides = new LinkedHashMap<>();
 
     public void load(FileConfiguration config) {
         websocketUrl = config.getString("mcc.websocket_url", "ws://127.0.0.1:8000/ws/minecraft/events/");
@@ -48,7 +48,7 @@ public final class MccBridgeConfig {
         resolution = config.getString("team.resolution", "luckperms");
         staticTeamGroups = readStringMap(config, "team.team_groups");
         runtimeTeamGroups.clear();
-        playerOverrides = readStringMap(config, "team.player_overrides");
+        playerOverrides = new LinkedHashMap<>(readStringMap(config, "team.player_overrides"));
     }
 
     public void upsertTeamGroup(String lpGroup, String mcUsername) {
@@ -65,9 +65,34 @@ public final class MccBridgeConfig {
         runtimeTeamGroups.remove(lpGroup);
     }
 
+    public void upsertPlayerOverride(String msUsername, String mcUsername) {
+        if (msUsername == null || msUsername.isBlank() || mcUsername == null || mcUsername.isBlank()) {
+            return;
+        }
+        // Replace any case-variant key first
+        removePlayerOverride(msUsername);
+        playerOverrides.put(msUsername, mcUsername);
+    }
+
+    public void removePlayerOverride(String msUsername) {
+        if (msUsername == null || msUsername.isBlank()) {
+            return;
+        }
+        String key = null;
+        for (String existing : playerOverrides.keySet()) {
+            if (existing.equalsIgnoreCase(msUsername)) {
+                key = existing;
+                break;
+            }
+        }
+        if (key != null) {
+            playerOverrides.remove(key);
+        }
+    }
+
     private Map<String, String> readStringMap(FileConfiguration config, String path) {
         if (!config.isConfigurationSection(path)) {
-            return Collections.emptyMap();
+            return new LinkedHashMap<>();
         }
         Map<String, String> values = new LinkedHashMap<>();
         for (String key : config.getConfigurationSection(path).getKeys(false)) {

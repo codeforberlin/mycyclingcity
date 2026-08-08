@@ -177,9 +177,12 @@ class GunicornConfig(models.Model):
     
     bind_address = models.CharField(
         max_length=100,
-        default='127.0.0.1:8001',
+        default='0.0.0.0:8001',
         verbose_name=_("Bind Adresse"),
-        help_text=_("Adresse und Port, an die Gunicorn gebunden wird (z.B. 127.0.0.1:8001)")
+        help_text=_(
+            "Adresse und Port für Gunicorn (Standard 0.0.0.0:8001 = alle Interfaces; "
+            "öffentlich erreichbar ist nur Apache:443)"
+        ),
     )
     
     updated_at = models.DateTimeField(

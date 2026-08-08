@@ -36,6 +36,14 @@ class Device(models.Model):
 
     is_visible = models.BooleanField(default=True, verbose_name=_("In Map/Game anzeigen"))
     is_km_collection_enabled = models.BooleanField(default=True, verbose_name=_("Kilometer-Erfassung aktiv"), help_text=_("Wenn deaktiviert, werden keine Kilometer für dieses Gerät erfasst"))
+    is_arena_sim_allowed = models.BooleanField(
+        default=False,
+        verbose_name=_("Arena-/API-Simulation erlaubt"),
+        help_text=_(
+            "Nur freigegebene Geräte dürfen in der Arena-Simulation "
+            "(intern oder über die API) verwendet werden."
+        ),
+    )
     is_operator_box = models.BooleanField(
         default=False,
         verbose_name=_("Operator-Box"),

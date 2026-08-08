@@ -29,7 +29,7 @@ def _public_allowed_hosts(allowed_hosts: list[str] | tuple[str, ...]) -> list[st
     hosts: list[str] = []
     for host in allowed_hosts:
         normalized = host.strip()
-        if not normalized or normalized in LOCAL_HOSTS:
+        if not normalized or normalized in LOCAL_HOSTS or normalized == "*":
             continue
         hosts.append(normalized)
     return hosts
@@ -65,7 +65,12 @@ def resolve_ws_url_host(bind_host: str | None, allowed_hosts: list[str] | tuple[
     if bind_host and bind_host not in LOCAL_HOSTS and bind_host not in ALL_INTERFACE_BINDS:
         return bind_host
 
-    private_ips, other_ips, dns_names = _partition_hosts(_public_allowed_hosts(allowed_hosts))
+    candidates = _public_allowed_hosts(allowed_hosts)
+    for host in getattr(settings, "MCC_PUBLIC_HOSTNAMES", ()) or ():
+        name = str(host).strip()
+        if name and name not in candidates and name not in LOCAL_HOSTS:
+            candidates.append(name)
+    private_ips, other_ips, dns_names = _partition_hosts(candidates)
 
     if bind_host in LOCAL_HOSTS:
         if private_ips:

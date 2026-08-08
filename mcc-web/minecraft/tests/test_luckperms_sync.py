@@ -48,6 +48,10 @@ class TestCollectMinecraftPlayerNames:
 @pytest.mark.unit
 @pytest.mark.django_db
 class TestApplyLuckpermsForRegistration:
+    @pytest.fixture(autouse=True)
+    def _enable_lp(self, settings):
+        settings.MCC_MINECRAFT_LP_SYNC_ENABLED = True
+
     @patch("minecraft.services.luckperms_sync.rcon_client.run_commands", return_value=(True, "ok"))
     def test_sends_lp_commands(self, mock_run):
         group = GroupFactory(name="Kette", mc_username="Kette")

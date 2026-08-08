@@ -1,0 +1,750 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+.arena-wrap { max-width: 1100px; }
+.arena-meta { color:#64748b; margin:0 0 1rem; }
+.arena-status {
+  display:inline-block; padding:0.45rem 1rem; border-radius:999px;
+  font-weight:800; text-transform:uppercase; font-size:1rem; letter-spacing:0.03em;
+}
+.arena-status.idle { background:#e2e8f0; color:#334155; }
+.arena-status.running { background:#bbf7d0; color:#166534; }
+.arena-status.stopping { background:#fde68a; color:#92400e; }
+.arena-filters {
+  display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;
+  margin:1rem 0; padding:1rem; background:rgba(255,255,255,0.7);
+  border:1px solid #cbd5e1; border-radius:0.75rem;
+}
+.arena-filters label { display:block; font-size:0.8rem; color:#475569; margin-bottom:0.25rem; }
+.arena-filters select, .arena-filters input[type=search] {
+  min-width:200px; padding:0.45rem 0.6rem; border:1px solid #94a3b8;
+  border-radius:0.5rem; font-size:1rem;
+}
+.arena-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:1rem; margin:1rem 0 1.5rem;
+}
+.arena-card {
+  background:rgba(255,255,255,0.85); border:2px solid #cbd5e1;
+  border-radius:1.25rem; padding:1.1rem 1.2rem;
+  box-shadow:0 10px 28px rgba(15,23,42,0.07);
+}
+.arena-card h3 { margin:0 0 0.35rem; font-size:1.25rem; }
+.arena-card .tag { color:#64748b; font-size:0.88rem; margin-bottom:0.65rem; }
+.arena-card .cyclist-name {
+  font-size:1.2rem; font-weight:800; color:#0f172a; margin:0 0 0.65rem;
+}
+.arena-card label { display:block; font-size:0.8rem; color:#475569; margin-top:0.5rem; }
+.arena-card select {
+  width:100%; box-sizing:border-box; padding:0.45rem 0.6rem;
+  border:1px solid #94a3b8; border-radius:0.5rem; font-size:1rem;
+}
+.arena-device-meta { margin-top:0.35rem; font-size:0.85rem; color:#0f766e; min-height:1.1rem; }
+.arena-live {
+  margin-top:0.75rem; font-size:1rem; color:#0f766e; min-height:1.3rem; font-weight:600;
+}
+.arena-result {
+  margin-top: 0.7rem; padding: 0.65rem 0.75rem; border-radius: 0.8rem;
+  background: #eff6ff; color: #1e3a8a; font-size: 0.95rem; font-weight: 700;
+  line-height: 1.45;
+}
+.arena-result.is-finished { background: #ecfdf5; color: #166534; }
+.arena-result.place-1 { background: #fef3c7; color: #92400e; }
+.arena-result.place-2 { background: #e5e7eb; color: #374151; }
+.arena-result.place-3 { background: #ffedd5; color: #9a3412; }
+.arena-result-line { display: block; }
+.arena-assign-section { margin-bottom: 0.5rem; }
+.arena-assign-section .btn-save { margin-top: 0.25rem; }
+.arena-race-panel {
+  margin: 0.75rem 0 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid #e2e8f0;
+  width: 100%;
+  clear: both;
+}
+.arena-opts {
+  display: flex; flex-wrap: wrap; gap: 1rem;
+  margin: 0.5rem 0 1rem; align-items: center;
+  position: relative; z-index: 2; font-size: 1.1rem;
+  width: 100%;
+}
+.arena-opts input[type=number] {
+  width: 7.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 2px solid #94a3b8;
+  border-radius: 0.65rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  /* Chrome/WebKit: keep spinner usable (narrow fields otherwise clip it). */
+  -moz-appearance: auto;
+  appearance: auto;
+}
+.arena-opts input[type=number]::-webkit-inner-spin-button,
+.arena-opts input[type=number]::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 2.4rem;
+  margin: 0;
+  cursor: pointer;
+}
+.arena-number-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.arena-number-stepper button {
+  min-width: 2.6rem;
+  min-height: 2.6rem;
+  padding: 0;
+  border: 2px solid #94a3b8;
+  border-radius: 0.55rem;
+  background: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  color: #0f172a;
+}
+.arena-number-stepper button:hover { background: #e2e8f0; }
+.arena-action-buttons {
+  display: flex; flex-wrap: wrap; gap: 0.85rem; margin: 0.75rem 0;
+}
+.arena-action-buttons button {
+  padding: 1rem 1.4rem; border-radius: 1rem; border: 0; cursor: pointer;
+  font-weight: 800; font-size: 1.2rem; min-width: 8rem;
+}
+.race-mode-group { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; }
+.race-mode-option {
+  display:inline-flex; align-items:center; gap:0.4rem;
+  padding:0.5rem 0.85rem; border:2px solid #94a3b8; border-radius:0.65rem;
+  background:#fff; cursor:pointer; font-weight:700; line-height:1.2;
+}
+.race-mode-option input {
+  margin:0; width:1.05rem; height:1.05rem; cursor:pointer; flex-shrink:0;
+}
+.race-mode-option.is-active { border-color:#0ea5e9; background:#e0f2fe; }
+.arena-result-summary {
+  display:flex; flex-wrap:wrap; gap:1rem;
+  background:#fef3c7; color:#92400e; font-weight:800;
+  padding:0.85rem 1rem; border-radius:0.85rem; margin:0 0 1rem;
+  width:100%; box-sizing:border-box;
+}
+.arena-result-summary span { display:inline-block; }
+.btn-start { background:#16a34a; color:#fff; }
+.btn-stop { background:#dc2626; color:#fff; }
+.btn-reset { background:#2563eb; color:#fff; }
+.btn-clear { background:#7c2d12; color:#fff; }
+.btn-save { background:#0f766e; color:#fff; }
+.arena-err { color:#b91c1c; font-weight:700; font-size:1.05rem; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_arena_control' %}">{% trans 'Velo-Arena' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="arena-wrap"
+     data-status-url="{% url 'admin:minecraft_arena_status_json' %}"
+     data-cyclists-url="{% url 'admin:minecraft_arena_cyclists_json' %}"
+     data-devices-url="{% url 'admin:minecraft_arena_devices_json' %}">
+  <p class="arena-meta">
+    {% trans 'Steuerung oben · Zuweisungen darunter: 1. Radler/Gerät speichern · 2. Init · 3. optional Avatare · 4. Start · Reset nur für neue Avatare' %}
+  </p>
+
+  <p id="arena-header-status">
+    <span class="arena-status {{ status.status }}">{{ status.status }}</span>
+    {% if status.pending_command %}
+      · {% trans 'Befehl' %}: <strong id="arena-pending">{{ status.pending_command }}</strong>
+    {% else %}
+      <span id="arena-pending-wrap" hidden>· {% trans 'Befehl' %}: <strong id="arena-pending"></strong></span>
+    {% endif %}
+    <span id="arena-initialized-ok"{% if not status.initialized %} hidden{% endif %}>
+      · {% trans 'Loren bereit' %}
+    </span>
+    <span id="arena-worker-ok"{% if not status.worker_heartbeat %} hidden{% endif %}>
+      · {% trans 'Bereit' %}
+    </span>
+    <span id="arena-worker-bad" class="arena-err"{% if status.worker_heartbeat %} hidden{% endif %}>
+      · {% trans 'Noch nicht bereit' %}
+    </span>
+  </p>
+  <p id="arena-last-error" class="arena-err"{% if not status.last_error %} hidden{% endif %}>{{ status.last_error }}</p>
+  {% if error %}<p class="arena-err">{{ error }}</p>{% endif %}
+
+  <form method="post" class="arena-race-panel">
+    {% csrf_token %}
+    <div class="arena-opts" id="arena-race-opts">
+      <span>{% trans 'Rennmodus' %}</span>
+      <div class="race-mode-group" id="arena-race-mode-group">
+        {% for mode in status.race_modes %}
+        <label class="race-mode-option{% if status.race_mode == mode.id %} is-active{% endif %}">
+          <input type="radio" name="race_mode" value="{{ mode.id }}"
+                 {% if status.race_mode == mode.id %}checked{% endif %}>
+          {{ mode.label }}
+        </label>
+        {% empty %}
+        <label class="race-mode-option is-active">
+          <input type="radio" name="race_mode" value="dual" checked> {% trans 'Doppel-Sieg' %}
+        </label>
+        <label class="race-mode-option">
+          <input type="radio" name="race_mode" value="laps"> {% trans 'Rundenrennen' %}
+        </label>
+        <label class="race-mode-option">
+          <input type="radio" name="race_mode" value="velos"> {% trans 'Velo-Rennen' %}
+        </label>
+        {% endfor %}
+      </div>
+      <span id="arenaLapsWrap"{% if not status.uses_laps %} hidden{% endif %}>
+        <label for="arena_target_laps">{% trans 'Runden' %}</label>
+        <span class="arena-number-stepper" data-number-stepper>
+          <button type="button" data-step="-1" aria-label="{% trans 'Runden verringern' %}">−</button>
+          <input id="arena_target_laps" type="number" name="target_laps"
+                 min="1" max="99" step="1" inputmode="numeric"
+                 value="{{ status.target_laps|default:5 }}">
+          <button type="button" data-step="1" aria-label="{% trans 'Runden erhöhen' %}">+</button>
+        </span>
+      </span>
+      <span id="arenaTimeWrap"{% if not status.uses_time_limit %} hidden{% endif %}>
+        <label for="arena_time_limit_minutes">{% trans 'Zeitlimit (Min.)' %}</label>
+        <span class="arena-number-stepper" data-number-stepper>
+          <button type="button" data-step="-0.5" aria-label="{% trans 'Zeitlimit verringern' %}">−</button>
+          <input id="arena_time_limit_minutes" type="number" name="time_limit_minutes"
+                 min="0.5" max="60" step="0.5" inputmode="decimal"
+                 value="{{ status.time_limit_minutes|default:3 }}">
+          <button type="button" data-step="0.5" aria-label="{% trans 'Zeitlimit erhöhen' %}">+</button>
+        </span>
+      </span>
+      <label for="arena_continue_after_finish" style="display:inline-flex;align-items:center;gap:0.45rem;font-weight:700;">
+        <input type="hidden" name="continue_after_finish" value="0">
+        <input id="arena_continue_after_finish" type="checkbox" name="continue_after_finish" value="1"
+               {% if status.continue_after_finish %}checked{% endif %}>
+        {% trans 'Nach Ziel weiterfahren (kein harter Stop)' %}
+      </label>
+    </div>
+    <div class="arena-result-summary" id="arena-result-summary"{% if not status.result.time_winner and not status.result.velo_winner %} hidden{% endif %}>
+      {% if status.result.time_winner %}
+        <span>{% trans 'Strecken-Sieger' %}: {{ status.result.time_winner.cyclist }} ({{ status.result.time_winner.finish_time_s }}s)</span>
+      {% endif %}
+      {% if status.result.velo_winner %}
+        <span>{% trans 'Velo-Sieger' %}: {{ status.result.velo_winner.cyclist }} ({{ status.result.velo_winner.velos }} {% trans 'Velos' %})</span>
+      {% endif %}
+    </div>
+    <div class="arena-action-buttons">
+    <button type="submit" name="save_race_mode" value="1" class="btn-save">{% trans 'Modus speichern' %}</button>
+    <button type="submit" name="arena_action" value="init" class="btn-reset">{% trans 'Init' %}</button>
+    <button type="submit" name="arena_action" value="avatars" class="btn-save"
+            title="{% trans 'Später: Avatare aus den Ankleidekabinen in die Loren setzen. Ohne diesen Schritt bleiben die bisherigen Avatare.' %}">
+      {% trans 'Avatare' %}
+    </button>
+    <button type="submit" name="arena_action" value="start" class="btn-start">{% trans 'Start' %}</button>
+    <button type="submit" name="arena_action" value="stop" class="btn-stop">{% trans 'Stop' %}</button>
+    <button type="submit" name="arena_action" value="clear_all" class="btn-clear"
+            title="{% trans 'Loren löschen — nur nötig, wenn danach neue Avatare gesetzt werden sollen. Danach Init.' %}"
+            onclick="return confirm('{% trans "Wirklich alle Arena-Loren löschen? Danach Init (neue leere Loren). Nur nötig vor neuen Avataren." %}');">
+      {% trans 'Reset' %}
+    </button>
+    </div>
+  </form>
+
+  <div class="arena-filters">
+    <div>
+      <label for="arenaTopGroup">{% trans 'TOP-Gruppe' %}</label>
+      <select id="arenaTopGroup" name="top_group_filter">
+        <option value="">{% trans 'Alle TOP-Gruppen' %}</option>
+        {% for g in top_groups %}
+        <option value="{{ g.id }}"{% if selected_top_group_id == g.id %} selected{% endif %}>{{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="arenaCyclistSearch">{% trans 'Radler suchen' %}</label>
+      <input type="search" id="arenaCyclistSearch" placeholder="{% trans 'Name / ID-Tag' %}" autocomplete="off">
+    </div>
+    <div>
+      <label for="arenaDeviceSearch">{% trans 'Gerät suchen' %}</label>
+      <input type="search" id="arenaDeviceSearch" placeholder="{% trans 'Anzeigename / Name' %}" autocomplete="off">
+    </div>
+    <div>
+      <label for="arenaSimOnly" style="display:flex;align-items:center;gap:0.4rem;margin-top:1.4rem;">
+        <input type="checkbox" id="arenaSimOnly">
+        {% trans 'Nur Simulations-Freigabe' %}
+      </label>
+    </div>
+  </div>
+
+  <form method="post" id="arenaAssignForm" class="arena-assign-section">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_assignments">
+    <input type="hidden" name="top_group_id" id="arenaTopGroupHidden" value="{{ selected_top_group_id|default_if_none:'' }}">
+    <div class="arena-grid">
+      {% for card in status.lane_cards %}
+      <div class="arena-card" data-lane-id="{{ card.id }}">
+        <h3>{{ card.name }}</h3>
+        <div class="tag">{{ card.id }} · {{ card.tag }} · {{ card.color }}</div>
+        {% if card.cyclist %}
+        <p class="cyclist-name">{{ card.cyclist }}</p>
+        {% endif %}
+        <input type="hidden" name="lane_id" value="{{ card.id }}">
+        <label>{% trans 'Radler' %}</label>
+        <select name="cyclist" class="arena-cyclist-select" data-selected="{{ card.cyclist }}">
+          <option value="">{% trans 'kein Radler' %}</option>
+          {% if card.cyclist and card.cyclist in orphan_assigned %}
+          <option value="{{ card.cyclist }}" selected>{{ card.cyclist }} ({% trans 'aktuell zugewiesen' %})</option>
+          {% endif %}
+          {% for c in cyclists %}
+          <option value="{{ c.user_id }}"{% if card.cyclist == c.user_id %} selected{% endif %}>
+            {{ c.user_id }}{% if c.group_label %} ({{ c.group_label }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <label>{% trans 'IoT-Gerät' %}</label>
+        <select name="device_name" class="arena-device-select" data-selected="{{ card.device_name }}">
+          <option value="">{% trans 'Gerät wählen' %}</option>
+          {% if card.device_name and card.device_name in orphan_devices %}
+          <option value="{{ card.device_name }}" selected
+                  data-wheel="{{ card.wheel_mm|default:'' }}"
+                  data-fkm="{{ card.device_factor }}">
+            {{ card.device_display|default:card.device_name }} ({% trans 'aktuell zugewiesen' %})
+          </option>
+          {% endif %}
+          {% for d in devices %}
+          <option value="{{ d.name }}"
+                  data-wheel="{{ d.wheel_mm }}"
+                  data-fkm="{{ d.fkm_factor }}"
+                  {% if card.device_name == d.name %} selected{% endif %}>
+            {{ d.display_name }}{% if d.group_name %} ({{ d.group_name }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <div class="arena-device-meta" data-device-meta="{{ card.id }}">
+          {% if card.device_name %}
+            {% trans 'Rad' %}: {{ card.wheel_mm }} mm · FKM: {{ card.device_factor|floatformat:3 }}
+          {% endif %}
+        </div>
+        <div class="arena-live" data-live-for="{{ card.id }}">
+          {% if card.cyclist and not card.live.finished %}
+            {% if card.live.place %}#{{ card.live.place }} · {% endif %}
+            {% if card.live.laps_completed != None %}
+              {% if card.live.target_laps %}
+                {% trans 'Runden' %} {{ card.live.laps_completed }}/{{ card.live.target_laps }}
+              {% else %}
+                {% trans 'Runden' %} {{ card.live.laps_completed }}
+              {% endif %}
+            {% elif card.live.lap %}
+              {% trans 'Runde' %} {{ card.live.lap }}
+            {% endif %}
+            {% if card.live.speed_kmh %} · {{ card.live.speed_kmh }} km/h{% endif %}
+            {% if card.live.distance_m %} · {{ card.live.distance_m }} m{% endif %}
+            {% if card.live.velos != None %} · {{ card.live.velos }} {% trans 'Velos' %}{% endif %}
+            {% if card.live.remaining_s != None %} · {{ card.live.remaining_s }}s{% endif %}
+          {% endif %}
+        </div>
+        <div class="arena-result{% if card.live.finished %} is-finished place-{{ card.live.place|default:'0' }}{% endif %}"
+             data-result-for="{{ card.id }}">
+          {% if card.cyclist %}
+            {% if card.live.finished %}
+              <span class="arena-result-line">
+                {% trans 'Platz' %} {{ card.live.place|default:"?" }} · {{ card.live.distance_m|default:0 }} m
+              </span>
+              {% if card.live.laps_completed != None %}
+              <span class="arena-result-line">
+                {% if card.live.target_laps %}
+                  {% trans 'Runden' %}: {{ card.live.laps_completed }}/{{ card.live.target_laps }}
+                {% else %}
+                  {% trans 'Runden' %}: {{ card.live.laps_completed }}
+                {% endif %}
+              </span>
+              {% endif %}
+              {% if card.live.velos != None %}
+              <span class="arena-result-line">{% trans 'Velos' %}: {{ card.live.velos|default:0 }}</span>
+              {% endif %}
+              {% if card.live.finish_time_s != None %}
+              <span class="arena-result-line">{% trans 'Zeit' %}: {{ card.live.finish_time_s|default:"?" }}s</span>
+              {% endif %}
+            {% else %}
+              {% trans 'Platz' %}: {% trans 'noch im Rennen' %}
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <p class="arena-err">{% trans 'Keine Bahnen in der Config gefunden.' %}</p>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn-save">{% trans 'Zuweisungen speichern' %}</button>
+  </form>
+
+</div>
+
+<script>
+(function () {
+  const wrap = document.querySelector('.arena-wrap');
+  if (!wrap) return;
+  const statusUrl = wrap.dataset.statusUrl;
+  const cyclistsUrl = wrap.dataset.cyclistsUrl;
+  const devicesUrl = wrap.dataset.devicesUrl;
+  const topSelect = document.getElementById('arenaTopGroup');
+  const cyclistSearch = document.getElementById('arenaCyclistSearch');
+  const deviceSearch = document.getElementById('arenaDeviceSearch');
+  const hiddenTop = document.getElementById('arenaTopGroupHidden');
+  const emptyCyclist = '{% trans "kein Radler" %}';
+  const emptyDevice = '{% trans "Gerät wählen" %}';
+  const orphanLabel = '{% trans "aktuell zugewiesen" %}';
+  const radLabel = '{% trans "Rad" %}';
+  let searchTimer = null;
+
+  function addOption(sel, value, label, selected, attrs) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    if (selected) opt.selected = true;
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (attrs[k] != null && attrs[k] !== '') opt.dataset[k] = attrs[k];
+      });
+    }
+    sel.appendChild(opt);
+  }
+
+  function currentByClass(cls) {
+    const map = {};
+    document.querySelectorAll(cls).forEach(function (sel) {
+      map[sel.closest('[data-lane-id]').dataset.laneId] = sel.value;
+    });
+    return map;
+  }
+
+  function updateDeviceMeta(sel) {
+    const laneId = sel.closest('[data-lane-id]').dataset.laneId;
+    const meta = document.querySelector('[data-device-meta="' + laneId + '"]');
+    if (!meta) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!sel.value || !opt) {
+      meta.textContent = '';
+      return;
+    }
+    const wheel = opt.dataset.wheel || '';
+    const fkm = opt.dataset.fkm || '';
+    if (wheel || fkm) {
+      meta.textContent = radLabel + ': ' + wheel + ' mm · FKM: ' + fkm;
+    } else {
+      meta.textContent = '';
+    }
+  }
+
+  function fillCyclistSelects(cyclists) {
+    const selected = currentByClass('.arena-cyclist-select');
+    document.querySelectorAll('.arena-cyclist-select').forEach(function (sel) {
+      const laneId = sel.closest('[data-lane-id]').dataset.laneId;
+      const keep = selected[laneId] || sel.dataset.selected || '';
+      sel.innerHTML = '';
+      addOption(sel, '', emptyCyclist, !keep);
+      let found = false;
+      (cyclists || []).forEach(function (c) {
+        const label = c.group_label ? (c.user_id + ' (' + c.group_label + ')') : c.user_id;
+        const isSel = keep && keep === c.user_id;
+        if (isSel) found = true;
+        addOption(sel, c.user_id, label, isSel);
+      });
+      if (keep && !found) {
+        addOption(sel, keep, keep + ' (' + orphanLabel + ')', true);
+      }
+      sel.dataset.selected = sel.value;
+    });
+  }
+
+  function fillDeviceSelects(devices) {
+    const selected = currentByClass('.arena-device-select');
+    document.querySelectorAll('.arena-device-select').forEach(function (sel) {
+      const laneId = sel.closest('[data-lane-id]').dataset.laneId;
+      const keep = selected[laneId] || sel.dataset.selected || '';
+      const prevOpt = sel.options[sel.selectedIndex];
+      const keepWheel = prevOpt ? prevOpt.dataset.wheel : '';
+      const keepFkm = prevOpt ? prevOpt.dataset.fkm : '';
+      sel.innerHTML = '';
+      addOption(sel, '', emptyDevice, !keep);
+      let found = false;
+      (devices || []).forEach(function (d) {
+        const label = d.group_name ? (d.display_name + ' (' + d.group_name + ')') : d.display_name;
+        const isSel = keep && keep === d.name;
+        if (isSel) found = true;
+        addOption(sel, d.name, label, isSel, {wheel: d.wheel_mm, fkm: d.fkm_factor});
+      });
+      if (keep && !found) {
+        addOption(sel, keep, keep + ' (' + orphanLabel + ')', true, {wheel: keepWheel, fkm: keepFkm});
+      }
+      sel.dataset.selected = sel.value;
+      updateDeviceMeta(sel);
+    });
+  }
+
+  function topParams(extraSearchId) {
+    const params = new URLSearchParams();
+    if (topSelect && topSelect.value) params.set('top_group', topSelect.value);
+    if (extraSearchId) {
+      const el = document.getElementById(extraSearchId);
+      if (el && el.value.trim()) params.set('search', el.value.trim());
+    }
+    const simOnly = document.getElementById('arenaSimOnly');
+    if (simOnly && simOnly.checked) params.set('arena_sim_only', '1');
+    if (hiddenTop) hiddenTop.value = topSelect ? topSelect.value : '';
+    return params;
+  }
+
+  function loadCyclists() {
+    const params = topParams('arenaCyclistSearch');
+    fetch(cyclistsUrl + (params.toString() ? ('?' + params.toString()) : ''), {
+      credentials: 'same-origin',
+      headers: {'Accept': 'application/json'}
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      fillCyclistSelects(data.cyclists || []);
+    }).catch(function (err) { console.error('arena cyclists', err); });
+  }
+
+  function loadDevices() {
+    const params = topParams('arenaDeviceSearch');
+    fetch(devicesUrl + (params.toString() ? ('?' + params.toString()) : ''), {
+      credentials: 'same-origin',
+      headers: {'Accept': 'application/json'}
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      fillDeviceSelects(data.devices || []);
+    }).catch(function (err) { console.error('arena devices', err); });
+  }
+
+  function loadFilters() {
+    loadCyclists();
+    loadDevices();
+  }
+
+  function formatLaps(live) {
+    if (!live || live.laps_completed == null) {
+      if (live && live.lap) return '{% trans "Runde" %} ' + live.lap;
+      return '';
+    }
+    if (live.target_laps) {
+      return '{% trans "Runden" %} ' + live.laps_completed + '/' + live.target_laps;
+    }
+    return '{% trans "Runden" %} ' + live.laps_completed;
+  }
+
+  function formatLive(live) {
+    if (!live || live.finished) return '';
+    var parts = [];
+    if (live.place) parts.push('#' + live.place);
+    var laps = formatLaps(live);
+    if (laps) parts.push(laps);
+    if (live.speed_kmh != null) parts.push(live.speed_kmh + ' km/h');
+    if (live.distance_m != null) parts.push(live.distance_m + ' m');
+    if (live.velos != null) parts.push(live.velos + ' {% trans "Velos" %}');
+    if (live.remaining_s != null) parts.push(live.remaining_s + 's');
+    return parts.join(' · ');
+  }
+
+  function paintResult(resultNode, live, hasCyclist) {
+    if (!resultNode) return;
+    resultNode.classList.remove('is-finished', 'place-1', 'place-2', 'place-3');
+    if (!hasCyclist) {
+      resultNode.textContent = '';
+      return;
+    }
+    if (live && live.finished) {
+      resultNode.classList.add('is-finished');
+      if (live.place === 1) resultNode.classList.add('place-1');
+      else if (live.place === 2) resultNode.classList.add('place-2');
+      else if (live.place === 3) resultNode.classList.add('place-3');
+      var html = '<span class="arena-result-line">{% trans "Platz" %} ' + (live.place != null ? live.place : '?')
+        + ' · ' + (live.distance_m != null ? live.distance_m : 0) + ' m</span>';
+      if (live.laps_completed != null) {
+        html += '<span class="arena-result-line">{% trans "Runden" %}: '
+          + live.laps_completed
+          + (live.target_laps ? ('/' + live.target_laps) : '')
+          + '</span>';
+      }
+      if (live.velos != null) {
+        html += '<span class="arena-result-line">{% trans "Velos" %}: ' + live.velos + '</span>';
+      }
+      if (live.finish_time_s != null) {
+        html += '<span class="arena-result-line">{% trans "Zeit" %}: ' + live.finish_time_s + 's</span>';
+      }
+      resultNode.innerHTML = html;
+    } else {
+      resultNode.textContent = '{% trans "Platz" %}: {% trans "noch im Rennen" %}';
+    }
+  }
+
+  function syncArenaModeFields() {
+    var mode = 'dual';
+    var panel = document.querySelector('.arena-race-panel');
+    if (panel) {
+      var checked = panel.querySelector('input[name="race_mode"]:checked');
+      if (checked) mode = checked.value;
+    }
+    var laps = document.getElementById('arenaLapsWrap');
+    var time = document.getElementById('arenaTimeWrap');
+    if (laps) {
+      if (mode === 'laps' || mode === 'dual') laps.removeAttribute('hidden');
+      else laps.setAttribute('hidden', '');
+    }
+    if (time) {
+      if (mode === 'velos') time.removeAttribute('hidden');
+      else time.setAttribute('hidden', '');
+    }
+    document.querySelectorAll('#arena-race-mode-group .race-mode-option').forEach(function (label) {
+      var input = label.querySelector('input[name="race_mode"]');
+      if (input && input.checked) label.classList.add('is-active');
+      else label.classList.remove('is-active');
+    });
+  }
+  document.querySelectorAll('.arena-race-panel input[name="race_mode"]').forEach(function (radio) {
+    radio.addEventListener('change', syncArenaModeFields);
+  });
+  syncArenaModeFields();
+
+  function snapNumber(value, step, min, max) {
+    var snapped = Math.round(value / step) * step;
+    // Avoid float noise (e.g. 1.0000000002) that Chrome treats as stepMismatch.
+    snapped = Math.round(snapped * 1000) / 1000;
+    if (!isNaN(min)) snapped = Math.max(min, snapped);
+    if (!isNaN(max)) snapped = Math.min(max, snapped);
+    return snapped;
+  }
+
+  function bindNumberSteppers(rootEl) {
+    (rootEl || document).querySelectorAll('[data-number-stepper]').forEach(function (wrap) {
+      var input = wrap.querySelector('input[type="number"]');
+      if (!input || input.dataset.stepperBound) return;
+      input.dataset.stepperBound = '1';
+      var step = parseFloat(input.step || '1') || 1;
+      var min = parseFloat(input.min);
+      var max = parseFloat(input.max);
+
+      function applyDelta(delta) {
+        var cur = parseFloat(String(input.value).replace(',', '.'));
+        if (isNaN(cur)) cur = isNaN(min) ? 0 : min;
+        var next = snapNumber(cur + delta, step, min, max);
+        input.value = String(next);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      wrap.querySelectorAll('button[data-step]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          applyDelta(parseFloat(btn.getAttribute('data-step') || '0') || 0);
+          input.focus();
+        });
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        applyDelta(e.key === 'ArrowUp' ? step : -step);
+      });
+
+      // Normalize value so Chrome accepts native spinner steps too.
+      input.addEventListener('blur', function () {
+        var cur = parseFloat(String(input.value).replace(',', '.'));
+        if (isNaN(cur)) return;
+        input.value = String(snapNumber(cur, step, min, max));
+      });
+    });
+  }
+  bindNumberSteppers(document.querySelector('.arena-race-panel'));
+
+  function refreshStatus() {
+    fetch(statusUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var badge = document.querySelector('#arena-header-status .arena-status');
+        if (badge) {
+          badge.className = 'arena-status ' + (data.status || 'idle');
+          badge.textContent = data.status || 'idle';
+        }
+        var pending = document.getElementById('arena-pending');
+        var pendingWrap = document.getElementById('arena-pending-wrap');
+        if (pending) {
+          if (data.pending_command) {
+            pending.textContent = data.pending_command;
+            if (pendingWrap) pendingWrap.hidden = false;
+          } else if (pendingWrap) {
+            pendingWrap.hidden = true;
+          }
+        }
+        var ok = document.getElementById('arena-worker-ok');
+        var bad = document.getElementById('arena-worker-bad');
+        if (ok && bad) {
+          ok.hidden = !data.worker_heartbeat;
+          bad.hidden = !!data.worker_heartbeat;
+        }
+        var initOk = document.getElementById('arena-initialized-ok');
+        if (initOk) initOk.hidden = !data.initialized;
+        var err = document.getElementById('arena-last-error');
+        if (err) {
+          if (data.last_error) {
+            err.hidden = false;
+            err.textContent = data.last_error;
+          } else {
+            err.hidden = true;
+            err.textContent = '';
+          }
+        }
+        (data.lane_cards || []).forEach(function (card) {
+          var live = card.live || {};
+          var liveNode = document.querySelector('[data-live-for="' + card.id + '"]');
+          var resultNode = document.querySelector('[data-result-for="' + card.id + '"]');
+          if (liveNode) liveNode.textContent = formatLive(live);
+          paintResult(resultNode, live, !!(card.cyclist || live.cyclist));
+        });
+        var summary = document.getElementById('arena-result-summary');
+        if (summary) {
+          var result = data.result || {};
+          var parts = [];
+          if (result.time_winner) {
+            parts.push('Strecken-Sieger: ' + result.time_winner.cyclist
+              + ' (' + (result.time_winner.finish_time_s != null ? result.time_winner.finish_time_s : '?') + 's)');
+          }
+          if (result.velo_winner) {
+            parts.push('Velo-Sieger: ' + result.velo_winner.cyclist
+              + ' (' + (result.velo_winner.velos != null ? result.velo_winner.velos : 0) + ' Velos)');
+          }
+          summary.innerHTML = parts.map(function (p) { return '<span>' + p + '</span>'; }).join('');
+          if (parts.length === 0) summary.setAttribute('hidden', '');
+          else summary.removeAttribute('hidden');
+        }
+      }).catch(function () {});
+  }
+
+  if (topSelect) topSelect.addEventListener('change', loadFilters);
+  function debounceLoad(fn) {
+    return function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(fn, 250);
+    };
+  }
+  if (cyclistSearch) cyclistSearch.addEventListener('input', debounceLoad(loadCyclists));
+  if (deviceSearch) deviceSearch.addEventListener('input', debounceLoad(loadDevices));
+  const simOnly = document.getElementById('arenaSimOnly');
+  if (simOnly) simOnly.addEventListener('change', loadFilters);
+
+  document.querySelectorAll('.arena-cyclist-select').forEach(function (sel) {
+    sel.addEventListener('change', function () { sel.dataset.selected = sel.value; });
+  });
+  document.querySelectorAll('.arena-device-select').forEach(function (sel) {
+    updateDeviceMeta(sel);
+    sel.addEventListener('change', function () {
+      sel.dataset.selected = sel.value;
+      updateDeviceMeta(sel);
+    });
+  });
+
+  setInterval(refreshStatus, 1500);
+})();
+</script>
+{% endblock %}

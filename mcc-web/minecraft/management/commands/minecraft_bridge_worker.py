@@ -16,6 +16,7 @@ from minecraft.services.worker import (
     requeue_transient_failed_events,
     reset_stale_processing_events,
 )
+from minecraft.services.arena_live_hud import bridge_poll_interval_seconds, sync_arena_live_hud
 
 
 logger = get_logger("minecraft")
@@ -161,14 +162,20 @@ class Command(BaseCommand):
                 else:
                     db_lock_backoff = 0.5
 
+                try:
+                    sync_arena_live_hud()
+                except Exception as exc:
+                    logger.warning("[minecraft_worker] arena live hud sync failed: %s", exc)
+
                 if processed:
                     continue
 
+                poll_timeout = bridge_poll_interval_seconds(socket_timeout)
                 logger.debug(
                     "[minecraft_worker] no events, waiting for notification (timeout: %ss)",
-                    socket_timeout,
+                    poll_timeout,
                 )
-                notification_received = wait_for_notification(timeout=socket_timeout)
+                notification_received = wait_for_notification(timeout=poll_timeout)
 
                 if notification_received:
                     logger.debug("[minecraft_worker] notification received, processing events")

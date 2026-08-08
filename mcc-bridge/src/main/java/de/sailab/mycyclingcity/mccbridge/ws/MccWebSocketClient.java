@@ -250,6 +250,25 @@ public class MccWebSocketClient {
             return;
         }
 
+        if (response.has("type") && "PUSH_PLAYER_OVERRIDE".equals(response.get("type").getAsString())) {
+            if (response.has("ms_username") && response.has("mc_username")) {
+                String msUsername = response.get("ms_username").getAsString();
+                String mcUsername = response.get("mc_username").getAsString();
+                config.upsertPlayerOverride(msUsername, mcUsername);
+                logger.info("Player override updated from MCC: " + msUsername + " -> " + mcUsername);
+            }
+            return;
+        }
+
+        if (response.has("type") && "REMOVE_PLAYER_OVERRIDE".equals(response.get("type").getAsString())) {
+            if (response.has("ms_username")) {
+                String msUsername = response.get("ms_username").getAsString();
+                config.removePlayerOverride(msUsername);
+                logger.info("Player override removed from MCC: " + msUsername);
+            }
+            return;
+        }
+
         if (response.has("request_id")) {
             CompletableFuture<JsonObject> future = pending.remove(response.get("request_id").getAsString());
             if (future != null) {

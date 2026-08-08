@@ -1,0 +1,106 @@
+# VeloArena RCON simulation – track and team configuration
+# Copy to velo_arena_sim.toml and adjust coordinates for your world.
+#
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Velos required to advance one block along the figure-8 path.
+velos_per_block = 2.0
+
+# Minecart entity type for 1.21+; use "minecraft:minecart" if needed.
+minecart_type = "minecart"
+
+[scoreboard]
+velos = "Velos"
+laps = "Runden"
+lap_cooldown = "lap_cd"
+
+# Relative figure-8 waypoints (offset from each team's start box).
+# Index 0 = start/finish line — place detector rails here in the world.
+[[figure8_waypoints]]
+x = 0.0
+y = 0.0
+z = 0.0
+
+[[figure8_waypoints]]
+x = 0.0
+y = 0.0
+z = 24.0
+
+[[figure8_waypoints]]
+x = 8.0
+y = 0.0
+z = 32.0
+
+[[figure8_waypoints]]
+x = 16.0
+y = 0.0
+z = 24.0
+
+[[figure8_waypoints]]
+x = 16.0
+y = 0.0
+z = 8.0
+
+[[figure8_waypoints]]
+x = 8.0
+y = 0.0
+z = 0.0
+
+[[figure8_waypoints]]
+x = 0.0
+y = 0.0
+z = -8.0
+
+[[figure8_waypoints]]
+x = -8.0
+y = 0.0
+z = 0.0
+
+[[figure8_waypoints]]
+x = 0.0
+y = 0.0
+z = 0.0
+
+# Start-box coordinates — REPLACE with real VeloArena positions.
+# Yaw 0 = south (+Z); adjust if the finish line is along another axis.
+
+[[teams]]
+name = "Kette"
+color = "Grün"
+tag = "team_kette"
+start_x = 100.5
+start_y = 64.0
+start_z = 10.5
+yaw = 0.0
+pitch = 0.0
+
+[[teams]]
+name = "Kurbel"
+color = "Gelb"
+tag = "team_kurbel"
+start_x = 102.5
+start_y = 64.0
+start_z = 10.5
+yaw = 0.0
+pitch = 0.0
+
+[[teams]]
+name = "Speiche"
+color = "Blau"
+tag = "team_speiche"
+start_x = 104.5
+start_y = 64.0
+start_z = 10.5
+yaw = 0.0
+pitch = 0.0
+
+[[teams]]
+name = "Dynamo"
+color = "Rot"
+tag = "team_dynamo"
+start_x = 106.5
+start_y = 64.0
+start_z = 10.5
+yaw = 0.0
+pitch = 0.0

@@ -45,7 +45,7 @@ def collect_minecraft_player_names(
 
 
 def _lp_sync_enabled() -> bool:
-    return bool(getattr(settings, "MCC_MINECRAFT_LP_SYNC_ENABLED", True))
+    return bool(getattr(settings, "MCC_MINECRAFT_LP_SYNC_ENABLED", False))
 
 
 def apply_luckperms_for_registration(registration: MinecraftTeamRegistration) -> tuple[bool, str]:

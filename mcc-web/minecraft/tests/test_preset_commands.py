@@ -22,6 +22,24 @@ class TestPresetCommands:
         assert not errors
         assert any("mob_griefing" in warning for warning in warnings)
 
+    def test_normalize_preset_commands_renames_daylight_and_weather(self):
+        from minecraft.services.preset_commands import normalize_preset_commands
+
+        commands = normalize_preset_commands(
+            [
+                "time set day",
+                "weather clear",
+                "gamerule doDaylightCycle false",
+                "gamerule doWeatherCycle false",
+            ]
+        )
+        assert commands == [
+            "time set day",
+            "weather clear",
+            "gamerule advance_time false",
+            "gamerule advance_weather false",
+        ]
+
     def test_validate_requires_commands(self):
         errors, warnings = validate_commands([])
         assert errors

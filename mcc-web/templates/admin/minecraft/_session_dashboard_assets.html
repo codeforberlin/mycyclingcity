@@ -1,0 +1,717 @@
+{% load i18n %}
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .mc-session-dash {
+    --mc-card-bg: #f8fafc;
+    --mc-card-active: #ecfdf5;
+    --mc-card-border: #cbd5e1;
+    --mc-card-active-border: #34d399;
+    --mc-kick: #dc2626;
+    --mc-start: #059669;
+    --mc-add: #2563eb;
+    margin: 0 -10px;
+    padding: 8px 4px 24px;
+  }
+  .mc-session-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .mc-session-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .mc-session-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .mc-session-card {
+    background: var(--mc-card-bg);
+    border: 2px solid var(--mc-card-border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .mc-session-card.is-active {
+    background: var(--mc-card-active);
+    border-color: var(--mc-card-active-border);
+  }
+  .mc-session-card .mc-label {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 0.25rem;
+    word-break: break-word;
+  }
+  .mc-session-card .mc-sub {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .mc-session-card.is-waiting:not(.is-active) {
+    border-color: #f59e0b;
+    background: #fffbeb;
+  }
+  .mc-proxy {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    margin: -0.15rem 0 0.45rem;
+    min-height: 1.1em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .mc-proxy[data-proxy-state="paper"] { color: #047857; }
+  .mc-proxy[data-proxy-state="limbo"],
+  .mc-proxy.is-waiting { color: #b45309; }
+  .mc-proxy[data-proxy-state="offline"] { color: #b91c1c; }
+  .mc-proxy[data-proxy-state="other"] { color: #6d28d9; }
+  .mc-proxy[data-proxy-state="unknown"] { color: #64748b; }
+  .mc-proxy-missing { color: #94a3b8; font-weight: 500; }
+  .mc-wait-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    background: #f59e0b;
+    color: #fff;
+  }
+  .mc-session-times {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.4rem 0.55rem;
+    margin-bottom: 0.65rem;
+    line-height: 1.3;
+  }
+  .mc-session-card.is-active .mc-session-times {
+    background: #d1fae5;
+    border-color: #a7f3d0;
+    color: #065f46;
+  }
+  .mc-session-times.is-custom {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #1e40af;
+  }
+  .mc-session-card.is-active .mc-session-times.is-custom {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e3a8a;
+  }
+  .mc-custom-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: #2563eb;
+    color: #fff;
+  }
+  .mc-countdown {
+    font-size: 2.25rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: #065f46;
+    line-height: 1;
+    margin: 0.5rem 0;
+  }
+  .mc-status-idle {
+    font-size: 1.1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin: 0.75rem 0;
+    flex-shrink: 0;
+  }
+  .mc-status-idle.is-waiting {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #9a3412;
+    background: #ffedd5;
+    border: 1px solid #fb923c;
+    border-radius: 8px;
+    padding: 0.55rem 0.65rem;
+    margin: 0.5rem 0 0.75rem;
+    text-align: center;
+  }
+  .mc-pfand {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    border-radius: 8px;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .mc-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .mc-actions-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .mc-actions-row form { flex: 1; }
+  .mc-start-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .mc-spawn-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    user-select: none;
+  }
+  .mc-spawn-check input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: #0f766e;
+  }
+  .mc-bulk-start-form {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .mc-btn {
+    display: block;
+    width: 100%;
+    min-height: 52px;
+    padding: 0.75rem 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #fff;
+    text-align: center;
+  }
+  .mc-btn-start { background: var(--mc-start); }
+  .mc-btn-add { background: var(--mc-add); }
+  .mc-btn-spectator { background: #7c3aed; color: #fff; }
+  .mc-btn-mode {
+    background: #64748b;
+    font-size: 0.92rem;
+    min-height: 44px;
+    padding: 0.55rem 0.4rem;
+  }
+  .mc-btn-mode.is-current {
+    background: #0f766e;
+    box-shadow: inset 0 0 0 2px #99f6e4;
+  }
+  .mc-gamemode-row { margin-top: 0.15rem; }
+  .mc-btn-kick {
+    background: var(--mc-kick);
+    margin-top: 0.75rem;
+  }
+  .mc-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .mc-session-card.is-busy {
+    opacity: 0.85;
+    outline: 2px dashed #0f766e;
+  }
+  .mc-bulk-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+  }
+  .mc-bulk-label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #0f172a;
+  }
+  .mc-bulk-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .mc-bulk-modes .mc-btn {
+    min-width: 7rem;
+  }
+  .mc-bulk-modes .mc-btn-bulk-kick {
+    min-width: 8rem;
+    background: var(--mc-kick);
+  }
+  .mc-bulk-modes .mc-btn-bulk-start {
+    min-width: 8rem;
+  }
+  @media (hover: hover) {
+    .mc-session-card:hover {
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .mc-btn-start:hover:not(:disabled) { background: #047857; }
+    .mc-btn-add:hover:not(:disabled) { background: #1d4ed8; }
+    .mc-btn-spectator:hover:not(:disabled) { background: #6d28d9; }
+    .mc-btn-mode:hover:not(:disabled):not(.is-current) { background: #475569; }
+    .mc-btn-kick:hover:not(:disabled) { background: #b91c1c; }
+  }
+</style>
+<script>
+(function () {
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function formatMmSs(total) {
+    total = Math.max(0, Math.floor(total || 0));
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    return pad(m) + ':' + pad(s);
+  }
+
+  function applyPayload(data) {
+    if (!data || !data.accounts) return;
+    data.accounts.forEach(function (item) {
+      var card = document.querySelector('[data-account="' + CSS.escape(item.account_name) + '"]');
+      if (!card) return;
+      var countdown = card.querySelector('[data-countdown]');
+      var statusEl = card.querySelector('[data-status-label]');
+      var isActive = item.status === 'ACTIVE';
+      card.classList.toggle('is-active', isActive);
+      card.setAttribute('data-remaining', String(item.remaining_seconds || 0));
+      if (item.play_gamemode) {
+        card.setAttribute('data-play-gamemode', item.play_gamemode);
+      }
+      if (countdown) {
+        countdown.textContent = isActive ? formatMmSs(item.remaining_seconds) : '';
+        countdown.style.display = isActive ? '' : 'none';
+      }
+      var waiting = !!item.waiting_in_lobby;
+      if (statusEl) {
+        statusEl.style.display = isActive ? 'none' : '';
+        statusEl.classList.toggle('is-waiting', waiting && !isActive);
+        if (!isActive) {
+          statusEl.textContent = waiting ? 'Bereit zum Start' : 'Bereit';
+        }
+      }
+      var pfand = card.querySelector('[data-pfand]');
+      if (pfand) {
+        pfand.style.display = isActive ? '' : 'none';
+      }
+      var startBtn = card.querySelector('[data-action="start"]');
+      var addBtn = card.querySelector('[data-action="add_time"]');
+      var kickBtn = card.querySelector('[data-action="kick"]');
+      if (startBtn) startBtn.disabled = isActive;
+      if (addBtn) addBtn.disabled = !isActive;
+      if (kickBtn) kickBtn.disabled = !isActive;
+      card.querySelectorAll('.mc-start-form input[name="teleport_to_spawn"]').forEach(function (cb) {
+        cb.disabled = isActive;
+      });
+      card.querySelectorAll('[data-action="set_gamemode"]').forEach(function (btn) {
+        btn.disabled = !isActive;
+        var mode = btn.getAttribute('data-mode') || '';
+        btn.classList.toggle('is-current', isActive && mode === (item.play_gamemode || ''));
+      });
+      var spectatorBtn = card.querySelector('[data-action="toggle_spectator"]');
+      if (spectatorBtn) {
+        spectatorBtn.disabled = !isActive;
+        if (isActive) {
+          var isSpec = item.play_gamemode === 'spectator' || !!item.gamemode_spectator;
+          spectatorBtn.textContent = isSpec ? 'Adventure' : 'Spectator';
+        }
+      }
+      var proxyEl = card.querySelector('[data-proxy-status]');
+      if (proxyEl) {
+        var state = item.proxy_state || '';
+        proxyEl.setAttribute('data-proxy-state', state);
+        proxyEl.setAttribute('data-waiting', waiting ? '1' : '0');
+        proxyEl.classList.toggle('is-waiting', waiting);
+        card.classList.toggle('is-waiting', waiting && !isActive);
+        var badge = proxyEl.querySelector('.mc-wait-badge');
+        if (waiting) {
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'mc-wait-badge';
+            badge.textContent = 'Warteraum';
+            proxyEl.insertBefore(badge, proxyEl.firstChild);
+          }
+        } else if (badge) {
+          badge.remove();
+        }
+        var labelEl = proxyEl.querySelector('[data-proxy-label]');
+        if (labelEl) {
+          labelEl.textContent = item.proxy_label || '—';
+        }
+      }
+    });
+    var activeCount = document.querySelectorAll('.mc-session-card.is-active').length;
+    var totalCount = document.querySelectorAll('.mc-session-card').length;
+    var idleCount = Math.max(0, totalCount - activeCount);
+    document.querySelectorAll('[data-action="set_all_gamemode"], [data-action="kick_all"], [data-action="spawn_all"]').forEach(function (btn) {
+      btn.disabled = activeCount === 0;
+      if (btn.getAttribute('data-action') !== 'set_all_gamemode') return;
+      var mode = btn.getAttribute('data-mode') || '';
+      // Highlight bulk button if all active cards share that mode
+      var allMatch = activeCount > 0;
+      document.querySelectorAll('.mc-session-card.is-active').forEach(function (card) {
+        if ((card.getAttribute('data-play-gamemode') || '') !== mode) {
+          allMatch = false;
+        }
+      });
+      btn.classList.toggle('is-current', allMatch && !!mode);
+    });
+    document.querySelectorAll('[data-action="start_all"]').forEach(function (btn) {
+      btn.disabled = idleCount === 0;
+    });
+  }
+
+  function tickLocal() {
+    document.querySelectorAll('.mc-session-card.is-active[data-remaining]').forEach(function (card) {
+      var remaining = parseInt(card.getAttribute('data-remaining') || '0', 10);
+      if (remaining > 0) {
+        remaining -= 1;
+        card.setAttribute('data-remaining', String(remaining));
+      }
+      var countdown = card.querySelector('[data-countdown]');
+      if (countdown) {
+        countdown.textContent = formatMmSs(remaining);
+      }
+    });
+  }
+
+  function poll() {
+    var url = document.body.getAttribute('data-session-poll-url');
+    if (!url) return;
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { if (data) applyPayload(data); })
+      .catch(function () { /* ignore transient poll errors */ });
+  }
+
+  var fastPollUntil = 0;
+
+  function markFastPoll(seconds) {
+    fastPollUntil = Date.now() + Math.max(0, (seconds || 0) * 1000);
+  }
+
+  function proxyPresencePollMs() {
+    var raw = parseInt(document.body.getAttribute('data-proxy-presence-poll-seconds') || '10', 10);
+    if (!isFinite(raw) || raw < 2) {
+      raw = 10;
+    }
+    return raw * 1000;
+  }
+
+  function proxyPresencePollFastMs() {
+    var raw = parseInt(document.body.getAttribute('data-proxy-presence-poll-fast-seconds') || '2', 10);
+    if (!isFinite(raw) || raw < 1) {
+      raw = 2;
+    }
+    return Math.min(raw * 1000, proxyPresencePollMs());
+  }
+
+  function currentPollMs() {
+    if (Date.now() < fastPollUntil) {
+      return proxyPresencePollFastMs();
+    }
+    if (document.querySelector('[data-proxy-status][data-waiting="1"]')) {
+      return proxyPresencePollFastMs();
+    }
+    return proxyPresencePollMs();
+  }
+
+  function schedulePoll() {
+    poll();
+    window.setTimeout(schedulePoll, currentPollMs());
+  }
+
+  function csrfToken() {
+    // Prefer cookie: must match what Django validates against (stale form tokens cause CSRF 403/500).
+    var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  function buildPostBody(form) {
+    var fd = new FormData(form);
+    var token = csrfToken();
+    if (token) {
+      fd.set('csrfmiddlewaretoken', token);
+    }
+    return fd;
+  }
+
+  function nonJsonErrorMessage(status, bodyText) {
+    var text = (bodyText || '').toLowerCase();
+    if (status === 403) {
+      return 'CSRF/Berechtigung fehlgeschlagen (HTTP 403). Bitte Seite neu laden.';
+    }
+    if (status === 401 || status === 302 || status === 301) {
+      return 'Sitzung abgelaufen oder keine Berechtigung. Bitte neu einloggen.';
+    }
+    if (status === 502 || status === 504) {
+      return 'Proxy-/Gateway-Timeout (HTTP ' + status + '). Bitte erneut versuchen.';
+    }
+    if (text.indexOf('csrf') >= 0) {
+      return 'CSRF-Prüfung fehlgeschlagen. Bitte Seite neu laden.';
+    }
+    if (text.indexOf('login') >= 0 || text.indexOf('anmelden') >= 0) {
+      return 'Sitzung abgelaufen. Bitte neu einloggen.';
+    }
+    return 'Ungültige Server-Antwort (kein JSON, HTTP ' + status + ').';
+  }
+
+  function parseActionResponse(r) {
+    if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+      return Promise.resolve({
+        httpOk: false,
+        data: { message: 'Sitzung abgelaufen oder Weiterleitung. Bitte neu einloggen / Seite neu laden.' }
+      });
+    }
+    var ct = (r.headers.get('content-type') || '').toLowerCase();
+    if (ct.indexOf('application/json') >= 0) {
+      return r.json().then(function (data) {
+        return { httpOk: r.ok, data: data };
+      }).catch(function () {
+        return { httpOk: false, data: { message: nonJsonErrorMessage(r.status, '') } };
+      });
+    }
+    return r.text().then(function (bodyText) {
+      return {
+        httpOk: false,
+        data: { message: nonJsonErrorMessage(r.status, bodyText) }
+      };
+    });
+  }
+
+  function bindAjaxForms() {
+    document.querySelectorAll('.mc-session-dash form').forEach(function (form) {
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var actionInput = form.querySelector('[name="action"]');
+        var accountInput = form.querySelector('[name="account"]');
+        var action = actionInput ? actionInput.value : '';
+        var account = accountInput ? accountInput.value : '';
+        var card = form.closest('.mc-session-card');
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        if (action === 'kick_all') {
+          var nActive = document.querySelectorAll('.mc-session-card.is-active').length;
+          if (!window.confirm('Wirklich alle ' + nActive + ' aktiven Session(s) beenden?')) {
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+          }
+        }
+        if (action === 'spawn_all') {
+          var nSpawn = document.querySelectorAll('.mc-session-card.is-active').length;
+          if (!window.confirm('Alle ' + nSpawn + ' aktiven Spieler zum Welt-Spawn teleportieren?')) {
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+          }
+        }
+        if (action === 'start_all') {
+          var nWaiting = document.querySelectorAll('.mc-session-card.is-waiting:not(.is-active)').length;
+          var nIdle = 0;
+          document.querySelectorAll('.mc-session-card').forEach(function (c) {
+            if (!c.classList.contains('is-active')) nIdle += 1;
+          });
+          var nStart = nWaiting > 0 ? nWaiting : nIdle;
+          var confirmMsg = nWaiting > 0
+            ? ('Wirklich alle ' + nStart + ' wartenden Session(s) starten?')
+            : ('Wirklich alle ' + nStart + ' idle Session(s) starten?');
+          if (!window.confirm(confirmMsg)) {
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+          }
+        }
+
+        // Optimistic UI: reflect the intended state immediately while the request runs.
+        if (card && account) {
+          if (action === 'start') {
+            card.classList.add('is-busy', 'is-active');
+            var statusEl = card.querySelector('[data-status-label]');
+            if (statusEl) {
+              statusEl.style.display = 'none';
+            }
+            var countdown = card.querySelector('[data-countdown]');
+            if (countdown) {
+              countdown.style.display = '';
+              countdown.textContent = '…';
+            }
+            card.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+            markFastPoll(60);
+          } else if (action === 'kick') {
+            card.classList.add('is-busy');
+            card.classList.remove('is-active');
+            var kickCountdown = card.querySelector('[data-countdown]');
+            if (kickCountdown) {
+              kickCountdown.style.display = 'none';
+              kickCountdown.textContent = '';
+            }
+            var kickStatus = card.querySelector('[data-status-label]');
+            if (kickStatus) {
+              kickStatus.style.display = '';
+              kickStatus.textContent = 'Beende…';
+            }
+          } else if (action === 'add_time') {
+            card.classList.add('is-busy');
+          } else if (action === 'toggle_spectator' || action === 'set_gamemode') {
+            card.classList.add('is-busy');
+          }
+        }
+        if (action === 'set_all_gamemode') {
+          var bulkModeInput = form.querySelector('[name="mode"]');
+          var bulkMode = bulkModeInput ? bulkModeInput.value : '';
+          document.querySelectorAll('.mc-session-card.is-active').forEach(function (activeCard) {
+            activeCard.classList.add('is-busy');
+            if (bulkMode) {
+              activeCard.setAttribute('data-play-gamemode', bulkMode);
+              activeCard.querySelectorAll('[data-action="set_gamemode"]').forEach(function (btn) {
+                btn.classList.toggle('is-current', btn.getAttribute('data-mode') === bulkMode);
+              });
+              var specBtn = activeCard.querySelector('[data-action="toggle_spectator"]');
+              if (specBtn) {
+                specBtn.textContent = bulkMode === 'spectator' ? 'Adventure' : 'Spectator';
+              }
+            }
+          });
+          form.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+        }
+        if (action === 'kick_all') {
+          document.querySelectorAll('.mc-session-card.is-active').forEach(function (activeCard) {
+            activeCard.classList.add('is-busy');
+            activeCard.classList.remove('is-active');
+            var cd = activeCard.querySelector('[data-countdown]');
+            if (cd) {
+              cd.style.display = 'none';
+              cd.textContent = '';
+            }
+            var st = activeCard.querySelector('[data-status-label]');
+            if (st) {
+              st.style.display = '';
+              st.textContent = 'Beende…';
+            }
+          });
+          form.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+        }
+        if (action === 'start_all') {
+          var waitingCards = document.querySelectorAll('.mc-session-card.is-waiting:not(.is-active)');
+          var targets = waitingCards.length
+            ? waitingCards
+            : document.querySelectorAll('.mc-session-card:not(.is-active)');
+          targets.forEach(function (idleCard) {
+            idleCard.classList.add('is-busy', 'is-active');
+            var statusEl = idleCard.querySelector('[data-status-label]');
+            if (statusEl) {
+              statusEl.style.display = 'none';
+            }
+            var countdown = idleCard.querySelector('[data-countdown]');
+            if (countdown) {
+              countdown.style.display = '';
+              countdown.textContent = '…';
+            }
+            idleCard.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+          });
+          form.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+          markFastPoll(60);
+        }
+
+        fetch(window.location.pathname + (window.location.pathname.indexOf('?') >= 0 ? '&' : '?') + 'format=json', {
+          method: 'POST',
+          credentials: 'same-origin',
+          redirect: 'manual',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken()
+          },
+          body: buildPostBody(form)
+        })
+          .then(parseActionResponse)
+          .then(function (result) {
+            var data = result.data || {};
+            if (data.accounts) {
+              applyPayload(data);
+            }
+            if ((action === 'start' || action === 'start_all') && result.httpOk) {
+              markFastPoll(60);
+            }
+            if (!result.httpOk && data.message) {
+              window.alert(data.message);
+            }
+            if (card) {
+              card.classList.remove('is-busy');
+            }
+            document.querySelectorAll('.mc-session-card.is-busy').forEach(function (busyCard) {
+              busyCard.classList.remove('is-busy');
+            });
+            var activeN = document.querySelectorAll('.mc-session-card.is-active').length;
+            var totalN = document.querySelectorAll('.mc-session-card').length;
+            var idleN = Math.max(0, totalN - activeN);
+            document.querySelectorAll('[data-action="set_all_gamemode"], [data-action="kick_all"], [data-action="spawn_all"]').forEach(function (btn) {
+              btn.disabled = activeN === 0;
+            });
+            document.querySelectorAll('[data-action="start_all"]').forEach(function (btn) {
+              btn.disabled = idleN === 0;
+            });
+          })
+          .catch(function () {
+            if (card) card.classList.remove('is-busy');
+            document.querySelectorAll('.mc-session-card.is-busy').forEach(function (busyCard) {
+              busyCard.classList.remove('is-busy');
+            });
+            window.alert('Aktion fehlgeschlagen (Netzwerk/Timeout). Bitte Seite neu laden.');
+            if (submitBtn) submitBtn.disabled = false;
+            var activeN = document.querySelectorAll('.mc-session-card.is-active').length;
+            var totalN = document.querySelectorAll('.mc-session-card').length;
+            var idleN = Math.max(0, totalN - activeN);
+            document.querySelectorAll('[data-action="set_all_gamemode"], [data-action="kick_all"], [data-action="spawn_all"]').forEach(function (btn) {
+              btn.disabled = activeN === 0;
+            });
+            document.querySelectorAll('[data-action="start_all"]').forEach(function (btn) {
+              btn.disabled = idleN === 0;
+            });
+          });
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.mc-session-card[data-remaining]').forEach(function (card) {
+      var countdown = card.querySelector('[data-countdown]');
+      if (countdown && card.classList.contains('is-active')) {
+        countdown.textContent = formatMmSs(parseInt(card.getAttribute('data-remaining') || '0', 10));
+      }
+    });
+    if (document.querySelector('.mc-session-card.is-active') ||
+        document.querySelector('[data-proxy-status][data-waiting="1"]')) {
+      markFastPoll(60);
+    }
+    setInterval(tickLocal, 1000);
+    bindAjaxForms();
+    schedulePoll();
+    setTimeout(function () { location.reload(); }, 120000);
+  });
+})();
+</script>

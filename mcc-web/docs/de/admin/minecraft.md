@@ -35,6 +35,28 @@ Das Minecraft-Modul synchronisiert **Gruppen-Velos** zwischen MyCyclingCity und 
 - Periodisches Einlesen der Gruppen-Scoreboards
 - Optional: `velos_spendable` in der DB aus dem Scoreboard zurückschreiben
 
+## Konfiguration (Online-Mode)
+
+```env
+# Paper RCON
+MCC_MINECRAFT_RCON_HOST=127.0.0.1
+MCC_MINECRAFT_RCON_PORT=25575
+MCC_MINECRAFT_RCON_PASSWORD=...
+
+# Velocity / Velocircon
+MCC_MINECRAFT_VELOCITY_RCON_HOST=127.0.0.1
+MCC_MINECRAFT_VELOCITY_RCON_PORT=25576
+MCC_MINECRAFT_VELOCITY_RCON_PASSWORD=...
+MCC_MINECRAFT_VELOCITY_PAPER_SERVER=mycyclingcity
+MCC_MINECRAFT_VELOCITY_LIMBO_SERVER=limbo
+
+# online (Default) | authme (Legacy)
+MCC_MINECRAFT_SESSION_AUTH_MODE=online
+MCC_MINECRAFT_LP_SYNC_ENABLED=False
+```
+
+Siehe auch: [`docs/de/guides/minecraft_online_mode_migration.md`](../guides/minecraft_online_mode_migration.md)
+
 ## Konfiguration
 
 ```env
@@ -115,6 +137,14 @@ Antwort bei Erfolg: `{"status": "ok"}`
 
 **Ausgabe in Minecraft:** Plugin → WebSocket `SPEND_GROUP_VELOS` → `velos_spendable` − amount → Outbox → Scoreboard-Update
 
+## RFID-Scan (MCC-Counter)
+
+Geräte starten Play-Sessions über:
+
+`POST /api/mcc-counter/scan/` mit Header `X-Api-Key` und JSON `{"token": "Arena1"}` (Aliase: `id_tag`, `rfid`).
+
+Der Token wird gegen aktive `MinecraftPlayAccount`-Einträge (`id_tag` oder `short_name`) aufgelöst und startet eine Session mit Quelle `rfid`. Operator-Tag-Reset über `/api/get-user-id` bleibt unverändert.
+
 ## Fehlerbehebung
 
 - Outbox und Worker-Logs prüfen (`logs/minecraft.log`)
@@ -125,3 +155,7 @@ Antwort bei Erfolg: `{"status": "ok"}`
 ## Verwandte Dokumentation
 
 - [Admin GUI Handbuch](index.md)
+- [Velo-Arena Scoreboard-Modi (Bau vs. Spectator / TOP 3)](../guides/velo_arena_scoreboard_modes.md)
+- [Velocity & Limbo Admin-Steuerung](../guides/minecraft_proxy_admin.md)
+- [Online-Mode Migration](../guides/minecraft_online_mode_migration.md)
+- Test-Harness: `mcc-web/test/velo_arena_race/`

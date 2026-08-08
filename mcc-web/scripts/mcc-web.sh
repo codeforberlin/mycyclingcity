@@ -81,18 +81,36 @@ kill_all_worker_processes() {
             echo -e "${GREEN}✓ Killed snapshot workers via pkill${NC}" >&2
             log_line "INFO" "Killed snapshot workers via pkill"
         fi
+
+        pkill -9 -f "minecraft_session_worker" 2>/dev/null
+        pkill_result_session=$?
+        if [ $pkill_result_session -eq 0 ]; then
+            echo -e "${GREEN}✓ Killed session workers via pkill${NC}" >&2
+            log_line "INFO" "Killed session workers via pkill"
+        fi
+
+        pkill -9 -f "minecraft_arena_motion_worker" 2>/dev/null
+        pkill_result_arena=$?
+        if [ $pkill_result_arena -eq 0 ]; then
+            echo -e "${GREEN}✓ Killed arena motion workers via pkill${NC}" >&2
+            log_line "INFO" "Killed arena motion workers via pkill"
+        fi
         sleep 2
     fi
     
     # Method 2: Find and kill by process name (fallback and verification)
     ORPHANED_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
     ORPHANED_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+    ORPHANED_SESSION=$(ps aux | grep -E "[m]inecraft_session_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+    ORPHANED_ARENA=$(ps aux | grep -E "[m]inecraft_arena_motion_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
     
-    if [ -n "$ORPHANED_BRIDGE" ] || [ -n "$ORPHANED_SNAPSHOT" ]; then
+    if [ -n "$ORPHANED_BRIDGE" ] || [ -n "$ORPHANED_SNAPSHOT" ] || [ -n "$ORPHANED_SESSION" ] || [ -n "$ORPHANED_ARENA" ]; then
         echo -e "${YELLOW}Found remaining worker processes, force killing...${NC}" >&2
         [ -n "$ORPHANED_BRIDGE" ] && echo -e "${YELLOW}  Bridge workers: $ORPHANED_BRIDGE${NC}" >&2
         [ -n "$ORPHANED_SNAPSHOT" ] && echo -e "${YELLOW}  Snapshot workers: $ORPHANED_SNAPSHOT${NC}" >&2
-        log_line "WARN" "Found remaining worker processes, force killing: bridge='$ORPHANED_BRIDGE' snapshot='$ORPHANED_SNAPSHOT'"
+        [ -n "$ORPHANED_SESSION" ] && echo -e "${YELLOW}  Session workers: $ORPHANED_SESSION${NC}" >&2
+        [ -n "$ORPHANED_ARENA" ] && echo -e "${YELLOW}  Arena motion workers: $ORPHANED_ARENA${NC}" >&2
+        log_line "WARN" "Found remaining worker processes, force killing: bridge='$ORPHANED_BRIDGE' snapshot='$ORPHANED_SNAPSHOT' session='$ORPHANED_SESSION' arena='$ORPHANED_ARENA'"
         
         # Kill bridge workers - try multiple times if needed
         if [ -n "$ORPHANED_BRIDGE" ]; then
@@ -148,26 +166,78 @@ kill_all_worker_processes() {
             done
         fi
         
+        # Kill session workers - try multiple times if needed
+        if [ -n "$ORPHANED_SESSION" ]; then
+            for pid in $ORPHANED_SESSION; do
+                if [ -n "$pid" ] && [ "$pid" != "" ]; then
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo -e "${YELLOW}Killing session worker PID: $pid${NC}" >&2
+                        for attempt in 1 2 3; do
+                            kill -KILL "$pid" 2>/dev/null
+                            sleep 0.5
+                            if ! kill -0 "$pid" 2>/dev/null; then
+                                echo -e "${GREEN}✓ Killed session worker PID: $pid (attempt $attempt)${NC}" >&2
+                                log_line "INFO" "Killed session worker PID: $pid (attempt $attempt)"
+                                break
+                            fi
+                        done
+                        if kill -0 "$pid" 2>/dev/null; then
+                            echo -e "${RED}✗ Failed to kill session worker PID: $pid after 3 attempts${NC}" >&2
+                            log_line "ERROR" "Failed to kill session worker PID: $pid after 3 attempts"
+                        fi
+                    fi
+                fi
+            done
+        fi
+
+        # Kill arena motion workers - try multiple times if needed
+        if [ -n "$ORPHANED_ARENA" ]; then
+            for pid in $ORPHANED_ARENA; do
+                if [ -n "$pid" ] && [ "$pid" != "" ]; then
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo -e "${YELLOW}Killing arena motion worker PID: $pid${NC}" >&2
+                        for attempt in 1 2 3; do
+                            kill -KILL "$pid" 2>/dev/null
+                            sleep 0.5
+                            if ! kill -0 "$pid" 2>/dev/null; then
+                                echo -e "${GREEN}✓ Killed arena motion worker PID: $pid (attempt $attempt)${NC}" >&2
+                                log_line "INFO" "Killed arena motion worker PID: $pid (attempt $attempt)"
+                                break
+                            fi
+                        done
+                        if kill -0 "$pid" 2>/dev/null; then
+                            echo -e "${RED}✗ Failed to kill arena motion worker PID: $pid after 3 attempts${NC}" >&2
+                            log_line "ERROR" "Failed to kill arena motion worker PID: $pid after 3 attempts"
+                        fi
+                    fi
+                fi
+            done
+        fi
+        
         sleep 2
         
         # Verify they are really gone
         REMAINING_BRIDGE=$(ps aux | grep -E "[m]inecraft_bridge_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
         REMAINING_SNAPSHOT=$(ps aux | grep -E "[m]inecraft_snapshot_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+        REMAINING_SESSION=$(ps aux | grep -E "[m]inecraft_session_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
+        REMAINING_ARENA=$(ps aux | grep -E "[m]inecraft_arena_motion_worker" | grep -v grep | awk '{print $2}' | tr '\n' ' ' | sed 's/ $//')
         
-        if [ -z "$REMAINING_BRIDGE" ] && [ -z "$REMAINING_SNAPSHOT" ]; then
+        if [ -z "$REMAINING_BRIDGE" ] && [ -z "$REMAINING_SNAPSHOT" ] && [ -z "$REMAINING_SESSION" ] && [ -z "$REMAINING_ARENA" ]; then
             echo -e "${GREEN}✓ All worker processes terminated${NC}" >&2
             log_line "INFO" "All worker processes successfully terminated"
         else
             echo -e "${RED}✗ Warning: Some worker processes may still be running${NC}" >&2
             [ -n "$REMAINING_BRIDGE" ] && echo -e "${RED}  Bridge workers: $REMAINING_BRIDGE${NC}" >&2
             [ -n "$REMAINING_SNAPSHOT" ] && echo -e "${RED}  Snapshot workers: $REMAINING_SNAPSHOT${NC}" >&2
-            log_line "ERROR" "Some worker processes still running after force kill: bridge='$REMAINING_BRIDGE' snapshot='$REMAINING_SNAPSHOT'"
+            [ -n "$REMAINING_SESSION" ] && echo -e "${RED}  Session workers: $REMAINING_SESSION${NC}" >&2
+            [ -n "$REMAINING_ARENA" ] && echo -e "${RED}  Arena motion workers: $REMAINING_ARENA${NC}" >&2
+            log_line "ERROR" "Some worker processes still running after force kill: bridge='$REMAINING_BRIDGE' snapshot='$REMAINING_SNAPSHOT' session='$REMAINING_SESSION' arena='$REMAINING_ARENA'"
             
             # Last resort: try killall if available (but be careful - this kills ALL python processes!)
             if command -v killall >/dev/null 2>&1; then
                 echo -e "${YELLOW}Last resort: killing all python processes matching worker pattern...${NC}"
                 # Only kill python processes that match our pattern
-                ps aux | grep -E "[p]ython.*minecraft_(bridge|snapshot)_worker" | awk '{print $2}' | xargs -r kill -KILL 2>/dev/null || true
+                ps aux | grep -E "[p]ython.*minecraft_(bridge|snapshot|session|arena_motion)_worker" | awk '{print $2}' | xargs -r kill -KILL 2>/dev/null || true
                 log_line "WARN" "Used killall as last resort"
                 sleep 1
             fi
@@ -208,6 +278,33 @@ stop_minecraft_ws() {
         "$MINECRAFT_WS_SCRIPT" stop >/dev/null 2>&1 || true
         log_line "INFO" "Stopped Minecraft WebSocket server"
     fi
+}
+
+# Start bridge, snapshot, session, and arena motion workers (each call is idempotent).
+start_minecraft_workers() {
+    if [ ! -x "$MINECRAFT_SCRIPT" ]; then
+        log_line "WARN" "minecraft.sh not found or not executable: $MINECRAFT_SCRIPT"
+        return 0
+    fi
+    "$MINECRAFT_SCRIPT" start >/dev/null 2>&1 || true
+    "$MINECRAFT_SCRIPT" snapshot-start >/dev/null 2>&1 || true
+    "$MINECRAFT_SCRIPT" session-start >/dev/null 2>&1 || true
+    "$MINECRAFT_SCRIPT" arena-start >/dev/null 2>&1 || true
+    log_line "INFO" "Started Minecraft workers (bridge, snapshot, session, arena)"
+}
+
+# Graceful worker shutdown via minecraft.sh, with per-worker fallback.
+stop_minecraft_workers_scripts() {
+    if [ ! -x "$MINECRAFT_SCRIPT" ]; then
+        return 0
+    fi
+    if ! "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
+        "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
+        "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
+        "$MINECRAFT_SCRIPT" session-stop >/dev/null 2>&1 || true
+        "$MINECRAFT_SCRIPT" arena-stop >/dev/null 2>&1 || true
+    fi
+    log_line "INFO" "Called minecraft.sh to stop workers"
 }
 
 # Check if running as correct user
@@ -274,7 +371,7 @@ start() {
     GUNICORN_WORKERS="0"  # Default (auto-calculated)
     GUNICORN_THREADS="2"  # Default
     GUNICORN_WORKER_CLASS="gthread"  # Default
-    GUNICORN_BIND="127.0.0.1:8001"  # Default
+    GUNICORN_BIND="0.0.0.0:8001"  # Default
     if [ -f "$PROJECT_DIR/manage.py" ]; then
         # Try to get config from database
         PYTHON_BIN="$VENV_DIR/bin/python"
@@ -358,9 +455,7 @@ start() {
         echo -e "${GREEN}✓ Server started successfully (PID: $PID)${NC}"
         log_line "INFO" "Server started successfully (PID: $PID)"
         if [ -x "$MINECRAFT_SCRIPT" ]; then
-            "$MINECRAFT_SCRIPT" start >/dev/null 2>&1 || true
-            "$MINECRAFT_SCRIPT" snapshot-start >/dev/null 2>&1 || true
-            log_line "INFO" "Started Minecraft workers after server start"
+            start_minecraft_workers
         fi
         start_minecraft_ws
         return 0
@@ -387,12 +482,7 @@ stop() {
         fi
         # Still stop Minecraft workers to avoid orphan processes
         if [ -x "$MINECRAFT_SCRIPT" ]; then
-            # Call stop-all but don't redirect output, so we can see if it fails
-            "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1 || {
-                # Fallback to individual stop commands if stop-all doesn't exist or fails
-                "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
-                "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
-            }
+            stop_minecraft_workers_scripts
             log_line "INFO" "Called minecraft.sh stop-all (workers may still be running)"
         fi
         stop_minecraft_ws
@@ -467,14 +557,8 @@ stop() {
     # NOW stop Minecraft workers - Gunicorn is stopped, so it won't restart them
     # Stop Minecraft workers - but ALWAYS kill by name afterwards
     if [ -x "$MINECRAFT_SCRIPT" ]; then
-        if "$MINECRAFT_SCRIPT" stop-all >/dev/null 2>&1; then
-            log_line "INFO" "Stopped all Minecraft workers during server stop"
-        else
-            # Fallback to individual stop commands if stop-all doesn't exist
-            "$MINECRAFT_SCRIPT" stop >/dev/null 2>&1 || true
-            "$MINECRAFT_SCRIPT" snapshot-stop >/dev/null 2>&1 || true
-            log_line "INFO" "Stopped Minecraft workers during server stop"
-        fi
+        stop_minecraft_workers_scripts
+        log_line "INFO" "Stopped Minecraft workers during server stop"
     fi
     
     # ALWAYS kill by name - this is the most reliable method
@@ -544,6 +628,14 @@ status() {
             else
                 echo -e "${RED}✗ WebSocket server is not running${NC}"
             fi
+        fi
+        if [ -x "$MINECRAFT_SCRIPT" ]; then
+            echo ""
+            echo -e "${BLUE}Minecraft Workers:${NC}"
+            "$MINECRAFT_SCRIPT" status 2>/dev/null || echo -e "${RED}✗ Bridge worker status unavailable${NC}"
+            "$MINECRAFT_SCRIPT" snapshot-status 2>/dev/null || echo -e "${RED}✗ Snapshot worker status unavailable${NC}"
+            "$MINECRAFT_SCRIPT" session-status 2>/dev/null || echo -e "${RED}✗ Session worker status unavailable${NC}"
+            "$MINECRAFT_SCRIPT" arena-status 2>/dev/null || echo -e "${RED}✗ Arena motion worker status unavailable${NC}"
         fi
         return 0
     else

@@ -172,6 +172,10 @@ mcc-web/db.sqlite3-shm
 mcc-web/db.sqlite3-wal
 mcc-web/mcc-web.pid
 
+# Local VeloArena race coordinates (keep .example in repo)
+mcc-web/test/velo_arena_race/velo_arena_race.toml
+mcc-web/test/velo_arena_race/arena_best_times.json
+
 # mcc-bridge - Gradle
 mcc-bridge/build/
 mcc-bridge/.gradle/

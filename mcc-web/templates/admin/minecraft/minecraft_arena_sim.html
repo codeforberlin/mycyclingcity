@@ -1,0 +1,593 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+.sim-wrap { max-width: 960px; margin: 0 auto; }
+.sim-meta { color:#475569; font-size:1.05rem; margin:0 0 1.25rem; line-height:1.45; }
+.sim-status {
+  display:inline-block; padding:0.45rem 1rem; border-radius:999px;
+  font-weight:800; text-transform:uppercase; font-size:1rem; letter-spacing:0.03em;
+}
+.sim-status.idle { background:#e2e8f0; color:#334155; }
+.sim-status.running { background:#bbf7d0; color:#166534; }
+.sim-status.stopping { background:#fde68a; color:#92400e; }
+.sim-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:1rem; margin:1.25rem 0 1.5rem;
+}
+.sim-card {
+  background:rgba(255,255,255,0.85); border:2px solid #cbd5e1;
+  border-radius:1.25rem; padding:1.1rem 1.2rem;
+  box-shadow:0 10px 28px rgba(15,23,42,0.07);
+}
+.sim-card h3 { margin:0 0 0.25rem; font-size:1.25rem; }
+.sim-card .cyclist { font-size:1.35rem; font-weight:800; color:#0f172a; margin:0.35rem 0 0.75rem; }
+.sim-card .empty { color:#94a3b8; font-weight:600; }
+.sim-card label { display:block; font-size:0.9rem; color:#475569; margin-bottom:0.35rem; }
+.sim-card .rate-kmh {
+  font-size: 1.05rem; color: #0369a1; font-weight: 700; margin: 0.25rem 0 0.5rem;
+}
+.sim-card .rate-typical {
+  font-size: 0.88rem; color: #64748b; margin: 0 0 0.6rem; line-height: 1.35;
+}
+.sim-card .rate-presets { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.65rem; }
+.sim-card .rate-presets button {
+  padding: 0.35rem 0.55rem; border-radius: 0.5rem; border: 1px solid #94a3b8;
+  background: #f8fafc; font-size: 0.82rem; font-weight: 700; cursor: pointer; color: #334155;
+}
+.sim-card .rate-presets button:hover { background: #e0f2fe; border-color: #0ea5e9; }
+.sim-card input[type=number] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid #94a3b8;
+  border-radius: 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  -moz-appearance: auto;
+  appearance: auto;
+}
+.sim-card input[type=number].rate-high { border-color: #f59e0b; background: #fffbeb; }
+.sim-card input[type=number]::-webkit-inner-spin-button,
+.sim-card input[type=number]::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 2.6rem;
+  margin: 0;
+  cursor: pointer;
+}
+.sim-card .sim-number-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+.sim-card .sim-number-stepper button {
+  flex: 0 0 auto;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0;
+  border: 2px solid #94a3b8;
+  border-radius: 0.75rem;
+  background: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  color: #0f172a;
+}
+.sim-card .sim-number-stepper button:hover { background: #e2e8f0; }
+.sim-live { margin-top:0.75rem; font-size:1rem; color:#0f766e; min-height:1.3rem; font-weight:600; }
+.sim-result {
+  margin-top: 0.7rem; padding: 0.65rem 0.75rem; border-radius: 0.8rem;
+  background: #eff6ff; color: #1e3a8a; font-size: 0.95rem; font-weight: 700;
+  line-height: 1.45;
+}
+.sim-result.is-finished { background: #ecfdf5; color: #166534; }
+.sim-result.place-1 { background: #fef3c7; color: #92400e; }
+.sim-result.place-2 { background: #e5e7eb; color: #374151; }
+.sim-result.place-3 { background: #ffedd5; color: #9a3412; }
+.sim-result-line { display: block; }
+.sim-opts {
+  display:flex; flex-wrap:wrap; gap:1rem; align-items:center;
+  margin:0.5rem 0 1rem; font-size:1.1rem;
+  position:relative; z-index:2;
+}
+.race-mode-group {
+  display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;
+}
+.race-mode-option {
+  display:inline-flex; align-items:center; gap:0.4rem;
+  padding:0.5rem 0.85rem; border:2px solid #94a3b8; border-radius:0.65rem;
+  background:#fff; cursor:pointer; font-weight:700; line-height:1.2;
+}
+.race-mode-option input {
+  margin:0; width:1.05rem; height:1.05rem; cursor:pointer; flex-shrink:0;
+}
+.race-mode-option.is-active {
+  border-color:#0ea5e9; background:#e0f2fe;
+}
+.sim-opts input[type=number] {
+  width: 7.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 2px solid #94a3b8;
+  border-radius: 0.65rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  -moz-appearance: auto;
+  appearance: auto;
+}
+.sim-opts input[type=number]::-webkit-inner-spin-button,
+.sim-opts input[type=number]::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 2.4rem;
+  margin: 0;
+  cursor: pointer;
+}
+.sim-number-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.sim-number-stepper button {
+  min-width: 2.6rem;
+  min-height: 2.6rem;
+  padding: 0;
+  border: 2px solid #94a3b8;
+  border-radius: 0.55rem;
+  background: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  color: #0f172a;
+}
+.sim-number-stepper button:hover { background: #e2e8f0; }
+.sim-result-summary {
+  display:flex; flex-wrap:wrap; gap:1rem;
+  background:#fef3c7; color:#92400e; font-weight:800;
+  padding:0.85rem 1rem; border-radius:0.85rem; margin:0 0 1rem;
+}
+.sim-result-summary span { display:inline-block; }
+.sim-actions { display:flex; flex-wrap:wrap; gap:0.85rem; margin:1.25rem 0; }
+.sim-actions button {
+  padding:1rem 1.4rem; border-radius:1rem; border:0; cursor:pointer;
+  font-weight:800; font-size:1.2rem; min-width:8rem;
+}
+.btn-save { background:#0f766e; color:#fff; }
+.btn-init { background:#2563eb; color:#fff; }
+.btn-start { background:#16a34a; color:#fff; }
+.btn-start-api { background:#0ea5e9; color:#fff; }
+.btn-stop { background:#dc2626; color:#fff; }
+.btn-clear { background:#7c2d12; color:#fff; }
+.sim-err { color:#b91c1c; font-weight:700; font-size:1.05rem; }
+.sim-hint {
+  background:#f1f5f9; border-left:4px solid #0ea5e9; padding:0.9rem 1rem;
+  border-radius:0.5rem; margin:1rem 0; color:#0f172a;
+}
+.sim-hint a { font-weight:700; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_arena_sim' %}">{% trans 'Arena-Simulation' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="sim-wrap"
+     data-status-url="{% url 'admin:minecraft_arena_status_json' %}">
+  <p class="sim-meta">
+    {% trans 'Simuliert Rad-Distanzen für die zugewiesenen Radler. Ideal zum Bauen und Testen der Arena — ohne echte IoT-Geräte.' %}
+    {% trans 'Nur Radler und Geräte mit „Arena-/API-Simulation erlaubt“ sind zugelassen.' %}
+  </p>
+  <p class="sim-meta">
+    {% trans '„Start Simulation“ = interne Distanz. „Start via API“ = Pulse über /api/update-data (KM in Game/Rankings), Motion wie bei der internen Sim.' %}
+    {% trans '„Raten anwenden“ ändert die Geschwindigkeit auch während einer laufenden Simulation.' %}
+  </p>
+
+  <p>
+    <span class="sim-status {{ status.status }}" id="sim-status-badge">{{ status.status }}</span>
+    <span id="sim-initialized-ok"{% if not status.initialized %} hidden{% endif %}>
+      · {% trans 'Loren bereit' %}
+    </span>
+    <span id="sim-worker-ok"{% if not status.worker_heartbeat %} hidden{% endif %}>
+      · {% trans 'Worker bereit' %}
+    </span>
+    <span id="sim-worker-bad" class="sim-err"{% if status.worker_heartbeat %} hidden{% endif %}>
+      · {% trans 'Worker nicht bereit' %}
+    </span>
+  </p>
+  <p id="sim-last-error" class="sim-err"{% if not status.last_error %} hidden{% endif %}>{{ status.last_error }}</p>
+  {% if error %}<p class="sim-err">{{ error }}</p>{% endif %}
+
+  {% if not has_assigned_cyclists %}
+  <div class="sim-hint">
+    {% blocktrans %}Noch keine Radler zugewiesen. Ein Admin legt sie unter <strong>Velo-Arena</strong> fest (Radler + Gerät speichern). Danach hier Raten einstellen und starten.{% endblocktrans %}
+    {% if can_manage_full_arena %}
+      <a href="{% url 'admin:minecraft_arena_control' %}">{% trans 'Zur Velo-Arena' %}</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if has_assigned_cyclists %}
+  <div class="sim-hint">
+    <strong>{% trans 'Orientierung für Kinder (typisch auf der Station):' %}</strong>
+    {% trans '20″-Rad: ca. 8–15 km/h (Vorschlag normal: 3,0 m/s ≈ 11 km/h).' %}
+    {% trans '24″-Rad: ca. 10–18 km/h (Vorschlag normal: 4,0 m/s ≈ 14 km/h).' %}
+    {% trans 'Höhere Werte sind nur für Tests — in der Arena fahren alle Loren gleich schnell ab ca. 11 m/s (Schienen-Limit).' %}
+  </div>
+  {% endif %}
+
+  <form method="post" id="sim-form">
+    {% csrf_token %}
+    <div class="sim-grid">
+      {% for card in status.lane_cards %}
+      <div class="sim-card" data-lane-id="{{ card.id }}">
+        <h3>{{ card.name }}</h3>
+        {% if card.cyclist %}
+          <p class="cyclist">{{ card.cyclist }}{% if card.speed_guide.wheel_label %} · {{ card.speed_guide.wheel_label }}{% endif %}</p>
+          <input type="hidden" name="lane_id" value="{{ card.id }}">
+          {% if card.speed_guide.typical_kmh_range %}
+          <p class="rate-typical">
+            {% blocktrans with wheel=card.speed_guide.wheel_label range=card.speed_guide.typical_kmh_range %}
+            Typisch {{ wheel }}: {{ range }} km/h
+            {% endblocktrans %}
+          </p>
+          {% endif %}
+          {% if card.speed_guide.presets %}
+          <div class="rate-presets" data-rate-input="rate-{{ card.id }}">
+            {% for preset in card.speed_guide.presets %}
+            <button type="button" class="rate-preset" data-mps="{{ preset.mps }}"
+                    title="{{ preset.kmh }} km/h">{{ preset.label }}</button>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <label for="rate-{{ card.id }}">{% trans 'Sim-Rate (m/s)' %}</label>
+          <span class="sim-number-stepper" data-number-stepper>
+            <button type="button" data-step="-0.1" aria-label="{% trans 'Rate verringern' %}">−</button>
+            <input id="rate-{{ card.id }}" type="number" name="sim_rate_mps"
+                   class="sim-rate-input" min="0" max="8" step="0.1" inputmode="decimal"
+                   data-typical-max="{{ card.speed_guide.typical_kmh_max }}"
+                   value="{{ card.sim_rate_mps|floatformat:1 }}">
+            <button type="button" data-step="0.1" aria-label="{% trans 'Rate erhöhen' %}">+</button>
+          </span>
+          <p class="rate-kmh" id="kmh-{{ card.id }}">≈ {{ card.sim_rate_kmh }} km/h</p>
+          <div class="sim-live" data-live-for="{{ card.id }}">
+            {% if not card.live.finished %}
+              {% if card.live.place %}#{{ card.live.place }} · {% endif %}
+              {% if card.live.laps_completed != None %}
+                {% if card.live.target_laps %}
+                  {% trans 'Runden' %} {{ card.live.laps_completed }}/{{ card.live.target_laps }}
+                {% else %}
+                  {% trans 'Runden' %} {{ card.live.laps_completed }}
+                {% endif %}
+              {% elif card.live.lap %}
+                {% trans 'Runde' %} {{ card.live.lap }}
+              {% endif %}
+              {% if card.live.speed_kmh %} · {{ card.live.speed_kmh }} km/h{% endif %}
+              {% if card.live.distance_m %} · {{ card.live.distance_m }} m{% endif %}
+              {% if card.live.velos %} · {{ card.live.velos }} {% trans 'Velos' %}{% endif %}
+              {% if card.live.remaining_s != None %} · {{ card.live.remaining_s }}s{% endif %}
+            {% endif %}
+          </div>
+          <div class="sim-result{% if card.live.finished %} is-finished place-{{ card.live.place|default:'0' }}{% endif %}"
+               data-result-for="{{ card.id }}">
+            {% if card.live.finished %}
+              <span class="sim-result-line">
+                {% trans 'Platz' %} {{ card.live.place|default:"?" }} · {{ card.live.distance_m|default:0 }} m
+              </span>
+              {% if card.live.laps_completed != None %}
+              <span class="sim-result-line">
+                {% if card.live.target_laps %}
+                  {% trans 'Runden' %}: {{ card.live.laps_completed }}/{{ card.live.target_laps }}
+                {% else %}
+                  {% trans 'Runden' %}: {{ card.live.laps_completed }}
+                {% endif %}
+              </span>
+              {% endif %}
+              {% if card.live.velos != None %}
+              <span class="sim-result-line">{% trans 'Velos' %}: {{ card.live.velos|default:0 }}</span>
+              {% endif %}
+              {% if card.live.finish_time_s != None %}
+              <span class="sim-result-line">{% trans 'Zeit' %}: {{ card.live.finish_time_s|default:"?" }}s</span>
+              {% endif %}
+            {% else %}
+              {% trans 'Platz' %}: {% trans 'noch im Rennen' %}
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="cyclist empty">{% trans 'Kein Radler' %}</p>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p class="sim-err">{% trans 'Keine Bahnen konfiguriert.' %}</p>
+      {% endfor %}
+    </div>
+
+    <div class="sim-opts" id="sim-race-opts">
+      <span>{% trans 'Rennmodus' %}</span>
+      <div class="race-mode-group" id="sim-race-mode-group">
+        {% for mode in status.race_modes %}
+        <label class="race-mode-option{% if status.race_mode == mode.id %} is-active{% endif %}">
+          <input type="radio" name="race_mode" value="{{ mode.id }}"
+                 {% if status.race_mode == mode.id %}checked{% endif %}>
+          {{ mode.label }}
+        </label>
+        {% empty %}
+        <label class="race-mode-option is-active">
+          <input type="radio" name="race_mode" value="dual" checked> {% trans 'Doppel-Sieg' %}
+        </label>
+        <label class="race-mode-option">
+          <input type="radio" name="race_mode" value="laps"> {% trans 'Rundenrennen' %}
+        </label>
+        <label class="race-mode-option">
+          <input type="radio" name="race_mode" value="velos"> {% trans 'Velo-Rennen' %}
+        </label>
+        {% endfor %}
+      </div>
+      <span id="sim-laps-wrap"{% if not status.uses_laps %} hidden{% endif %}>
+        <label for="target_laps">{% trans 'Runden' %}</label>
+        <span class="sim-number-stepper" data-number-stepper>
+          <button type="button" data-step="-1" aria-label="{% trans 'Runden verringern' %}">−</button>
+          <input id="target_laps" type="number" name="target_laps"
+                 min="1" max="99" step="1" inputmode="numeric"
+                 value="{{ status.target_laps|default:5 }}">
+          <button type="button" data-step="1" aria-label="{% trans 'Runden erhöhen' %}">+</button>
+        </span>
+      </span>
+      <span id="sim-time-wrap"{% if not status.uses_time_limit %} hidden{% endif %}>
+        <label for="time_limit_minutes">{% trans 'Zeitlimit (Min.)' %}</label>
+        <span class="sim-number-stepper" data-number-stepper>
+          <button type="button" data-step="-0.5" aria-label="{% trans 'Zeitlimit verringern' %}">−</button>
+          <input id="time_limit_minutes" type="number" name="time_limit_minutes"
+                 min="0.5" max="60" step="0.5" inputmode="decimal"
+                 value="{{ status.time_limit_minutes|default:3 }}">
+          <button type="button" data-step="0.5" aria-label="{% trans 'Zeitlimit erhöhen' %}">+</button>
+        </span>
+      </span>
+      <label for="sim_continue_after_finish" style="display:inline-flex;align-items:center;gap:0.45rem;font-weight:700;">
+        <input type="hidden" name="continue_after_finish" value="0">
+        <input id="sim_continue_after_finish" type="checkbox" name="continue_after_finish" value="1"
+               {% if status.continue_after_finish %}checked{% endif %}>
+        {% trans 'Nach Ziel weiterfahren (kein harter Stop)' %}
+      </label>
+    </div>
+
+    <div class="sim-result-summary" id="sim-result-summary"{% if not status.result.time_winner and not status.result.velo_winner %} hidden{% endif %}>
+      {% if status.result.time_winner %}
+        <span>{% trans 'Strecken-Sieger' %}: {{ status.result.time_winner.cyclist }} ({{ status.result.time_winner.finish_time_s }}s)</span>
+      {% endif %}
+      {% if status.result.velo_winner %}
+        <span>{% trans 'Velo-Sieger' %}: {{ status.result.velo_winner.cyclist }} ({{ status.result.velo_winner.velos }} {% trans 'Velos' %})</span>
+      {% endif %}
+    </div>
+
+    <div class="sim-actions">
+      <button type="submit" name="save_race_mode" value="1" class="btn-save">{% trans 'Modus speichern' %}</button>
+      <button type="submit" name="arena_action" value="save_rates" class="btn-save">{% trans 'Raten anwenden' %}</button>
+      <button type="submit" name="arena_action" value="init" class="btn-init">{% trans 'Init' %}</button>
+      <button type="submit" name="arena_action" value="start" class="btn-start">{% trans 'Start Simulation' %}</button>
+      <button type="submit" name="arena_action" value="start_api" class="btn-start-api">{% trans 'Start via API' %}</button>
+      <button type="submit" name="arena_action" value="stop" class="btn-stop">{% trans 'Stop' %}</button>
+      <button type="submit" name="arena_action" value="clear_all" class="btn-clear"
+              title="{% trans 'Loren löschen — nur nötig vor neuen Avataren. Danach Init.' %}"
+              onclick="return confirm('{% trans "Wirklich alle Arena-Loren löschen? Danach Init. Nur nötig vor neuen Avataren." %}');">
+        {% trans 'Reset' %}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.sim-wrap');
+  if (!root) return;
+
+  function setHidden(el, hidden) {
+    if (!el) return;
+    if (hidden) el.setAttribute('hidden', '');
+    else el.removeAttribute('hidden');
+  }
+
+  function selectedRaceMode() {
+    var checked = root.querySelector('input[name="race_mode"]:checked');
+    return checked ? checked.value : 'dual';
+  }
+
+  function syncModeFields() {
+    var mode = selectedRaceMode();
+    var usesLaps = (mode === 'laps' || mode === 'dual');
+    var usesTime = (mode === 'velos');
+    setHidden(document.getElementById('sim-laps-wrap'), !usesLaps);
+    setHidden(document.getElementById('sim-time-wrap'), !usesTime);
+    root.querySelectorAll('.race-mode-option').forEach(function (label) {
+      var input = label.querySelector('input[name="race_mode"]');
+      if (input && input.checked) label.classList.add('is-active');
+      else label.classList.remove('is-active');
+    });
+  }
+
+  root.querySelectorAll('input[name="race_mode"]').forEach(function (radio) {
+    radio.addEventListener('change', syncModeFields);
+  });
+  syncModeFields();
+
+  function snapNumber(value, step, min, max) {
+    var snapped = Math.round(value / step) * step;
+    snapped = Math.round(snapped * 1000) / 1000;
+    if (!isNaN(min)) snapped = Math.max(min, snapped);
+    if (!isNaN(max)) snapped = Math.min(max, snapped);
+    return snapped;
+  }
+
+  function bindNumberSteppers(rootEl) {
+    (rootEl || document).querySelectorAll('[data-number-stepper]').forEach(function (wrap) {
+      var input = wrap.querySelector('input[type="number"]');
+      if (!input || input.dataset.stepperBound) return;
+      input.dataset.stepperBound = '1';
+      var step = parseFloat(input.step || '1') || 1;
+      var min = parseFloat(input.min);
+      var max = parseFloat(input.max);
+
+      function applyDelta(delta) {
+        var cur = parseFloat(String(input.value).replace(',', '.'));
+        if (isNaN(cur)) cur = isNaN(min) ? 0 : min;
+        var next = snapNumber(cur + delta, step, min, max);
+        input.value = String(next);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      wrap.querySelectorAll('button[data-step]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          applyDelta(parseFloat(btn.getAttribute('data-step') || '0') || 0);
+          input.focus();
+        });
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        applyDelta(e.key === 'ArrowUp' ? step : -step);
+      });
+
+      input.addEventListener('blur', function () {
+        var cur = parseFloat(String(input.value).replace(',', '.'));
+        if (isNaN(cur)) return;
+        input.value = String(snapNumber(cur, step, min, max));
+      });
+    });
+  }
+
+  var statusUrl = root.getAttribute('data-status-url');
+  if (!statusUrl) return;
+
+  function paint(data) {
+    var badge = document.getElementById('sim-status-badge');
+    if (badge && data.status) {
+      badge.textContent = data.status;
+      badge.className = 'sim-status ' + data.status;
+    }
+    setHidden(document.getElementById('sim-initialized-ok'), !data.initialized);
+    setHidden(document.getElementById('sim-worker-ok'), !data.worker_heartbeat);
+    setHidden(document.getElementById('sim-worker-bad'), !!data.worker_heartbeat);
+    var err = document.getElementById('sim-last-error');
+    if (err) {
+      err.textContent = data.last_error || '';
+      setHidden(err, !data.last_error);
+    }
+    var summary = document.getElementById('sim-result-summary');
+    if (summary) {
+      var result = data.result || {};
+      var parts = [];
+      if (result.time_winner) {
+        parts.push('Strecken-Sieger: ' + result.time_winner.cyclist
+          + ' (' + (result.time_winner.finish_time_s != null ? result.time_winner.finish_time_s : '?') + 's)');
+      }
+      if (result.velo_winner) {
+        parts.push('Velo-Sieger: ' + result.velo_winner.cyclist
+          + ' (' + (result.velo_winner.velos != null ? result.velo_winner.velos : 0) + ' Velos)');
+      }
+      summary.innerHTML = parts.map(function (p) { return '<span>' + p + '</span>'; }).join('');
+      setHidden(summary, parts.length === 0);
+    }
+    (data.lane_cards || []).forEach(function (card) {
+      var live = card.live || {};
+      var node = root.querySelector('[data-live-for="' + card.id + '"]');
+      var resultNode = root.querySelector('[data-result-for="' + card.id + '"]');
+      if (!node) return;
+      var parts = [];
+      if (!live.finished) {
+        if (live.place) parts.push('#' + live.place);
+        if (live.laps_completed != null) {
+          parts.push(
+            live.target_laps
+              ? ('Runden ' + live.laps_completed + '/' + live.target_laps)
+              : ('Runden ' + live.laps_completed)
+          );
+        } else if (live.lap) {
+          parts.push('Runde ' + live.lap);
+        }
+        if (live.speed_kmh) parts.push(live.speed_kmh + ' km/h');
+        if (live.distance_m) parts.push(live.distance_m + ' m');
+        if (live.velos != null) parts.push(live.velos + ' Velos');
+        if (live.remaining_s != null) parts.push(live.remaining_s + 's');
+      }
+      node.textContent = parts.join(' · ');
+      if (resultNode) {
+        resultNode.classList.remove('is-finished', 'place-1', 'place-2', 'place-3');
+        if (live.finished) {
+          resultNode.classList.add('is-finished');
+          if (live.place === 1) resultNode.classList.add('place-1');
+          else if (live.place === 2) resultNode.classList.add('place-2');
+          else if (live.place === 3) resultNode.classList.add('place-3');
+          var html = '<span class=\"sim-result-line\">Platz ' + (live.place != null ? live.place : '?')
+            + ' · ' + (live.distance_m != null ? live.distance_m : 0) + ' m</span>';
+          if (live.laps_completed != null) {
+            html += '<span class=\"sim-result-line\">Runden: ' + live.laps_completed
+              + (live.target_laps ? ('/' + live.target_laps) : '') + '</span>';
+          }
+          if (live.velos != null) {
+            html += '<span class=\"sim-result-line\">Velos: ' + live.velos + '</span>';
+          }
+          if (live.finish_time_s != null) {
+            html += '<span class=\"sim-result-line\">Zeit: ' + live.finish_time_s + 's</span>';
+          }
+          resultNode.innerHTML = html;
+        } else {
+          resultNode.classList.remove('is-finished');
+          resultNode.textContent = 'Platz: noch im Rennen';
+        }
+      }
+    });
+  }
+
+  function updateRateInput(input) {
+    if (!input) return;
+    var mps = parseFloat(input.value);
+    if (!isFinite(mps) || mps < 0) mps = 0;
+    var kmh = Math.round(mps * 3.6 * 10) / 10;
+    var kmhNode = document.getElementById('kmh-' + input.id.replace('rate-', ''));
+    if (kmhNode) kmhNode.textContent = '≈ ' + kmh.toFixed(1).replace('.', ',') + ' km/h';
+    var typicalMax = parseFloat(input.getAttribute('data-typical-max') || '0');
+    if (typicalMax > 0 && kmh > typicalMax + 0.5) input.classList.add('rate-high');
+    else input.classList.remove('rate-high');
+  }
+
+  root.querySelectorAll('.sim-rate-input').forEach(function (input) {
+    input.addEventListener('input', function () { updateRateInput(input); });
+    input.addEventListener('change', function () { updateRateInput(input); });
+    updateRateInput(input);
+  });
+
+  // Bind steppers after rate listeners so +/- also refresh km/h.
+  bindNumberSteppers(root);
+  root.querySelectorAll('.rate-preset').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var wrap = btn.closest('.rate-presets');
+      if (!wrap) return;
+      var input = document.getElementById(wrap.getAttribute('data-rate-input'));
+      if (!input) return;
+      input.value = btn.getAttribute('data-mps');
+      updateRateInput(input);
+    });
+  });
+
+  function poll() {
+    fetch(statusUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { if (data) paint(data); })
+      .catch(function () {});
+  }
+  setInterval(poll, 1500);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .af-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+  .af-table th, .af-table td { border: 1px solid #cbd5e1; padding: 0.4rem 0.55rem; text-align: left; }
+  .af-table th { background: #f1f5f9; }
+  .af-status-source_newer, .af-status-missing_target { color: #b45309; font-weight: 700; }
+  .af-status-target_newer { color: #1d4ed8; font-weight: 700; }
+  .af-status-equal { color: #047857; }
+  .af-status-missing_source, .af-status-missing_both { color: #64748b; }
+  .af-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; align-items: center; }
+  .af-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; margin: 0 0 1rem; }
+  .af-warn { color: #b45309; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_control' %}">{% trans 'Minecraft Steuerung' %}</a>
+&rsaquo; {% trans 'Auth-Failover' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-control">
+  <h1>{% trans 'Auth-Failover / Playerdata' %}</h1>
+  <p class="af-warn">
+    {% trans 'Kein AuthMe: Freigabe vor Ort. Playerdata hängt an der UUID — Online ≠ Offline.' %}
+  </p>
+
+  <div class="af-panel">
+    <strong>{% trans 'Status' %}</strong><br>
+    {% blocktrans with mode=config.auth_ops_mode %}Betriebsmodus: {{ mode }}{% endblocktrans %}<br>
+    {% if config.auth_last_snapshot_dir %}
+      {% blocktrans with path=config.auth_last_snapshot_dir %}Letztes Backup: {{ path }}{% endblocktrans %}<br>
+    {% endif %}
+    {% blocktrans with n=active_session_count %}Aktive Sessions: {{ n }}{% endblocktrans %}<br>
+    {% blocktrans with path=world_root %}Welt-Root: {{ path }}{% endblocktrans %}<br>
+    {% blocktrans with path=backup_root %}Backup-Root: {{ path }}{% endblocktrans %}<br>
+    <small>{% trans 'Velocity' %}:
+      {% if velocity_status_ok %}{{ velocity_status|linebreaksbr }}{% else %}{{ velocity_status|default:_('Status unbekannt') }}{% endif %}
+    </small>
+  </div>
+
+  <div class="af-panel">
+    <form method="post" class="af-actions">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="set_mode">
+      <label>{% trans 'Modus setzen' %}
+        <select name="auth_ops_mode">
+          {% for value, label in mode_choices %}
+          <option value="{{ value }}" {% if config.auth_ops_mode == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="default">{% trans 'Modus speichern' %}</button>
+    </form>
+    <form method="post" class="af-actions" onsubmit="return confirm('{% trans 'Velocity online-mode wirklich umschalten und neu starten?' %}');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="velocity_online_mode">
+      <button type="submit" name="online_mode" value="false">{% trans 'Proxy → Offline' %}</button>
+      <button type="submit" name="online_mode" value="true">{% trans 'Proxy → Online' %}</button>
+    </form>
+  </div>
+
+  <div class="af-panel">
+    <form method="get" class="af-actions">
+      <label>{% trans 'Migrationsrichtung' %}
+        <select name="direction" onchange="this.form.submit()">
+          {% for value, label in directions %}
+          <option value="{{ value }}" {% if direction == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="direction" value="{{ direction }}">
+      <table class="af-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>{% trans 'Art' %}</th>
+            <th>{% trans 'Account' %}</th>
+            <th>{% trans 'MS-Login' %}</th>
+            <th>{% trans 'Online-UUID' %}</th>
+            <th>{% trans 'Offline-UUID' %}</th>
+            <th>{% trans 'Legacy-UUID' %}</th>
+            <th>{% trans 'Diff' %}</th>
+            <th>{% trans 'Hinweise' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in diffs %}
+          <tr>
+            <td><input type="checkbox" name="account_ref" value="{{ row.account_ref }}" checked></td>
+            <td>{{ row.kind }}</td>
+            <td>{{ row.label }} <small>({{ row.account_ref }})</small></td>
+            <td>{{ row.ms_username }}</td>
+            <td><code>{{ row.online_uuid|default:"—" }}</code></td>
+            <td><code>{{ row.offline_uuid }}</code></td>
+            <td><code>{{ row.legacy_offline_uuid }}</code></td>
+            <td class="af-status-{{ row.overall }}">{{ row.overall }}</td>
+            <td>{% if row.warnings %}{{ row.warnings|join:", " }}{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9">{% trans 'Keine Accounts mit ms_username gefunden.' %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="af-actions">
+        <button type="submit" name="action" value="migrate_dry">{% trans 'Dry-Run' %}</button>
+        <button type="submit" name="action" value="migrate_run"
+                onclick="return confirm('{% trans 'Wirklich Dateien kopieren? Bitte vorher Sessions kicken.' %}');">
+          {% trans 'Migration ausführen' %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if recent_logs %}
+  <div class="af-panel">
+    <strong>{% trans 'Letzte Transfers' %}</strong>
+    <ul>
+      {% for log in recent_logs %}
+      <li>
+        {{ log.created_at }} — {{ log.direction }}
+        {% if log.dry_run %}[{% trans 'dry' %}]{% endif %}
+        {% if log.ok %}✓{% else %}✗{% endif %}
+        <small>{{ log.backup_dir }}</small>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -26,7 +26,7 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
-    &rsaquo; <a href="{% url 'admin:minecraft_control' %}">{% trans 'Minecraft Steuerung' %}</a>
+    &rsaquo; <a href="{% url 'admin:minecraft_city' %}">{% trans 'Stadtsteuerung' %}</a>
     &rsaquo; {% trans 'RCON-Presets' %}
 </div>
 {% endblock %}
@@ -40,7 +40,7 @@
         {% if can_add %}
         <a class="button default" href="{% url 'admin:minecraft_preset_add' %}">{% trans '+ Neues Preset' %}</a>
         {% endif %}
-        <a class="button" href="{% url 'admin:minecraft_control' %}">{% trans 'Zurück zur Steuerung' %}</a>
+        <a class="button" href="{% url 'admin:minecraft_city' %}">{% trans 'Zurück zur Stadtsteuerung' %}</a>
         {% if can_export %}
         <a class="button" href="{% url 'admin:minecraft_preset_export' %}">{% trans 'JSON exportieren' %}</a>
         {% endif %}

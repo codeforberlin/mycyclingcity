@@ -74,7 +74,7 @@ chmod +x scripts/backup_minecraft_world.sh scripts/install_minecraft_backup_cron
 /data/appl/mcc/mcc-web/scripts/backup_minecraft_world.sh
 ```
 
-- **Welt**: `/data/games/minecraft_server/{world,world_nether,world_the_end}`
+- **Welt**: `/data/games/mcc/mc-srv/{MyCyclingCity,world_nether,world_the_end}` (Pfad ggf. an `level-name` anpassen)
 - **Archive**: `/data/var/mcc/backups/minecraft/mc_world_YYYYMMDD_HHMMSS.tar.gz`
 - **Retention**: letzte 48 Stunden-Backups (konfigurierbar)
 - **Logs**: `/data/var/mcc/logs/minecraft_backup_YYYYMMDD.log`
