@@ -3,6 +3,7 @@ package de.sailab.mycyclingcity.mccbridge.ws;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import de.sailab.mycyclingcity.mccbridge.MccBridgeConfig;
+import de.sailab.mycyclingcity.mccbridge.region.RegionOutlineService;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiApplier;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,6 +34,7 @@ public class MccWebSocketClient {
     private final Plugin plugin;
     private final MccBridgeConfig config;
     private final EconomyShopGuiApplier esguiApplier;
+    private final RegionOutlineService regionOutlineService;
     private final Logger logger;
     private final OkHttpClient httpClient;
     private final AtomicInteger requestCounter = new AtomicInteger();
@@ -42,10 +44,16 @@ public class MccWebSocketClient {
     private volatile boolean connected;
     private BukkitTask heartbeatTask;
 
-    public MccWebSocketClient(Plugin plugin, MccBridgeConfig config, EconomyShopGuiApplier esguiApplier) {
+    public MccWebSocketClient(
+            Plugin plugin,
+            MccBridgeConfig config,
+            EconomyShopGuiApplier esguiApplier,
+            RegionOutlineService regionOutlineService
+    ) {
         this.plugin = plugin;
         this.config = config;
         this.esguiApplier = esguiApplier;
+        this.regionOutlineService = regionOutlineService;
         this.logger = plugin.getLogger();
         this.httpClient = new OkHttpClient.Builder()
                 .pingInterval(30, TimeUnit.SECONDS)
@@ -73,6 +81,14 @@ public class MccWebSocketClient {
                         logger.warning("Initial catalog sync failed: " + ex.getMessage());
                         return Optional.empty();
                     }));
+                }
+                if (config.regionSyncOnConnect()) {
+                    plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
+                            syncProtectedRegions().exceptionally(ex -> {
+                                logger.warning("Initial regions sync failed: " + ex.getMessage());
+                                return Optional.empty();
+                            })
+                    );
                 }
             }
 
@@ -180,6 +196,25 @@ public class MccWebSocketClient {
         });
     }
 
+    public CompletableFuture<Optional<JsonObject>> syncProtectedRegions() {
+        Map<String, Object> payload = basePayload("SYNC_PROTECTED_REGIONS");
+        return sendRequest(payload).thenApply(response -> {
+            if (!"ok".equals(response.get("status").getAsString())) {
+                String error = response.has("error") ? response.get("error").getAsString() : "unknown";
+                logger.warning("Protected regions sync rejected: " + error);
+                return Optional.empty();
+            }
+            if (response.has("regions") && regionOutlineService != null) {
+                JsonObject regions = response.getAsJsonObject("regions");
+                saveRegions(regions);
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        regionOutlineService.applyPayload(regions)
+                );
+            }
+            return Optional.of(response);
+        });
+    }
+
     /**
      * Signed application heartbeat so MCC Admin keeps the bridge "connected"
      * (OkHttp protocol pings alone do not update Django last_seen).
@@ -264,6 +299,17 @@ public class MccWebSocketClient {
             return;
         }
 
+        if (response.has("type") && "REQUEST_REGIONS_SYNC".equals(response.get("type").getAsString())) {
+            logger.info("Received protected regions sync request from MCC");
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
+                    syncProtectedRegions().exceptionally(ex -> {
+                        logger.warning("Requested regions sync failed: " + ex.getMessage());
+                        return Optional.empty();
+                    })
+            );
+            return;
+        }
+
         if (response.has("type") && "PUSH_TEAM_MAPPING".equals(response.get("type").getAsString())) {
             if (response.has("lp_group") && response.has("mc_username")) {
                 String lpGroup = response.get("lp_group").getAsString();
@@ -332,6 +378,17 @@ public class MccWebSocketClient {
             logger.info("Shop catalog saved to " + path);
         } catch (IOException ex) {
             logger.warning("Failed to save shop catalog: " + ex.getMessage());
+        }
+    }
+
+    private void saveRegions(JsonObject regions) {
+        try {
+            Path path = plugin.getDataFolder().toPath().resolve("regions.json");
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, GSON.toJson(regions));
+            logger.info("Protected regions saved to " + path);
+        } catch (IOException ex) {
+            logger.warning("Failed to save protected regions: " + ex.getMessage());
         }
     }
 

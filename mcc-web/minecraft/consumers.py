@@ -11,6 +11,7 @@ from minecraft.services.bridge_connection import (
 )
 from minecraft.services.group_velos import spend_group_velos_from_minecraft
 from minecraft.services.shop_catalog import build_shop_catalog_payload
+from minecraft.services.region_catalog import build_protected_regions_payload
 from minecraft.services.shop_purchase_ledger import (
     consume_for_sell,
     consume_for_sell_batch,
@@ -137,6 +138,9 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
             return
         if event_type == "SYNC_SHOP_CATALOG":
             await self._handle_sync_shop_catalog(content)
+            return
+        if event_type == "SYNC_PROTECTED_REGIONS":
+            await self._handle_sync_protected_regions(content)
             return
         if event_type == "HEARTBEAT":
             # Presence keep-alive for Admin shop-push button (updates last_seen)
@@ -325,6 +329,23 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
         )
         await self.send_json(self._response(payload, status="ok", catalog=catalog))
 
+    async def _handle_sync_protected_regions(self, payload: dict):
+        server_id = payload.get("server_id")
+
+        if not self._server_id_allowed(server_id):
+            await self.send_json(self._response(payload, status="error", error="server_not_allowed"))
+            return
+
+        regions = await self._build_regions()
+        logger.info(
+            "[minecraft_ws] protected regions sync server_id=%s count=%s outline=%s at=%s",
+            server_id,
+            len(regions.get("regions", [])),
+            regions.get("outline_enabled"),
+            timezone.now().isoformat(),
+        )
+        await self.send_json(self._response(payload, status="ok", regions=regions))
+
     @database_sync_to_async
     def _apply_spend(self, player: str, amount: int):
         return spend_group_velos_from_minecraft(player, amount)
@@ -352,3 +373,7 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _build_catalog(self):
         return build_shop_catalog_payload()
+
+    @database_sync_to_async
+    def _build_regions(self):
+        return build_protected_regions_payload()

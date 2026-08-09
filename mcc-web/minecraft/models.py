@@ -250,6 +250,25 @@ class MinecraftIntegrationConfig(models.Model):
             "(Spieler werden weiterhin zurückgeschoben)."
         ),
     )
+    region_outline_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Region-Markierung (Partikel) aktiv"),
+        help_text=_(
+            "Wenn aktiv: MCC-Bridge zeichnet farbige Partikel-Umrandungen "
+            "für geschützte Regionen in Spieler-Nähe."
+        ),
+    )
+    region_outline_enter_hint = models.BooleanField(
+        default=True,
+        verbose_name=_("Hinweis beim Betreten der Region"),
+        help_text=_("Actionbar mit Anzeigename, wenn ein Spieler eine Region betritt."),
+    )
+    region_outline_view_distance = models.PositiveIntegerField(
+        default=48,
+        validators=[MinValueValidator(8)],
+        verbose_name=_("Sichtweite Region-Markierung (Blöcke)"),
+        help_text=_("Partikel nur, wenn ein Spieler so nah an der Region ist. Minimum 8."),
+    )
 
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Zuletzt aktualisiert"))
     updated_by = models.ForeignKey(

@@ -1,11 +1,14 @@
 package de.sailab.mycyclingcity.mccbridge;
 
 import de.sailab.mycyclingcity.mccbridge.economy.VelosEconomyProvider;
+import de.sailab.mycyclingcity.mccbridge.region.RegionOutlineService;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiApplier;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiReloader;
 import de.sailab.mycyclingcity.mccbridge.shop.ShopTransactionListener;
 import de.sailab.mycyclingcity.mccbridge.team.TeamResolver;
 import de.sailab.mycyclingcity.mccbridge.ws.MccWebSocketClient;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.luckperms.api.LuckPerms;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.command.Command;
@@ -17,10 +20,14 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public final class MccBridgePlugin extends JavaPlugin {
     private MccBridgeConfig bridgeConfig;
     private TeamResolver teamResolver;
     private EconomyShopGuiApplier esguiApplier;
+    private RegionOutlineService regionOutlineService;
     private MccWebSocketClient webSocketClient;
     private VelosEconomyProvider economyProvider;
     private boolean shopListenerRegistered;
@@ -33,7 +40,12 @@ public final class MccBridgePlugin extends JavaPlugin {
 
         teamResolver = new TeamResolver(bridgeConfig);
         esguiApplier = new EconomyShopGuiApplier(this, bridgeConfig);
-        webSocketClient = new MccWebSocketClient(this, bridgeConfig, esguiApplier);
+        regionOutlineService = new RegionOutlineService(this, bridgeConfig);
+        getServer().getPluginManager().registerEvents(regionOutlineService, this);
+        regionOutlineService.start();
+        loadCachedRegions();
+
+        webSocketClient = new MccWebSocketClient(this, bridgeConfig, esguiApplier, regionOutlineService);
         economyProvider = new VelosEconomyProvider(bridgeConfig, teamResolver, webSocketClient);
         getServer().getServicesManager().register(
                 Economy.class, economyProvider, this, org.bukkit.plugin.ServicePriority.Highest
@@ -85,6 +97,9 @@ public final class MccBridgePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (regionOutlineService != null) {
+            regionOutlineService.stop();
+        }
         if (webSocketClient != null) {
             webSocketClient.disconnect();
         }
@@ -101,7 +116,9 @@ public final class MccBridgePlugin extends JavaPlugin {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("Usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>");
+            sender.sendMessage(
+                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus>"
+            );
             return true;
         }
         switch (args[0].toLowerCase()) {
@@ -118,6 +135,12 @@ public final class MccBridgePlugin extends JavaPlugin {
                         "EconomyShopGUI installed: " + esguiApplier.isEconomyShopGuiAvailable()
                 );
                 sender.sendMessage("Shop sell ledger listener: " + shopListenerRegistered);
+                sender.sendMessage(
+                        "Region outlines: "
+                                + regionOutlineService.regionCount()
+                                + " regions, enabled="
+                                + regionOutlineService.isOutlineEnabled()
+                );
             }
             case "reload" -> {
                 reloadBridgeConfig();
@@ -143,6 +166,28 @@ public final class MccBridgePlugin extends JavaPlugin {
                     });
                 });
             }
+            case "syncregions" -> {
+                getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                    webSocketClient.syncProtectedRegions().whenComplete((result, error) -> {
+                        Runnable notify = () -> {
+                            if (error != null) {
+                                sender.sendMessage("Regions sync failed: " + error.getMessage());
+                                return;
+                            }
+                            sender.sendMessage(
+                                    "Regions sync completed ("
+                                            + regionOutlineService.regionCount()
+                                            + " regions)"
+                            );
+                        };
+                        if (sender instanceof org.bukkit.entity.Player) {
+                            getServer().getScheduler().runTask(this, notify);
+                        } else {
+                            notify.run();
+                        }
+                    });
+                });
+            }
             case "esguistatus" -> EconomyShopGuiReloader.logDiagnostics(getLogger());
             case "esguireload" -> getServer().getScheduler().runTask(this, () -> {
                 boolean ok = EconomyShopGuiReloader.reload(
@@ -155,10 +200,25 @@ public final class MccBridgePlugin extends JavaPlugin {
                 );
             });
             default -> sender.sendMessage(
-                    "Usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>"
+                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus>"
             );
         }
         return true;
+    }
+
+    private void loadCachedRegions() {
+        try {
+            Path path = getDataFolder().toPath().resolve("regions.json");
+            if (!Files.isRegularFile(path)) {
+                return;
+            }
+            String json = Files.readString(path);
+            JsonObject regions = JsonParser.parseString(json).getAsJsonObject();
+            regionOutlineService.applyPayload(regions);
+            getLogger().info("Loaded cached protected regions from " + path);
+        } catch (Exception ex) {
+            getLogger().warning("Failed to load cached regions: " + ex.getMessage());
+        }
     }
 
     private void reloadBridgeConfig() {

@@ -54,6 +54,19 @@ class MinecraftIntegrationConfigAdmin(admin.ModelAdmin):
             },
         ),
         (
+            _("Geschützte Regionen"),
+            {
+                "fields": (
+                    "region_outline_enabled",
+                    "region_outline_enter_hint",
+                    "region_outline_view_distance",
+                ),
+                "description": _(
+                    "Partikel-Umrandungen der WorldGuard-Regionen über MCC-Bridge."
+                ),
+            },
+        ),
+        (
             _("Spieler-Sessions"),
             {
                 "fields": ("player_session_active_hint",),

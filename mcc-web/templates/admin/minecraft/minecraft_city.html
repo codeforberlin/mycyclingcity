@@ -300,6 +300,41 @@
     {% trans 'Cuboid-Regionen mit Bau-Schutz. Mitglieder = verknüpfte Bau-Accounts (MS-Login). Koordinaten manuell oder von einem online Spieler übernehmen. „Anwenden“ setzt Selection (WorldEdit), definiert die Region und synct Members.' %}
   </p>
 
+  <form method="post" action="{% url 'admin:minecraft_city' %}" style="margin-bottom:1.25rem;">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="protected_region">
+    <h3 style="margin-top:0;">{% trans 'Sichtbare Markierung (Partikel)' %}</h3>
+    <p class="wb-hint">
+      {% trans 'MCC-Bridge zeichnet farbige Umrandungen für Regionen in Spieler-Nähe. Speichern sendet die Einstellungen an den Minecraft-Server.' %}
+    </p>
+    <div class="wb-grid">
+      <label>
+        <input type="checkbox" name="region_outline_enabled"
+               {% if integration_config.region_outline_enabled %}checked{% endif %}>
+        {% trans 'Partikel-Markierung aktiv' %}
+      </label>
+      <label>
+        <input type="checkbox" name="region_outline_enter_hint"
+               {% if integration_config.region_outline_enter_hint %}checked{% endif %}>
+        {% trans 'Actionbar beim Betreten' %}
+      </label>
+      <div>
+        <label for="id_region_outline_view_distance">{% trans 'Sichtweite (Blöcke)' %}</label>
+        <input id="id_region_outline_view_distance" type="number" min="8" step="1"
+               name="region_outline_view_distance"
+               value="{{ integration_config.region_outline_view_distance }}">
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button default" name="action" value="outline_settings">
+        {% trans 'Markierung speichern & sync' %}
+      </button>
+      <button type="submit" class="button" name="action" value="sync_outlines">
+        {% trans 'Nur an Bridge syncen' %}
+      </button>
+    </div>
+  </form>
+
   {% if protected_regions %}
   <table class="rg-table">
     <thead>

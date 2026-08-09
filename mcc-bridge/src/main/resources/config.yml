@@ -12,6 +12,14 @@ mcc:
   # 0 = disabled; values 1–14 are raised to 15
   heartbeat_seconds: 60
   catalog_sync_on_connect: true
+  # Pull protected-region bounds for particle outlines on connect
+  region_sync_on_connect: true
+  region_outline:
+    # Local master switch (Django payload can also disable)
+    enabled: true
+    enter_hint: true
+    # How often to redraw outlines (10 ticks = 0.5s)
+    period_ticks: 10
   # Apply MCC catalog prices to EconomyShopGUI after each pull
   esgui_sync_on_catalog: true
   # Create missing shop items via /editshop additem (use with care)

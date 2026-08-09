@@ -13,6 +13,10 @@ public final class MccBridgeConfig {
     private int reconnectSeconds;
     private int heartbeatSeconds;
     private boolean catalogSyncOnConnect;
+    private boolean regionSyncOnConnect;
+    private boolean regionOutlineEnabled;
+    private boolean regionOutlineEnterHint;
+    private int regionOutlinePeriodTicks;
     private boolean esguiSyncOnCatalog;
     private boolean esguiAddMissingItems;
     private int esguiDefaultSellPrice;
@@ -38,6 +42,10 @@ public final class MccBridgeConfig {
             heartbeatSeconds = 15;
         }
         catalogSyncOnConnect = config.getBoolean("mcc.catalog_sync_on_connect", true);
+        regionSyncOnConnect = config.getBoolean("mcc.region_sync_on_connect", true);
+        regionOutlineEnabled = config.getBoolean("mcc.region_outline.enabled", true);
+        regionOutlineEnterHint = config.getBoolean("mcc.region_outline.enter_hint", true);
+        regionOutlinePeriodTicks = Math.max(5, config.getInt("mcc.region_outline.period_ticks", 10));
         esguiSyncOnCatalog = config.getBoolean("mcc.esgui_sync_on_catalog", true);
         esguiAddMissingItems = config.getBoolean("mcc.esgui_add_missing_items", false);
         esguiDefaultSellPrice = config.getInt("mcc.esgui_default_sell_price", -1);
@@ -127,6 +135,22 @@ public final class MccBridgeConfig {
 
     public boolean catalogSyncOnConnect() {
         return catalogSyncOnConnect;
+    }
+
+    public boolean regionSyncOnConnect() {
+        return regionSyncOnConnect;
+    }
+
+    public boolean regionOutlineEnabled() {
+        return regionOutlineEnabled;
+    }
+
+    public boolean regionOutlineEnterHint() {
+        return regionOutlineEnterHint;
+    }
+
+    public int regionOutlinePeriodTicks() {
+        return regionOutlinePeriodTicks;
     }
 
     public boolean esguiSyncOnCatalog() {

@@ -39,11 +39,32 @@ async def _send_json_response(send, status: int, payload: dict) -> None:
 
 
 async def handle_push_shop_http(scope, receive, send) -> None:
+    await _handle_push_request(
+        scope,
+        receive,
+        send,
+        push_type="REQUEST_CATALOG_SYNC",
+    )
+
+
+async def handle_push_regions_http(scope, receive, send) -> None:
+    await _handle_push_request(
+        scope,
+        receive,
+        send,
+        push_type="REQUEST_REGIONS_SYNC",
+    )
+
+
+async def _handle_push_request(scope, receive, send, *, push_type: str) -> None:
     if scope.get("method") != "POST":
         await _send_json_response(send, 405, {"error": "method_not_allowed"})
         return
 
-    headers = {key.decode("latin1").lower(): value.decode("latin1") for key, value in scope.get("headers", [])}
+    headers = {
+        key.decode("latin1").lower(): value.decode("latin1")
+        for key, value in scope.get("headers", [])
+    }
     provided_secret = headers.get("x-mcc-internal-secret", "")
     expected_secret = settings.MCC_MINECRAFT_WS_SHARED_SECRET
     if not hmac.compare_digest(provided_secret, expected_secret):
@@ -69,7 +90,7 @@ async def handle_push_shop_http(scope, receive, send) -> None:
     request_id = payload.get("request_id") or "internal-push"
     await consumer.send_json(
         {
-            "type": "REQUEST_CATALOG_SYNC",
+            "type": push_type,
             "request_id": request_id,
             "server_id": server_id,
         }
@@ -82,9 +103,12 @@ def build_http_application(django_asgi_app):
         if scope["type"] != "http":
             return
 
-        path = scope.get("path", "")
+        path = (scope.get("path") or "").rstrip("/") + "/"
         if path == "/internal/minecraft/push-shop/":
             await handle_push_shop_http(scope, receive, send)
+            return
+        if path == "/internal/minecraft/push-regions/":
+            await handle_push_regions_http(scope, receive, send)
             return
 
         await django_asgi_app(scope, receive, send)

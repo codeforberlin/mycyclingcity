@@ -4,7 +4,8 @@ Connects a Paper **26.1.x** server to MyCyclingCity:
 
 - **Vault economy provider** for team Velos (`velos_spendable`)
 - **WebSocket client** for `SPEND_GROUP_VELOS`, `CREDIT_GROUP_VELOS`, `GET_TEAM_VELOS`,
-  `RECORD_SHOP_PURCHASE`, `CONSUME_SHOP_SELL_CREDIT`, `SYNC_SHOP_CATALOG`, `HEARTBEAT`
+  `RECORD_SHOP_PURCHASE`, `CONSUME_SHOP_SELL_CREDIT`, `SYNC_SHOP_CATALOG`,
+  `SYNC_PROTECTED_REGIONS`, `HEARTBEAT`
 - **LuckPerms team mapping** (optional)
 
 ## Build

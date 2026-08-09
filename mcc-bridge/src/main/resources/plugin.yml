@@ -15,7 +15,7 @@ commands:
   mccbridge:
     description: MCC-Bridge admin commands
     permission: mccbridge.admin
-    usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>
+    usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus>
 
 permissions:
   mccbridge.admin:

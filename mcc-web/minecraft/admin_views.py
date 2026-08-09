@@ -35,6 +35,7 @@ from minecraft.services.shop_import import (
 )
 from minecraft.services.bridge_connection import get_connected_server_ids
 from minecraft.services.shop_push import push_shop_catalog_to_minecraft
+from minecraft.services.regions_push import push_protected_regions_to_minecraft
 from minecraft.services.shop_readiness import check_shop_readiness
 from minecraft.services.ws_url import build_ws_events_url
 from minecraft.services.preset_permissions import (
@@ -867,6 +868,57 @@ def minecraft_city(request):
                 return redirect("admin:minecraft_city")
             action = (request.POST.get("action") or "").strip()
             try:
+                if action == "outline_settings":
+                    integration_config.region_outline_enabled = (
+                        request.POST.get("region_outline_enabled") == "on"
+                    )
+                    integration_config.region_outline_enter_hint = (
+                        request.POST.get("region_outline_enter_hint") == "on"
+                    )
+                    try:
+                        view_distance = int(
+                            request.POST.get(
+                                "region_outline_view_distance",
+                                integration_config.region_outline_view_distance,
+                            )
+                        )
+                        integration_config.region_outline_view_distance = max(8, view_distance)
+                    except (TypeError, ValueError):
+                        pass
+                    integration_config.updated_by = request.user
+                    integration_config.save(
+                        update_fields=[
+                            "region_outline_enabled",
+                            "region_outline_enter_hint",
+                            "region_outline_view_distance",
+                            "updated_by",
+                            "updated_at",
+                        ]
+                    )
+                    ok, detail = push_protected_regions_to_minecraft()
+                    if ok:
+                        messages.success(
+                            request,
+                            _("Region-Markierung gespeichert und an Bridge gesendet."),
+                        )
+                    else:
+                        messages.warning(
+                            request,
+                            _(
+                                "Einstellungen gespeichert, Bridge-Sync fehlgeschlagen: %(err)s"
+                            )
+                            % {"err": detail},
+                        )
+                    return redirect("admin:minecraft_city")
+
+                if action == "sync_outlines":
+                    ok, detail = push_protected_regions_to_minecraft()
+                    if ok:
+                        messages.success(request, detail)
+                    else:
+                        messages.error(request, detail)
+                    return redirect("admin:minecraft_city")
+
                 if action == "capture_pos":
                     player = (request.POST.get("rg_player") or "").strip()
                     corner = (request.POST.get("rg_corner") or "min").strip()
@@ -1011,6 +1063,7 @@ def minecraft_city(request):
                             _("Region „%(id)s“ gespeichert (nur Datenbank).")
                             % {"id": region.region_id},
                         )
+                        push_protected_regions_to_minecraft()
                         return redirect("admin:minecraft_city")
 
                     if action == "sync_members":
@@ -1022,6 +1075,7 @@ def minecraft_city(request):
                                 _("Members für „%(id)s“ synchronisiert.")
                                 % {"id": region.region_id},
                             )
+                            push_protected_regions_to_minecraft()
                         else:
                             messages.error(
                                 request,
@@ -1038,6 +1092,7 @@ def minecraft_city(request):
                                 _("Region „%(id)s“ auf dem Server angewendet.")
                                 % {"id": region.region_id},
                             )
+                            push_protected_regions_to_minecraft()
                         else:
                             messages.error(
                                 request,
@@ -1061,6 +1116,7 @@ def minecraft_city(request):
                             )
                             return redirect("admin:minecraft_city")
                     region.delete()
+                    push_protected_regions_to_minecraft()
                     messages.success(
                         request,
                         _("Region „%(id)s“ gelöscht%(suffix)s.")
@@ -1098,6 +1154,7 @@ def minecraft_city(request):
         "rcon_mode": rcon_mode,
         "rcon_preset_groups": presets_grouped(),
         "world_border": integration_config,
+        "integration_config": integration_config,
         "world_border_presets": WORLD_BORDER_SIZE_PRESETS,
         "world_border_half": half,
         "world_border_status": border_status,
