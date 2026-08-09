@@ -38,8 +38,24 @@ def default_target_laps() -> int:
 
 
 def default_time_limit_seconds() -> int:
+    """
+    Default race time limit in seconds.
+
+    Prefer Minecraft → Integration (minutes); fall back to settings (seconds).
+    """
+    try:
+        from django.db import DatabaseError
+        from minecraft.models import MinecraftIntegrationConfig
+
+        minutes = int(
+            MinecraftIntegrationConfig.get_config().arena_default_time_limit_minutes
+        )
+        if minutes > 0:
+            return max(30, minutes * 60)
+    except (TypeError, ValueError, AttributeError, DatabaseError):
+        pass
     value = int(
-        getattr(settings, "MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS", 180) or 180
+        getattr(settings, "MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS", 300) or 300
     )
     return max(30, value)
 

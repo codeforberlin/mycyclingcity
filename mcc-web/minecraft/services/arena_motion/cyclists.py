@@ -207,3 +207,159 @@ def resolve_device_motion_params(device_name: str) -> dict[str, Any]:
         "device_factor": fkm,
         "send_interval_seconds": clamp_send_interval(send_interval),
     }
+
+
+DEFAULT_ACTIVE_SESSION_SECONDS = 180
+
+
+def active_session_window_seconds() -> int:
+    from django.conf import settings
+
+    value = int(
+        getattr(
+            settings,
+            "MCC_MINECRAFT_ARENA_ACTIVE_SESSION_SECONDS",
+            DEFAULT_ACTIVE_SESSION_SECONDS,
+        )
+        or DEFAULT_ACTIVE_SESSION_SECONDS
+    )
+    return max(5, value)
+
+
+def active_pairs_for_top_group(
+    top_group_id: int | None,
+    *,
+    active_seconds: int | None = None,
+    allowed_top_group_ids: set[int] | list[int] | None = None,
+    arena_sim_only: bool = False,
+) -> list[dict[str, Any]]:
+    """
+    Active cyclist↔device sessions for auto-assign (from live IoT updates).
+
+    - top_group_id set: that TOP tree only
+    - top_group_id None + allowed_top_group_ids: union of those TOP trees
+      („Alle TOP-Gruppen“ for scoped operators)
+    - both None: all active sessions (superuser „Alle TOP-Gruppen“)
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from api.models import CyclistDeviceCurrentMileage
+
+    group_ids: set[int] | None
+    if top_group_id:
+        top_id = int(top_group_id)
+        if allowed_top_group_ids is not None:
+            allowed = {int(x) for x in allowed_top_group_ids}
+            if top_id not in allowed:
+                return []
+        group_ids = _descendant_group_ids(top_id)
+    elif allowed_top_group_ids is not None:
+        allowed = {int(x) for x in allowed_top_group_ids}
+        if not allowed:
+            return []
+        group_ids = set()
+        for tid in allowed:
+            group_ids.update(_descendant_group_ids(tid))
+    else:
+        group_ids = None
+
+    window = (
+        active_session_window_seconds()
+        if active_seconds is None
+        else max(5, int(active_seconds))
+    )
+    cutoff = timezone.now() - timedelta(seconds=window)
+    qs = (
+        CyclistDeviceCurrentMileage.objects.select_related(
+            "cyclist", "device", "device__group"
+        )
+        .prefetch_related("cyclist__groups")
+        .filter(last_activity__gte=cutoff)
+        .order_by("-last_activity", "-last_power_w")
+    )
+    # Match Dynamo: do not require is_visible (live sessions still count).
+    if arena_sim_only:
+        qs = qs.filter(
+            cyclist__is_arena_sim_allowed=True,
+            device__is_arena_sim_allowed=True,
+        )
+
+    pairs: list[dict[str, Any]] = []
+    seen_cyclists: set[str] = set()
+    seen_devices: set[str] = set()
+    for session in qs:
+        if group_ids is not None and not session.cyclist.groups.filter(
+            id__in=group_ids
+        ).exists():
+            continue
+        user_id = (session.cyclist.user_id or "").strip()
+        device_name = (session.device.name or "").strip()
+        if not user_id or not device_name:
+            continue
+        cyclist_key = user_id.lower()
+        device_key = device_name.lower()
+        if cyclist_key in seen_cyclists or device_key in seen_devices:
+            continue
+        seen_cyclists.add(cyclist_key)
+        seen_devices.add(device_key)
+        try:
+            wheel_mm = int(session.device.radumfang_mm)
+        except Exception:
+            wheel_mm = 0
+        pairs.append(
+            {
+                "user_id": user_id,
+                "id_tag": session.cyclist.id_tag,
+                "device_name": device_name,
+                "device_display": session.device.display_name or device_name,
+                "wheel_mm": wheel_mm,
+                "last_activity": session.last_activity.isoformat()
+                if session.last_activity
+                else "",
+                "last_power_w": float(session.last_power_w or 0),
+            }
+        )
+    return pairs
+
+
+def preferred_station_names_by_lane() -> dict[str, set[str]]:
+    """lane_id → set of Device.name preferred for auto-assign (from Bahn-Setup)."""
+    try:
+        from minecraft.models import MinecraftArenaLane
+    except Exception:
+        return {}
+    mapping: dict[str, set[str]] = {}
+    try:
+        rows = MinecraftArenaLane.objects.filter(is_active=True).prefetch_related(
+            "preferred_stations"
+        )
+    except Exception:
+        return {}
+    for row in rows:
+        names = {
+            (d.name or "").strip()
+            for d in row.preferred_stations.all()
+            if (d.name or "").strip()
+        }
+        if names:
+            mapping[row.lane_id] = names
+    return mapping
+
+
+def count_active_sessions(active_seconds: int | None = None) -> int:
+    """How many device sessions Dynamo would consider active (no group filter)."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from api.models import CyclistDeviceCurrentMileage
+
+    window = (
+        active_session_window_seconds()
+        if active_seconds is None
+        else max(5, int(active_seconds))
+    )
+    cutoff = timezone.now() - timedelta(seconds=window)
+    return CyclistDeviceCurrentMileage.objects.filter(last_activity__gte=cutoff).count()

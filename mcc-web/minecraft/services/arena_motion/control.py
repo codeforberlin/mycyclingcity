@@ -13,7 +13,12 @@ from minecraft.services.arena_motion.child_speed_guide import (
     default_sim_rate_mps,
     mps_to_kmh,
 )
-from minecraft.services.arena_motion.cyclists import resolve_device_motion_params
+from minecraft.services.arena_motion.cyclists import (
+    active_pairs_for_top_group,
+    count_active_sessions,
+    preferred_station_names_by_lane,
+    resolve_device_motion_params,
+)
 from minecraft.services.arena_motion.lanes import load_race_config
 from minecraft.services.arena_motion.race_modes import (
     MODE_LABELS,
@@ -46,6 +51,7 @@ def get_status() -> dict[str, Any]:
         for lane in config.lanes
     ]
     assign_by_lane = {a.get("lane_id"): a for a in st.get("assignments", []) if a.get("lane_id")}
+    preferred_by_lane = preferred_station_names_by_lane()
     lane_cards = []
     for lane in config.lanes:
         assignment = assign_by_lane.get(lane.id) or {}
@@ -57,6 +63,7 @@ def get_status() -> dict[str, Any]:
         sim_rate = float(
             assignment.get("sim_rate_mps", guide.default_mps)
         )
+        preferred = sorted(preferred_by_lane.get(lane.id) or [])
         lane_cards.append(
             {
                 "id": lane.id,
@@ -74,6 +81,7 @@ def get_status() -> dict[str, Any]:
                 "sim_rate_mps": sim_rate,
                 "sim_rate_kmh": mps_to_kmh(sim_rate),
                 "speed_guide": guide.as_dict(),
+                "preferred_stations": preferred,
                 "live": live,
             }
         )
@@ -88,10 +96,14 @@ def get_status() -> dict[str, Any]:
         ],
         "target_laps": int(st.get("target_laps") or default_target_laps()),
         "time_limit_seconds": int(
-            st.get("time_limit_seconds") or default_time_limit_seconds()
+            default_time_limit_seconds()
+            if st.get("status") == race_state.STATUS_IDLE
+            else (st.get("time_limit_seconds") or default_time_limit_seconds())
         ),
         "time_limit_minutes": time_limit_minutes_for_ui(
-            st.get("time_limit_seconds") or default_time_limit_seconds()
+            default_time_limit_seconds()
+            if st.get("status") == race_state.STATUS_IDLE
+            else (st.get("time_limit_seconds") or default_time_limit_seconds())
         ),
         "uses_laps": uses_laps(st.get("race_mode")),
         "uses_time_limit": uses_time_limit(st.get("race_mode")),
@@ -111,6 +123,138 @@ def get_status() -> dict[str, Any]:
         "lane_cards": lane_cards,
         "assignments": st.get("assignments") or [],
         "result": st.get("result") or {},
+    }
+
+
+def auto_assign_active_sessions(
+    top_group_id: int | None,
+    *,
+    active_seconds: int | None = None,
+    arena_sim_only: bool = False,
+    allowed_top_group_ids: set[int] | list[int] | None = None,
+) -> dict[str, Any]:
+    """
+    Map active IoT sessions onto arena lanes (idle only).
+
+    top_group_id None = all allowed TOP groups („Alle TOP-Gruppen“).
+    Prefer stations configured on each Bahn (preferred_stations). Remaining
+    sessions fill free lanes in config order. Extra sessions → overflow.
+    """
+    st = race_state.load_state()
+    if st.get("status") != race_state.STATUS_IDLE:
+        raise ArenaControlError(
+            "Auto-Zuweisung nur im Idle-Zustand (Rennen zuerst stoppen)."
+        )
+
+    pairs = active_pairs_for_top_group(
+        int(top_group_id) if top_group_id else None,
+        active_seconds=active_seconds,
+        allowed_top_group_ids=allowed_top_group_ids,
+        arena_sim_only=arena_sim_only,
+    )
+    config = load_race_config()
+    lanes = list(config.lanes)
+    if not lanes:
+        raise ArenaControlError("Keine Bahnen in der Arena-Config gefunden.")
+    if not pairs:
+        # No active riders in scope → clear lane table (do not keep stale roster).
+        set_assignments([])
+        global_n = count_active_sessions(active_seconds)
+        in_scope = active_pairs_for_top_group(
+            int(top_group_id) if top_group_id else None,
+            active_seconds=active_seconds,
+            allowed_top_group_ids=allowed_top_group_ids,
+            arena_sim_only=False,
+        )
+        warning = ""
+        if arena_sim_only and in_scope:
+            warning = (
+                f"{len(in_scope)} aktive Session(s) im Bereich, aber keine mit "
+                "Simulations-Freigabe — Bahnen geleert. Häkchen „Nur Simulations-Freigabe“ "
+                "entfernen oder Radler/Gerät freigeben."
+            )
+        elif global_n and top_group_id and not in_scope:
+            warning = (
+                f"{global_n} aktive Session(s) insgesamt, aber keine in der "
+                "gewählten TOP-Gruppe — Bahnen geleert. TOP prüfen oder "
+                "„Alle TOP-Gruppen“ wählen."
+            )
+        else:
+            warning = (
+                "Keine aktiven Radler-Sessions — Bahnzuweisungen geleert. "
+                "Bitte kurz treten lassen, dann erneut „Aktive erkennen“."
+            )
+        return {
+            "assigned": 0,
+            "detected": 0,
+            "overflow": 0,
+            "lane_count": len(lanes),
+            "preferred_hits": 0,
+            "assignments": [],
+            "overflow_pairs": [],
+            "cleared": True,
+            "warning": warning,
+        }
+
+    remaining = list(pairs)
+    preferred_by_lane = preferred_station_names_by_lane()
+    assigned_by_lane: dict[str, dict[str, Any]] = {}
+    preferred_hits = 0
+
+    def _device_matches(pair: dict[str, Any], preferred_names: set[str]) -> bool:
+        name = str(pair.get("device_name") or "").strip().lower()
+        return name in {n.lower() for n in preferred_names}
+
+    # Pass 1: lanes with preferred stations
+    for lane in lanes:
+        preferred = preferred_by_lane.get(lane.id) or set()
+        if not preferred:
+            continue
+        match_index = next(
+            (
+                index
+                for index, pair in enumerate(remaining)
+                if _device_matches(pair, preferred)
+            ),
+            None,
+        )
+        if match_index is None:
+            continue
+        pair = remaining.pop(match_index)
+        assigned_by_lane[lane.id] = {
+            "lane_id": lane.id,
+            "cyclist": pair["user_id"],
+            "device_name": pair["device_name"],
+        }
+        preferred_hits += 1
+
+    # Pass 2: fill remaining lanes in order
+    for lane in lanes:
+        if lane.id in assigned_by_lane:
+            continue
+        if not remaining:
+            break
+        pair = remaining.pop(0)
+        assigned_by_lane[lane.id] = {
+            "lane_id": lane.id,
+            "cyclist": pair["user_id"],
+            "device_name": pair["device_name"],
+        }
+
+    raw = [
+        assigned_by_lane[lane.id]
+        for lane in lanes
+        if lane.id in assigned_by_lane
+    ]
+    set_assignments(raw)
+    return {
+        "assigned": len(raw),
+        "detected": len(pairs),
+        "overflow": len(remaining),
+        "lane_count": len(lanes),
+        "preferred_hits": preferred_hits,
+        "assignments": raw,
+        "overflow_pairs": remaining,
     }
 
 
@@ -233,6 +377,26 @@ def set_time_limit_seconds(time_limit_seconds: int) -> dict[str, Any]:
     if seconds > 3600:
         raise ArenaControlError("Zeitlimit maximal 3600 Sekunden")
     return race_state.update_state(time_limit_seconds=seconds, last_error="")
+
+
+def apply_integration_default_time_limit(minutes: int) -> dict[str, Any] | None:
+    """
+    Push Integration default into arena state when idle.
+
+    Lets operators change the kiosk time limit via Admin → Integration without
+    editing the number input (which some old Chrome builds reject).
+    """
+    seconds = max(30, int(minutes) * 60)
+    if seconds > 3600:
+        seconds = 3600
+    with race_state._state_lock():
+        st = race_state.load_state()
+        if st.get("status") != race_state.STATUS_IDLE:
+            return None
+        st["time_limit_seconds"] = seconds
+        st["last_error"] = ""
+        race_state.save_state(st)
+        return st
 
 
 def set_race_mode(race_mode: str) -> dict[str, Any]:

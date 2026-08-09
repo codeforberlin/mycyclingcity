@@ -166,6 +166,17 @@ class MinecraftIntegrationConfig(models.Model):
             "(Maus-Klick / Client-Fokus). Minimum 5, Standard 45."
         ),
     )
+    arena_default_time_limit_minutes = models.PositiveIntegerField(
+        default=5,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Velo-Arena Default-Zeitlimit (Min.)"),
+        help_text=_(
+            "Standard-Zeitlimit für Velo-Rennen in der Arena-Steuerung "
+            "(wenn noch kein Wert in der laufenden Session gespeichert ist). "
+            "Nützlich, wenn das Zeitfeld auf älteren Browsern nicht änderbar ist. "
+            "Minimum 1, Standard 5."
+        ),
+    )
     AUTH_OPS_ONLINE = "online"
     AUTH_OPS_FAILOVER = "failover"
     AUTH_OPS_RECOVERY = "recovery"
@@ -1134,6 +1145,18 @@ class MinecraftArenaLane(models.Model):
     sign_x = models.FloatField(null=True, blank=True, verbose_name=_("Schild X"))
     sign_y = models.FloatField(null=True, blank=True, verbose_name=_("Schild Y"))
     sign_z = models.FloatField(null=True, blank=True, verbose_name=_("Schild Z"))
+
+    preferred_stations = models.ManyToManyField(
+        "iot.Device",
+        blank=True,
+        related_name="preferred_arena_lanes",
+        verbose_name=_("Bevorzugte Stationen"),
+        help_text=_(
+            "IoT-Stationen, die bei „Aktive erkennen“ bevorzugt dieser Bahn "
+            "zugeordnet werden (z. B. kleine Räder → Bahn 1 und 2). "
+            "Leer = beliebige freie Session."
+        ),
+    )
 
     notes = models.CharField(max_length=255, blank=True, verbose_name=_("Notiz"))
     updated_at = models.DateTimeField(auto_now=True)

@@ -13,6 +13,7 @@ from minecraft.services.arena_motion.controller import (
 )
 from minecraft.services.arena_motion.control import (
     ArenaControlError,
+    auto_assign_active_sessions,
     request_start,
     set_assignments,
     set_race_mode,
@@ -1323,10 +1324,40 @@ class TestRaceModes:
         from minecraft.services.arena_motion.race_modes import time_limit_minutes_for_ui
 
         assert time_limit_minutes_for_ui(180) == 3.0
+        assert time_limit_minutes_for_ui(300) == 5.0
         assert time_limit_minutes_for_ui(90) == 1.5
         # 100s → 1.666… must snap to 1.5 or 2.0 (0.5 grid), not 1.7
         assert time_limit_minutes_for_ui(100) in {1.5, 2.0}
         assert abs((time_limit_minutes_for_ui(100) * 2) % 1) < 1e-9
+
+    def test_default_time_limit_from_integration(self):
+        from minecraft.models import MinecraftIntegrationConfig
+        from minecraft.services.arena_motion.race_modes import default_time_limit_seconds
+
+        cfg = MinecraftIntegrationConfig.get_config()
+        cfg.arena_default_time_limit_minutes = 5
+        cfg.save(update_fields=["arena_default_time_limit_minutes"])
+        assert default_time_limit_seconds() == 300
+
+        cfg.arena_default_time_limit_minutes = 8
+        cfg.save(update_fields=["arena_default_time_limit_minutes"])
+        assert default_time_limit_seconds() == 480
+
+    def test_apply_integration_default_updates_idle_state(self, tmp_path):
+        from minecraft.services.arena_motion.control import (
+            apply_integration_default_time_limit,
+            set_time_limit_seconds,
+        )
+
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            set_time_limit_seconds(180)
+            assert race_state.load_state()["time_limit_seconds"] == 180
+            apply_integration_default_time_limit(5)
+            assert race_state.load_state()["time_limit_seconds"] == 300
 
 
     def test_set_race_mode_and_time_limit(self, tmp_path):
@@ -1336,7 +1367,7 @@ class TestRaceModes:
             DATA_DIR=tmp_path,
             MCC_MINECRAFT_ARENA_DEFAULT_RACE_MODE="dual",
             MCC_MINECRAFT_ARENA_DEFAULT_TARGET_LAPS=5,
-            MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS=180,
+            MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS=300,
         ):
             set_race_mode(MODE_VELOS)
             set_time_limit_seconds(120)
@@ -1495,3 +1526,419 @@ class TestRaceModes:
         ):
             with pytest.raises(ArenaControlError):
                 set_race_mode("turbo")
+
+
+@pytest.mark.unit
+@pytest.mark.django_db
+class TestAutoAssignActiveSessions:
+    def test_maps_active_sessions_to_lanes(self, tmp_path):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from api.models import Cyclist, CyclistDeviceCurrentMileage, Group, GroupType
+        from iot.models import Device, DeviceConfiguration
+        from minecraft.services.arena_motion.cyclists import active_pairs_for_top_group
+
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        gtype, _ = GroupType.objects.get_or_create(name="test-arena-auto-type")
+        top = Group.objects.create(
+            name="ArenaTOP", parent=None, group_type=gtype, is_visible=True
+        )
+        leaf = Group.objects.create(
+            name="ArenaLeaf", parent=top, group_type=gtype, is_visible=True
+        )
+
+        riders = []
+        for i, name in enumerate(("AutoA", "AutoB"), start=1):
+            cyclist = Cyclist.objects.create(
+                user_id=name,
+                id_tag=f"auto-{name.lower()}",
+                is_visible=True,
+            )
+            cyclist.groups.add(leaf)
+            device = Device.objects.create(
+                name=f"auto-box-{i}",
+                display_name=f"Auto Box {i}",
+                is_visible=True,
+                group=top,
+            )
+            DeviceConfiguration.objects.create(device=device, wheel_size=2075.0)
+            CyclistDeviceCurrentMileage.objects.create(
+                cyclist=cyclist,
+                device=device,
+                cumulative_mileage=Decimal("0.001"),
+                last_activity=timezone.now(),
+            )
+            riders.append((cyclist, device))
+
+        # Stale session outside TOP must be ignored.
+        other_top = Group.objects.create(
+            name="OtherTOP", parent=None, group_type=gtype, is_visible=True
+        )
+        outsider = Cyclist.objects.create(
+            user_id="Outsider", id_tag="out", is_visible=True
+        )
+        outsider.groups.add(other_top)
+        odd_device = Device.objects.create(
+            name="odd-box", display_name="odd", is_visible=True, group=other_top
+        )
+        DeviceConfiguration.objects.create(device=odd_device, wheel_size=2075.0)
+        CyclistDeviceCurrentMileage.objects.create(
+            cyclist=outsider,
+            device=odd_device,
+            cumulative_mileage=Decimal("0.001"),
+            last_activity=timezone.now(),
+        )
+
+        pairs = active_pairs_for_top_group(top.id)
+        assert {p["user_id"] for p in pairs} == {"AutoA", "AutoB"}
+
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            result = auto_assign_active_sessions(top.id)
+            assert result["detected"] == 2
+            assert result["assigned"] == 2
+            assert result["overflow"] == 0
+            st = race_state.load_state()
+            assigned = {(a["cyclist"], a["device_name"]) for a in st["assignments"]}
+            assert assigned == {
+                ("AutoA", "auto-box-1"),
+                ("AutoB", "auto-box-2"),
+            }
+            assert st.get("initialized") is False
+
+    def test_requires_idle(self, tmp_path):
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            race_state.update_state(status=race_state.STATUS_RUNNING)
+            with pytest.raises(ArenaControlError, match="Idle"):
+                auto_assign_active_sessions(None)
+
+    def test_all_top_groups_detects_across_tops(self, tmp_path):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from api.models import Cyclist, CyclistDeviceCurrentMileage, Group, GroupType
+        from iot.models import Device, DeviceConfiguration
+        from minecraft.services.arena_motion.cyclists import active_pairs_for_top_group
+
+        gtype, _ = GroupType.objects.get_or_create(name="test-arena-all-tops")
+        top_a = Group.objects.create(
+            name="AllTopA", parent=None, group_type=gtype, is_visible=True
+        )
+        top_b = Group.objects.create(
+            name="AllTopB", parent=None, group_type=gtype, is_visible=True
+        )
+        for i, top in enumerate((top_a, top_b), start=1):
+            cyclist = Cyclist.objects.create(
+                user_id=f"Cross{i}",
+                id_tag=f"cross-{i}",
+                is_visible=True,
+            )
+            cyclist.groups.add(top)
+            device = Device.objects.create(
+                name=f"cross-box-{i}",
+                display_name=f"Cross {i}",
+                is_visible=True,
+                group=top,
+            )
+            DeviceConfiguration.objects.create(device=device, wheel_size=2075.0)
+            CyclistDeviceCurrentMileage.objects.create(
+                cyclist=cyclist,
+                device=device,
+                cumulative_mileage=Decimal("0.001"),
+                last_activity=timezone.now(),
+            )
+
+        only_a = {p["user_id"] for p in active_pairs_for_top_group(top_a.id)}
+        assert only_a == {"Cross1"}
+        both = {
+            p["user_id"]
+            for p in active_pairs_for_top_group(
+                None, allowed_top_group_ids={top_a.id, top_b.id}
+            )
+        }
+        assert both == {"Cross1", "Cross2"}
+        all_pairs = {p["user_id"] for p in active_pairs_for_top_group(None)}
+        assert "Cross1" in all_pairs and "Cross2" in all_pairs
+
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            result = auto_assign_active_sessions(
+                None, allowed_top_group_ids={top_a.id, top_b.id}
+            )
+            assert result["detected"] == 2
+            assert result["assigned"] == 2
+
+    def test_overflow_when_more_sessions_than_lanes(self, tmp_path):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from api.models import Cyclist, CyclistDeviceCurrentMileage, Group, GroupType
+        from iot.models import Device, DeviceConfiguration
+
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        gtype, _ = GroupType.objects.get_or_create(name="test-arena-overflow-type")
+        top = Group.objects.create(
+            name="OverflowTOP", parent=None, group_type=gtype, is_visible=True
+        )
+
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            config = load_race_config()
+            lane_count = len(config.lanes)
+            assert lane_count >= 1
+            for i in range(lane_count + 2):
+                cyclist = Cyclist.objects.create(
+                    user_id=f"Over{i}",
+                    id_tag=f"over-{i}",
+                    is_visible=True,
+                )
+                cyclist.groups.add(top)
+                device = Device.objects.create(
+                    name=f"over-box-{i}",
+                    display_name=f"Over {i}",
+                    is_visible=True,
+                    group=top,
+                )
+                DeviceConfiguration.objects.create(device=device, wheel_size=2075.0)
+                CyclistDeviceCurrentMileage.objects.create(
+                    cyclist=cyclist,
+                    device=device,
+                    cumulative_mileage=Decimal("0.001"),
+                    last_activity=timezone.now(),
+                )
+
+            result = auto_assign_active_sessions(top.id)
+            assert result["assigned"] == lane_count
+            assert result["detected"] == lane_count + 2
+            assert result["overflow"] == 2
+            assert len(race_state.load_state()["assignments"]) == lane_count
+
+    def test_sim_only_excludes_non_sim_cyclists(self, tmp_path):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from api.models import Cyclist, CyclistDeviceCurrentMileage, Group, GroupType
+        from iot.models import Device, DeviceConfiguration
+        from minecraft.services.arena_motion.cyclists import active_pairs_for_top_group
+
+        gtype, _ = GroupType.objects.get_or_create(name="test-arena-simfilter-type")
+        top = Group.objects.create(
+            name="SimFilterTOP", parent=None, group_type=gtype, is_visible=True
+        )
+        leaf = Group.objects.create(
+            name="SimFilterLeaf", parent=top, group_type=gtype, is_visible=True
+        )
+        classic = Cyclist.objects.create(
+            user_id="ClassicSim",
+            id_tag="classic-sim",
+            is_visible=True,
+            is_arena_sim_allowed=True,
+        )
+        other = Cyclist.objects.create(
+            user_id="OtherRider",
+            id_tag="other-rider",
+            is_visible=True,
+            is_arena_sim_allowed=False,
+        )
+        classic.groups.add(leaf)
+        other.groups.add(leaf)
+        for i, cyclist in enumerate((classic, other), start=1):
+            device = Device.objects.create(
+                name=f"simf-box-{i}",
+                display_name=f"SimF {i}",
+                is_visible=True,
+                group=top,
+                is_arena_sim_allowed=True,
+            )
+            DeviceConfiguration.objects.create(device=device, wheel_size=2075.0)
+            CyclistDeviceCurrentMileage.objects.create(
+                cyclist=cyclist,
+                device=device,
+                cumulative_mileage=Decimal("0.001"),
+                last_activity=timezone.now(),
+            )
+
+        all_pairs = {p["user_id"] for p in active_pairs_for_top_group(top.id)}
+        assert all_pairs == {"ClassicSim", "OtherRider"}
+        sim_pairs = {
+            p["user_id"]
+            for p in active_pairs_for_top_group(top.id, arena_sim_only=True)
+        }
+        assert sim_pairs == {"ClassicSim"}
+
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            CyclistDeviceCurrentMileage.objects.filter(cyclist=classic).delete()
+            result = auto_assign_active_sessions(top.id, arena_sim_only=True)
+            assert result.get("cleared") is True
+            assert result["assigned"] == 0
+            assert race_state.load_state()["assignments"] == []
+
+    def test_preferred_stations_map_to_configured_lanes(self, tmp_path):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from api.models import Cyclist, CyclistDeviceCurrentMileage, Group, GroupType
+        from iot.models import Device, DeviceConfiguration
+        from minecraft.models import MinecraftArenaLane, MinecraftArenaMotionSettings
+
+        gtype, _ = GroupType.objects.get_or_create(name="test-arena-pref-type")
+        top = Group.objects.create(
+            name="PrefTOP", parent=None, group_type=gtype, is_visible=True
+        )
+        leaf = Group.objects.create(
+            name="PrefLeaf", parent=top, group_type=gtype, is_visible=True
+        )
+
+        # Create DB lanes with preferred stations (small wheels → lane_1 / lane_2)
+        settings_obj = MinecraftArenaMotionSettings.get_solo()
+        settings_obj.prefer_database_lanes = True
+        settings_obj.save(update_fields=["prefer_database_lanes"])
+
+        devices = []
+        for i in range(1, 5):
+            device = Device.objects.create(
+                name=f"pref-box-{i}",
+                display_name=f"Pref {i}",
+                is_visible=True,
+                group=top,
+            )
+            DeviceConfiguration.objects.create(
+                device=device,
+                wheel_size=1596.0 if i <= 2 else 1916.0,
+            )
+            devices.append(device)
+            cyclist = Cyclist.objects.create(
+                user_id=f"PrefRider{i}",
+                id_tag=f"pref-{i}",
+                is_visible=True,
+            )
+            cyclist.groups.add(leaf)
+            CyclistDeviceCurrentMileage.objects.create(
+                cyclist=cyclist,
+                device=device,
+                cumulative_mileage=Decimal("0.001"),
+                last_activity=timezone.now(),
+            )
+
+        for i in range(1, 5):
+            lane, _ = MinecraftArenaLane.objects.update_or_create(
+                lane_id=f"lane_{i}",
+                defaults={
+                    "name": f"Bahn {i}",
+                    "tag": f"velo_lane_{i}",
+                    "color": "white",
+                    "sort_order": i,
+                    "is_active": True,
+                    "start_x": 0,
+                    "start_y": 0,
+                    "start_z": 0,
+                    "finish_x_min": 0,
+                    "finish_x_max": 1,
+                    "finish_z_trigger": 1,
+                },
+            )
+            if i == 1:
+                lane.preferred_stations.set([devices[0]])
+            elif i == 2:
+                lane.preferred_stations.set([devices[1]])
+
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+            # Force DB lanes (empty TOML path so load uses DB)
+            MCC_MINECRAFT_ARENA_RACE_CONFIG="",
+        ):
+            result = auto_assign_active_sessions(top.id)
+            assert result["preferred_hits"] == 2
+            by_lane = {a["lane_id"]: a for a in result["assignments"]}
+            assert by_lane["lane_1"]["device_name"] == "pref-box-1"
+            assert by_lane["lane_2"]["device_name"] == "pref-box-2"
+            assert by_lane["lane_1"]["cyclist"] == "PrefRider1"
+            assert by_lane["lane_2"]["cyclist"] == "PrefRider2"
+
+    def test_no_active_sessions_clears_assignments(self, tmp_path):
+        example = (
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "velo_arena_race.toml.example"
+        )
+        state_file = tmp_path / "arena_state.json"
+        with override_settings(
+            MCC_MINECRAFT_ARENA_RACE_CONFIG=str(example),
+            MCC_MINECRAFT_ARENA_STATE_PATH=str(state_file),
+            DATA_DIR=tmp_path,
+        ):
+            config = load_race_config()
+            race_state.update_state(
+                assignments=[
+                    {
+                        "lane_id": config.lanes[0].id,
+                        "cyclist": "StaleRider",
+                        "device_name": "stale-box",
+                        "device_display": "stale-box",
+                        "wheel_mm": 2075,
+                        "device_factor": 1.0,
+                        "send_interval_seconds": 5.0,
+                        "sim_rate_mps": 2.0,
+                    }
+                ],
+                initialized=False,
+            )
+            assert race_state.load_state()["assignments"]
+            result = auto_assign_active_sessions(None)
+            assert result.get("cleared") is True
+            assert result["assigned"] == 0
+            assert result["detected"] == 0
+            assert race_state.load_state()["assignments"] == []

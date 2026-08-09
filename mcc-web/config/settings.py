@@ -529,8 +529,13 @@ MCC_MINECRAFT_ARENA_DEFAULT_RACE_MODE = config(
 MCC_MINECRAFT_ARENA_DEFAULT_TARGET_LAPS = config(
     'MCC_MINECRAFT_ARENA_DEFAULT_TARGET_LAPS', default=5, cast=int
 )
+# Fallback when Integration has no DB value yet; Integration field is the operator knob.
 MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS = config(
-    'MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS', default=180, cast=int
+    'MCC_MINECRAFT_ARENA_DEFAULT_TIME_LIMIT_SECONDS', default=300, cast=int
+)
+# How long a device session stays "active" for Arena auto-assign (seconds).
+MCC_MINECRAFT_ARENA_ACTIVE_SESSION_SECONDS = config(
+    'MCC_MINECRAFT_ARENA_ACTIVE_SESSION_SECONDS', default=180, cast=int
 )
 MCC_MINECRAFT_ARENA_STATE_PATH = config(
     'MCC_MINECRAFT_ARENA_STATE_PATH',

@@ -18,6 +18,7 @@ from config.logger_utils import get_logger
 from minecraft.services.arena_motion.control import (
     ArenaControlError,
     assert_arena_sim_roster,
+    auto_assign_active_sessions,
     get_status,
     request_avatars,
     request_clear_all,
@@ -87,15 +88,18 @@ def _resolve_top_group_id(request, *, from_post: bool = False) -> int | None:
     return None
 
 
-from minecraft.services.arena_motion.race_modes import MODE_LABELS, default_race_mode
+from minecraft.services.arena_motion.race_modes import (
+    MODE_LABELS,
+    default_race_mode,
+    default_time_limit_seconds,
+    time_limit_minutes_for_ui,
+)
 
 
 def _empty_status_fallback(**extra) -> dict:
     """Minimal status dict when get_status() fails (keeps race-mode UI usable)."""
     from minecraft.services.arena_motion.race_modes import (
         default_target_laps,
-        default_time_limit_seconds,
-        time_limit_minutes_for_ui,
         uses_laps,
         uses_time_limit,
     )
@@ -136,12 +140,18 @@ def _parse_race_options(request) -> dict:
         opts["race_mode"] = (request.POST.get("race_mode") or "").strip()
     if "target_laps" in request.POST:
         opts["target_laps"] = int(request.POST.get("target_laps") or 5)
-    # Prefer minutes field from UI; fall back to seconds.
+    # Prefer minutes field from UI; fall back to seconds / Integration default.
     if "time_limit_minutes" in request.POST:
-        minutes = float(str(request.POST.get("time_limit_minutes") or "3").replace(",", "."))
+        raw_minutes = str(request.POST.get("time_limit_minutes") or "").replace(",", ".").strip()
+        if raw_minutes:
+            minutes = float(raw_minutes)
+        else:
+            minutes = time_limit_minutes_for_ui(default_time_limit_seconds())
         opts["time_limit_seconds"] = max(30, int(round(minutes * 60)))
     elif "time_limit_seconds" in request.POST:
-        opts["time_limit_seconds"] = int(request.POST.get("time_limit_seconds") or 180)
+        opts["time_limit_seconds"] = int(
+            request.POST.get("time_limit_seconds") or default_time_limit_seconds()
+        )
     # Checkbox (+ optional hidden 0): use last posted value so checked → "1".
     if "continue_after_finish" in request.POST:
         raw = request.POST.getlist("continue_after_finish")
@@ -205,6 +215,51 @@ def minecraft_arena_control(request):
                     )
                 set_assignments(raw)
                 messages.success(request, _("Zuweisungen gespeichert."))
+            elif action == "auto_assign":
+                top_group_id = _resolve_top_group_id(request, from_post=True)
+                top_groups = list(top_groups_for_user(request.user))
+                allowed_scope = _allowed_scope(request, top_groups)
+                arena_sim_only = str(
+                    request.POST.get("arena_sim_only") or ""
+                ).lower() in {"1", "on", "true", "yes"}
+                # top_group_id None = „Alle TOP-Gruppen“ (union of allowed / all for superuser)
+                if (
+                    top_group_id is not None
+                    and allowed_scope is not None
+                    and top_group_id not in allowed_scope
+                ):
+                    raise ArenaControlError(_("TOP-Gruppe nicht erlaubt."))
+                result = auto_assign_active_sessions(
+                    top_group_id,
+                    arena_sim_only=arena_sim_only,
+                    allowed_top_group_ids=allowed_scope,
+                )
+                if result.get("cleared"):
+                    messages.warning(
+                        request,
+                        result.get("warning")
+                        or _(
+                            "Keine aktiven Radler — Bahnzuweisungen geleert."
+                        ),
+                    )
+                else:
+                    msg = _(
+                        "%(assigned)d aktive Radler erkannt und Bahnen zugeordnet "
+                        "(%(detected)d Session(s) gesamt)."
+                    ) % {
+                        "assigned": result["assigned"],
+                        "detected": result["detected"],
+                    }
+                    preferred_hits = int(result.get("preferred_hits") or 0)
+                    if preferred_hits:
+                        msg += " " + _(
+                            "%(n)d über bevorzugte Stationen (Bahn-Setup)."
+                        ) % {"n": preferred_hits}
+                    if result["overflow"]:
+                        msg += " " + _(
+                            "%(n)d weitere Session(s) ohne freie Bahn."
+                        ) % {"n": result["overflow"]}
+                    messages.success(request, msg)
             elif action == "start":
                 opts = _parse_race_options(request)
                 request_start(

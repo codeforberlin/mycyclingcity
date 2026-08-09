@@ -24,6 +24,27 @@
   min-width:200px; padding:0.45rem 0.6rem; border:1px solid #94a3b8;
   border-radius:0.5rem; font-size:1rem;
 }
+.arena-assign-mode-label {
+  display:block; font-size:0.8rem; color:#475569; margin-bottom:0.25rem;
+}
+.arena-assign-mode {
+  display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:center;
+  min-height:2.4rem;
+}
+.arena-assign-mode label {
+  display:inline-flex; align-items:center; gap:0.35rem;
+  margin:0; font-size:0.95rem; color:#0f172a; font-weight:600;
+  white-space:nowrap;
+}
+.arena-auto-form { display:flex; align-items:center; gap:0.75rem; margin:0; }
+.arena-auto-hint {
+  margin:0.35rem 0 0; font-size:0.82rem; color:#64748b; max-width:22rem; line-height:1.35;
+}
+.arena-auto-form .btn-save:disabled {
+  opacity:0.45; cursor:not-allowed;
+}
+.arena-wrap.is-manual-assign #arenaAutoAssignWrap { display:none; }
+
 .arena-grid {
   display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
   gap:1rem; margin:1rem 0 1.5rem;
@@ -35,6 +56,9 @@
 }
 .arena-card h3 { margin:0 0 0.35rem; font-size:1.25rem; }
 .arena-card .tag { color:#64748b; font-size:0.88rem; margin-bottom:0.65rem; }
+.arena-preferred-stations {
+  font-size:0.8rem; color:#0f766e; margin:0 0 0.55rem; line-height:1.35;
+}
 .arena-card .cyclist-name {
   font-size:1.2rem; font-weight:800; color:#0f172a; margin:0 0 0.65rem;
 }
@@ -217,7 +241,7 @@
           <button type="button" data-step="-0.5" aria-label="{% trans 'Zeitlimit verringern' %}">−</button>
           <input id="arena_time_limit_minutes" type="number" name="time_limit_minutes"
                  min="0.5" max="60" step="0.5" inputmode="decimal"
-                 value="{{ status.time_limit_minutes|default:3 }}">
+                 value="{{ status.time_limit_minutes|default:5 }}">
           <button type="button" data-step="0.5" aria-label="{% trans 'Zeitlimit erhöhen' %}">+</button>
         </span>
       </span>
@@ -264,6 +288,34 @@
       </select>
     </div>
     <div>
+      <span class="arena-assign-mode-label">{% trans 'Zuweisung' %}</span>
+      <div class="arena-assign-mode" role="radiogroup" aria-label="{% trans 'Zuweisungsmodus' %}">
+        <label>
+          <input type="radio" name="arena_assign_mode" value="auto" id="arenaModeAuto" checked>
+          {% trans 'Auto (aktive Sessions)' %}
+        </label>
+        <label>
+          <input type="radio" name="arena_assign_mode" value="manual" id="arenaModeManual">
+          {% trans 'Manuell' %}
+        </label>
+      </div>
+    </div>
+    <div id="arenaAutoAssignWrap">
+      <form method="post" id="arenaAutoAssignForm" class="arena-auto-form">
+        {% csrf_token %}
+        <input type="hidden" name="arena_action" value="auto_assign">
+        <input type="hidden" name="top_group_id" id="arenaAutoTopHidden" value="{{ selected_top_group_id|default_if_none:'' }}">
+        <input type="hidden" name="arena_sim_only" id="arenaAutoSimHidden" value="0">
+        <button type="submit" class="btn-save" id="arenaAutoAssignBtn"
+                title="{% trans 'Radler kurz treten lassen, dann aktive Sessions auf Bahnen legen.' %}">
+          {% trans 'Aktive erkennen' %}
+        </button>
+      </form>
+      <p class="arena-auto-hint" id="arenaAutoHint">
+        {% trans 'Vor dem Start kurz treten lassen — „Aktive erkennen“ belegt Bahnen. „Alle TOP-Gruppen“ erkennt Radler aus allen erlaubten TOPs (Cross-Gruppen-Rennen). Bevorzugte Stationen im Bahn-Setup.' %}
+      </p>
+    </div>
+    <div>
       <label for="arenaCyclistSearch">{% trans 'Radler suchen' %}</label>
       <input type="search" id="arenaCyclistSearch" placeholder="{% trans 'Name / ID-Tag' %}" autocomplete="off">
     </div>
@@ -288,6 +340,11 @@
       <div class="arena-card" data-lane-id="{{ card.id }}">
         <h3>{{ card.name }}</h3>
         <div class="tag">{{ card.id }} · {{ card.tag }} · {{ card.color }}</div>
+        {% if card.preferred_stations %}
+        <div class="arena-preferred-stations">
+          {% trans 'Bevorzugte Stationen' %}: {{ card.preferred_stations|join:", " }}
+        </div>
+        {% endif %}
         {% if card.cyclist %}
         <p class="cyclist-name">{{ card.cyclist }}</p>
         {% endif %}
@@ -394,11 +451,38 @@
   const cyclistSearch = document.getElementById('arenaCyclistSearch');
   const deviceSearch = document.getElementById('arenaDeviceSearch');
   const hiddenTop = document.getElementById('arenaTopGroupHidden');
+  const autoTopHidden = document.getElementById('arenaAutoTopHidden');
+  const autoSimHidden = document.getElementById('arenaAutoSimHidden');
+  const autoAssignBtn = document.getElementById('arenaAutoAssignBtn');
+  const autoAssignForm = document.getElementById('arenaAutoAssignForm');
+  const modeAuto = document.getElementById('arenaModeAuto');
+  const modeManual = document.getElementById('arenaModeManual');
   const emptyCyclist = '{% trans "kein Radler" %}';
   const emptyDevice = '{% trans "Gerät wählen" %}';
   const orphanLabel = '{% trans "aktuell zugewiesen" %}';
   const radLabel = '{% trans "Rad" %}';
+  const needTopMsg = '';
   let searchTimer = null;
+
+  function syncAutoFormFields() {
+    const topVal = topSelect ? topSelect.value : '';
+    if (hiddenTop) hiddenTop.value = topVal;
+    if (autoTopHidden) autoTopHidden.value = topVal;
+    const simOnly = document.getElementById('arenaSimOnly');
+    if (autoSimHidden) autoSimHidden.value = (simOnly && simOnly.checked) ? '1' : '0';
+    if (autoAssignBtn) {
+      autoAssignBtn.disabled = false;
+      autoAssignBtn.title = topVal
+        ? '{% trans "Aktive Sessions der gewählten TOP-Gruppe auf Bahnen legen." %}'
+        : '{% trans "Aktive Sessions aller erlaubten TOP-Gruppen auf Bahnen legen." %}';
+    }
+  }
+
+  function syncAssignMode() {
+    const isManual = modeManual && modeManual.checked;
+    wrap.classList.toggle('is-manual-assign', !!isManual);
+    syncAutoFormFields();
+  }
 
   function addOption(sel, value, label, selected, attrs) {
     const opt = document.createElement('option');
@@ -721,7 +805,10 @@
       }).catch(function () {});
   }
 
-  if (topSelect) topSelect.addEventListener('change', loadFilters);
+  if (topSelect) topSelect.addEventListener('change', function () {
+    syncAutoFormFields();
+    loadFilters();
+  });
   function debounceLoad(fn) {
     return function () {
       clearTimeout(searchTimer);
@@ -731,7 +818,17 @@
   if (cyclistSearch) cyclistSearch.addEventListener('input', debounceLoad(loadCyclists));
   if (deviceSearch) deviceSearch.addEventListener('input', debounceLoad(loadDevices));
   const simOnly = document.getElementById('arenaSimOnly');
-  if (simOnly) simOnly.addEventListener('change', loadFilters);
+  if (simOnly) simOnly.addEventListener('change', function () {
+    syncAutoFormFields();
+    loadFilters();
+  });
+  if (modeAuto) modeAuto.addEventListener('change', syncAssignMode);
+  if (modeManual) modeManual.addEventListener('change', syncAssignMode);
+  if (autoAssignForm) {
+    autoAssignForm.addEventListener('submit', function () {
+      syncAutoFormFields();
+    });
+  }
 
   document.querySelectorAll('.arena-cyclist-select').forEach(function (sel) {
     sel.addEventListener('change', function () { sel.dataset.selected = sel.value; });
@@ -744,6 +841,7 @@
     });
   });
 
+  syncAssignMode();
   setInterval(refreshStatus, 1500);
 })();
 </script>

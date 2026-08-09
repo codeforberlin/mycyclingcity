@@ -348,7 +348,7 @@
           <button type="button" data-step="-0.5" aria-label="{% trans 'Zeitlimit verringern' %}">−</button>
           <input id="time_limit_minutes" type="number" name="time_limit_minutes"
                  min="0.5" max="60" step="0.5" inputmode="decimal"
-                 value="{{ status.time_limit_minutes|default:3 }}">
+                 value="{{ status.time_limit_minutes|default:5 }}">
           <button type="button" data-step="0.5" aria-label="{% trans 'Zeitlimit erhöhen' %}">+</button>
         </span>
       </span>

@@ -121,6 +121,16 @@ class MinecraftIntegrationConfigAdmin(admin.ModelAdmin):
             },
         ),
         (
+            _("Velo-Arena"),
+            {
+                "fields": ("arena_default_time_limit_minutes",),
+                "description": _(
+                    "Default-Zeitlimit für Velo-Rennen (Arena-Steuerung / Simulation). "
+                    "Operatoren können den Wert pro Rennen weiter anpassen, sofern der Browser das zulässt."
+                ),
+            },
+        ),
+        (
             _("Metadaten"),
             {
                 "fields": ("updated_at", "updated_by"),
@@ -131,6 +141,16 @@ class MinecraftIntegrationConfigAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
+        if "arena_default_time_limit_minutes" in form.changed_data:
+            try:
+                from minecraft.services.arena_motion.control import (
+                    apply_integration_default_time_limit,
+                )
+
+                apply_integration_default_time_limit(obj.arena_default_time_limit_minutes)
+            except Exception:
+                # Arena state is optional; Integration save must still succeed.
+                pass
 
     def has_add_permission(self, request):
         return not MinecraftIntegrationConfig.objects.exists()
@@ -824,6 +844,16 @@ class MinecraftArenaLaneAdmin(admin.ModelAdmin):
             {"fields": ("impulse_x", "impulse_y", "impulse_z")},
         ),
         (
+            _("Bevorzugte Stationen (Auto-Zuweisung)"),
+            {
+                "fields": ("preferred_stations",),
+                "description": _(
+                    "Welche IoT-Counter bei „Aktive erkennen“ auf diese Bahn sollen "
+                    "(z. B. Stationen mit kleinen Rädern auf Bahn 1 und 2)."
+                ),
+            },
+        ),
+        (
             _("Optionales Welt-Schild"),
             {
                 "classes": ("collapse",),
@@ -832,6 +862,7 @@ class MinecraftArenaLaneAdmin(admin.ModelAdmin):
         ),
         (_("Meta"), {"fields": ("updated_at",)}),
     )
+    filter_horizontal = ("preferred_stations",)
     readonly_fields = ("updated_at",)
 
     def has_module_permission(self, request):
