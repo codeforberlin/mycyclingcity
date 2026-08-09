@@ -359,10 +359,121 @@ class TestSessionControlBuilder:
         session = start_builder_session("Kette")
         assert session.duration_minutes == 120
 
+    @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
+    @patch(
+        "minecraft.services.session_control.run_commands_require_player",
+        return_value=(True, "ok"),
+    )
+    @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
+    def test_start_builder_region_spawn_priority(self, mock_rcon, mock_player_rcon, mock_wait):
+        from minecraft.models import MinecraftProtectedRegion
+        from minecraft.services.session_control import (
+            SessionControlError,
+            region_spawn_xyz,
+        )
+
+        group = GroupFactory(name="Kette", mc_username="Kette")
+        reg = register_group_for_minecraft(group)
+        MinecraftTeamRegistration.objects.filter(pk=reg.pk).update(authme_is_registered=True)
+        region = MinecraftProtectedRegion.objects.create(
+            region_id="kette_zone",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=10,
+            min_z=0,
+            max_x=10,
+            max_y=20,
+            max_z=10,
+        )
+        region.builders.add(reg)
+        x, y, z = region_spawn_xyz(region)
+        assert 5.0 <= x <= 6.0
+        assert 5.0 <= z <= 6.0
+        assert y == 12.0
+
+        tall = MinecraftProtectedRegion.objects.create(
+            region_id="kette_tall",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=-64,
+            min_z=0,
+            max_x=10,
+            max_y=320,
+            max_z=10,
+        )
+        _, tall_y, _ = region_spawn_xyz(tall)
+        assert tall_y > 0  # not deep underground (min_y+2)
+        assert -64 <= tall_y <= 320
+
+        region.spawn_x, region.spawn_y, region.spawn_z = 3, 14, 4
+        region.save()
+        sx, sy, sz = region_spawn_xyz(region)
+        assert (sx, sy, sz) == (3.5, 14.0, 4.5)
+
+        session = start_builder_session(
+            "Kette",
+            duration=30,
+            teleport_to_spawn=True,
+            spawn_region_id=region.pk,
+        )
+        assert session.spawn_region_id == region.pk
+        assert session.teleport_to_spawn is False
+        joined = " ".join(mock_player_rcon.call_args[0][0])
+        assert "tp Kette 3.5 14 4.5" in joined
+        # World lobby spawn must not be used when region is set.
+        assert session.teleport_to_spawn is False
+
+        other = MinecraftProtectedRegion.objects.create(
+            region_id="fremd",
+            world="MyCyclingCity",
+            min_x=100,
+            min_y=0,
+            min_z=100,
+            max_x=110,
+            max_y=10,
+            max_z=110,
+        )
+        with pytest.raises(SessionControlError):
+            start_builder_session("Kette", duration=30, spawn_region_id=other.pk)
+
 
 @pytest.mark.unit
 @pytest.mark.django_db
-class TestSessionControlLifecycle:
+class TestRegionsForBuilder:
+    def test_only_member_regions_listed(self):
+        from minecraft.models import MinecraftProtectedRegion
+        from minecraft.services.region_admin import regions_for_builder_choices
+        from minecraft.services.team_registration import register_group_for_minecraft
+
+        g1 = GroupFactory(name="TeamA", mc_username="TeamA")
+        g2 = GroupFactory(name="TeamB", mc_username="TeamB")
+        reg_a = register_group_for_minecraft(g1)
+        reg_b = register_group_for_minecraft(g2)
+        r1 = MinecraftProtectedRegion.objects.create(
+            region_id="a_only",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=1,
+            max_y=1,
+            max_z=1,
+        )
+        r2 = MinecraftProtectedRegion.objects.create(
+            region_id="b_only",
+            world="MyCyclingCity",
+            min_x=2,
+            min_y=0,
+            min_z=2,
+            max_x=3,
+            max_y=1,
+            max_z=3,
+        )
+        r1.builders.add(reg_a)
+        r2.builders.add(reg_b)
+        choices = regions_for_builder_choices(reg_a)
+        assert [c["region_id"] for c in choices] == ["a_only"]
+
     @pytest.fixture(autouse=True)
     def _authme_mode(self, settings):
         settings.MCC_MINECRAFT_SESSION_AUTH_MODE = "authme"

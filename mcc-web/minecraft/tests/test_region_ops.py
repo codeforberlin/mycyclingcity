@@ -16,12 +16,15 @@ from minecraft.services.region_ops import (
     _region_already_exists_response,
     apply_region_geometry,
     build_flag_commands,
+    build_hierarchy_commands,
     build_member_sync_commands,
     build_selection_commands,
     default_region_max_y,
     default_region_min_y,
     normalize_region_id,
     parse_entity_pos,
+    WG_MASTER_PRIORITY,
+    WG_SUB_PRIORITY,
 )
 
 
@@ -48,10 +51,25 @@ class TestRegionOpsHelpers:
         cmds = build_flag_commands("r1", "w", protect_build=True)
         assert any("passthrough" in c and "allow" not in c for c in cmds)
         assert any(c.endswith(" build") for c in cmds)
+        assert "rg flag -w w r1 use deny" in cmds
+        assert "rg flag -w w r1 chest-access deny" in cmds
+        assert "rg flag -w w r1 pvp deny" in cmds
+        assert "rg flag -w w r1 tnt deny" in cmds
+        assert "rg flag -w w r1 other-explosion deny" in cmds
+        assert "rg flag -w w r1 creeper-explosion deny" in cmds
+        assert "rg flag -w w r1 fire-spread deny" in cmds
+        assert "rg flag -w w r1 lava-fire deny" in cmds
+        assert "rg flag -w w r1 enderman-grief deny" in cmds
+        assert any("greeting Willkommen in r1" in c for c in cmds)
+        assert any("farewell Bis bald (r1)" in c for c in cmds)
 
     def test_flag_unprotect(self):
         cmds = build_flag_commands("r1", "w", protect_build=False)
         assert "passthrough allow" in cmds[0]
+        assert "rg flag -w w r1 use" in cmds
+        assert "rg flag -w w r1 chest-access" in cmds
+        # Safety flags stay on even without build protection.
+        assert "rg flag -w w r1 pvp deny" in cmds
 
     def test_member_sync_diff(self):
         cmds = build_member_sync_commands(
@@ -74,6 +92,139 @@ class TestRegionOpsHelpers:
     def test_default_region_y_span(self):
         assert default_region_min_y() == -64
         assert default_region_max_y() == 320
+
+    def test_hierarchy_commands_master(self):
+        region = MinecraftProtectedRegion(
+            region_id="master_a",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=1,
+            max_y=1,
+            max_z=1,
+        )
+        cmds = build_hierarchy_commands(region)
+        assert cmds[0] == f"rg setparent -w MyCyclingCity master_a"
+        assert f"priority -w MyCyclingCity master_a {WG_MASTER_PRIORITY}" in cmds[1]
+
+    def test_hierarchy_commands_sub(self):
+        master = MinecraftProtectedRegion(
+            region_id="master_a",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=10,
+            max_y=10,
+            max_z=10,
+        )
+        # Unsaved parent with region_id is enough for command building.
+        sub = MinecraftProtectedRegion(
+            region_id="master_a_sub",
+            world="MyCyclingCity",
+            parent=master,
+            min_x=1,
+            min_y=0,
+            min_z=1,
+            max_x=2,
+            max_y=5,
+            max_z=2,
+        )
+        # FK may not resolve parent without pk — set manually for command helper.
+        sub.parent = master
+        cmds = build_hierarchy_commands(sub)
+        assert cmds[0] == "rg setparent -w MyCyclingCity master_a_sub master_a"
+        assert f"priority -w MyCyclingCity master_a_sub {WG_SUB_PRIORITY}" in cmds[1]
+
+
+@pytest.mark.unit
+@pytest.mark.django_db
+class TestRegionOverlap:
+    def test_masters_may_not_overlap(self):
+        from django.core.exceptions import ValidationError
+
+        MinecraftProtectedRegion.objects.create(
+            region_id="m1",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=10,
+            max_y=10,
+            max_z=10,
+        )
+        with pytest.raises(ValidationError):
+            MinecraftProtectedRegion(
+                region_id="m2",
+                world="MyCyclingCity",
+                min_x=5,
+                min_y=0,
+                min_z=5,
+                max_x=15,
+                max_y=10,
+                max_z=15,
+            ).save()
+
+    def test_touching_edges_allowed(self):
+        MinecraftProtectedRegion.objects.create(
+            region_id="edge_a",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=10,
+            max_y=10,
+            max_z=10,
+        )
+        # Shares the face at x=10 — not an interior overlap.
+        MinecraftProtectedRegion.objects.create(
+            region_id="edge_b",
+            world="MyCyclingCity",
+            min_x=10,
+            min_y=0,
+            min_z=0,
+            max_x=20,
+            max_y=10,
+            max_z=10,
+        )
+
+    def test_sibling_subs_may_not_overlap(self):
+        from django.core.exceptions import ValidationError
+
+        master = MinecraftProtectedRegion.objects.create(
+            region_id="ms",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=100,
+            max_y=100,
+            max_z=100,
+        )
+        MinecraftProtectedRegion.objects.create(
+            region_id="ms_a",
+            world="MyCyclingCity",
+            parent=master,
+            min_x=0,
+            min_y=0,
+            min_z=0,
+            max_x=20,
+            max_y=20,
+            max_z=20,
+        )
+        with pytest.raises(ValidationError):
+            MinecraftProtectedRegion(
+                region_id="ms_b",
+                world="MyCyclingCity",
+                parent=master,
+                min_x=10,
+                min_y=0,
+                min_z=10,
+                max_x=30,
+                max_y=20,
+                max_z=30,
+            ).save()
 
 
 @pytest.mark.unit

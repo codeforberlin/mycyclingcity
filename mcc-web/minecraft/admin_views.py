@@ -47,6 +47,17 @@ from minecraft.services.preset_permissions import (
     user_can_manage_protected_regions,
     user_can_run_free_rcon,
 )
+from minecraft.services.region_admin import (
+    annotate_move_flags,
+    draft_from_post,
+    empty_region_draft,
+    hierarchical_region_list,
+    master_regions_queryset,
+    move_region,
+    region_to_draft,
+    save_region_from_post,
+    top_groups_queryset,
+)
 from minecraft.services.rcon_presets import presets_grouped
 from minecraft.services.team_registration import (
     active_registrations,
@@ -552,9 +563,7 @@ def minecraft_city(request):
         default_region_max_y,
         default_region_min_y,
         fetch_player_block_pos,
-        normalize_region_id,
         paper_world,
-        parse_int_coord,
         remove_region_from_server,
         sync_region_members,
     )
@@ -919,143 +928,77 @@ def minecraft_city(request):
                         messages.error(request, detail)
                     return redirect("admin:minecraft_city")
 
+                if action in {"move_up", "move_down"}:
+                    pk = int(request.POST.get("rg_pk") or 0)
+                    region = MinecraftProtectedRegion.objects.get(pk=pk)
+                    moved = move_region(region, -1 if action == "move_up" else 1)
+                    if moved:
+                        messages.success(
+                            request,
+                            _("Reihenfolge von „%(id)s“ aktualisiert.")
+                            % {"id": region.region_id},
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            _("„%(id)s“ ist bereits am Ende der Liste.")
+                            % {"id": region.region_id},
+                        )
+                    return redirect("admin:minecraft_city")
+
                 if action == "capture_pos":
                     player = (request.POST.get("rg_player") or "").strip()
                     corner = (request.POST.get("rg_corner") or "min").strip()
                     x, y, z = fetch_player_block_pos(player)
-                    min_y_default = default_region_min_y()
-                    max_y_default = default_region_max_y()
-
-                    def _keep_y(raw, default: int) -> int:
-                        text = str(raw if raw is not None else "").strip()
-                        if text == "":
-                            return default
-                        try:
-                            return int(float(text))
-                        except (TypeError, ValueError):
-                            return default
-
-                    region_draft = {
-                        "pk": (request.POST.get("rg_pk") or "").strip(),
-                        "region_id": (request.POST.get("rg_region_id") or "").strip(),
-                        "display_name": (request.POST.get("rg_display_name") or "").strip(),
-                        "world": (request.POST.get("rg_world") or paper_world()).strip(),
-                        "min_x": request.POST.get("rg_min_x") or "",
-                        "min_y": _keep_y(request.POST.get("rg_min_y"), min_y_default),
-                        "min_z": request.POST.get("rg_min_z") or "",
-                        "max_x": request.POST.get("rg_max_x") or "",
-                        "max_y": _keep_y(request.POST.get("rg_max_y"), max_y_default),
-                        "max_z": request.POST.get("rg_max_z") or "",
-                        "protect_build": request.POST.get("rg_protect_build") == "on",
-                        "notes": (request.POST.get("rg_notes") or "").strip(),
-                        "builder_ids": [
-                            int(v) for v in request.POST.getlist("rg_builders") if str(v).isdigit()
-                        ],
-                        "player": player,
-                    }
                     # Player capture sets horizontal corners only — keep full-height Y
                     # so floor/ceiling stay protected unless the operator edits Y.
-                    if corner == "max":
-                        region_draft["max_x"], region_draft["max_z"] = x, z
-                    else:
-                        region_draft["min_x"], region_draft["min_z"] = x, z
-                    messages.success(
-                        request,
-                        _(
-                            "Position von %(player)s: X=%(x)s / Z=%(z)s → %(corner)s "
-                            "(Y unverändert, Spieler-Y war %(y)s)"
+                    region_draft = draft_from_post(request.POST, keep_y_defaults=True)
+                    region_draft["player"] = player
+                    if corner == "spawn":
+                        region_draft["spawn_x"] = x
+                        region_draft["spawn_y"] = y
+                        region_draft["spawn_z"] = z
+                        messages.success(
+                            request,
+                            _(
+                                "Spawn-Punkt von %(player)s: X=%(x)s / Y=%(y)s / Z=%(z)s"
+                            )
+                            % {"player": player, "x": x, "y": y, "z": z},
                         )
-                        % {
-                            "player": player,
-                            "x": x,
-                            "y": y,
-                            "z": z,
-                            "corner": "Max" if corner == "max" else "Min",
-                        },
-                    )
+                    else:
+                        if corner == "max":
+                            region_draft["max_x"], region_draft["max_z"] = x, z
+                        else:
+                            region_draft["min_x"], region_draft["min_z"] = x, z
+                        messages.success(
+                            request,
+                            _(
+                                "Position von %(player)s: X=%(x)s / Z=%(z)s → %(corner)s "
+                                "(Y unverändert, Spieler-Y war %(y)s)"
+                            )
+                            % {
+                                "player": player,
+                                "x": x,
+                                "y": y,
+                                "z": z,
+                                "corner": "Max" if corner == "max" else "Min",
+                            },
+                        )
 
                 elif action == "load":
                     pk = int(request.POST.get("rg_pk") or 0)
                     region = MinecraftProtectedRegion.objects.get(pk=pk)
-                    region_draft = {
-                        "pk": str(region.pk),
-                        "region_id": region.region_id,
-                        "display_name": region.display_name,
-                        "world": region.world,
-                        "min_x": region.min_x,
-                        "min_y": region.min_y,
-                        "min_z": region.min_z,
-                        "max_x": region.max_x,
-                        "max_y": region.max_y,
-                        "max_z": region.max_z,
-                        "protect_build": region.protect_build,
-                        "notes": region.notes,
-                        "builder_ids": list(region.builders.values_list("pk", flat=True)),
-                        "player": "",
-                    }
+                    region_draft = region_to_draft(region)
                     messages.info(
                         request,
                         _("Region „%(id)s“ geladen.") % {"id": region.region_id},
                     )
 
                 elif action in {"save", "apply", "sync_members"}:
-                    pk_raw = (request.POST.get("rg_pk") or "").strip()
-                    region_id = normalize_region_id(request.POST.get("rg_region_id") or "")
-                    world = (request.POST.get("rg_world") or paper_world()).strip() or paper_world()
-                    display_name = (request.POST.get("rg_display_name") or "").strip()
-                    notes = (request.POST.get("rg_notes") or "").strip()
-                    protect_build = request.POST.get("rg_protect_build") == "on"
-                    min_x = parse_int_coord(request.POST.get("rg_min_x"), "min_x")
-                    min_y = parse_int_coord(request.POST.get("rg_min_y"), "min_y")
-                    min_z = parse_int_coord(request.POST.get("rg_min_z"), "min_z")
-                    max_x = parse_int_coord(request.POST.get("rg_max_x"), "max_x")
-                    max_y = parse_int_coord(request.POST.get("rg_max_y"), "max_y")
-                    max_z = parse_int_coord(request.POST.get("rg_max_z"), "max_z")
-                    builder_ids = [
-                        int(v) for v in request.POST.getlist("rg_builders") if str(v).isdigit()
-                    ]
-
-                    if pk_raw:
-                        region = MinecraftProtectedRegion.objects.get(pk=int(pk_raw))
-                        # region_id is the WG key — allow rename only if unique
-                        if region.region_id != region_id:
-                            if MinecraftProtectedRegion.objects.filter(region_id=region_id).exists():
-                                raise ValueError(
-                                    _("Region-ID „%(id)s“ existiert bereits.")
-                                    % {"id": region_id}
-                                )
-                            region.region_id = region_id
-                    else:
-                        region, _created = MinecraftProtectedRegion.objects.get_or_create(
-                            region_id=region_id,
-                            defaults={
-                                "min_x": min_x,
-                                "min_y": min_y,
-                                "min_z": min_z,
-                                "max_x": max_x,
-                                "max_y": max_y,
-                                "max_z": max_z,
-                                "world": world,
-                            },
-                        )
-
-                    region.display_name = display_name
-                    region.world = world
-                    region.min_x = min_x
-                    region.min_y = min_y
-                    region.min_z = min_z
-                    region.max_x = max_x
-                    region.max_y = max_y
-                    region.max_z = max_z
-                    region.protect_build = protect_build
-                    region.notes = notes
-                    region.updated_by = request.user
-                    region.save()
-                    region.builders.set(
-                        MinecraftTeamRegistration.objects.filter(
-                            pk__in=builder_ids, is_active=True
-                        )
+                    region = save_region_from_post(
+                        request.POST, user=request.user, operator_mode=False
                     )
+                    region_draft = region_to_draft(region)
 
                     if action == "save":
                         messages.success(
@@ -1101,18 +1044,36 @@ def minecraft_city(request):
 
                 elif action == "delete":
                     pk = int(request.POST.get("rg_pk") or 0)
-                    region = MinecraftProtectedRegion.objects.get(pk=pk)
+                    region = (
+                        MinecraftProtectedRegion.objects.prefetch_related("subregions")
+                        .get(pk=pk)
+                    )
                     region_id = region.region_id
                     remove_server = request.POST.get("rg_remove_server") == "on"
                     server_log = ""
                     if remove_server:
-                        ok, server_log = remove_region_from_server(region)
+                        # Remove children from WG first (CASCADE will drop DB rows).
+                        for sub in region.subregions.all():
+                            ok_sub, log_sub = remove_region_from_server(sub)
+                            server_log += (log_sub or "") + "\n"
+                            if not ok_sub:
+                                messages.error(
+                                    request,
+                                    _(
+                                        "Löschen der Subregion „%(id)s“ auf dem Server "
+                                        "fehlgeschlagen: %(err)s"
+                                    )
+                                    % {"id": sub.region_id, "err": log_sub},
+                                )
+                                return redirect("admin:minecraft_city")
+                        ok, server_log_main = remove_region_from_server(region)
+                        server_log += server_log_main or ""
                         region_output = server_log
                         if not ok:
                             messages.error(
                                 request,
                                 _("Löschen auf dem Server fehlgeschlagen: %(err)s")
-                                % {"err": server_log},
+                                % {"err": server_log_main},
                             )
                             return redirect("admin:minecraft_city")
                     region.delete()
@@ -1169,12 +1130,10 @@ def minecraft_city(request):
         "co_output": co_output,
         "can_manage_protected_regions": can_regions,
         "protected_regions": (
-            list(
-                MinecraftProtectedRegion.objects.prefetch_related("builders").all()
-            )
-            if can_regions
-            else []
+            annotate_move_flags(hierarchical_region_list()) if can_regions else []
         ),
+        "rg_top_groups": list(top_groups_queryset()) if can_regions else [],
+        "rg_master_regions": list(master_regions_queryset()) if can_regions else [],
         "rg_builder_choices": (
             list(
                 MinecraftTeamRegistration.objects.filter(is_active=True)
@@ -1186,22 +1145,7 @@ def minecraft_city(request):
             else []
         ),
         "rg_draft": region_draft
-        or {
-            "pk": "",
-            "region_id": "",
-            "display_name": "",
-            "world": paper_world() if can_regions else "MyCyclingCity",
-            "min_x": "",
-            "min_y": default_region_min_y() if can_regions else -64,
-            "min_z": "",
-            "max_x": "",
-            "max_y": default_region_max_y() if can_regions else 320,
-            "max_z": "",
-            "protect_build": True,
-            "notes": "",
-            "builder_ids": [],
-            "player": "",
-        },
+        or empty_region_draft(),
         "rg_output": region_output,
         "rg_paper_world": paper_world(),
         "rg_world_min_y": default_region_min_y() if can_regions else -64,

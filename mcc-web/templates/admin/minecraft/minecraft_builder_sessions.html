@@ -143,9 +143,21 @@
                         <input type="hidden" name="account" value="{{ card.account_name }}">
                         <label class="mc-spawn-check" title="{% trans 'Zum Welt-Spawn statt letzter Position' %}">
                             <input type="checkbox" name="teleport_to_spawn" value="1"
+                                   data-spawn-world
                                    {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Spawn' %}
                         </label>
+                        {% if card.spawn_regions %}
+                        <label class="mc-region-select" title="{% trans 'In Bauzone teleportieren (nur Regionen mit Bau-Recht)' %}">
+                            <select name="spawn_region_id" data-spawn-region
+                                    {% if card.is_active %}disabled{% endif %}>
+                                <option value="">{% trans '— Region —' %}</option>
+                                {% for rg in card.spawn_regions %}
+                                <option value="{{ rg.pk }}">{{ rg.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        {% endif %}
                         <button type="submit" class="mc-btn mc-btn-start" data-action="start"
                                 {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Start' %}

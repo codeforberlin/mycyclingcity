@@ -318,6 +318,30 @@ class TestBuilderSessionDashboard:
         mock_start.assert_called_once()
         assert mock_start.call_args[0][0] == "team_alpha"
 
+    @patch("minecraft.session_views.start_builder_session")
+    def test_start_action_with_spawn_region(
+        self, mock_start, client, builder_manager, builder_registration
+    ):
+        mock_start.return_value = MagicMock(
+            account_name="team_alpha",
+            duration_minutes=90,
+        )
+        client.force_login(builder_manager)
+        url = reverse("admin:minecraft_builder_sessions")
+        response = client.post(
+            url,
+            {
+                "action": "start",
+                "account": "team_alpha",
+                "spawn_region_id": "42",
+                "teleport_to_spawn": "1",
+            },
+        )
+        assert response.status_code == 302
+        kwargs = mock_start.call_args.kwargs
+        assert kwargs.get("spawn_region_id") == "42"
+        assert kwargs.get("teleport_to_spawn") is True
+
     @patch("minecraft.session_views.end_session")
     def test_kick_action(self, mock_end, client, builder_manager, builder_registration):
         mock_end.return_value = MagicMock(account_name="team_alpha")

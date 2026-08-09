@@ -43,6 +43,7 @@ class Command(BaseCommand):
                 "manage_auth_failover",
                 "manage_coreprotect",
                 "manage_protected_regions",
+                "manage_assigned_protected_regions",
                 "add_minecraftrconpreset",
                 "change_minecraftrconpreset",
                 "delete_minecraftrconpreset",

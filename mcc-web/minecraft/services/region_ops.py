@@ -138,20 +138,94 @@ def build_define_commands(region_id: str, world: str, *, redefine: bool = False)
     return [f"rg {action} -w {world} {region_id}"]
 
 
+# Venue safety flags — apply to every managed region (members still bypass use/build).
+_WG_SAFETY_FLAG_VALUES: tuple[tuple[str, str], ...] = (
+    ("pvp", "deny"),
+    ("tnt", "deny"),
+    ("other-explosion", "deny"),
+    ("creeper-explosion", "deny"),
+    ("fire-spread", "deny"),
+    ("lava-fire", "deny"),
+    ("enderman-grief", "deny"),
+)
+
+
 def build_flag_commands(region_id: str, world: str, *, protect_build: bool = True) -> list[str]:
     """
     WorldGuard protects non-members by default — do **not** set ``build deny``
     (that overrides default protection and can block members too).
 
-    ``protect_build=True``: clear passthrough so normal region protection applies.
-    ``protect_build=False``: ``passthrough allow`` (region does not block building).
+    ``protect_build=True``: clear passthrough so normal region protection applies;
+    also deny ``use`` / ``chest-access`` for non-members.
+    ``protect_build=False``: ``passthrough allow`` and clear use/chest-access flags.
+
+    Always sets venue safety flags (PvP, explosions, fire, enderman-grief) and a
+    simple greeting/farewell using the region id.
     """
+    commands: list[str] = []
     if protect_build:
+        commands.extend(
+            [
+                f"rg flag -w {world} {region_id} passthrough",
+                f"rg flag -w {world} {region_id} build",
+                f"rg flag -w {world} {region_id} use deny",
+                f"rg flag -w {world} {region_id} chest-access deny",
+            ]
+        )
+    else:
+        commands.extend(
+            [
+                f"rg flag -w {world} {region_id} passthrough allow",
+                f"rg flag -w {world} {region_id} use",
+                f"rg flag -w {world} {region_id} chest-access",
+            ]
+        )
+
+    for flag_name, value in _WG_SAFETY_FLAG_VALUES:
+        commands.append(f"rg flag -w {world} {region_id} {flag_name} {value}")
+
+    commands.append(f"rg flag -w {world} {region_id} greeting Willkommen in {region_id}")
+    commands.append(f"rg flag -w {world} {region_id} farewell Bis bald ({region_id})")
+    return commands
+
+
+# WorldGuard priority: higher wins for overlapping volumes; subs sit above masters.
+WG_MASTER_PRIORITY = 10
+WG_SUB_PRIORITY = 50
+
+
+def build_hierarchy_commands(region) -> list[str]:
+    """
+    Set WorldGuard parent + priority.
+
+    Subs: ``setparent`` to master region_id, priority 50.
+    Masters: clear parent (``rg setparent <id>`` without parent), priority 10.
+    """
+    from django.core.exceptions import ObjectDoesNotExist
+
+    region_id = normalize_region_id(region.region_id)
+    world = (region.world or paper_world()).strip() or paper_world()
+    parent = None
+    try:
+        parent = region.parent
+    except ObjectDoesNotExist:
+        parent = None
+    if parent is not None:
+        parent_wg_id = normalize_region_id(parent.region_id)
         return [
-            f"rg flag -w {world} {region_id} passthrough",
-            f"rg flag -w {world} {region_id} build",
+            f"rg setparent -w {world} {region_id} {parent_wg_id}",
+            f"rg priority -w {world} {region_id} {WG_SUB_PRIORITY}",
         ]
-    return [f"rg flag -w {world} {region_id} passthrough allow"]
+    return [
+        f"rg setparent -w {world} {region_id}",
+        f"rg priority -w {world} {region_id} {WG_MASTER_PRIORITY}",
+    ]
+
+
+def apply_region_hierarchy(region) -> tuple[bool, str]:
+    """Apply WorldGuard setparent + priority after geometry exists."""
+    commands = build_hierarchy_commands(region)
+    return rcon_client.run_commands(commands, stop_on_error=True)
 
 
 def build_member_sync_commands(
@@ -279,12 +353,34 @@ def sync_region_members(region) -> tuple[bool, str]:
 
 
 def apply_region_full(region, *, admin_user: str = "") -> tuple[bool, str]:
-    """Define/redefine geometry, flags, and members."""
+    """Define/redefine geometry, hierarchy, flags, and members."""
+    ensure_subregion_inside_master(region)
+    peer = region.find_overlapping_peer()
+    if peer is not None:
+        if region.parent_id:
+            msg = _(
+                "Subregion überlappt mit Geschwister-Region „%(id)s“."
+            ) % {"id": peer.region_id}
+        else:
+            msg = _(
+                "Master-Region überlappt mit anderer Master-Region „%(id)s“."
+            ) % {"id": peer.region_id}
+        region.last_sync_error = str(msg)[:5000]
+        region.save(update_fields=["last_sync_error", "updated_at"])
+        return False, str(msg)
+
     parts: list[str] = []
     ok, log = apply_region_geometry(region)
     parts.append(log)
     if not ok:
         region.last_sync_error = log[:5000]
+        region.save(update_fields=["last_sync_error", "updated_at"])
+        return False, "\n".join(parts)
+
+    ok_h, log_h = apply_region_hierarchy(region)
+    parts.append(log_h)
+    if not ok_h:
+        region.last_sync_error = log_h[:5000]
         region.save(update_fields=["last_sync_error", "updated_at"])
         return False, "\n".join(parts)
 
@@ -325,3 +421,39 @@ def parse_int_coord(value: Any, field: str) -> int:
         raise ValueError(
             _("Ungültige Koordinate %(field)s: %(val)s") % {"field": field, "val": raw}
         ) from exc
+
+
+def ensure_subregion_inside_master(region) -> None:
+    """Raise ValueError if a subregion is outside its master cuboid."""
+    if not region.parent_id:
+        return
+    parent = region.parent
+    if parent is None:
+        raise ValueError(_("Master-Region nicht gefunden."))
+    if parent.parent_id is not None:
+        raise ValueError(
+            _("Subregionen dürfen nur einer Master-Region untergeordnet sein.")
+        )
+    if (parent.world or "") != (region.world or ""):
+        raise ValueError(
+            _("Subregion muss in derselben Welt wie die Master-Region liegen.")
+        )
+    if not parent.contains_bounds(*region.normalized_bounds()):
+        raise ValueError(
+            _("Subregion muss vollständig innerhalb der Master-Region liegen.")
+        )
+
+
+def suggest_subregion_id(master_region_id: str, slug: str) -> str:
+    """Build ``{master}_{slug}`` and normalize; truncates to fit WG length."""
+    master = normalize_region_id(master_region_id)
+    raw_slug = (slug or "").strip().lower().replace(" ", "_")
+    if not raw_slug:
+        raise ValueError(_("Subregion-Slug fehlt."))
+    # If operator already typed a full id starting with master prefix, keep it.
+    if raw_slug.startswith(f"{master.lower()}_") or raw_slug.startswith(f"{master}_"):
+        return normalize_region_id(raw_slug)
+    prefix = f"{master}_"
+    max_slug_len = max(1, 63 - len(prefix))
+    candidate = prefix + raw_slug[:max_slug_len]
+    return normalize_region_id(candidate)

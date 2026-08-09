@@ -56,7 +56,37 @@ class TestRegionCatalog:
         row = payload["regions"][0]
         assert row["region_id"] == "test_zone"
         assert row["display_name"] == "Test Zone"
+        assert row["kind"] == "master"
+        assert row["parent_id"] is None
         assert row["min_x"] == 0
         assert row["max_x"] == 10
         assert row["color_rgb"] == region_outline_rgb("test_zone")
         assert "Kette" in row["builder_teams"]
+
+    def test_payload_subregion_kind(self):
+        master = MinecraftProtectedRegion.objects.create(
+            region_id="master_zone",
+            world="MyCyclingCity",
+            min_x=0,
+            min_y=-64,
+            min_z=0,
+            max_x=50,
+            max_y=100,
+            max_z=50,
+        )
+        MinecraftProtectedRegion.objects.create(
+            region_id="master_zone_sub",
+            world="MyCyclingCity",
+            parent=master,
+            min_x=5,
+            min_y=-64,
+            min_z=5,
+            max_x=10,
+            max_y=50,
+            max_z=10,
+        )
+        payload = build_protected_regions_payload()
+        by_id = {r["region_id"]: r for r in payload["regions"]}
+        assert by_id["master_zone"]["kind"] == "master"
+        assert by_id["master_zone_sub"]["kind"] == "sub"
+        assert by_id["master_zone_sub"]["parent_id"] == "master_zone"

@@ -111,6 +111,15 @@ def user_can_manage_protected_regions(user: UserLike) -> bool:
     return user.has_perm("minecraft.manage_protected_regions")
 
 
+def user_can_manage_assigned_protected_regions(user: UserLike) -> bool:
+    """TOP operators: manage subregions inside their assigned master regions."""
+    if not _is_active_staff(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return user.has_perm("minecraft.manage_assigned_protected_regions")
+
+
 def user_can_manage_builder_sessions(user: UserLike) -> bool:
     if not _is_active_staff(user):
         return False

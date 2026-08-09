@@ -7036,6 +7036,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_access_minecraft_city,
         user_can_access_minecraft_control,
         user_can_access_minecraft_shop,
+        user_can_manage_assigned_protected_regions,
         user_can_manage_auth_failover,
         user_can_manage_builder_sessions,
         user_can_manage_player_sessions,
@@ -7051,6 +7052,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         or user_can_manage_player_sessions(request.user)
         or user_can_manage_builder_sessions(request.user)
         or user_can_manage_auth_failover(request.user)
+        or user_can_manage_assigned_protected_regions(request.user)
         or user_can_run_arena_sim(request.user)
         or request.user.has_perm('minecraft.view_minecraftshopitem')
         or request.user.has_perm('minecraft.view_minecraftshopcategory')
@@ -7105,6 +7107,17 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'object_name': 'Minecraft City',
                     'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
                     'admin_url': reverse('admin:minecraft_city'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_assigned_protected_regions(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Meine Bauzonen'),
+                    'object_name': 'Minecraft My Build Zones',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_my_build_zones'),
                     'add_url': None,
                     'view_only': True,
                 }
@@ -7862,6 +7875,7 @@ from minecraft.admin_views import (
     minecraft_register_team,
     minecraft_shop_ops,
 )
+from minecraft.region_views import minecraft_my_build_zones
 from minecraft.auth_failover_views import minecraft_auth_failover
 from minecraft.preset_views import (
     minecraft_preset_add,
@@ -7924,6 +7938,11 @@ def get_urls_with_custom_views():
             name='minecraft_auth_failover',
         ),
         path('minecraft/city/', admin.site.admin_view(minecraft_city), name='minecraft_city'),
+        path(
+            'minecraft/my-build-zones/',
+            admin.site.admin_view(minecraft_my_build_zones),
+            name='minecraft_my_build_zones',
+        ),
         path('minecraft/shop-ops/', admin.site.admin_view(minecraft_shop_ops), name='minecraft_shop_ops'),
         path('minecraft/import-shop/', admin.site.admin_view(minecraft_import_shop), name='minecraft_import_shop'),
         path(

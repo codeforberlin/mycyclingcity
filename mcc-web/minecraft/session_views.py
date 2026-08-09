@@ -309,6 +309,7 @@ def _build_player_cards(*, include_presence: bool = True) -> list[dict]:
 
 
 def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
+    from minecraft.services.region_admin import regions_for_builder_choices
     from minecraft.services.waitlist_service import get_assigned_builder_entry
 
     registrations = list(active_registrations())
@@ -355,6 +356,7 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
                 "gamemode_spectator": bool(session.gamemode_spectator) if session else False,
                 "play_gamemode": play_gamemode,
                 "prefer_spectator": bool(registration.prefer_spectator),
+                "spawn_regions": regions_for_builder_choices(registration),
             }
         )
     if include_presence:
@@ -470,6 +472,11 @@ def _post_wants_spawn(request) -> bool:
     """True when the start/spawn checkbox was checked."""
     raw = (request.POST.get("teleport_to_spawn") or "").strip().lower()
     return raw in {"1", "on", "true", "yes"}
+
+
+def _post_spawn_region_id(request) -> str:
+    """Optional protected-region pk from Bau-Session start form."""
+    return (request.POST.get("spawn_region_id") or "").strip()
 
 
 def _handle_kick_all(request, *, account_type: str) -> tuple[bool, str]:
@@ -705,6 +712,7 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                 account,
                 user=request.user,
                 teleport_to_spawn=_post_wants_spawn(request),
+                spawn_region_id=_post_spawn_region_id(request) or None,
             )
             msg = _("Builder-Session gestartet: %(name)s (%(min)s Min.)") % {
                 "name": session.account_name,

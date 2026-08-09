@@ -295,6 +295,10 @@ class MinecraftIntegrationConfig(models.Model):
             ("manage_auth_failover", _("Auth-Failover / Playerdata-Transfer")),
             ("manage_coreprotect", _("CoreProtect Rollback/Restore")),
             ("manage_protected_regions", _("Geschützte Regionen (WorldGuard)")),
+            (
+                "manage_assigned_protected_regions",
+                _("Zugewiesene Bauzonen (Subregionen der eigenen TOP-Gruppe)"),
+            ),
         ]
 
     def __str__(self):
@@ -934,6 +938,18 @@ class MCSession(models.Model):
         verbose_name=_("Spawn-Versatz-Index"),
         help_text=_("Gitter-/Ring-Index beim Spawn-Teleport (0 = exakter Spawn)."),
     )
+    spawn_region = models.ForeignKey(
+        "MinecraftProtectedRegion",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions_spawned_here",
+        verbose_name=_("Spawn-Region"),
+        help_text=_(
+            "Wenn gesetzt: Session startete mit Teleport in diese geschützte Region "
+            "(statt Welt-Spawn)."
+        ),
+    )
 
     class Meta:
         ordering = ["-timestamp_start"]
@@ -1230,7 +1246,12 @@ class MinecraftArenaLane(models.Model):
 
 
 class MinecraftProtectedRegion(models.Model):
-    """Cuboid WorldGuard region managed from Stadtsteuerung, linked to Bau-Accounts."""
+    """Cuboid WorldGuard region managed from Stadtsteuerung, linked to Bau-Accounts.
+
+    Master regions may be permanently assigned to a TOP group (api.Group without
+    parent). Subregions reference a master via ``parent`` and must lie inside the
+    master cuboid; TOP operators may manage only those subregions.
+    """
 
     region_id = models.SlugField(
         max_length=64,
@@ -1248,12 +1269,56 @@ class MinecraftProtectedRegion(models.Model):
         default="MyCyclingCity",
         verbose_name=_("Welt"),
     )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="subregions",
+        verbose_name=_("Master-Region"),
+        help_text=_(
+            "Leer = Master-Region. Gesetzt = Subregion innerhalb der Master-Bounds."
+        ),
+    )
+    assigned_to_group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_protected_regions",
+        verbose_name=_("TOP-Gruppe"),
+        help_text=_(
+            "Nur bei Master-Regionen: permanente Zuordnung zur TOP-Gruppe. "
+            "Subregionen erben die Ownership über die Master-Region."
+        ),
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Sortierung"),
+        help_text=_("Reihenfolge in der Liste (Master untereinander, Subs je Master)."),
+    )
     min_x = models.IntegerField(verbose_name=_("Min X"))
     min_y = models.IntegerField(default=-64, verbose_name=_("Min Y"))
     min_z = models.IntegerField(verbose_name=_("Min Z"))
     max_x = models.IntegerField(verbose_name=_("Max X"))
     max_y = models.IntegerField(default=320, verbose_name=_("Max Y"))
     max_z = models.IntegerField(verbose_name=_("Max Z"))
+    spawn_x = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Spawn X"),
+        help_text=_("Optionaler Session-Spawn. Leer = automatische Cuboid-Mitte."),
+    )
+    spawn_y = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Spawn Y"),
+    )
+    spawn_z = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Spawn Z"),
+    )
     protect_build = models.BooleanField(
         default=True,
         verbose_name=_("Bauen schützen"),
@@ -1297,13 +1362,27 @@ class MinecraftProtectedRegion(models.Model):
     )
 
     class Meta:
-        ordering = ["region_id"]
+        ordering = ["sort_order", "region_id"]
         verbose_name = _("Geschützte Region")
         verbose_name_plural = _("Geschützte Regionen")
 
     def __str__(self):
         label = (self.display_name or "").strip() or self.region_id
         return f"{label} ({self.region_id})"
+
+    @property
+    def is_master(self) -> bool:
+        return self.parent_id is None
+
+    @property
+    def region_kind(self) -> str:
+        return "master" if self.is_master else "sub"
+
+    def effective_top_group(self):
+        """TOP group owning this region (direct for master, inherited for sub)."""
+        if self.parent_id:
+            return self.parent.assigned_to_group
+        return self.assigned_to_group
 
     def normalized_bounds(self) -> tuple[int, int, int, int, int, int]:
         """Return (min_x, min_y, min_z, max_x, max_y, max_z) with min <= max per axis."""
@@ -1315,3 +1394,193 @@ class MinecraftProtectedRegion(models.Model):
             max(self.min_y, self.max_y),
             max(self.min_z, self.max_z),
         )
+
+    @property
+    def has_custom_spawn(self) -> bool:
+        return (
+            self.spawn_x is not None
+            and self.spawn_y is not None
+            and self.spawn_z is not None
+        )
+
+    def contains_point(self, x: int, y: int, z: int) -> bool:
+        """True if block coordinates lie inside this region's cuboid."""
+        return self.contains_bounds(x, y, z, x, y, z)
+
+    def overlaps_bounds(
+        self,
+        min_x: int,
+        min_y: int,
+        min_z: int,
+        max_x: int,
+        max_y: int,
+        max_z: int,
+    ) -> bool:
+        """True if cuboids share interior volume (touching faces is allowed)."""
+        a_min_x, a_min_y, a_min_z, a_max_x, a_max_y, a_max_z = self.normalized_bounds()
+        b_min_x, b_min_y, b_min_z = (
+            min(min_x, max_x),
+            min(min_y, max_y),
+            min(min_z, max_z),
+        )
+        b_max_x, b_max_y, b_max_z = (
+            max(min_x, max_x),
+            max(min_y, max_y),
+            max(min_z, max_z),
+        )
+        return (
+            a_min_x < b_max_x
+            and a_max_x > b_min_x
+            and a_min_y < b_max_y
+            and a_max_y > b_min_y
+            and a_min_z < b_max_z
+            and a_max_z > b_min_z
+        )
+
+    def find_overlapping_peer(self):
+        """
+        Another region in the same world and sibling group that overlaps.
+
+        Masters are checked against other masters; subs against siblings under
+        the same parent. Touching edges are OK.
+        """
+        qs = (
+            type(self)
+            .objects.filter(world=self.world, parent_id=self.parent_id)
+            .only(
+                "region_id",
+                "min_x",
+                "min_y",
+                "min_z",
+                "max_x",
+                "max_y",
+                "max_z",
+            )
+        )
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        bounds = self.normalized_bounds()
+        for other in qs:
+            if other.overlaps_bounds(*bounds):
+                return other
+        return None
+
+    def contains_bounds(
+        self,
+        min_x: int,
+        min_y: int,
+        min_z: int,
+        max_x: int,
+        max_y: int,
+        max_z: int,
+    ) -> bool:
+        """True if the given cuboid lies fully inside this region's bounds."""
+        a_min_x, a_min_y, a_min_z, a_max_x, a_max_y, a_max_z = self.normalized_bounds()
+        b_min_x, b_min_y, b_min_z = (
+            min(min_x, max_x),
+            min(min_y, max_y),
+            min(min_z, max_z),
+        )
+        b_max_x, b_max_y, b_max_z = (
+            max(min_x, max_x),
+            max(min_y, max_y),
+            max(min_z, max_z),
+        )
+        return (
+            b_min_x >= a_min_x
+            and b_min_y >= a_min_y
+            and b_min_z >= a_min_z
+            and b_max_x <= a_max_x
+            and b_max_y <= a_max_y
+            and b_max_z <= a_max_z
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        errors: dict[str, str] = {}
+
+        if self.parent_id:
+            parent = self.parent
+            if parent is None:
+                errors["parent"] = _("Master-Region nicht gefunden.")
+            else:
+                if parent.parent_id is not None:
+                    errors["parent"] = _(
+                        "Subregionen dürfen nur einer Master-Region (ohne Parent) "
+                        "untergeordnet sein."
+                    )
+                if self.pk and parent.pk == self.pk:
+                    errors["parent"] = _("Eine Region kann nicht ihr eigener Parent sein.")
+                if self.assigned_to_group_id:
+                    errors["assigned_to_group"] = _(
+                        "TOP-Zuordnung nur bei Master-Regionen; "
+                        "Subregionen erben über den Parent."
+                    )
+                if parent.world and self.world and parent.world != self.world:
+                    errors["world"] = _(
+                        "Subregion muss in derselben Welt wie die Master-Region liegen."
+                    )
+                if not parent.contains_bounds(*self.normalized_bounds()):
+                    errors["min_x"] = _(
+                        "Subregion muss vollständig innerhalb der Master-Region liegen."
+                    )
+        elif self.assigned_to_group_id:
+            group = self.assigned_to_group
+            if group is not None and group.parent_id is not None:
+                errors["assigned_to_group"] = _(
+                    "Nur TOP-Gruppen (ohne übergeordnete Gruppe) dürfen zugewiesen werden."
+                )
+
+        if self.pk and not self.parent_id:
+            # Prevent shrinking a master so existing subregions fall outside.
+            for sub in type(self).objects.filter(parent_id=self.pk).only(
+                "min_x", "min_y", "min_z", "max_x", "max_y", "max_z", "region_id"
+            ):
+                if not self.contains_bounds(*sub.normalized_bounds()):
+                    errors["min_x"] = _(
+                        "Master-Bounds würden Subregion „%(id)s“ ausschließen."
+                    ) % {"id": sub.region_id}
+                    break
+
+        spawn_vals = (self.spawn_x, self.spawn_y, self.spawn_z)
+        if any(v is not None for v in spawn_vals) and any(v is None for v in spawn_vals):
+            errors["spawn_x"] = _(
+                "Spawn-Punkt: X, Y und Z müssen zusammen gesetzt werden (oder alle leer)."
+            )
+        elif self.has_custom_spawn:
+            if not self.contains_point(self.spawn_x, self.spawn_y, self.spawn_z):
+                errors["spawn_x"] = _(
+                    "Spawn-Punkt muss innerhalb der Regions-Bounds liegen."
+                )
+
+        peer = self.find_overlapping_peer()
+        if peer is not None:
+            if self.parent_id:
+                errors["min_x"] = _(
+                    "Subregion überlappt mit Geschwister-Region „%(id)s“."
+                ) % {"id": peer.region_id}
+            else:
+                errors["min_x"] = _(
+                    "Master-Region überlappt mit anderer Master-Region „%(id)s“."
+                ) % {"id": peer.region_id}
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        # Skip full_clean for RCON sync metadata updates (avoids blocking on
+        # legacy overlaps when only member-sync timestamps change).
+        skip_clean = False
+        if update_fields is not None:
+            allowed = {
+                "synced_members",
+                "last_synced_at",
+                "last_sync_error",
+                "updated_at",
+            }
+            skip_clean = set(update_fields).issubset(allowed)
+        if not skip_clean:
+            self.full_clean()
+        return super().save(*args, **kwargs)

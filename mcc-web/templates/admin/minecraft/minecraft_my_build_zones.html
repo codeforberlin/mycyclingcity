@@ -1,0 +1,307 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .wb-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.5rem;
+    max-width: 720px;
+  }
+  .wb-panel h2 { margin-top: 0; }
+  .wb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem 1rem;
+    margin: 0.75rem 0 1rem;
+  }
+  .wb-grid label { display: block; font-size: 12px; color: #64748b; margin-bottom: 0.2rem; }
+  .wb-grid input[type="number"],
+  .wb-grid input[type="text"],
+  .wb-grid select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+  }
+  .wb-actions { margin-top: 0.75rem; }
+  .wb-actions button, .wb-actions .button { margin: 0 0.35rem 0.35rem 0; }
+  .wb-hint { color: #475569; font-size: 13px; margin: 0.35rem 0 0.75rem; }
+  .rg-coord-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+  }
+  .rg-builders {
+    max-height: 160px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+  }
+  .rg-builders label { display: block; margin: 0.2rem 0; font-size: 13px; color: #334155; }
+  .rg-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1rem; font-size: 13px; }
+  .rg-table th, .rg-table td { border-bottom: 1px solid #e2e8f0; padding: 0.4rem 0.35rem; text-align: left; vertical-align: top; }
+  .rg-master-card { margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px dashed #cbd5e1; }
+  .rg-master-card:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_my_build_zones' %}">{% trans 'Meine Bauzonen' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="wb-panel">
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.35rem;">{{ title }}</h1>
+  <p class="wb-hint">
+    {% trans 'Hier verwalten Sie Subregionen innerhalb der Ihrer TOP-Gruppe zugewiesenen Master-Regionen. Master-Grenzen und TOP-Zuweisung werden in der Stadtsteuerung gesetzt.' %}
+  </p>
+
+  {% if not master_regions %}
+  <p class="wb-hint">
+    {% trans 'Keine Master-Regionen für Ihre TOP-Gruppe. Bitte einen Stadt-Admin bitten, eine Master-Region zuzuweisen.' %}
+  </p>
+  {% else %}
+  {% for master in master_regions %}
+  <div class="rg-master-card">
+    <h2 style="margin:0 0 0.35rem;">
+      {{ master.display_name|default:master.region_id }}
+      <span class="wb-hint">({{ master.region_id }})</span>
+    </h2>
+    <p class="wb-hint" style="margin-top:0;">
+      {% if master.assigned_to_group %}{{ master.assigned_to_group.name }} · {% endif %}
+      {{ master.min_x }},{{ master.min_y }},{{ master.min_z }}
+      → {{ master.max_x }},{{ master.max_y }},{{ master.max_z }}
+      · {{ master.world }}
+    </p>
+    <form method="post" action="{% url 'admin:minecraft_my_build_zones' %}" style="margin-bottom:0.5rem;">
+      {% csrf_token %}
+      <input type="hidden" name="rg_parent" value="{{ master.pk }}">
+      <button type="submit" class="button small" name="action" value="new_under">
+        {% trans '+ Subregion anlegen' %}
+      </button>
+    </form>
+    {% if master.subregions.all %}
+    <table class="rg-table">
+      <thead>
+        <tr>
+          <th>{% trans 'Subregion' %}</th>
+          <th>{% trans 'Bereich' %}</th>
+          <th>{% trans 'Members' %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for region in master.subregions.all %}
+        <tr>
+          <td>
+            <strong>{{ region.region_id }}</strong>
+            {% if region.display_name %}<br><span class="wb-hint">{{ region.display_name }}</span>{% endif %}
+          </td>
+          <td>
+            {{ region.min_x }},{{ region.min_y }},{{ region.min_z }}
+            → {{ region.max_x }},{{ region.max_y }},{{ region.max_z }}
+          </td>
+          <td>
+            {% for b in region.builders.all %}
+              {{ b.ms_username|default:b.mc_username }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              <span class="wb-hint">—</span>
+            {% endfor %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'admin:minecraft_my_build_zones' %}" style="display:inline-flex; gap:0.25rem; flex-wrap:wrap; align-items:center;">
+              {% csrf_token %}
+              <input type="hidden" name="rg_pk" value="{{ region.pk }}">
+              <button type="submit" class="button small" name="action" value="move_up"
+                      {% if not region.can_move_up %}disabled{% endif %}
+                      title="{% trans 'Nach oben' %}">↑</button>
+              <button type="submit" class="button small" name="action" value="move_down"
+                      {% if not region.can_move_down %}disabled{% endif %}
+                      title="{% trans 'Nach unten' %}">↓</button>
+              <button type="submit" class="button small" name="action" value="load">{% trans 'Laden' %}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="wb-hint">{% trans 'Noch keine Subregionen.' %}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+{% if rg_draft.parent_id or rg_draft.pk %}
+<div class="wb-panel">
+  <h2>{% if rg_draft.pk %}{% trans 'Subregion bearbeiten' %}{% else %}{% trans 'Neue Subregion' %}{% endif %}</h2>
+  <form method="post" action="{% url 'admin:minecraft_my_build_zones' %}">
+    {% csrf_token %}
+    <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+    <input type="hidden" name="rg_parent" value="{{ rg_draft.parent_id }}">
+    <input type="hidden" name="rg_world" value="{{ rg_draft.world|default:rg_paper_world }}">
+    <div class="wb-grid">
+      {% if not rg_draft.pk %}
+      <div>
+        <label for="id_rg_sub_slug">{% trans 'Subregion-Slug' %}</label>
+        <input id="id_rg_sub_slug" type="text" name="rg_sub_slug" required
+               maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,39}"
+               value="{{ rg_draft.sub_slug }}"
+               placeholder="werkstatt">
+        <span class="wb-hint">{% trans 'Wird als MasterID_slug zur Region-ID.' %}</span>
+      </div>
+      {% else %}
+      <div>
+        <label>{% trans 'Region-ID' %}</label>
+        <input type="text" value="{{ rg_draft.region_id }}" readonly>
+      </div>
+      {% endif %}
+      <div>
+        <label for="id_rg_display_name">{% trans 'Anzeigename' %}</label>
+        <input id="id_rg_display_name" type="text" name="rg_display_name"
+               maxlength="120" value="{{ rg_draft.display_name }}">
+      </div>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_min_x">{% trans 'Min X' %}</label>
+          <input id="id_rg_min_x" type="number" step="1" name="rg_min_x" required value="{{ rg_draft.min_x }}">
+        </div>
+        <div>
+          <label for="id_rg_min_y">{% trans 'Min Y' %}</label>
+          <input id="id_rg_min_y" type="number" step="1" name="rg_min_y" required value="{{ rg_draft.min_y }}">
+        </div>
+        <div>
+          <label for="id_rg_min_z">{% trans 'Min Z' %}</label>
+          <input id="id_rg_min_z" type="number" step="1" name="rg_min_z" required value="{{ rg_draft.min_z }}">
+        </div>
+      </div>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_max_x">{% trans 'Max X' %}</label>
+          <input id="id_rg_max_x" type="number" step="1" name="rg_max_x" required value="{{ rg_draft.max_x }}">
+        </div>
+        <div>
+          <label for="id_rg_max_y">{% trans 'Max Y' %}</label>
+          <input id="id_rg_max_y" type="number" step="1" name="rg_max_y" required value="{{ rg_draft.max_y }}">
+        </div>
+        <div>
+          <label for="id_rg_max_z">{% trans 'Max Z' %}</label>
+          <input id="id_rg_max_z" type="number" step="1" name="rg_max_z" required value="{{ rg_draft.max_z }}">
+        </div>
+      </div>
+      <p class="wb-hint" style="grid-column: 1 / -1; margin: 0;">
+        {% blocktrans with min_y=rg_world_min_y max_y=rg_world_max_y %}Bounds müssen innerhalb der Master-Region liegen. Y standardmäßig {{ min_y }} … {{ max_y }}.{% endblocktrans %}
+      </p>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_spawn_x">{% trans 'Spawn X' %}</label>
+          <input id="id_rg_spawn_x" type="number" step="1" name="rg_spawn_x" value="{{ rg_draft.spawn_x }}">
+        </div>
+        <div>
+          <label for="id_rg_spawn_y">{% trans 'Spawn Y' %}</label>
+          <input id="id_rg_spawn_y" type="number" step="1" name="rg_spawn_y" value="{{ rg_draft.spawn_y }}">
+        </div>
+        <div>
+          <label for="id_rg_spawn_z">{% trans 'Spawn Z' %}</label>
+          <input id="id_rg_spawn_z" type="number" step="1" name="rg_spawn_z" value="{{ rg_draft.spawn_z }}">
+        </div>
+      </div>
+      <p class="wb-hint" style="grid-column: 1 / -1; margin: 0;">
+        {% trans 'Optionaler Session-Spawn innerhalb der Subregion. Leer = Cuboid-Mitte.' %}
+      </p>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="rg_clear_spawn">
+          {% trans 'Spawn-Punkt löschen (beim Speichern)' %}
+        </label>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label for="id_rg_notes">{% trans 'Notiz' %}</label>
+        <input id="id_rg_notes" type="text" name="rg_notes" maxlength="255" value="{{ rg_draft.notes }}">
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="rg_protect_build" {% if rg_draft.protect_build %}checked{% endif %}>
+          {% trans 'Bauen schützen (WG-Standard; Nicht-Mitglieder blockiert)' %}
+        </label>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <label>{% trans 'Bau-Accounts (WorldGuard-Members)' %}</label>
+        <div class="rg-builders">
+          {% for reg in rg_builder_choices %}
+          <label>
+            <input type="checkbox" name="rg_builders" value="{{ reg.pk }}"
+              {% if reg.pk in rg_draft.builder_ids %}checked{% endif %}>
+            {{ reg.ms_username }}
+            {% if reg.group %} ({{ reg.group.name }}){% endif %}
+            — {{ reg.mc_username }}
+          </label>
+          {% empty %}
+          <span class="wb-hint">{% trans 'Keine Bau-Accounts in Ihren Gruppen.' %}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label for="id_rg_player">{% trans 'Spieler für Position' %}</label>
+        <input id="id_rg_player" type="text" name="rg_player" list="rg_player_list"
+               maxlength="16" value="{{ rg_draft.player }}"
+               pattern="[A-Za-z0-9_]{0,16}" placeholder="mccpc01">
+        <datalist id="rg_player_list">
+          {% for reg in rg_builder_choices %}
+          <option value="{{ reg.ms_username }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='min';">
+        {% trans 'Min = Spieler-Pos' %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='max';">
+        {% trans 'Max = Spieler-Pos' %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='spawn';">
+        {% trans 'Spawn = Spieler-Pos' %}
+      </button>
+      <input type="hidden" name="rg_corner" value="min">
+      <button type="submit" class="button" name="action" value="save">{% trans 'Nur speichern' %}</button>
+      <button type="submit" class="button default" name="action" value="apply"
+              onclick="return confirm('{% trans "Region auf dem Server anwenden (WorldEdit/WorldGuard)?" %}');">
+        {% trans 'Anwenden (WG)' %}
+      </button>
+      <button type="submit" class="button" name="action" value="sync_members">{% trans 'Nur Members sync' %}</button>
+      {% if rg_draft.pk %}
+      <label style="display:inline-block; margin:0 0.5rem;">
+        <input type="checkbox" name="rg_remove_server" checked>
+        {% trans 'Auch aus WorldGuard löschen' %}
+      </label>
+      <button type="submit" class="button" name="action" value="delete" formnovalidate
+              onclick="return confirm('{% trans "Subregion wirklich löschen?" %}');">
+        {% trans 'Löschen' %}
+      </button>
+      {% endif %}
+    </div>
+  </form>
+  {% if rg_output %}
+  <pre class="wb-hint" style="margin-top:1rem; white-space:pre-wrap; background:#0f172a; color:#e2e8f0; padding:0.75rem; border-radius:6px;">{{ rg_output }}</pre>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

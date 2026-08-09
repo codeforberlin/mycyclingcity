@@ -247,6 +247,88 @@ def world_spawn_tp_command(
     return cmd
 
 
+def region_spawn_xyz(region) -> tuple[float, float, float]:
+    """
+    Session teleport target for a protected region.
+
+    Prefer explicit spawn_x/y/z when set; otherwise horizontal cuboid center
+    with a safe Y (world spawn Y for tall regions, near-floor for short bands).
+    """
+    if getattr(region, "has_custom_spawn", False):
+        # Stand in the middle of the target block.
+        return (
+            float(region.spawn_x) + 0.5,
+            float(region.spawn_y),
+            float(region.spawn_z) + 0.5,
+        )
+
+    min_x, min_y, min_z, max_x, max_y, max_z = region.normalized_bounds()
+    x = (min_x + max_x) / 2.0 + 0.5
+    z = (min_z + max_z) / 2.0 + 0.5
+    height = int(max_y) - int(min_y)
+    if height <= 32:
+        y = float(min_y + 2)
+        if y > max_y:
+            y = (float(min_y) + float(max_y)) / 2.0
+    else:
+        _wx, world_y, _wz = resolve_world_spawn_xyz()
+        y = float(world_y)
+        if y < min_y:
+            y = float(min_y + 2)
+        if y > max_y:
+            y = float(max_y) - 1.0 if max_y > min_y else float(max_y)
+        if y < min_y:
+            y = float(min_y)
+    return x, y, z
+
+
+def region_spawn_tp_command(player_name: str, region) -> str:
+    """RCON: teleport player to the center of a protected region cuboid."""
+    x, y, z = region_spawn_xyz(region)
+    cmd = (
+        f"tp {player_name} {_format_coord(x)} {_format_coord(y)} {_format_coord(z)}"
+    )
+    logger.info(
+        "[minecraft_session] region_spawn_tp player=%s region=%s xyz=(%s,%s,%s) cmd=%s",
+        player_name,
+        getattr(region, "region_id", "?"),
+        x,
+        y,
+        z,
+        cmd,
+    )
+    return cmd
+
+
+def resolve_builder_spawn_region(registration, region_pk: int | str | None):
+    """
+    Return the protected region if ``registration`` is a builder member.
+    Raises SessionControlError if pk given but not allowed / missing.
+    """
+    if region_pk is None or region_pk == "":
+        return None
+    try:
+        pk = int(region_pk)
+    except (TypeError, ValueError) as exc:
+        raise SessionControlError(
+            f"Invalid spawn region id: {region_pk}",
+            code="invalid_spawn_region",
+        ) from exc
+    from minecraft.models import MinecraftProtectedRegion
+
+    region = (
+        MinecraftProtectedRegion.objects.filter(pk=pk, builders=registration)
+        .select_related("parent")
+        .first()
+    )
+    if region is None:
+        raise SessionControlError(
+            f"Spawn region not allowed for builder {registration.mc_username}",
+            code="spawn_region_forbidden",
+        )
+    return region
+
+
 def _active_session_for(account_name: str) -> MCSession | None:
     return (
         MCSession.objects.select_for_update()
@@ -552,6 +634,8 @@ def start_builder_session(
     source: str = MCSession.SOURCE_ADMIN,
     teleport_to_spawn: bool = False,
     spawn_offset_index: int = 0,
+    spawn_region=None,
+    spawn_region_id: int | str | None = None,
 ) -> MCSession:
     """Start a BUILDER session for an active MinecraftTeamRegistration."""
     name = (team_name or "").strip()
@@ -577,6 +661,16 @@ def start_builder_session(
 
     if get_active_session(login):
         raise AccountAlreadyActiveError(f"Session already active for {login}")
+
+    resolved_region = spawn_region
+    if resolved_region is None and spawn_region_id not in (None, ""):
+        resolved_region = resolve_builder_spawn_region(registration, spawn_region_id)
+    elif resolved_region is not None:
+        # Ensure the provided region is allowed for this builder.
+        resolved_region = resolve_builder_spawn_region(registration, resolved_region.pk)
+
+    # Region spawn takes priority over world-spawn checkbox.
+    use_world_spawn = bool(teleport_to_spawn) and resolved_region is None
 
     if not is_online_auth_mode() and not registration.authme_is_registered:
         from minecraft.services.builder_account_provision import register_builder_account_on_minecraft
@@ -636,7 +730,9 @@ def start_builder_session(
         spectator=initial_mode == MCSession.GAMEMODE_SPECTATOR,
         gamemode=initial_mode,
     )
-    if teleport_to_spawn:
+    if resolved_region is not None:
+        post_cmds.append(region_spawn_tp_command(online_login, resolved_region))
+    elif use_world_spawn:
         post_cmds.append(
             world_spawn_tp_command(online_login, offset_index=spawn_offset_index)
         )
@@ -655,8 +751,9 @@ def start_builder_session(
             status=MCSession.STATUS_ACTIVE,
             source=source,
             started_by=user,
-            teleport_to_spawn=bool(teleport_to_spawn),
+            teleport_to_spawn=use_world_spawn,
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
+            spawn_region=resolved_region,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()

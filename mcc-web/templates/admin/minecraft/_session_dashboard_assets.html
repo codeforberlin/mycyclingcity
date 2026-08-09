@@ -191,6 +191,28 @@
     height: 1.1rem;
     accent-color: #0f766e;
   }
+  .mc-region-select {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .mc-region-select select {
+    display: block;
+    width: 100%;
+    margin-top: 0.2rem;
+    padding: 0.35rem 0.4rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .mc-region-select select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
   .mc-bulk-start-form {
     display: inline-flex;
     flex-wrap: wrap;
@@ -325,6 +347,9 @@
       if (kickBtn) kickBtn.disabled = !isActive;
       card.querySelectorAll('.mc-start-form input[name="teleport_to_spawn"]').forEach(function (cb) {
         cb.disabled = isActive;
+      });
+      card.querySelectorAll('.mc-start-form select[name="spawn_region_id"]').forEach(function (sel) {
+        sel.disabled = isActive;
       });
       card.querySelectorAll('[data-action="set_gamemode"]').forEach(function (btn) {
         btn.disabled = !isActive;
@@ -703,6 +728,22 @@
       if (countdown && card.classList.contains('is-active')) {
         countdown.textContent = formatMmSs(parseInt(card.getAttribute('data-remaining') || '0', 10));
       }
+    });
+    // Bau-Kachel: Region-Select und Welt-Spawn-Checkbox schließen sich aus.
+    document.querySelectorAll('.mc-start-form').forEach(function (form) {
+      var worldCb = form.querySelector('[data-spawn-world]');
+      var regionSel = form.querySelector('[data-spawn-region]');
+      if (!worldCb || !regionSel) return;
+      worldCb.addEventListener('change', function () {
+        if (worldCb.checked) {
+          regionSel.value = '';
+        }
+      });
+      regionSel.addEventListener('change', function () {
+        if (regionSel.value) {
+          worldCb.checked = false;
+        }
+      });
     });
     if (document.querySelector('.mc-session-card.is-active') ||
         document.querySelector('[data-proxy-status][data-waiting="1"]')) {

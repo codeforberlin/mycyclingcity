@@ -41,7 +41,13 @@ def build_protected_regions_payload() -> dict:
     """
     config = MinecraftIntegrationConfig.get_config()
     regions: list[dict] = []
-    qs = MinecraftProtectedRegion.objects.prefetch_related("builders").order_by("region_id")
+    qs = (
+        MinecraftProtectedRegion.objects.select_related(
+            "parent", "assigned_to_group", "parent__assigned_to_group"
+        )
+        .prefetch_related("builders")
+        .order_by("sort_order", "region_id", "parent_id")
+    )
     for region in qs:
         min_x, min_y, min_z, max_x, max_y, max_z = region.normalized_bounds()
         members = desired_member_logins(region)
@@ -55,6 +61,12 @@ def build_protected_regions_payload() -> dict:
                 "region_id": region.region_id,
                 "display_name": (region.display_name or "").strip() or region.region_id,
                 "world": (region.world or "").strip() or "MyCyclingCity",
+                "kind": region.region_kind,
+                "parent_id": region.parent.region_id if region.parent_id else None,
+                "assigned_group": (
+                    (region.effective_top_group().name if region.effective_top_group() else "")
+                    or ""
+                ),
                 "min_x": min_x,
                 "min_y": min_y,
                 "min_z": min_z,

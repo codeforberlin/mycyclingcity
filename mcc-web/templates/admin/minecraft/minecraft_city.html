@@ -24,7 +24,8 @@
   }
   .wb-grid label { display: block; font-size: 12px; color: #64748b; margin-bottom: 0.2rem; }
   .wb-grid input[type="number"],
-  .wb-grid input[type="text"] {
+  .wb-grid input[type="text"],
+  .wb-grid select {
     width: 100%;
     box-sizing: border-box;
     padding: 0.35rem 0.5rem;
@@ -297,7 +298,7 @@
 <div class="wb-panel">
   <h2>{% trans 'Geschützte Regionen (WorldGuard)' %}</h2>
   <p class="wb-hint">
-    {% trans 'Cuboid-Regionen mit Bau-Schutz. Mitglieder = verknüpfte Bau-Accounts (MS-Login). Koordinaten manuell oder von einem online Spieler übernehmen. „Anwenden“ setzt Selection (WorldEdit), definiert die Region und synct Members.' %}
+    {% trans 'Cuboid-Regionen mit Bau-Schutz. Master-Regionen können einer TOP-Gruppe zugewiesen werden; Subregionen müssen innerhalb der Master-Bounds liegen. Mitglieder = verknüpfte Bau-Accounts (MS-Login). „Anwenden“ setzt Selection, Hierarchy, Flags (PvP/Explosionen/Feuer/Use/Greeting), Members.' %}
   </p>
 
   <form method="post" action="{% url 'admin:minecraft_city' %}" style="margin-bottom:1.25rem;">
@@ -340,6 +341,7 @@
     <thead>
       <tr>
         <th>{% trans 'ID' %}</th>
+        <th>{% trans 'Typ / TOP' %}</th>
         <th>{% trans 'Bereich' %}</th>
         <th>{% trans 'Members' %}</th>
         <th></th>
@@ -351,6 +353,16 @@
         <td>
           <strong>{{ region.region_id }}</strong>
           {% if region.display_name %}<br><span class="wb-hint">{{ region.display_name }}</span>{% endif %}
+        </td>
+        <td>
+          {% if region.parent_id %}
+            {% trans 'Sub' %} → {{ region.parent.region_id }}
+          {% else %}
+            {% trans 'Master' %}
+            {% if region.assigned_to_group %}
+              <br><span class="wb-hint">{{ region.assigned_to_group.name }}</span>
+            {% endif %}
+          {% endif %}
         </td>
         <td>
           {{ region.min_x }},{{ region.min_y }},{{ region.min_z }}
@@ -365,10 +377,16 @@
           {% endfor %}
         </td>
         <td>
-          <form method="post" action="{% url 'admin:minecraft_city' %}">
+          <form method="post" action="{% url 'admin:minecraft_city' %}" style="display:inline-flex; gap:0.25rem; flex-wrap:wrap; align-items:center;">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="protected_region">
             <input type="hidden" name="rg_pk" value="{{ region.pk }}">
+            <button type="submit" class="button small" name="action" value="move_up"
+                    {% if not region.can_move_up %}disabled{% endif %}
+                    title="{% trans 'Nach oben' %}">↑</button>
+            <button type="submit" class="button small" name="action" value="move_down"
+                    {% if not region.can_move_down %}disabled{% endif %}
+                    title="{% trans 'Nach unten' %}">↓</button>
             <button type="submit" class="button small" name="action" value="load">{% trans 'Laden' %}</button>
           </form>
         </td>
@@ -401,6 +419,31 @@
         <input id="id_rg_world" type="text" name="rg_world" required
                maxlength="64" value="{{ rg_draft.world|default:rg_paper_world }}">
       </div>
+      <div>
+        <label for="id_rg_parent">{% trans 'Master-Region (für Sub)' %}</label>
+        <select id="id_rg_parent" name="rg_parent">
+          <option value="">{% trans '— keine (diese ist Master) —' %}</option>
+          {% for master in rg_master_regions %}
+          <option value="{{ master.pk }}"
+            {% if rg_draft.parent_id == master.pk|stringformat:"s" %}selected{% endif %}>
+            {{ master.region_id }}
+            {% if master.assigned_to_group %} ({{ master.assigned_to_group.name }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_rg_assigned_to_group">{% trans 'TOP-Gruppe (nur Master)' %}</label>
+        <select id="id_rg_assigned_to_group" name="rg_assigned_to_group">
+          <option value="">{% trans '— nicht zugewiesen —' %}</option>
+          {% for g in rg_top_groups %}
+          <option value="{{ g.pk }}"
+            {% if rg_draft.assigned_to_group_id == g.pk|stringformat:"s" %}selected{% endif %}>
+            {{ g.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="rg-coord-row">
         <div>
           <label for="id_rg_min_x">{% trans 'Min X' %}</label>
@@ -432,6 +475,29 @@
       <p class="wb-hint" style="grid-column: 1 / -1; margin: 0;">
         {% blocktrans with min_y=rg_world_min_y max_y=rg_world_max_y %}Y steht standardmäßig auf voller Welthöhe ({{ min_y }} … {{ max_y }}); Spieler-Pos setzt nur X/Z. Y bei Bedarf anpassen.{% endblocktrans %}
       </p>
+      <div class="rg-coord-row">
+        <div>
+          <label for="id_rg_spawn_x">{% trans 'Spawn X' %}</label>
+          <input id="id_rg_spawn_x" type="number" step="1" name="rg_spawn_x" value="{{ rg_draft.spawn_x }}">
+        </div>
+        <div>
+          <label for="id_rg_spawn_y">{% trans 'Spawn Y' %}</label>
+          <input id="id_rg_spawn_y" type="number" step="1" name="rg_spawn_y" value="{{ rg_draft.spawn_y }}">
+        </div>
+        <div>
+          <label for="id_rg_spawn_z">{% trans 'Spawn Z' %}</label>
+          <input id="id_rg_spawn_z" type="number" step="1" name="rg_spawn_z" value="{{ rg_draft.spawn_z }}">
+        </div>
+      </div>
+      <p class="wb-hint" style="grid-column: 1 / -1; margin: 0;">
+        {% trans 'Optionaler Session-Spawn (innerhalb der Bounds). Leer = Cuboid-Mitte. Mit „Spawn = Spieler-Pos“ vom Spieler übernehmen.' %}
+      </p>
+      <div style="grid-column: 1 / -1;">
+        <label>
+          <input type="checkbox" name="rg_clear_spawn">
+          {% trans 'Spawn-Punkt löschen (beim Speichern)' %}
+        </label>
+      </div>
       <div style="grid-column: 1 / -1;">
         <label for="id_rg_notes">{% trans 'Notiz' %}</label>
         <input id="id_rg_notes" type="text" name="rg_notes" maxlength="255" value="{{ rg_draft.notes }}">
@@ -478,6 +544,10 @@
       <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
               onclick="this.form.rg_corner.value='max';">
         {% trans 'Max = Spieler-Pos' %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='spawn';">
+        {% trans 'Spawn = Spieler-Pos' %}
       </button>
       <input type="hidden" name="rg_corner" value="min">
       <button type="submit" class="button" name="action" value="save">{% trans 'Nur speichern' %}</button>
