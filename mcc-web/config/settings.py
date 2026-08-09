@@ -142,6 +142,7 @@ INSTALLED_APPS = [
     'map',
     'ranking',
     'leaderboard',
+    'dynamo',
 ]
 
 try:

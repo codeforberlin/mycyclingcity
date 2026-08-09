@@ -1,0 +1,1155 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    dynamo_page.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+{% load i18n l10n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    {% url 'favicon' as favicon_url %}
+    <link rel="icon" type="image/png" href="{{ favicon_url }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --dyn-bg1: #0b1220;
+            --dyn-bg2: #12324a;
+            --dyn-accent: #38bdf8;
+            --dyn-accent-2: #fbbf24;
+            --dyn-ok: #34d399;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: #e2e8f0;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(56, 189, 248, 0.25), transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(251, 191, 36, 0.18), transparent 45%),
+                linear-gradient(160deg, var(--dyn-bg1), var(--dyn-bg2) 55%, #0f172a);
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+        .glass {
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+        .rotor {
+            width: 9rem;
+            height: 9rem;
+            border-radius: 50%;
+            border: 6px solid rgba(56, 189, 248, 0.35);
+            border-top-color: var(--dyn-accent);
+            border-right-color: var(--dyn-accent-2);
+            animation: spin 2.5s linear infinite;
+            animation-play-state: paused;
+        }
+        .rotor.is-spinning { animation-play-state: running; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .battery-shell {
+            height: 1.1rem;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.9);
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+        .battery-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #22d3ee, #34d399 60%, #fbbf24);
+            transition: width 0.8s ease;
+            position: relative;
+        }
+        .battery-fill::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+            animation: shimmer 2.2s linear infinite;
+        }
+        @keyframes shimmer {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+        .cyclist-card.high-power {
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.7), 0 0 24px rgba(251, 191, 36, 0.35);
+            animation: flash 0.9s ease;
+        }
+        @keyframes flash {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .power-bar {
+            height: 0.65rem;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.9);
+            overflow: hidden;
+        }
+        .power-bar > span {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #38bdf8, #a78bfa);
+            transition: width 0.7s ease;
+        }
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+        .stat-period {
+            cursor: pointer;
+            border-radius: 0.85rem;
+            padding: 0.65rem 0.75rem;
+            border: 1px solid transparent;
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+        }
+        .stat-period:hover {
+            background: rgba(56, 189, 248, 0.08);
+        }
+        .stat-period.is-active {
+            background: rgba(56, 189, 248, 0.16);
+            border-color: rgba(56, 189, 248, 0.55);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+        }
+        .period-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .period-tab {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.45);
+            color: #cbd5e1;
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .period-tab.is-active {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: rgba(56, 189, 248, 0.7);
+            color: #e0f2fe;
+            font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .rotor { width: 6.5rem; height: 6.5rem; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <header class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <p class="text-sky-300/80 text-sm uppercase tracking-[0.2em]">{% trans "Virtueller Nabendynamo" %}</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-white mt-1">{{ title }}</h1>
+            <div class="mt-3 flex flex-wrap gap-3 items-end">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1" for="top-group-select">{% trans "TOP-Gruppe" %}</label>
+                    <select id="top-group-select"
+                            class="min-w-[10rem] rounded-lg border border-slate-600 bg-slate-900/80 text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="">{% trans "Alle Gruppen" %}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1" for="leaf-group-select">{% trans "Leaf-Gruppe" %}</label>
+                    <select id="leaf-group-select"
+                            class="min-w-[10rem] rounded-lg border border-slate-600 bg-slate-900/80 text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                            disabled>
+                        <option value="">{% trans "Alle Leafs" %}</option>
+                    </select>
+                </div>
+            </div>
+            <p id="group-filter-hint" class="mt-2 text-sm text-slate-400 hidden"></p>
+        </div>
+        <div class="glass px-4 py-3 space-y-2 min-w-[14rem]">
+            <div class="flex items-center justify-between gap-3 text-sm text-slate-300">
+                <span><span id="active-count">0</span> {% trans "aktive Radler" %}</span>
+            </div>
+            <div class="period-tabs" role="tablist" aria-label="{% trans 'Ansicht' %}">
+                <button type="button" class="period-tab is-active" data-view-scope="all">{% trans "Alle" %}</button>
+                <button type="button" class="period-tab" data-view-scope="cyclist">{% trans "Einzelne" %}</button>
+            </div>
+            <div id="view-cyclist-picker" class="hidden">
+                <label class="block text-xs text-slate-400 mb-1" for="view-cyclist-select">{% trans "Radler" %}</label>
+                <select id="view-cyclist-select"
+                        class="w-full rounded-lg border border-slate-600 bg-slate-900/80 text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+        <div class="glass p-5 xl:col-span-2 flex flex-col md:flex-row items-center gap-6">
+            <div class="relative flex items-center justify-center">
+                <div id="rotor" class="rotor"></div>
+                <div class="absolute text-center">
+                    <div id="total-power" class="stat-value text-3xl font-bold text-sky-300">0</div>
+                    <div class="text-xs uppercase tracking-wider text-slate-400" id="power-unit-label">{% trans "Watt Dynamo" %}</div>
+                    <div id="usable-power-wrap" class="hidden mt-1">
+                        <div id="usable-power" class="stat-value text-lg font-semibold text-emerald-300">0</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">{% trans "Watt nutzbar" %}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 w-full space-y-3">
+                <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <div class="text-xs uppercase tracking-wider text-slate-400" id="selected-period-label">{% trans "Heute" %}</div>
+                        <div class="stat-value text-3xl md:text-4xl font-bold text-amber-300">
+                            <span id="selected-wh">0</span>
+                            <span class="text-base text-slate-400 font-semibold">Wh</span>
+                        </div>
+                    </div>
+                    <div class="period-tabs" role="tablist" aria-label="{% trans 'Zeitraum' %}">
+                        <button type="button" class="period-tab" data-period="session">{% trans "Session" %}</button>
+                        <button type="button" class="period-tab is-active" data-period="day">{% trans "Tag" %}</button>
+                        <button type="button" class="period-tab" data-period="week">{% trans "Woche" %}</button>
+                        <button type="button" class="period-tab" data-period="year">{% trans "Jahr" %}</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 w-full">
+                    <button type="button" class="stat-period text-left" data-period="session">
+                        <div class="text-xs text-slate-400 uppercase">{% trans "Session" %}</div>
+                        <div class="stat-value text-xl font-semibold"><span id="session-wh">0</span> <span class="text-sm text-slate-400">Wh</span></div>
+                    </button>
+                    <button type="button" class="stat-period text-left is-active" data-period="day">
+                        <div class="text-xs text-slate-400 uppercase">{% trans "Heute" %}</div>
+                        <div class="stat-value text-xl font-semibold"><span id="daily-wh">0</span> <span class="text-sm text-slate-400">Wh</span></div>
+                    </button>
+                    <button type="button" class="stat-period text-left" data-period="week">
+                        <div class="text-xs text-slate-400 uppercase">{% trans "Woche" %}</div>
+                        <div class="stat-value text-xl font-semibold"><span id="weekly-wh">0</span> <span class="text-sm text-slate-400">Wh</span></div>
+                    </button>
+                    <button type="button" class="stat-period text-left" data-period="year">
+                        <div class="text-xs text-slate-400 uppercase">{% trans "Jahr" %}</div>
+                        <div class="stat-value text-xl font-semibold"><span id="yearly-wh">0</span> <span class="text-sm text-slate-400">Wh</span></div>
+                    </button>
+                </div>
+                <div class="text-xs text-slate-400" id="scope-hint">
+                    {% trans "Max RPM" %}: <span id="max-rpm" class="text-slate-200 font-semibold">0</span>
+                    · <span id="scope-hint-text">{% trans "Ansicht: alle Radler · Zeitraum wählbar" %}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass p-5">
+            <h2 class="text-lg font-semibold mb-3">{% trans "Was könnte man betreiben?" %}</h2>
+            <div id="appliances" class="space-y-2 text-sm"></div>
+        </div>
+    </section>
+
+    {% if enable_charger_compare %}
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+        <button type="button" id="charger-compare-toggle" class="period-tab">
+            {% trans "Profi: Ladegerät-Vergleich" %}
+        </button>
+        <span id="charger-compare-hint" class="text-xs text-slate-400 hidden">
+            {% trans "Nur zur Erklärung – Wh-Summen bleiben Dynamo-Rohwerte." %}
+        </span>
+    </div>
+    <section class="glass p-5 mb-4 hidden" id="charger-compare-section">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div>
+                <h2 class="text-lg font-semibold">{% trans "Ladegerät-Vergleich (Profi)" %}</h2>
+                <p class="text-xs text-slate-400 mt-1">
+                    {% trans "Vergleich für einen Nabendynamo (nicht Summe aller Räder). Generische Klassen ohne Markennamen." %}
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="period-tabs" id="charger-tabs" role="tablist" aria-label="{% trans 'Ladegerät-Klasse' %}">
+                    <button type="button" class="period-tab{% if charger_profile == 'direct' %} is-active{% endif %}" data-charger="direct">{% trans "Dynamo" %}</button>
+                    <button type="button" class="period-tab{% if charger_profile == 'simple' %} is-active{% endif %}" data-charger="simple">{% trans "Einfach" %}</button>
+                    <button type="button" class="period-tab{% if charger_profile == 'standard' %} is-active{% endif %}" data-charger="standard">{% trans "Standard" %}</button>
+                    <button type="button" class="period-tab{% if charger_profile == 'optimized' %} is-active{% endif %}" data-charger="optimized">{% trans "Optimiert" %}</button>
+                </div>
+                <button type="button" id="charger-compare-close" class="period-tab">{% trans "Schließen" %}</button>
+            </div>
+        </div>
+        <p id="charger-description" class="text-sm text-slate-300 mb-3"></p>
+        <div id="charger-compare-rows" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm"></div>
+        <p class="text-xs text-slate-500 mt-3">
+            {% trans "Bezug: ein Dynamo bei" %}
+            <span id="charger-ref-speed">–</span> km/h
+            → <span id="charger-ref-power">–</span> W {% trans "Rohleistung" %}.
+            <span id="charger-ref-group" class="text-slate-600"></span>
+        </p>
+    </section>
+    {% endif %}
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="glass p-5">
+            <h2 class="text-lg font-semibold mb-1">{% trans "Akku-Bank" %}</h2>
+            <p class="text-xs text-slate-400 mb-4">
+                {% trans "Füllstand für" %}: <span id="battery-period-hint" class="text-sky-300">{% trans "Heute" %}</span>
+            </p>
+            <div id="batteries" class="space-y-4"></div>
+        </div>
+        <div class="glass p-5" id="team-power-panel">
+            <h2 class="text-lg font-semibold mb-4">{% trans "Team-Power" %}</h2>
+            <div id="leaf-groups" class="space-y-3"></div>
+            <p id="team-power-cyclist-note" class="hidden text-sm text-slate-400">{% trans "Team-Power gilt nur in der Ansicht „Alle“." %}</p>
+        </div>
+    </section>
+
+    <section class="glass p-5 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold">{% trans "Aktive Radler" %}</h2>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+                <input id="ride-stats-toggle" type="checkbox" class="rounded border-slate-500 bg-slate-800 text-sky-400 focus:ring-sky-400"
+                       {% if show_cyclist_ride_stats %}checked{% endif %}>
+                <span>{% trans "Velos & km anzeigen" %}</span>
+            </label>
+        </div>
+        <div id="cyclists" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4" id="charts-panel">
+        <div class="glass p-5">
+            <h2 class="text-lg font-semibold mb-3">{% trans "Heute stündlich" %}</h2>
+            <canvas id="hourly-chart" height="140"></canvas>
+            <p id="charts-cyclist-note" class="hidden text-xs text-slate-400 mt-2">{% trans "Diagramme zeigen die Gruppen-Historie (Ansicht „Alle“)." %}</p>
+        </div>
+        <div class="glass p-5">
+            <h2 class="text-lg font-semibold mb-3">{% trans "Letzte 7 Tage" %}</h2>
+            <canvas id="daily-chart" height="140"></canvas>
+        </div>
+    </section>
+
+    <script>
+    (function () {
+        let groupParam = {% if current_filter %}"{{ current_filter|escapejs }}"{% else %}null{% endif %};
+        let groupFilterCatalog = { options: [], current: groupParam, top: null, is_leaf: false };
+        const pollSeconds = {{ update_interval_seconds|default:5 }};
+        const PERIOD_LABELS = {
+            session: "{% trans 'Session' %}",
+            day: "{% trans 'Heute' %}",
+            week: "{% trans 'Woche' %}",
+            year: "{% trans 'Jahr' %}",
+        };
+        const PERIOD_KEYS = {
+            session: 'session_energy_wh',
+            day: 'daily_energy_wh',
+            week: 'weekly_energy_wh',
+            year: 'yearly_energy_wh',
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        let selectedPeriod = params.get('period') || 'day';
+        if (!PERIOD_LABELS[selectedPeriod]) selectedPeriod = 'day';
+        // Global view: all riders vs one cyclist (?view=cyclist&cyclist=…)
+        // Accept legacy ?battery=cyclist from the short-lived battery-only switch.
+        let viewScope = (params.get('view') || params.get('battery') || 'all').toLowerCase();
+        if (viewScope !== 'cyclist') viewScope = 'all';
+        let selectedCyclist = params.get('cyclist') || '';
+        let showRideStats = {% if show_cyclist_ride_stats %}true{% else %}false{% endif %};
+        if (params.has('ride_stats')) {
+            const rs = (params.get('ride_stats') || '').toLowerCase();
+            showRideStats = ['1', 'true', 'yes', 'on'].includes(rs);
+        }
+        const enableChargerCompare = {% if enable_charger_compare %}true{% else %}false{% endif %};
+        let selectedCharger = "{% if charger_profile %}{{ charger_profile|escapejs }}{% else %}direct{% endif %}";
+        if (params.has('charger')) {
+            selectedCharger = (params.get('charger') || 'direct').toLowerCase();
+        }
+        // Panel only on demand: ?compare=1 or non-default ?charger=
+        let chargerCompareOpen = false;
+        if (enableChargerCompare) {
+            const compareFlag = (params.get('compare') || '').toLowerCase();
+            chargerCompareOpen = (
+                ['1', 'true', 'yes', 'on'].includes(compareFlag)
+                || (params.has('charger') && selectedCharger !== 'direct')
+            );
+        }
+
+        function buildLiveUrl() {
+            const url = new URL("{% url 'dynamo:dynamo_live_api' %}", window.location.origin);
+            if (groupParam) url.searchParams.set('group', groupParam);
+            url.searchParams.set('ride_stats', showRideStats ? '1' : '0');
+            if (enableChargerCompare && chargerCompareOpen) {
+                url.searchParams.set('charger', selectedCharger);
+            }
+            return url.pathname + url.search;
+        }
+
+        function findTopOption(topName) {
+            return (groupFilterCatalog.options || []).find(
+                o => (o.name || '').toLowerCase() === (topName || '').toLowerCase()
+            ) || null;
+        }
+
+        function syncGroupUrl() {
+            const url = new URL(window.location.href);
+            if (groupParam) url.searchParams.set('group', groupParam);
+            else url.searchParams.delete('group');
+            window.history.replaceState({}, '', url);
+            if (groupParam) params.set('group', groupParam);
+            else params.delete('group');
+        }
+
+        function updateGroupFilterHint() {
+            const hint = el('group-filter-hint');
+            if (!hint) return;
+            if (!groupParam) {
+                hint.classList.add('hidden');
+                hint.innerHTML = '';
+                return;
+            }
+            hint.classList.remove('hidden');
+            const gf = groupFilterCatalog || {};
+            if (gf.is_leaf && gf.top) {
+                hint.innerHTML = `{% trans "Filter" %}: <span class="text-amber-300 font-semibold">${gf.top}</span>
+                    → <span class="text-sky-300 font-semibold">${groupParam}</span>`;
+            } else {
+                hint.innerHTML = `{% trans "Filter" %}: <span class="text-amber-300 font-semibold">${groupParam}</span>
+                    <span class="text-slate-500">({% trans "gesamte TOP-Gruppe" %})</span>`;
+            }
+        }
+
+        function renderGroupFilterControls(catalog) {
+            groupFilterCatalog = catalog || { options: [], current: null, top: null, is_leaf: false };
+            const topSelect = el('top-group-select');
+            const leafSelect = el('leaf-group-select');
+            if (!topSelect || !leafSelect) return;
+
+            const options = groupFilterCatalog.options || [];
+            const current = groupFilterCatalog.current || null;
+            const currentTop = groupFilterCatalog.top || (
+                current && findTopOption(current) ? current : null
+            );
+
+            topSelect.innerHTML = `<option value="">{% trans "Alle Gruppen" %}</option>` + options.map(o => {
+                const sel = currentTop && o.name === currentTop ? ' selected' : '';
+                return `<option value="${o.name}"${sel}>${o.label || o.name}</option>`;
+            }).join('');
+
+            const topOpt = currentTop ? findTopOption(currentTop) : null;
+            const leaves = topOpt ? (topOpt.leaves || []) : [];
+            leafSelect.disabled = !topOpt;
+            const leafAllSelected = !!(topOpt && current && current === currentTop);
+            const leafNone = !topOpt;
+            leafSelect.innerHTML = `<option value=""${leafAllSelected || leafNone ? ' selected' : ''}>{% trans "Alle Leafs" %}</option>` + leaves.map(l => {
+                const sel = current && l.name === current ? ' selected' : '';
+                return `<option value="${l.name}"${sel}>${l.label || l.name}</option>`;
+            }).join('');
+
+            updateGroupFilterHint();
+        }
+
+        function setGroupFilter(name, { pushUrl = true } = {}) {
+            groupParam = name || null;
+            selectedCyclist = '';
+            if (viewScope === 'cyclist') {
+                // Stay in cyclist mode but clear selection until new payload arrives.
+            }
+            if (pushUrl) syncGroupUrl();
+            poll();
+        }
+
+        function syncChargerCompareVisibility() {
+            if (!enableChargerCompare) return;
+            const section = el('charger-compare-section');
+            const toggle = el('charger-compare-toggle');
+            const hint = el('charger-compare-hint');
+            if (section) section.classList.toggle('hidden', !chargerCompareOpen);
+            if (toggle) {
+                toggle.classList.toggle('is-active', chargerCompareOpen);
+                toggle.classList.toggle('hidden', chargerCompareOpen);
+            }
+            if (hint) hint.classList.toggle('hidden', !chargerCompareOpen);
+            const usableWrap = el('usable-power-wrap');
+            if (usableWrap) {
+                const showUsable = chargerCompareOpen && selectedCharger !== 'direct';
+                usableWrap.classList.toggle('hidden', !showUsable);
+            }
+        }
+
+        function openChargerCompare() {
+            if (!enableChargerCompare) return;
+            chargerCompareOpen = true;
+            const url = new URL(window.location.href);
+            url.searchParams.set('compare', '1');
+            if (!url.searchParams.has('charger')) {
+                url.searchParams.set('charger', selectedCharger || 'direct');
+            }
+            window.history.replaceState({}, '', url);
+            params.set('compare', '1');
+            syncChargerCompareVisibility();
+            poll();
+        }
+
+        function closeChargerCompare() {
+            if (!enableChargerCompare) return;
+            chargerCompareOpen = false;
+            selectedCharger = 'direct';
+            const url = new URL(window.location.href);
+            url.searchParams.delete('compare');
+            url.searchParams.delete('charger');
+            window.history.replaceState({}, '', url);
+            params.delete('compare');
+            params.delete('charger');
+            document.querySelectorAll('#charger-tabs [data-charger]').forEach(node => {
+                node.classList.toggle('is-active', node.getAttribute('data-charger') === 'direct');
+            });
+            syncChargerCompareVisibility();
+            poll();
+        }
+
+        let latestData = null;
+        let batteryTemplate = [];
+        let applianceTemplate = [];
+
+        const el = (id) => document.getElementById(id);
+        const fmt = (n, d=1) => {
+            const x = Number(n || 0);
+            return x.toLocaleString('de-DE', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+        };
+        const iconFor = (key) => ({
+            phone: '📱', tablet: '📲', notebook: '💻', ebike: '🔋', house: '🏠', battery: '⚡'
+        }[key] || '⚡');
+
+        let hourlyChart = null;
+        let dailyChart = null;
+
+        function energyForPeriod(data, period) {
+            const periods = data.energy_periods || {};
+            if (period in periods) return Number(periods[period] || 0);
+            const t = data.totals || {};
+            return Number(t[PERIOD_KEYS[period]] || 0);
+        }
+
+        function formatEtaMinutes(minutes) {
+            const m = Number(minutes);
+            if (!Number.isFinite(m) || m < 0) return '';
+            if (m < 1) return '{% trans "unter 1 min" %}';
+            if (m < 60) return fmt(m, 0) + ' min';
+            const h = m / 60;
+            if (h < 24) return fmt(h, 1) + ' h';
+            return fmt(h / 24, 1) + ' d';
+        }
+
+        function findSelectedCyclist(data) {
+            const list = data.cyclists || [];
+            if (!list.length) return null;
+            let found = list.find(c => c.id_tag === selectedCyclist);
+            if (!found) {
+                found = list[0];
+                selectedCyclist = found.id_tag || '';
+            }
+            return found;
+        }
+
+        function interpolateEfficiency(speedKmh, curve) {
+            const pts = (curve || []).map(p => [Number(p.speed_kmh), Number(p.efficiency)])
+                .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]))
+                .sort((a, b) => a[0] - b[0]);
+            if (!pts.length) return 1;
+            const speed = Math.max(0, Number(speedKmh) || 0);
+            if (speed <= pts[0][0]) return Math.max(0, Math.min(1, pts[0][1]));
+            for (let i = 0; i < pts.length - 1; i++) {
+                const [v0, e0] = pts[i];
+                const [v1, e1] = pts[i + 1];
+                if (speed <= v1) {
+                    const t = (v1 === v0) ? 0 : (speed - v0) / (v1 - v0);
+                    return Math.max(0, Math.min(1, e0 + t * (e1 - e0)));
+                }
+            }
+            return Math.max(0, Math.min(1, pts[pts.length - 1][1]));
+        }
+
+        function batteriesForEnergy(totalWh, template, powerW) {
+            const total = Number(totalWh || 0);
+            const power = Number(powerW || 0);
+            return (template || []).map(b => {
+                const capacity = Number(b.capacity_wh || 0);
+                if (capacity <= 0) {
+                    return {
+                        ...b,
+                        fill_ratio: 0,
+                        fill_percent: 0,
+                        full_count: 0,
+                        remainder_wh: total,
+                        eta_minutes: null,
+                        remaining_to_full_wh: 0,
+                    };
+                }
+                const ratio = Math.min(1, total / capacity);
+                const fullCount = Math.floor(total / capacity);
+                const remaining = Math.max(0, capacity - total);
+                let etaMinutes = null;
+                if (power > 0.05 && remaining > 0) {
+                    etaMinutes = (remaining / power) * 60.0;
+                }
+                return {
+                    ...b,
+                    fill_ratio: ratio,
+                    fill_percent: Math.round(ratio * 1000) / 10,
+                    full_count: fullCount,
+                    remainder_wh: total - (fullCount * capacity),
+                    remaining_to_full_wh: remaining,
+                    eta_minutes: etaMinutes,
+                };
+            });
+        }
+
+        function appliancesForPower(powerW, template) {
+            const power = Number(powerW || 0);
+            return (template || []).map(a => {
+                const watts = Number(a.watts || 0);
+                const hours = (watts > 0 && power > 0) ? (power / watts) : 0;
+                return { ...a, hours, minutes: hours * 60 };
+            });
+        }
+
+        function syncViewUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('battery');
+            if (viewScope === 'cyclist') {
+                url.searchParams.set('view', 'cyclist');
+                if (selectedCyclist) url.searchParams.set('cyclist', selectedCyclist);
+                else url.searchParams.delete('cyclist');
+            } else {
+                url.searchParams.delete('view');
+                url.searchParams.delete('cyclist');
+            }
+            window.history.replaceState({}, '', url);
+            if (viewScope === 'cyclist') {
+                params.set('view', 'cyclist');
+                if (selectedCyclist) params.set('cyclist', selectedCyclist);
+                else params.delete('cyclist');
+            } else {
+                params.delete('view');
+                params.delete('cyclist');
+            }
+            params.delete('battery');
+        }
+
+        function renderViewCyclistPicker(data) {
+            const select = el('view-cyclist-select');
+            if (!select) return;
+            const list = data.cyclists || [];
+            if (!list.length) {
+                select.innerHTML = `<option value="">{% trans "Gerade niemand aktiv" %}</option>`;
+                selectedCyclist = '';
+                return;
+            }
+            if (!list.some(c => c.id_tag === selectedCyclist)) {
+                selectedCyclist = list[0].id_tag || '';
+            }
+            select.innerHTML = list.map(c => {
+                const label = c.user_id || c.id_tag || '';
+                const sel = c.id_tag === selectedCyclist ? ' selected' : '';
+                return `<option value="${c.id_tag || ''}"${sel}>${label}</option>`;
+            }).join('');
+        }
+
+        function setViewScope(scope, { pushUrl = true, forcePeriod = true } = {}) {
+            viewScope = scope === 'cyclist' ? 'cyclist' : 'all';
+            document.querySelectorAll('[data-view-scope]').forEach(node => {
+                node.classList.toggle('is-active', node.getAttribute('data-view-scope') === viewScope);
+            });
+            const picker = el('view-cyclist-picker');
+            if (picker) picker.classList.toggle('hidden', viewScope !== 'cyclist');
+
+            if (viewScope === 'cyclist' && forcePeriod && selectedPeriod !== 'session') {
+                selectedPeriod = 'session';
+                if (pushUrl) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('period', 'session');
+                    window.history.replaceState({}, '', url);
+                }
+            }
+
+            document.querySelectorAll('[data-period]').forEach(node => {
+                const period = node.getAttribute('data-period');
+                const locked = viewScope === 'cyclist' && period !== 'session';
+                node.disabled = locked;
+                node.classList.toggle('opacity-40', locked);
+                node.classList.toggle('pointer-events-none', locked);
+                node.classList.toggle('is-active', period === selectedPeriod);
+            });
+
+            if (pushUrl) syncViewUrl();
+            if (latestData) {
+                renderViewCyclistPicker(latestData);
+                applyScopedView(latestData);
+            }
+        }
+
+        function setPeriod(period, { pushUrl = true } = {}) {
+            if (!PERIOD_LABELS[period]) return;
+            if (viewScope === 'cyclist' && period !== 'session') return;
+            selectedPeriod = period;
+            document.querySelectorAll('[data-period]').forEach(node => {
+                node.classList.toggle('is-active', node.getAttribute('data-period') === period);
+            });
+            el('selected-period-label').textContent = PERIOD_LABELS[period];
+            if (pushUrl) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('period', period);
+                window.history.replaceState({}, '', url);
+            }
+            if (latestData) applyScopedView(latestData);
+        }
+
+        function applyScopedView(data) {
+            const t = data.totals || {};
+            const template = batteryTemplate.length ? batteryTemplate : (data.batteries || []);
+            const apps = applianceTemplate.length ? applianceTemplate : (data.appliances || []);
+            const hint = el('battery-period-hint');
+            const scopeHint = el('scope-hint-text');
+            const teamNote = el('team-power-cyclist-note');
+            const leafRoot = el('leaf-groups');
+            const chartsNote = el('charts-cyclist-note');
+            const isCyclist = viewScope === 'cyclist';
+            const c = isCyclist ? findSelectedCyclist(data) : null;
+
+            let powerW = Number(t.power_w || 0);
+            let usableW = Number(t.usable_power_w != null ? t.usable_power_w : t.power_w || 0);
+            let rpm = Number(t.max_rpm || 0);
+            let sessionWh = Number(t.session_energy_wh || 0);
+            let dayWh = Number(t.daily_energy_wh || 0);
+            let weekWh = Number(t.weekly_energy_wh || 0);
+            let yearWh = Number(t.yearly_energy_wh || 0);
+            let selectedWh = energyForPeriod(data, selectedPeriod);
+            let batteryWh = selectedWh;
+            let batteryPower = 0;
+            let appliancePower = (
+                enableChargerCompare && chargerCompareOpen && selectedCharger !== 'direct'
+            ) ? usableW : powerW;
+
+            if (isCyclist) {
+                powerW = c ? Number(c.power_w || 0) : 0;
+                usableW = c ? Number(c.usable_power_w != null ? c.usable_power_w : c.power_w || 0) : 0;
+                rpm = c ? Number(c.rpm || 0) : 0;
+                sessionWh = c ? Number(c.session_energy_wh || 0) : 0;
+                selectedWh = sessionWh;
+                batteryWh = sessionWh;
+                batteryPower = powerW;
+                appliancePower = (
+                    enableChargerCompare && chargerCompareOpen && selectedCharger !== 'direct'
+                ) ? usableW : powerW;
+                const name = c ? (c.user_id || c.id_tag || '—') : '—';
+                if (hint) hint.textContent = `{% trans "Session von" %} ${name}`;
+                if (scopeHint) {
+                    scopeHint.textContent = `{% trans "Ansicht: einzelner Radler (Session) · Restzeit an aktueller Leistung" %}`;
+                }
+                el('selected-period-label').textContent = `{% trans "Session" %} · ${name}`;
+                el('daily-wh').textContent = '—';
+                el('weekly-wh').textContent = '—';
+                el('yearly-wh').textContent = '—';
+            } else {
+                if (hint) hint.textContent = PERIOD_LABELS[selectedPeriod];
+                if (scopeHint) {
+                    scopeHint.textContent = '{% trans "Ansicht: alle Radler · Zeitraum wählbar" %}';
+                }
+                el('selected-period-label').textContent = PERIOD_LABELS[selectedPeriod];
+                el('daily-wh').textContent = fmt(dayWh, 2);
+                el('weekly-wh').textContent = fmt(weekWh, 2);
+                el('yearly-wh').textContent = fmt(yearWh, 2);
+            }
+
+            el('total-power').textContent = fmt(powerW, 1);
+            el('session-wh').textContent = fmt(sessionWh, 2);
+            el('selected-wh').textContent = fmt(selectedWh, 2);
+            el('max-rpm').textContent = fmt(rpm, 0);
+            el('active-count').textContent = isCyclist
+                ? (c ? '1' : '0')
+                : String(t.active_cyclists || 0);
+
+            const usableWrap = el('usable-power-wrap');
+            const usableEl = el('usable-power');
+            if (usableWrap && usableEl) {
+                const showUsable = enableChargerCompare && chargerCompareOpen && selectedCharger !== 'direct';
+                usableWrap.classList.toggle('hidden', !showUsable);
+                usableEl.textContent = fmt(usableW, 1);
+            }
+
+            const rotor = el('rotor');
+            if (powerW > 0.05) {
+                rotor.classList.add('is-spinning');
+                const spinRpm = Math.max(20, rpm || 60);
+                rotor.style.animationDuration = Math.max(0.35, Math.min(4.5, 120 / spinRpm)) + 's';
+            } else {
+                rotor.classList.remove('is-spinning');
+            }
+
+            renderAppliances(appliancesForPower(appliancePower, apps));
+            renderBatteries(batteriesForEnergy(batteryWh, template, batteryPower), {
+                showEta: isCyclist,
+            });
+
+            if (leafRoot) leafRoot.classList.toggle('hidden', isCyclist);
+            if (teamNote) teamNote.classList.toggle('hidden', !isCyclist);
+            if (chartsNote) chartsNote.classList.toggle('hidden', !isCyclist);
+
+            renderCyclists(data.cyclists || []);
+            renderChargerCompare(data);
+        }
+
+        function ensureCharts() {
+            const common = {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.15)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.15)' }, beginAtZero: true }
+                }
+            };
+            if (!hourlyChart) {
+                hourlyChart = new Chart(el('hourly-chart'), {
+                    type: 'bar',
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: 'rgba(56,189,248,0.65)' }] },
+                    options: common
+                });
+            }
+            if (!dailyChart) {
+                dailyChart = new Chart(el('daily-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'rgba(251,191,36,0.2)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: common
+                });
+            }
+        }
+
+        function renderBatteries(items, { showEta = false } = {}) {
+            const root = el('batteries');
+            if (!items || !items.length) {
+                root.innerHTML = '<p class="text-slate-400 text-sm">{% trans "Noch keine Akku-Ziele konfiguriert." %}</p>';
+                return;
+            }
+            root.innerHTML = items.map(b => {
+                let etaLine = '';
+                if (showEta) {
+                    if (b.fill_percent >= 100) {
+                        etaLine = `<div class="text-xs text-emerald-400 mt-1">{% trans "voll" %}</div>`;
+                    } else if (b.eta_minutes != null) {
+                        etaLine = `<div class="text-xs text-amber-300 mt-1">{% trans "noch ca." %} ${formatEtaMinutes(b.eta_minutes)} {% trans "bei aktueller Leistung" %}</div>`;
+                    } else {
+                        etaLine = `<div class="text-xs text-slate-500 mt-1">{% trans "Noch keine Leistung – bitte treten" %}</div>`;
+                    }
+                }
+                return `
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>${iconFor(b.icon_key)} ${b.name}</span>
+                        <span class="text-slate-300">${fmt(b.fill_percent, 0)}% · ${fmt(b.capacity_wh, 0)} Wh
+                          ${b.full_count > 0 ? ` · ×${b.full_count}` : ''}
+                        </span>
+                    </div>
+                    <div class="battery-shell"><div class="battery-fill" style="width:${Math.min(100, b.fill_percent)}%"></div></div>
+                    ${etaLine}
+                </div>`;
+            }).join('');
+        }
+
+        function renderChargerCompare(data) {
+            if (!enableChargerCompare) return;
+            const compare = data.charger_compare || {};
+            const profiles = data.charger_profiles || [];
+            const descEl = el('charger-description');
+            const active = profiles.find(p => p.key === selectedCharger);
+            if (descEl) {
+                descEl.textContent = active ? active.description : '';
+            }
+
+            let rows = compare.rows || [];
+            let refSpeed = Number(compare.reference_speed_kmh || 0);
+            let refPower = Number(compare.dynamo_power_w || 0);
+            let refNote = '';
+
+            if (viewScope === 'cyclist') {
+                const c = findSelectedCyclist(data);
+                refSpeed = c ? Number(c.speed_kmh || 0) : 0;
+                refPower = c ? Number(c.power_w || 0) : 0;
+                const name = c ? (c.user_id || c.id_tag || '') : '';
+                rows = profiles.map(p => {
+                    const eta = p.key === 'direct'
+                        ? 1
+                        : interpolateEfficiency(refSpeed, p.efficiency_curve || []);
+                    return {
+                        key: p.key,
+                        label: p.label,
+                        efficiency: eta,
+                        usable_power_w: refPower * eta,
+                    };
+                });
+                refNote = name
+                    ? `({% trans "Bezug" %}: ${name})`
+                    : '';
+            } else {
+                const n = Number(compare.active_cyclists || 0);
+                const groupW = Number(compare.group_power_w || 0);
+                refNote = n > 0
+                    ? `({% trans "Gruppe gerade" %}: ${n} {% trans "Räder" %}, ${fmt(groupW, 1)} W {% trans "Summe" %})`
+                    : '';
+            }
+
+            const root = el('charger-compare-rows');
+            if (root) {
+                root.innerHTML = rows.map(r => {
+                    const activeCls = r.key === selectedCharger ? 'border-sky-400/70 bg-sky-400/10' : 'border-slate-600/40';
+                    return `<button type="button" data-charger="${r.key}" class="charger-row text-left glass p-3 border ${activeCls}">
+                        <div class="font-semibold text-white">${r.label}</div>
+                        <div class="stat-value text-xl text-emerald-300 mt-1">${fmt(r.usable_power_w, 1)} W</div>
+                        <div class="text-xs text-slate-400">η ${fmt((r.efficiency || 0) * 100, 0)}%</div>
+                    </button>`;
+                }).join('');
+                root.querySelectorAll('[data-charger]').forEach(btn => {
+                    btn.addEventListener('click', () => setCharger(btn.getAttribute('data-charger')));
+                });
+            }
+            const refSpeedEl = el('charger-ref-speed');
+            const refPowerEl = el('charger-ref-power');
+            const refGroup = el('charger-ref-group');
+            if (refSpeedEl) refSpeedEl.textContent = fmt(refSpeed, 1);
+            if (refPowerEl) refPowerEl.textContent = fmt(refPower, 1);
+            if (refGroup) refGroup.textContent = refNote;
+        }
+
+        function setCharger(key) {
+            if (!enableChargerCompare || !key || !chargerCompareOpen) return;
+            selectedCharger = key;
+            document.querySelectorAll('#charger-tabs [data-charger]').forEach(node => {
+                node.classList.toggle('is-active', node.getAttribute('data-charger') === key);
+            });
+            const url = new URL(window.location.href);
+            url.searchParams.set('compare', '1');
+            url.searchParams.set('charger', key);
+            window.history.replaceState({}, '', url);
+            params.set('compare', '1');
+            params.set('charger', key);
+            syncChargerCompareVisibility();
+            poll();
+        }
+
+        function renderAppliances(items) {
+            const root = el('appliances');
+            if (!items || !items.length) {
+                root.innerHTML = '<p class="text-slate-400">{% trans "Keine Leistung – losradeln!" %}</p>';
+                return;
+            }
+            root.innerHTML = items.map(a => {
+                const mins = a.minutes;
+                const label = mins >= 60
+                    ? `${fmt(a.hours, 1)} h`
+                    : `${fmt(mins, 0)} min`;
+                return `<div class="flex justify-between gap-2"><span>${a.label} (${fmt(a.watts,0)} W)</span><span class="text-amber-300 font-semibold">${label}</span></div>`;
+            }).join('');
+        }
+
+        function renderLeafGroups(items) {
+            const root = el('leaf-groups');
+            if (!items || !items.length) {
+                root.innerHTML = '<p class="text-slate-400 text-sm">{% trans "Keine aktiven Teams." %}</p>';
+                return;
+            }
+            const maxP = Math.max(...items.map(i => i.power_w), 0.01);
+            root.innerHTML = items.map(g => `
+                <button type="button" data-leaf-pick="${g.group_name || g.name || ''}"
+                        class="w-full text-left block hover:bg-slate-800/40 rounded-lg p-1 -m-1 transition"
+                        title="{% trans 'Leaf-Gruppe filtern' %}">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span style="color:${g.color || '#38bdf8'}">${g.name}</span>
+                        <span>${fmt(g.power_w, 1)} W · ${fmt(g.session_energy_wh, 2)} Wh</span>
+                    </div>
+                    <div class="power-bar"><span style="width:${(g.power_w / maxP) * 100}%; background: linear-gradient(90deg, ${g.color || '#38bdf8'}, #a78bfa);"></span></div>
+                </button>
+            `).join('');
+            root.querySelectorAll('[data-leaf-pick]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.getAttribute('data-leaf-pick');
+                    if (name) setGroupFilter(name);
+                });
+            });
+        }
+
+        function renderCyclists(items) {
+            const root = el('cyclists');
+            if (!items || !items.length) {
+                root.innerHTML = '<p class="text-slate-400">{% trans "Gerade niemand unterwegs – wer lädt den Akku?" %}</p>';
+                return;
+            }
+            root.innerHTML = items.map(c => {
+                const rideStats = showRideStats ? `
+                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                        <span class="text-violet-300 font-semibold">${fmt(c.session_velos || 0, 0)} {% trans "Velos" %}</span>
+                        <span class="text-sky-200 font-semibold">${fmt(c.session_km || 0, 2)} km</span>
+                    </div>` : '';
+                const selected = viewScope === 'cyclist' && c.id_tag === selectedCyclist;
+                const selectedCls = selected ? 'ring-2 ring-amber-300/80' : '';
+                return `
+                <button type="button" data-cyclist-pick="${c.id_tag || ''}"
+                        class="glass p-3 cyclist-card text-left w-full ${c.high_power ? 'high-power' : ''} ${selectedCls}">
+                    <div class="flex justify-between items-start gap-2">
+                        <div>
+                            <div class="font-semibold text-white">${c.user_id || c.id_tag}</div>
+                            <div class="text-xs text-slate-400">${c.group || '—'} · ${c.device || ''}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="stat-value text-xl text-sky-300">${fmt(c.power_w, 1)} W</div>
+                            <div class="text-xs text-slate-400">${fmt(c.rpm, 0)} rpm</div>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm items-baseline">
+                        <span class="stat-value text-lg text-amber-300 font-semibold">${fmt(c.speed_kmh || 0, 1)} <span class="text-sm font-medium text-amber-200/80">km/h</span></span>
+                    </div>
+                    ${rideStats}
+                    <div class="mt-2 text-sm text-emerald-300">${fmt(c.session_energy_wh, 2)} Wh {% trans "Session" %}
+                      ${(!chargerCompareOpen || selectedCharger === 'direct') ? '' : ` · ~${fmt(c.session_usable_energy_wh || 0, 2)} Wh {% trans "nutzbar" %}`}
+                    </div>
+                    ${(chargerCompareOpen && selectedCharger !== 'direct') ? `<div class="text-xs text-slate-400">${fmt(c.power_w, 1)} W {% trans "Dynamo" %} → ${fmt(c.usable_power_w, 1)} W {% trans "nutzbar" %}</div>` : ''}
+                </button>`;
+            }).join('');
+            root.querySelectorAll('[data-cyclist-pick]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedCyclist = btn.getAttribute('data-cyclist-pick') || '';
+                    if (viewScope !== 'cyclist') {
+                        setViewScope('cyclist');
+                    } else {
+                        syncViewUrl();
+                        if (latestData) {
+                            renderViewCyclistPicker(latestData);
+                            applyScopedView(latestData);
+                        }
+                    }
+                });
+            });
+        }
+
+        function updateCharts(history) {
+            ensureCharts();
+            const hourly = history.hourly_today || [];
+            hourlyChart.data.labels = hourly.map(h => String(h.hour).padStart(2, '0') + ':00');
+            hourlyChart.data.datasets[0].data = hourly.map(h => h.energy_wh);
+            hourlyChart.update('none');
+
+            const daily = history.daily || [];
+            dailyChart.data.labels = daily.map(d => d.label);
+            dailyChart.data.datasets[0].data = daily.map(d => d.energy_wh);
+            dailyChart.update('none');
+        }
+
+        function applyPayload(data) {
+            latestData = data;
+            if (typeof data.show_cyclist_ride_stats === 'boolean' && !params.has('ride_stats')) {
+                showRideStats = data.show_cyclist_ride_stats;
+                const toggle = el('ride-stats-toggle');
+                if (toggle) toggle.checked = showRideStats;
+            }
+            if (data.charger_profile && !params.has('charger')) {
+                selectedCharger = data.charger_profile;
+            }
+            document.querySelectorAll('#charger-tabs [data-charger]').forEach(node => {
+                node.classList.toggle('is-active', node.getAttribute('data-charger') === selectedCharger);
+            });
+            batteryTemplate = (data.batteries || []).map(b => ({
+                id: b.id,
+                name: b.name,
+                capacity_wh: b.capacity_wh,
+                icon_key: b.icon_key,
+            }));
+            applianceTemplate = (data.appliances || []).map(a => ({
+                key: a.key,
+                label: a.label,
+                watts: a.watts,
+            }));
+
+            if (data.group_filter) {
+                groupParam = data.group_filter.current || null;
+                renderGroupFilterControls(data.group_filter);
+            }
+
+            renderLeafGroups(data.leaf_groups);
+            updateCharts(data.history || {});
+            setViewScope(viewScope, { pushUrl: false, forcePeriod: viewScope === 'cyclist' });
+            syncChargerCompareVisibility();
+        }
+
+        document.querySelectorAll('[data-period]').forEach(node => {
+            node.addEventListener('click', () => setPeriod(node.getAttribute('data-period')));
+        });
+
+        document.querySelectorAll('[data-view-scope]').forEach(node => {
+            node.addEventListener('click', () => setViewScope(node.getAttribute('data-view-scope')));
+        });
+        const viewCyclistSelect = el('view-cyclist-select');
+        if (viewCyclistSelect) {
+            viewCyclistSelect.addEventListener('change', () => {
+                selectedCyclist = viewCyclistSelect.value || '';
+                syncViewUrl();
+                if (latestData) applyScopedView(latestData);
+            });
+        }
+
+        const topGroupSelect = el('top-group-select');
+        if (topGroupSelect) {
+            topGroupSelect.addEventListener('change', () => {
+                setGroupFilter(topGroupSelect.value || '');
+            });
+        }
+        const leafGroupSelect = el('leaf-group-select');
+        if (leafGroupSelect) {
+            leafGroupSelect.addEventListener('change', () => {
+                const topVal = (el('top-group-select') && el('top-group-select').value) || '';
+                const leafVal = leafGroupSelect.value || '';
+                // Empty leaf = entire TOP group; otherwise filter to that leaf.
+                setGroupFilter(leafVal || topVal || '');
+            });
+        }
+
+        document.querySelectorAll('#charger-tabs [data-charger]').forEach(node => {
+            node.addEventListener('click', () => setCharger(node.getAttribute('data-charger')));
+        });
+        const compareToggle = el('charger-compare-toggle');
+        if (compareToggle) compareToggle.addEventListener('click', openChargerCompare);
+        const compareClose = el('charger-compare-close');
+        if (compareClose) compareClose.addEventListener('click', closeChargerCompare);
+        syncChargerCompareVisibility();
+
+        const rideToggle = el('ride-stats-toggle');
+        if (rideToggle) {
+            rideToggle.checked = showRideStats;
+            rideToggle.addEventListener('change', () => {
+                showRideStats = !!rideToggle.checked;
+                const url = new URL(window.location.href);
+                url.searchParams.set('ride_stats', showRideStats ? '1' : '0');
+                window.history.replaceState({}, '', url);
+                params.set('ride_stats', showRideStats ? '1' : '0');
+                if (latestData) renderCyclists(latestData.cyclists || []);
+            });
+        }
+
+        async function poll() {
+            try {
+                const res = await fetch(buildLiveUrl(), { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return;
+                applyPayload(await res.json());
+            } catch (e) {
+                console.warn('dynamo poll failed', e);
+            }
+        }
+
+        const initial = {{ initial_data_json }};
+        applyPayload(initial);
+        setInterval(poll, Math.max(2, pollSeconds) * 1000);
+    })();
+    </script>
+</body>
+</html>

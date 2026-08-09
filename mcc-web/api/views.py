@@ -754,6 +754,7 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
             existing_device_session.delete()
         
         # Get or create session for current cyclist
+        previous_last_activity = None
         session, created = CyclistDeviceCurrentMileage.objects.get_or_create(
             cyclist=cyclist_obj,
             defaults={'device': device_obj, 'cumulative_mileage': distance_delta}
@@ -769,12 +770,13 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
         if created:
             logger.debug(f"[update_data] Created new session for cyclist {cyclist_obj.id_tag} with device {device_obj.name}, cumulative_mileage: {distance_delta}")
         else:
+            previous_last_activity = session.last_activity
             old_mileage = session.cumulative_mileage
             session.cumulative_mileage += distance_delta
-            session.save()
             logger.debug(f"[update_data] Updated session - old_mileage: {old_mileage}, new_mileage: {session.cumulative_mileage}")
 
         velos_added = 0
+        energy_wh_added = Decimal('0.00000')
         if distance_delta > 0:
             velos_added = apply_velos_earn(
                 cyclist_obj,
@@ -788,6 +790,22 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
                     cyclist_obj.id_tag,
                     velos_added,
                 )
+            from api.services.dynamo_earn import apply_dynamo_earn
+            energy_wh_added = apply_dynamo_earn(
+                session,
+                device_obj,
+                distance_delta,
+                previous_last_activity=previous_last_activity,
+            )
+            if energy_wh_added > 0:
+                logger.debug(
+                    "[update_data] Dynamo energy added for %s: +%s Wh",
+                    cyclist_obj.id_tag,
+                    energy_wh_added,
+                )
+
+        # Persist mileage + dynamo session fields (last_activity via auto_now)
+        session.save()
 
         # --- ACTIVATE HIERARCHY LOGIC ---
         if distance_delta > 0:

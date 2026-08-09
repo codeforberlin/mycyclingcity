@@ -1,0 +1,28 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    history.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+{% load i18n %}
+<div class="space-y-3">
+    <div class="text-sm text-slate-300">
+        {% trans "Heute" %}: <strong>{{ totals.daily_energy_wh|floatformat:2 }} Wh</strong>
+        ·
+        {% trans "Woche" %}: <strong>{{ totals.weekly_energy_wh|floatformat:2 }} Wh</strong>
+    </div>
+    <div>
+        <h3 class="font-semibold mb-2">{% trans "Tageswerte (7 Tage)" %}</h3>
+        <ul class="text-sm space-y-1">
+            {% for day in history.daily %}
+            <li class="flex justify-between">
+                <span>{{ day.label }}</span>
+                <span>{{ day.energy_wh|floatformat:2 }} Wh</span>
+            </li>
+            {% empty %}
+            <li class="text-slate-400">{% trans "Keine Daten" %}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

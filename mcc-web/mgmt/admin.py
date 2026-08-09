@@ -4881,8 +4881,8 @@ class EventHistoryAdmin(admin.ModelAdmin):
 
 @admin.register(HourlyMetric)
 class HourlyMetricAdmin(admin.ModelAdmin):
-    list_display = ('timestamp', 'cyclist', 'distance_km_display', 'velos', 'device', 'group_at_time')
-    readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'velos', 'group_at_time')
+    list_display = ('timestamp', 'cyclist', 'distance_km_display', 'velos', 'energy_wh', 'device', 'group_at_time')
+    readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'velos', 'energy_wh', 'group_at_time')
     list_filter = ('timestamp', 'device', 'cyclist', 'group_at_time')
     search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'device__name')
     

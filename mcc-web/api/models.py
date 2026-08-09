@@ -484,6 +484,16 @@ class HourlyMetric(models.Model):
                                                    verbose_name=_("Letzte Session Distanz (km)"),
                                                    help_text=_("Distanz der zuletzt verarbeiteten Session für diese Stunde. Wird verwendet, um zu erkennen, ob eine Session gewachsen ist."))
     velos = models.IntegerField(default=0, verbose_name=_("Velos"))
+    energy_wh = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Energie (Wh)"),
+        help_text=_(
+            "Summierte virtuelle Nabendynamo-Energie (Wh) für diese Stunde. "
+            "Wird beim Distanz-Ingest aus Intervallgeschwindigkeit berechnet."
+        ),
+    )
 
     class Meta:
         verbose_name = _("Hourly Metric")
@@ -544,6 +554,28 @@ class CyclistDeviceCurrentMileage(models.Model):
     cumulative_mileage = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Sitzungs-Distanz (km)"))
     start_time = models.DateTimeField(default=timezone.now, verbose_name=_("Startzeit"))
     last_activity = models.DateTimeField(auto_now=True)  # Updates on every save()
+    session_energy_wh = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Sitzungs-Energie (Wh)"),
+        help_text=_("Virtuelle Nabendynamo-Energie seit Session-Start."),
+    )
+    last_power_w = models.FloatField(
+        default=0.0,
+        verbose_name=_("Letzte Leistung (W)"),
+        help_text=_("Momentanleistung aus dem letzten Distanz-Intervall."),
+    )
+    last_rpm = models.FloatField(
+        default=0.0,
+        verbose_name=_("Letzte Drehzahl (RPM)"),
+        help_text=_("Mittlere Rad-Drehzahl aus dem letzten Distanz-Intervall."),
+    )
+    last_speed_kmh = models.FloatField(
+        default=0.0,
+        verbose_name=_("Letzte Geschwindigkeit (km/h)"),
+        help_text=_("Mittlere Geschwindigkeit aus dem letzten Distanz-Intervall."),
+    )
 
     class Meta:
         verbose_name = _("Cyclist - Active Session")

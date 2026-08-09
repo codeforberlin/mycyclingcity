@@ -55,6 +55,7 @@ urlpatterns += i18n_patterns(
     path('map/', include('map.urls')),          # Live map (OSM/Leaflet only)
     path('ranking/', include('ranking.urls')),   # Ranking tables
     path('leaderboard/', include('leaderboard.urls')),  # Leaderboard tiles
+    path('dynamo/', include('dynamo.urls')),            # Virtual hub dynamo energy GUI
     path('kiosk/', include('kiosk.urls')),      # Kiosk device management
     path('eventboard/', include('eventboard.urls')),  # Eventboard
 
