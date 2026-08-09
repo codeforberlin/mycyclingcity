@@ -491,7 +491,7 @@ class MinecraftShopCategory(models.Model):
 
 
 class MinecraftShopItem(models.Model):
-    """Buy-only shop item priced in Velos."""
+    """Shop item priced in Velos (buy; sell refund is 100% of current buy price)."""
 
     category = models.ForeignKey(
         MinecraftShopCategory,
@@ -535,6 +535,37 @@ class MinecraftShopItem(models.Model):
     def __str__(self):
         label = self.display_name or self.esgui_item_key or self.material
         return f"{label} ({self.buy_price_velos} Velos)"
+
+
+class MinecraftShopPurchaseCredit(models.Model):
+    """
+    Per-team remaining sellable quantity for shop materials.
+
+    Incremented on successful EconomyShopGUI buys; decremented before sells.
+    World-mined items of the same material are only sellable up to this credit.
+    """
+
+    group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.CASCADE,
+        related_name="shop_purchase_credits",
+        verbose_name=_("Gruppe"),
+    )
+    material = models.CharField(max_length=64, verbose_name=_("Material"))
+    quantity = models.PositiveIntegerField(default=0, verbose_name=_("Restmenge"))
+
+    class Meta:
+        verbose_name = _("Shop-Kaufguthaben")
+        verbose_name_plural = _("Shop-Kaufguthaben")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "material"],
+                name="minecraft_shop_purchase_credit_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.group} {self.material}: {self.quantity}"
 
 
 class MinecraftWorkerState(models.Model):

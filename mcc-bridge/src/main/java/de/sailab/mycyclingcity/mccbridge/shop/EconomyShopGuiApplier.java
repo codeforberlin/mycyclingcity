@@ -113,6 +113,9 @@ public final class EconomyShopGuiApplier {
 
                 String material = normalizeMaterial(item.get("material").getAsString());
                 int buyPrice = item.get("buy_price_velos").getAsInt();
+                int sellPrice = item.has("sell_price_velos")
+                        ? item.get("sell_price_velos").getAsInt()
+                        : buyPrice;
                 String itemLoc = item.has("esgui_item_loc") ? item.get("esgui_item_loc").getAsString() : "";
                 if (itemLoc == null || itemLoc.isBlank()) {
                     itemLoc = materialToItemLoc.get(material);
@@ -133,7 +136,9 @@ public final class EconomyShopGuiApplier {
 
                 String displayName = item.has("display_name") ? item.get("display_name").getAsString() : "";
                 sectionUpdates.add(
-                        new EconomyShopGuiYamlWriter.PriceUpdate(material, itemLoc, buyPrice, displayName)
+                        new EconomyShopGuiYamlWriter.PriceUpdate(
+                                material, itemLoc, buyPrice, sellPrice, displayName
+                        )
                 );
                 matched++;
             }

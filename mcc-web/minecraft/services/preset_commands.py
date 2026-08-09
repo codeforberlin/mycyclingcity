@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 
@@ -24,6 +25,41 @@ DEPRECATED_GAMERULE_HINTS: dict[str, str] = {
     "doMobLoot": "mob_drops",
 }
 
+# WorldGuard console/RCON has no player world context unless -w is set (or WorldEdit
+# previously selected a world on the same console session).
+_RG_COMMAND_RE = re.compile(r"^rg\s+", re.IGNORECASE)
+_RG_HAS_WORLD_RE = re.compile(r"(?:^|\s)-w\s+\S+", re.IGNORECASE)
+
+
+def paper_world_for_presets() -> str:
+    return (getattr(settings, "MCC_MINECRAFT_PAPER_WORLD", None) or "MyCyclingCity").strip()
+
+
+def ensure_worldguard_world_flag(command: str, *, world: str | None = None) -> str:
+    """
+    Inject ``-w <paper_world>`` into WorldGuard ``rg …`` commands that lack it.
+
+    Without ``-w``, RCON typically returns: "Please specify the world with -w world_name."
+    Preferred form matches Stadtsteuerung: ``rg <sub> -w <world> …``.
+    """
+    text = (command or "").strip()
+    if not text or not _RG_COMMAND_RE.match(text):
+        return command
+    if _RG_HAS_WORLD_RE.search(text):
+        return command
+    world_name = (world or paper_world_for_presets()).strip()
+    if not world_name:
+        return command
+    # rg <subcommand> rest  →  rg <subcommand> -w WORLD rest
+    match = re.match(r"^(rg\s+\S+)(\s+)(.+)$", text, flags=re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} -w {world_name} {match.group(3)}"
+    # rg <subcommand> (no args)
+    match = re.match(r"^(rg\s+\S+)\s*$", text, flags=re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} -w {world_name}"
+    return f"rg -w {world_name} {text[2:].strip()}"
+
 
 def normalize_preset_commands(commands: list[str] | None) -> list[str]:
     """Map legacy camelCase gamerule names to Minecraft 1.21.11+ snake_case."""
@@ -32,6 +68,7 @@ def normalize_preset_commands(commands: list[str] | None) -> list[str]:
         updated = command
         for deprecated, modern in DEPRECATED_GAMERULE_HINTS.items():
             updated = re.sub(rf"\b{re.escape(deprecated)}\b", modern, updated)
+        updated = ensure_worldguard_world_flag(updated)
         normalized.append(updated)
     return normalized
 

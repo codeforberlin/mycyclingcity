@@ -33,6 +33,11 @@ TRANSIENT_ERROR_MARKERS = (
     "no route to host",
     "temporarily unavailable",
     "server is closed",
+    # German messages from describe_rcon_error()
+    "nicht erreichbar",
+    "rcon nicht",
+    "paper-rcon nicht",
+    "velocity-rcon nicht",
 )
 
 

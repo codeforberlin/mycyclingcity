@@ -3,12 +3,17 @@ package de.sailab.mycyclingcity.mccbridge;
 import de.sailab.mycyclingcity.mccbridge.economy.VelosEconomyProvider;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiApplier;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiReloader;
+import de.sailab.mycyclingcity.mccbridge.shop.ShopTransactionListener;
 import de.sailab.mycyclingcity.mccbridge.team.TeamResolver;
 import de.sailab.mycyclingcity.mccbridge.ws.MccWebSocketClient;
 import net.luckperms.api.LuckPerms;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginEnableEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -18,6 +23,7 @@ public final class MccBridgePlugin extends JavaPlugin {
     private EconomyShopGuiApplier esguiApplier;
     private MccWebSocketClient webSocketClient;
     private VelosEconomyProvider economyProvider;
+    private boolean shopListenerRegistered;
 
     @Override
     public void onEnable() {
@@ -29,11 +35,15 @@ public final class MccBridgePlugin extends JavaPlugin {
         esguiApplier = new EconomyShopGuiApplier(this, bridgeConfig);
         webSocketClient = new MccWebSocketClient(this, bridgeConfig, esguiApplier);
         economyProvider = new VelosEconomyProvider(bridgeConfig, teamResolver, webSocketClient);
-        getServer().getServicesManager().register(Economy.class, economyProvider, this, org.bukkit.plugin.ServicePriority.Highest);
+        getServer().getServicesManager().register(
+                Economy.class, economyProvider, this, org.bukkit.plugin.ServicePriority.Highest
+        );
 
         if (getServer().getPluginManager().getPlugin("Vault") == null
                 && getServer().getPluginManager().getPlugin("VaultUnlocked") == null) {
-            getLogger().warning("Vault/VaultUnlocked not found — EconomyShopGUI will not find a Vault economy");
+            getLogger().warning(
+                    "Vault/VaultUnlocked not found — EconomyShopGUI will not find a Vault economy"
+            );
         } else {
             RegisteredServiceProvider<Economy> economyRegistration =
                     getServer().getServicesManager().getRegistration(Economy.class);
@@ -49,15 +59,28 @@ public final class MccBridgePlugin extends JavaPlugin {
         }
 
         if (getServer().getPluginManager().getPlugin("LuckPerms") != null) {
-            RegisteredServiceProvider<LuckPerms> provider = getServer().getServicesManager().getRegistration(LuckPerms.class);
+            RegisteredServiceProvider<LuckPerms> provider =
+                    getServer().getServicesManager().getRegistration(LuckPerms.class);
             if (provider != null) {
                 teamResolver.setLuckPerms(provider.getProvider());
                 getLogger().info("LuckPerms team resolution enabled");
             }
         }
 
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onPluginEnable(PluginEnableEvent event) {
+                if (isEconomyShopGuiPlugin(event.getPlugin())) {
+                    tryRegisterShopTransactionListener();
+                }
+            }
+        }, this);
+        tryRegisterShopTransactionListener();
+
         getServer().getScheduler().runTaskAsynchronously(this, webSocketClient::connect);
-        getLogger().info("MCC-Bridge enabled (must load before EconomyShopGUI via plugin.yml loadbefore)");
+        getLogger().info(
+                "MCC-Bridge enabled (must load before EconomyShopGUI via plugin.yml loadbefore)"
+        );
     }
 
     @Override
@@ -87,9 +110,14 @@ public final class MccBridgePlugin extends JavaPlugin {
                 sender.sendMessage("Server ID: " + bridgeConfig.serverId());
                 sender.sendMessage("Heartbeat seconds: " + bridgeConfig.heartbeatSeconds());
                 sender.sendMessage("Team mappings: " + bridgeConfig.teamGroups().size());
-                sender.sendMessage("LuckPerms sync: configure teams in MCC Admin (auto LP group on register)");
+                sender.sendMessage(
+                        "LuckPerms sync: configure teams in MCC Admin (auto LP group on register)"
+                );
                 sender.sendMessage("EconomyShopGUI sync: " + bridgeConfig.esguiSyncOnCatalog());
-                sender.sendMessage("EconomyShopGUI installed: " + esguiApplier.isEconomyShopGuiAvailable());
+                sender.sendMessage(
+                        "EconomyShopGUI installed: " + esguiApplier.isEconomyShopGuiAvailable()
+                );
+                sender.sendMessage("Shop sell ledger listener: " + shopListenerRegistered);
             }
             case "reload" -> {
                 reloadBridgeConfig();
@@ -103,9 +131,11 @@ public final class MccBridgePlugin extends JavaPlugin {
                                 sender.sendMessage("Catalog sync failed: " + error.getMessage());
                                 return;
                             }
-                            sender.sendMessage("Catalog sync completed (EconomyShopGUI updated if enabled)");
+                            sender.sendMessage(
+                                    "Catalog sync completed (EconomyShopGUI updated if enabled)"
+                            );
                         };
-                        if (sender instanceof org.bukkit.entity.Player player) {
+                        if (sender instanceof org.bukkit.entity.Player) {
                             getServer().getScheduler().runTask(this, notify);
                         } else {
                             notify.run();
@@ -115,10 +145,18 @@ public final class MccBridgePlugin extends JavaPlugin {
             }
             case "esguistatus" -> EconomyShopGuiReloader.logDiagnostics(getLogger());
             case "esguireload" -> getServer().getScheduler().runTask(this, () -> {
-                boolean ok = EconomyShopGuiReloader.reload(getLogger(), bridgeConfig.esguiReloadCycleFallback());
-                sender.sendMessage(ok ? "EconomyShopGUI reload OK" : "EconomyShopGUI reload failed — see server log");
+                boolean ok = EconomyShopGuiReloader.reload(
+                        getLogger(), bridgeConfig.esguiReloadCycleFallback()
+                );
+                sender.sendMessage(
+                        ok
+                                ? "EconomyShopGUI reload OK"
+                                : "EconomyShopGUI reload failed — see server log"
+                );
             });
-            default -> sender.sendMessage("Usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>");
+            default -> sender.sendMessage(
+                    "Usage: /mccbridge <status|reload|synccatalog|esguireload|esguistatus>"
+            );
         }
         return true;
     }
@@ -130,11 +168,35 @@ public final class MccBridgePlugin extends JavaPlugin {
         if (teamResolver != null) {
             teamResolver = new TeamResolver(bridgeConfig);
             if (getServer().getPluginManager().getPlugin("LuckPerms") != null) {
-                RegisteredServiceProvider<LuckPerms> provider = getServer().getServicesManager().getRegistration(LuckPerms.class);
+                RegisteredServiceProvider<LuckPerms> provider =
+                        getServer().getServicesManager().getRegistration(LuckPerms.class);
                 if (provider != null) {
                     teamResolver.setLuckPerms(provider.getProvider());
                 }
             }
         }
+    }
+
+    private void tryRegisterShopTransactionListener() {
+        if (shopListenerRegistered || !esguiApplier.isEconomyShopGuiAvailable()) {
+            return;
+        }
+        try {
+            getServer().getPluginManager().registerEvents(
+                    new ShopTransactionListener(teamResolver, webSocketClient, getLogger()),
+                    this
+            );
+            shopListenerRegistered = true;
+            getLogger().info("Shop purchase/sell ledger listener registered");
+        } catch (NoClassDefFoundError | Exception ex) {
+            getLogger().warning(
+                    "Could not register EconomyShopGUI transaction listener: " + ex.getMessage()
+            );
+        }
+    }
+
+    private static boolean isEconomyShopGuiPlugin(Plugin plugin) {
+        String name = plugin.getName();
+        return "EconomyShopGUI".equals(name) || "EconomyShopGUI-Premium".equals(name);
     }
 }

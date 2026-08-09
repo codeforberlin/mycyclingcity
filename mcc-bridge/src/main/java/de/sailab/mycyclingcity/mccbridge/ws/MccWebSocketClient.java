@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -117,6 +118,37 @@ public class MccWebSocketClient {
         Map<String, Object> payload = basePayload("SPEND_GROUP_VELOS");
         payload.put("player", teamMcUsername);
         payload.put("amount", amount);
+        return sendRequest(payload);
+    }
+
+    public CompletableFuture<JsonObject> creditTeamVelos(String teamMcUsername, int amount) {
+        Map<String, Object> payload = basePayload("CREDIT_GROUP_VELOS");
+        payload.put("player", teamMcUsername);
+        payload.put("amount", amount);
+        return sendRequest(payload);
+    }
+
+    public CompletableFuture<JsonObject> recordShopPurchase(String teamMcUsername, String material, int amount) {
+        Map<String, Object> payload = basePayload("RECORD_SHOP_PURCHASE");
+        payload.put("player", teamMcUsername);
+        payload.put("material", material);
+        payload.put("amount", amount);
+        return sendRequest(payload);
+    }
+
+    /**
+     * @param items list of maps with keys material (String) and amount (Integer)
+     * @param partial when true, ledger consumes min(requested, available) per material
+     */
+    public CompletableFuture<JsonObject> consumeShopSellCredit(
+            String teamMcUsername,
+            List<Map<String, Object>> items,
+            boolean partial
+    ) {
+        Map<String, Object> payload = basePayload("CONSUME_SHOP_SELL_CREDIT");
+        payload.put("player", teamMcUsername);
+        payload.put("items", items);
+        payload.put("partial", partial);
         return sendRequest(payload);
     }
 

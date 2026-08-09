@@ -7,7 +7,8 @@ authors: [SAI-Lab]
 description: MyCyclingCity Velos bridge (Vault economy + MCC WebSocket)
 website: https://github.com/sailab/mycyclingcity
 # Vault API must exist; MCC-Bridge registers the Velos economy before EconomyShopGUI starts.
-softdepend: [Vault, VaultUnlocked, LuckPerms]
+# softdepend: class access for shop transaction events after ESGUI enables.
+softdepend: [Vault, VaultUnlocked, LuckPerms, EconomyShopGUI, EconomyShopGUI-Premium]
 loadbefore: [EconomyShopGUI, EconomyShopGUI-Premium]
 
 commands:

@@ -78,6 +78,7 @@ class TestShopCatalog:
         assert len(payload["categories"][0]["items"]) == 1
         assert payload["categories"][0]["items"][0]["material"] == "STONE"
         assert payload["categories"][0]["items"][0]["buy_price_velos"] == 5
+        assert payload["categories"][0]["items"][0]["sell_price_velos"] == 5
 
     def test_build_shop_catalog_skips_disabled_categories(self):
         MinecraftShopCategory.objects.create(slug="hidden", name="Hidden", enabled=False)

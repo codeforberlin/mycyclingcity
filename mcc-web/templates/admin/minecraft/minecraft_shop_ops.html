@@ -71,6 +71,23 @@
     <small>{% trans 'Überträgt den MCC-Katalog nach EconomyShopGUI auf dem MC-Server.' %}</small>
 </p>
 
+<h2>{% trans 'Shop-Kaufguthaben (Ledger)' %}</h2>
+<p>
+    {% trans 'Verkaufbar sind nur Mengen, die als Kaufguthaben pro Team/Material gespeichert sind.' %}
+    <a href="{% url 'admin:minecraft_minecraftshoppurchasecredit_changelist' %}">{% trans 'Ledger anzeigen' %}</a>
+</p>
+<p>
+    {% trans 'Altbestand: Inventare online eingeloggter Spieler einmalig dem Team-Ledger gutschreiben (nur Shop-Katalog-Materialien).' %}
+</p>
+<form method="post" action="{% url 'admin:minecraft_shop_ops' %}" style="margin-bottom: 1em;"
+      onsubmit="return confirm('{% trans 'Online-Inventare jetzt dem Ledger gutschreiben?' %}');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="grant_online_inventory_credits">
+    <button type="submit" class="button default">
+        {% trans 'Online-Inventare → Ledger gutschreiben' %}
+    </button>
+</form>
+
 <h2>{% trans 'Artikel ohne Velos-Preis' %}</h2>
 <p>
     {% trans 'Kostenlose Artikel (0 Velos) sind nicht erlaubt. Hier sehen Sie alle Shop-Artikel ohne gültigen Kaufpreis.' %}

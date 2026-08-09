@@ -13,6 +13,7 @@ from minecraft.models import (
     MinecraftRconPreset,
     MinecraftShopCategory,
     MinecraftShopItem,
+    MinecraftShopPurchaseCredit,
     MinecraftTeamRegistration,
     MinecraftWorkerState,
 )
@@ -701,22 +702,53 @@ class MinecraftShopItemAdmin(admin.ModelAdmin):
         updated = queryset.filter(buy_price_velos__lt=DEFAULT_MINIMUM_VELOS).update(
             buy_price_velos=DEFAULT_MINIMUM_VELOS
         )
-        if not updated:
-            self.message_user(
-                request,
-                _("Keine ausgewählten Artikel mit Preis unter 1 Velo."),
-                level=messages.INFO,
-            )
-            return
         self.message_user(
             request,
-            _("%(count)s Artikel auf mindestens %(min)s Velo gesetzt.")
-            % {"count": updated, "min": DEFAULT_MINIMUM_VELOS},
+            _("%(n)s Artikel auf mindestens %(min)s Velo gesetzt.")
+            % {"n": updated, "min": DEFAULT_MINIMUM_VELOS},
             level=messages.SUCCESS,
         )
 
+
+@admin.register(MinecraftShopPurchaseCredit)
+class MinecraftShopPurchaseCreditAdmin(admin.ModelAdmin):
+    """Per-team remaining sellable quantities for shop materials (sell-back ledger)."""
+
+    list_display = ("group", "material", "quantity")
+    list_filter = ("group",)
+    search_fields = ("material", "group__name", "group__mc_username")
+    ordering = ("group__name", "material")
+    list_per_page = 100
+    readonly_fields = ()
+
     def has_module_permission(self, request):
-        return False
+        # Shown via custom Minecraft menu entry for shop operators.
+        return request.user.has_perm("minecraft.view_minecraftshoppurchasecredit") or (
+            request.user.is_active
+            and request.user.is_staff
+            and (
+                request.user.is_superuser
+                or request.user.has_perm("minecraft.access_minecraft_shop")
+            )
+        )
+
+    def has_view_permission(self, request, obj=None):
+        return self.has_module_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.has_perm("minecraft.change_minecraftshoppurchasecredit") or (
+            request.user.is_superuser
+        )
+
+    def has_add_permission(self, request):
+        return request.user.has_perm("minecraft.add_minecraftshoppurchasecredit") or (
+            request.user.is_superuser
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.has_perm("minecraft.delete_minecraftshoppurchasecredit") or (
+            request.user.is_superuser
+        )
 
 
 @admin.register(MinecraftArenaMotionSettings)

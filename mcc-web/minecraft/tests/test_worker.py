@@ -157,6 +157,22 @@ class TestWorkerService:
         assert retry.status == MinecraftOutboxEvent.STATUS_PENDING
         assert retry.processed_at is None
 
+    def test_requeue_german_rcon_unreachable_message(self):
+        from minecraft.services.worker import requeue_transient_failed_events
+
+        event = MinecraftOutboxEvent.objects.create(
+            event_type=MinecraftOutboxEvent.EVENT_UPDATE_TEAM_VELOS,
+            payload={"player": "Kette", "velos_spendable": 1},
+            status=MinecraftOutboxEvent.STATUS_FAILED,
+            last_error=(
+                "Paper-RCON nicht erreichbar (127.0.0.1:25575). "
+                "Ist Paper/Proxy gestartet und RCON aktiv?"
+            ),
+        )
+        assert requeue_transient_failed_events(limit=10) == 1
+        event.refresh_from_db()
+        assert event.status == MinecraftOutboxEvent.STATUS_PENDING
+
     def test_process_deprecated_player_coins_event_is_skipped(self):
         event = MinecraftOutboxEvent.objects.create(
             event_type=MinecraftOutboxEvent.EVENT_UPDATE_PLAYER_COINS,

@@ -11,6 +11,12 @@ from minecraft.services.bridge_connection import (
 )
 from minecraft.services.group_velos import spend_group_velos_from_minecraft
 from minecraft.services.shop_catalog import build_shop_catalog_payload
+from minecraft.services.shop_purchase_ledger import (
+    consume_for_sell,
+    consume_for_sell_batch,
+    credit_group_velos_from_minecraft,
+    record_purchase,
+)
 from minecraft.services.luckperms_sync import luckperms_group_name
 from minecraft.services.team_registration import active_registrations
 from minecraft.services.team_velos_query import get_team_velos_by_mc_username
@@ -117,6 +123,15 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
         if event_type in ("SPEND_GROUP_VELOS", "SPEND_COINS"):
             await self._handle_spend_group_velos(content)
             return
+        if event_type == "CREDIT_GROUP_VELOS":
+            await self._handle_credit_group_velos(content)
+            return
+        if event_type == "RECORD_SHOP_PURCHASE":
+            await self._handle_record_shop_purchase(content)
+            return
+        if event_type == "CONSUME_SHOP_SELL_CREDIT":
+            await self._handle_consume_shop_sell_credit(content)
+            return
         if event_type == "GET_TEAM_VELOS":
             await self._handle_get_team_velos(content)
             return
@@ -177,6 +192,104 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
         )
         await self.send_json(self._response(payload, status="ok"))
 
+    async def _handle_credit_group_velos(self, payload: dict):
+        player = payload.get("player")
+        amount = payload.get("amount")
+        server_id = payload.get("server_id")
+
+        if not player or amount is None:
+            await self.send_json(self._response(payload, status="error", error="invalid_payload"))
+            return
+
+        if not self._server_id_allowed(server_id):
+            await self.send_json(self._response(payload, status="error", error="server_not_allowed"))
+            return
+
+        result = await self._apply_credit(player, amount)
+        if result == "group_not_found":
+            await self.send_json(self._response(payload, status="error", error="group_not_found"))
+            return
+        if result == "invalid_amount":
+            await self.send_json(self._response(payload, status="error", error="invalid_amount"))
+            return
+
+        logger.info(
+            "[minecraft_ws] credit group velos player=%s amount=%s at=%s",
+            player,
+            amount,
+            timezone.now().isoformat(),
+        )
+        await self.send_json(self._response(payload, status="ok"))
+
+    async def _handle_record_shop_purchase(self, payload: dict):
+        player = payload.get("player")
+        material = payload.get("material")
+        amount = payload.get("amount")
+        server_id = payload.get("server_id")
+
+        if not player or material is None or amount is None:
+            await self.send_json(self._response(payload, status="error", error="invalid_payload"))
+            return
+
+        if not self._server_id_allowed(server_id):
+            await self.send_json(self._response(payload, status="error", error="server_not_allowed"))
+            return
+
+        result = await self._apply_record_purchase(player, material, amount)
+        if result != "ok":
+            await self.send_json(self._response(payload, status="error", error=result))
+            return
+
+        logger.info(
+            "[minecraft_ws] record shop purchase player=%s material=%s amount=%s",
+            player,
+            material,
+            amount,
+        )
+        await self.send_json(self._response(payload, status="ok"))
+
+    async def _handle_consume_shop_sell_credit(self, payload: dict):
+        player = payload.get("player")
+        server_id = payload.get("server_id")
+        items = payload.get("items")
+        material = payload.get("material")
+        amount = payload.get("amount")
+        partial = bool(payload.get("partial"))
+
+        if not player:
+            await self.send_json(self._response(payload, status="error", error="invalid_payload"))
+            return
+
+        if not self._server_id_allowed(server_id):
+            await self.send_json(self._response(payload, status="error", error="server_not_allowed"))
+            return
+
+        consumed: list = []
+        if items is not None:
+            if not isinstance(items, list) or not items:
+                await self.send_json(self._response(payload, status="error", error="invalid_payload"))
+                return
+            result, consumed = await self._apply_consume_batch(player, items, partial)
+        elif material is not None and amount is not None:
+            result = await self._apply_consume_sell(player, material, amount)
+            if result == "ok":
+                consumed = [{"material": str(material).upper(), "amount": int(amount)}]
+        else:
+            await self.send_json(self._response(payload, status="error", error="invalid_payload"))
+            return
+
+        if result != "ok":
+            await self.send_json(self._response(payload, status="error", error=result))
+            return
+
+        logger.info(
+            "[minecraft_ws] consume shop sell credit player=%s partial=%s consumed=%s",
+            player,
+            partial,
+            consumed,
+        )
+        await self.send_json(self._response(payload, status="ok", consumed=consumed))
+
     async def _handle_get_team_velos(self, payload: dict):
         player = payload.get("player")
         server_id = payload.get("server_id")
@@ -215,6 +328,22 @@ class MinecraftEventConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _apply_spend(self, player: str, amount: int):
         return spend_group_velos_from_minecraft(player, amount)
+
+    @database_sync_to_async
+    def _apply_credit(self, player: str, amount: int):
+        return credit_group_velos_from_minecraft(player, amount)
+
+    @database_sync_to_async
+    def _apply_record_purchase(self, player: str, material: str, amount: int):
+        return record_purchase(player, material, amount)
+
+    @database_sync_to_async
+    def _apply_consume_sell(self, player: str, material: str, amount: int):
+        return consume_for_sell(player, material, amount)
+
+    @database_sync_to_async
+    def _apply_consume_batch(self, player: str, items: list, partial: bool = False):
+        return consume_for_sell_batch(player, items, partial=partial)
 
     @database_sync_to_async
     def _lookup_team_velos(self, player: str):

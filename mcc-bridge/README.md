@@ -3,7 +3,8 @@
 Connects a Paper **26.1.x** server to MyCyclingCity:
 
 - **Vault economy provider** for team Velos (`velos_spendable`)
-- **WebSocket client** for `SPEND_GROUP_VELOS`, `GET_TEAM_VELOS`, `SYNC_SHOP_CATALOG`, `HEARTBEAT`
+- **WebSocket client** for `SPEND_GROUP_VELOS`, `CREDIT_GROUP_VELOS`, `GET_TEAM_VELOS`,
+  `RECORD_SHOP_PURCHASE`, `CONSUME_SHOP_SELL_CREDIT`, `SYNC_SHOP_CATALOG`, `HEARTBEAT`
 - **LuckPerms team mapping** (optional)
 
 ## Build
@@ -86,7 +87,12 @@ team:
 ## Shop catalog
 
 Define categories/items in MCC Admin (`/admin/minecraft/` → Katalog verwalten).
-MCC-Bridge pulls the catalog via WebSocket and writes buy prices directly into
-**EconomyShopGUI** shop YAML files (`plugins/EconomyShopGUI/shops/*.yml`), then runs `/sreload`.
+MCC-Bridge pulls the catalog via WebSocket and writes buy **and sell** prices
+(100% refund = sell equals buy) into **EconomyShopGUI** shop YAML files
+(`plugins/EconomyShopGUI/shops/*.yml`), then runs `/sreload`.
+
+Shop sells are limited by a per-team purchase ledger in MCC: only quantities
+previously bought from the shop can be sold back (world-mined items of the same
+material are not refundable beyond that credit).
 
 Admin button **Shop-Preise an Minecraft pushen** triggers the same sync remotely.

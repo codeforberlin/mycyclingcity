@@ -12,10 +12,13 @@ def build_shop_catalog_payload() -> dict:
     for category in MinecraftShopCategory.objects.filter(enabled=True).prefetch_related("items"):
         items = []
         for item in category.items.filter(enabled=True):
+            buy_price = int(item.buy_price_velos)
             item_payload = {
                 "material": item.material.upper(),
                 "display_name": item.display_name,
-                "buy_price_velos": int(item.buy_price_velos),
+                "buy_price_velos": buy_price,
+                # 100% refund policy: sell price equals current buy price
+                "sell_price_velos": buy_price,
                 "stack_size": int(item.stack_size),
                 "sort_order": int(item.sort_order),
             }

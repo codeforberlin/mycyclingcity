@@ -14,12 +14,20 @@ import java.util.logging.Logger;
 
 final class EconomyShopGuiYamlWriter {
     private static final Pattern BUY_LINE = Pattern.compile("^(?<indent>\\s*)buy:\\s*(?<value>.+?)\\s*$");
+    private static final Pattern SELL_LINE = Pattern.compile("^(?<indent>\\s*)sell:\\s*(?<value>.+?)\\s*$");
     private static final Pattern KEY_LINE = Pattern.compile("^(?<indent>\\s*)(?<quote>['\"]?)(?<key>[^'\":]+)\\2:\\s*$");
 
     private EconomyShopGuiYamlWriter() {
     }
 
-    record PriceUpdate(String material, String itemLoc, int buyPrice, String displayName) {
+    /**
+     * @param buyPrice  purchase price in Velos
+     * @param sellPrice refund price in Velos (MCC policy: equal to buy for 100% refund)
+     */
+    record PriceUpdate(String material, String itemLoc, int buyPrice, int sellPrice, String displayName) {
+        PriceUpdate(String material, String itemLoc, int buyPrice, String displayName) {
+            this(material, itemLoc, buyPrice, buyPrice, displayName);
+        }
     }
 
     record WriteResult(int updated, int skipped) {
@@ -38,10 +46,10 @@ final class EconomyShopGuiYamlWriter {
             return new WriteResult(0, updates.size());
         }
 
-        Map<String, Integer> locToPrice = new HashMap<>();
+        Map<String, PriceUpdate> locToUpdate = new HashMap<>();
         for (PriceUpdate update : updates) {
             if (update.itemLoc() != null && !update.itemLoc().isBlank()) {
-                locToPrice.put(update.itemLoc(), update.buyPrice());
+                locToUpdate.put(update.itemLoc(), update);
             }
         }
 
@@ -116,19 +124,19 @@ final class EconomyShopGuiYamlWriter {
 
             String itemKey = keyMatcher.group("key");
             String itemLoc = currentPage + ".items." + itemKey;
-            Integer buyPrice = locToPrice.remove(itemLoc);
-            if (buyPrice == null) {
+            PriceUpdate priceUpdate = locToUpdate.remove(itemLoc);
+            if (priceUpdate == null) {
                 continue;
             }
 
-            if (replaceBuyInItemBlock(lines, index, indent, buyPrice)) {
+            if (replacePricesInItemBlock(lines, index, indent, priceUpdate.buyPrice(), priceUpdate.sellPrice())) {
                 updated++;
             } else {
                 skipped++;
             }
         }
 
-        skipped += locToPrice.size();
+        skipped += locToUpdate.size();
 
         if (updated == 0) {
             return new WriteResult(0, skipped > 0 ? skipped : updates.size());
@@ -146,7 +154,20 @@ final class EconomyShopGuiYamlWriter {
         return new WriteResult(updated, skipped);
     }
 
-    private static boolean replaceBuyInItemBlock(List<String> lines, int itemLineIndex, int itemIndent, int buyPrice) {
+    /**
+     * Update buy: and sell: inside an item block. Inserts sell after buy when missing.
+     */
+    private static boolean replacePricesInItemBlock(
+            List<String> lines,
+            int itemLineIndex,
+            int itemIndent,
+            int buyPrice,
+            int sellPrice
+    ) {
+        int buyLineIndex = -1;
+        int sellLineIndex = -1;
+        String priceIndent = null;
+
         for (int index = itemLineIndex + 1; index < lines.size(); index++) {
             String line = lines.get(index);
             if (line.isBlank()) {
@@ -161,11 +182,28 @@ final class EconomyShopGuiYamlWriter {
 
             Matcher buyMatcher = BUY_LINE.matcher(line);
             if (buyMatcher.matches() && indent > itemIndent) {
-                lines.set(index, buyMatcher.group("indent") + "buy: " + buyPrice);
-                return true;
+                buyLineIndex = index;
+                priceIndent = buyMatcher.group("indent");
+                lines.set(index, priceIndent + "buy: " + buyPrice);
+                continue;
+            }
+
+            Matcher sellMatcher = SELL_LINE.matcher(line);
+            if (sellMatcher.matches() && indent > itemIndent) {
+                sellLineIndex = index;
+                lines.set(index, sellMatcher.group("indent") + "sell: " + sellPrice);
             }
         }
-        return false;
+
+        if (buyLineIndex < 0) {
+            return false;
+        }
+
+        if (sellLineIndex < 0) {
+            String indent = priceIndent != null ? priceIndent : " ".repeat(itemIndent + 2);
+            lines.add(buyLineIndex + 1, indent + "sell: " + sellPrice);
+        }
+        return true;
     }
 
     private static int leadingSpaces(String line) {

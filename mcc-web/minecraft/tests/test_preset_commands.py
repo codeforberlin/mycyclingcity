@@ -40,6 +40,23 @@ class TestPresetCommands:
             "gamerule advance_weather false",
         ]
 
+    def test_normalize_injects_worldguard_world(self, settings):
+        from minecraft.services.preset_commands import normalize_preset_commands
+
+        settings.MCC_MINECRAFT_PAPER_WORLD = "MyCyclingCity"
+        commands = normalize_preset_commands(
+            [
+                "rg flag __global__ build deny",
+                "rg flag -w OtherWorld __global__ pvp deny",
+                "difficulty peaceful",
+            ]
+        )
+        assert commands == [
+            "rg flag -w MyCyclingCity __global__ build deny",
+            "rg flag -w OtherWorld __global__ pvp deny",
+            "difficulty peaceful",
+        ]
+
     def test_validate_requires_commands(self):
         errors, warnings = validate_commands([])
         assert errors

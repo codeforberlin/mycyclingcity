@@ -173,12 +173,30 @@ public class VelosEconomyProvider implements Economy {
 
     @Override
     public EconomyResponse depositPlayer(String playerName, double amount) {
-        return new EconomyResponse(0, getBalance(playerName), EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Deposits via MCC only");
+        return depositPlayer(org.bukkit.Bukkit.getOfflinePlayer(playerName), amount);
     }
 
     @Override
     public EconomyResponse depositPlayer(OfflinePlayer player, double amount) {
-        return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.NOT_IMPLEMENTED, "Deposits via MCC only");
+        Optional<String> team = teamResolver.resolveTeamMcUsername(player);
+        if (team.isEmpty()) {
+            return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "No team mapping");
+        }
+        if (amount <= 0) {
+            return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "Invalid amount");
+        }
+        int creditAmount = (int) Math.round(amount);
+        try {
+            var response = webSocketClient.creditTeamVelos(team.get(), creditAmount).get(10, TimeUnit.SECONDS);
+            if (!"ok".equals(response.get("status").getAsString())) {
+                return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "MCC rejected credit");
+            }
+            balanceCache.remove(team.get());
+            double newBalance = fetchBalance(team.get());
+            return new EconomyResponse(creditAmount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
+        } catch (Exception ex) {
+            return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, ex.getMessage());
+        }
     }
 
     @Override

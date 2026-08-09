@@ -1181,6 +1181,50 @@ def minecraft_shop_ops(request):
             )
         return redirect("admin:minecraft_shop_ops")
 
+    if request.method == "POST" and request.POST.get("action") == "grant_online_inventory_credits":
+        from minecraft.services.shop_inventory_credit import grant_all_online_inventories_to_ledger
+
+        try:
+            results = grant_all_online_inventories_to_ledger()
+        except Exception as exc:
+            logger.error("[minecraft_shop] inventory credit failed: %s", exc, exc_info=True)
+            messages.error(
+                request,
+                _("Inventar→Ledger fehlgeschlagen: %(error)s") % {"error": str(exc)[:300]},
+            )
+            return redirect("admin:minecraft_shop_ops")
+
+        if not results:
+            messages.warning(request, _("Keine Spieler online — nichts gutgeschrieben."))
+            return redirect("admin:minecraft_shop_ops")
+
+        ok_players = [r for r in results if not r.error]
+        fail_players = [r for r in results if r.error]
+        total_items = sum(r.credited_items for r in ok_players)
+        if ok_players:
+            detail = ", ".join(
+                f"{r.player}→{r.team_mc_username} ({r.credited_items})"
+                for r in ok_players[:8]
+            )
+            messages.success(
+                request,
+                _(
+                    "Inventar→Ledger: %(players)s Spieler, %(items)s Shop-Items gutgeschrieben. %(detail)s"
+                )
+                % {
+                    "players": len(ok_players),
+                    "items": total_items,
+                    "detail": detail,
+                },
+            )
+        for failed in fail_players[:5]:
+            messages.warning(
+                request,
+                _("%(player)s: %(error)s")
+                % {"player": failed.player, "error": failed.error},
+            )
+        return redirect("admin:minecraft_shop_ops")
+
     zero_items = list(zero_price_items_queryset()[:200])
     zero_count = count_zero_price_items()
     context = {
@@ -1536,8 +1580,20 @@ def minecraft_action(request, action):
                 f"Cleanup done: "
                 f"done={result['deleted_done']} "
                 f"failed={result['deleted_failed']} "
+                f"transient_failed={result.get('deleted_transient_failed', 0)} "
                 f"overflow={result['deleted_overflow']}"
             )
+            # After dropping stale RCON failures, push current DB spendable to Paper.
+            if result.get("deleted_transient_failed"):
+                try:
+                    from minecraft.services.outbox import queue_sync_registered_teams
+
+                    queue_sync_registered_teams(reason="outbox_cleanup_after_rcon_outage")
+                    message += "; sync queued"
+                except Exception as sync_exc:
+                    logger.warning(
+                        "[minecraft_control] cleanup sync queue failed: %s", sync_exc
+                    )
             return JsonResponse({"success": True, "message": message})
         except Exception as exc:
             logger.error(f"[minecraft_control] cleanup failed: {exc}")

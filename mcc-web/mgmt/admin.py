@@ -7132,6 +7132,25 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'view_only': True,
                 }
             )
+            minecraft_management_models.append(
+                {
+                    'name': _('Shop-Kaufguthaben'),
+                    'object_name': 'MinecraftShopPurchaseCredit',
+                    'perms': {
+                        'add': request.user.has_perm('minecraft.add_minecraftshoppurchasecredit'),
+                        'change': request.user.has_perm('minecraft.change_minecraftshoppurchasecredit'),
+                        'delete': request.user.has_perm('minecraft.delete_minecraftshoppurchasecredit'),
+                        'view': True,
+                    },
+                    'admin_url': reverse('admin:minecraft_minecraftshoppurchasecredit_changelist'),
+                    'add_url': reverse('admin:minecraft_minecraftshoppurchasecredit_add')
+                    if request.user.has_perm('minecraft.add_minecraftshoppurchasecredit')
+                    else None,
+                    'view_only': not request.user.has_perm(
+                        'minecraft.change_minecraftshoppurchasecredit'
+                    ),
+                }
+            )
         if user_can_access_minecraft_shop(request.user) or request.user.has_perm(
             'minecraft.view_minecraftshopitem'
         ):
@@ -7307,6 +7326,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
             'MinecraftPlayAccount',
             'MinecraftShopItem',
             'MinecraftShopCategory',
+            'MinecraftShopPurchaseCredit',
         })
         technical_order = [
             'MinecraftIntegrationConfig',

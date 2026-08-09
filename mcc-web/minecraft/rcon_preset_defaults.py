@@ -32,6 +32,11 @@ CITY_MODE_PRESET = {
     ],
 }
 
+# WorldGuard lock: -w is injected at runtime by normalize_preset_commands if omitted.
+_SESSION_BOOTSTRAP_EXTRA = [
+    "rg flag __global__ build deny",
+]
+
 BUILDER_SESSION_BOOTSTRAP_PRESET = {
     "slug": "builder-session-bootstrap",
     "name": "Bau-Session Bootstrap",
@@ -41,7 +46,7 @@ BUILDER_SESSION_BOOTSTRAP_PRESET = {
         "Wird automatisch beim Start einer Bau-Session ausgeführt: stellt den "
         "sicheren Stadtmodus her, ohne manuelle Stadtsteuerung im Admin."
     ),
-    "commands": list(CITY_MODE_PRESET["commands"]),
+    "commands": list(CITY_MODE_PRESET["commands"]) + list(_SESSION_BOOTSTRAP_EXTRA),
 }
 
 PLAYER_SESSION_BOOTSTRAP_PRESET = {
@@ -54,7 +59,7 @@ PLAYER_SESSION_BOOTSTRAP_PRESET = {
         "sicheren Stadtmodus her. Adventure Mode setzt die Session-Steuerung "
         "danach zwingend per RCON."
     ),
-    "commands": list(CITY_MODE_PRESET["commands"]),
+    "commands": list(CITY_MODE_PRESET["commands"]) + list(_SESSION_BOOTSTRAP_EXTRA),
 }
 
 # Minecraft 1.21.11+: doDaylightCycle -> advance_time, doWeatherCycle -> advance_weather
