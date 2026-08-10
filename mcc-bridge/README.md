@@ -90,7 +90,11 @@ team:
 Define categories/items in MCC Admin (`/admin/minecraft/` → Katalog verwalten).
 MCC-Bridge pulls the catalog via WebSocket and writes buy **and sell** prices
 (100% refund = sell equals buy) into **EconomyShopGUI** shop YAML files
-(`plugins/EconomyShopGUI/shops/*.yml`), then runs `/sreload`.
+(`plugins/EconomyShopGUI/shops/*.yml`), then patches the loaded ShopItem
+`buyPrice`/`sellPrice` fields in memory so prices apply without a Paper restart.
+
+Do **not** disable/enable EconomyShopGUI on Paper 26 — that breaks its
+classloader (`zip file error`) until a full server restart.
 
 Shop sells are limited by a per-team purchase ledger in MCC: only quantities
 previously bought from the shop can be sold back (world-mined items of the same

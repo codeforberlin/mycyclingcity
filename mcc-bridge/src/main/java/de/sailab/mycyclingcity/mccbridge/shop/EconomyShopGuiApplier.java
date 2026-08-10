@@ -137,7 +137,7 @@ public final class EconomyShopGuiApplier {
                 String displayName = item.has("display_name") ? item.get("display_name").getAsString() : "";
                 sectionUpdates.add(
                         new EconomyShopGuiYamlWriter.PriceUpdate(
-                                material, itemLoc, buyPrice, sellPrice, displayName
+                                section, material, itemLoc, buyPrice, sellPrice, displayName
                         )
                 );
                 matched++;
@@ -177,20 +177,38 @@ public final class EconomyShopGuiApplier {
             );
         }
 
-        if (yamlUpdated > 0 && config.esguiReloadAfterSync()) {
-            try {
-                if (!EconomyShopGuiReloader.reload(logger, config.esguiReloadCycleFallback())) {
-                    logger.warning(
-                            "EconomyShopGUI YAML prices were saved, but reload failed — "
-                                    + "run /sreload or /mccbridge esguireload"
-                    );
+        // Apply live in-memory prices (Paper-safe). Never disable/enable EconomyShopGUI —
+        // that breaks its Paper classloader ("zip file error") until a full server restart.
+        int liveUpdated = 0;
+        int liveMissing = 0;
+        Map<String, List<EconomyShopGuiYamlWriter.PriceUpdate>> bySection = new HashMap<>();
+        for (List<EconomyShopGuiYamlWriter.PriceUpdate> fileUpdates : updatesByFile.values()) {
+            for (EconomyShopGuiYamlWriter.PriceUpdate update : fileUpdates) {
+                if (update.section() == null || update.section().isBlank()) {
+                    continue;
                 }
-            } catch (Throwable ex) {
-                logger.log(Level.WARNING, "EconomyShopGUI reload failed after YAML sync", ex);
+                bySection.computeIfAbsent(update.section(), ignored -> new ArrayList<>()).add(update);
             }
         }
+        for (Map.Entry<String, List<EconomyShopGuiYamlWriter.PriceUpdate>> entry : bySection.entrySet()) {
+            EconomyShopGuiLivePricer.ApplyStats live = EconomyShopGuiLivePricer.applySectionPrices(
+                    entry.getKey(),
+                    entry.getValue(),
+                    logger
+            );
+            liveUpdated += live.updated();
+            liveMissing += live.missing();
+        }
+        if (liveUpdated > 0 || liveMissing > 0) {
+            logger.info(
+                    "EconomyShopGUI live prices applied: updated="
+                            + liveUpdated
+                            + " missing="
+                            + liveMissing
+            );
+        }
 
-        if (matched > 0 && yamlUpdated == 0) {
+        if (matched > 0 && yamlUpdated == 0 && liveUpdated == 0) {
             return ApplyResult.failed("EconomyShopGUI prices could not be written to shop YAML files");
         }
 
@@ -201,10 +219,12 @@ public final class EconomyShopGuiApplier {
                         + yamlUpdated
                         + " yaml_skipped="
                         + yamlSkipped
+                        + " live_updated="
+                        + liveUpdated
                         + " missing="
                         + missing
         );
-        return ApplyResult.ok(yamlUpdated, 0, missing);
+        return ApplyResult.ok(Math.max(yamlUpdated, liveUpdated), 0, missing);
     }
 
     public boolean isEconomyShopGuiAvailable() {

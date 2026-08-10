@@ -25,9 +25,10 @@ mcc:
   # Create missing shop items via /editshop additem (use with care)
   esgui_add_missing_items: false
   esgui_default_sell_price: -1
+  # Kept for compatibility; catalog sync applies live ShopItem prices (no /sreload needed).
   esgui_reload_after_sync: true
-  # If /sreload is unavailable, disable+enable EconomyShopGUI to reload shop YAML
-  esgui_reload_cycle_fallback: true
+  # NEVER disable/enable EconomyShopGUI on Paper — breaks classloader until full restart.
+  esgui_reload_cycle_fallback: false
 
 vault:
   currency_name: "Velos"

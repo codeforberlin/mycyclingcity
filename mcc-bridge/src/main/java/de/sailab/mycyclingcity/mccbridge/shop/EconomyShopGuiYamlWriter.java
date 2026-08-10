@@ -24,9 +24,16 @@ final class EconomyShopGuiYamlWriter {
      * @param buyPrice  purchase price in Velos
      * @param sellPrice refund price in Velos (MCC policy: equal to buy for 100% refund)
      */
-    record PriceUpdate(String material, String itemLoc, int buyPrice, int sellPrice, String displayName) {
+    record PriceUpdate(
+            String section,
+            String material,
+            String itemLoc,
+            int buyPrice,
+            int sellPrice,
+            String displayName
+    ) {
         PriceUpdate(String material, String itemLoc, int buyPrice, String displayName) {
-            this(material, itemLoc, buyPrice, buyPrice, displayName);
+            this("", material, itemLoc, buyPrice, buyPrice, displayName);
         }
     }
 

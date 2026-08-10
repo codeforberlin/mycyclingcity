@@ -50,7 +50,7 @@ public final class MccBridgeConfig {
         esguiAddMissingItems = config.getBoolean("mcc.esgui_add_missing_items", false);
         esguiDefaultSellPrice = config.getInt("mcc.esgui_default_sell_price", -1);
         esguiReloadAfterSync = config.getBoolean("mcc.esgui_reload_after_sync", true);
-        esguiReloadCycleFallback = config.getBoolean("mcc.esgui_reload_cycle_fallback", true);
+        esguiReloadCycleFallback = config.getBoolean("mcc.esgui_reload_cycle_fallback", false);
         currencyName = config.getString("vault.currency_name", "Velos");
         currencySymbol = config.getString("vault.currency_symbol", " Velos");
         resolution = config.getString("team.resolution", "luckperms");

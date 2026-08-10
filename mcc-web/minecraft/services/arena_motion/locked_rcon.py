@@ -105,6 +105,8 @@ class LockedRconGateway:
     def connect(self) -> None:
         from mcrcon import MCRcon
 
+        # Drop a half-dead session (e.g. Paper restarted → CLOSE-WAIT) before reconnect.
+        self.close()
         mcr = MCRcon(self.host, self.password, port=self.port)
         mcr.connect()
         self._mcr = mcr
@@ -132,6 +134,22 @@ class LockedRconGateway:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
+    def ping(self) -> bool:
+        """Return True if RCON answers; reconnect once on failure."""
+        try:
+            self.run("list")
+            return True
+        except Exception as exc:
+            logger.warning("[arena_motion] RCON ping failed: %s", exc)
+            try:
+                self.close()
+                self.connect()
+                self.run("list")
+                return True
+            except Exception as exc2:
+                logger.warning("[arena_motion] RCON ping reconnect failed: %s", exc2)
+                return False
+
     def run(self, command: str) -> str:
         if self._command is None:
             raise RuntimeError("RCON nicht verbunden")
@@ -141,8 +159,8 @@ class LockedRconGateway:
         with rcon_file_lock(self.lock_path, timeout_seconds=self.lock_timeout_seconds):
             try:
                 response = self._command(command)
-            except (BrokenPipeError, ConnectionError, OSError) as exc:
-                # Persistent RCON dies under load; reconnect once and retry.
+            except (BrokenPipeError, ConnectionError, ConnectionRefusedError, OSError, TimeoutError) as exc:
+                # Persistent RCON dies when Paper restarts or under load; reconnect once.
                 logger.warning("[arena_motion] RCON reconnect after %s", exc)
                 self.close()
                 self.connect()

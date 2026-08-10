@@ -5,7 +5,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginManager;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -47,6 +46,15 @@ public final class EconomyShopGuiReloader {
     private EconomyShopGuiReloader() {
     }
 
+    /**
+     * Soft reload helpers for diagnostics / manual {@code /mccbridge esguireload}.
+     *
+     * <p><strong>Do not</strong> disable/enable EconomyShopGUI on Paper — that corrupts the
+     * plugin classloader ("zip file error") until a full server restart. Catalog sync applies
+     * live prices via {@link EconomyShopGuiLivePricer} instead.
+     *
+     * @param allowPluginCycle ignored (kept for call-site compatibility); cycle is never used
+     */
     public static boolean reload(Logger logger, boolean allowPluginCycle) {
         Plugin plugin = resolveEconomyShopGuiPlugin();
         if (plugin == null) {
@@ -58,6 +66,13 @@ public final class EconomyShopGuiReloader {
             return false;
         }
 
+        if (allowPluginCycle) {
+            logger.info(
+                    "EconomyShopGUI plugin disable/enable is disabled on Paper "
+                            + "(breaks classloader); using soft reload only"
+            );
+        }
+
         ConsoleCommandSender console = Bukkit.getConsoleSender();
 
         for (String commandLine : RELOAD_COMMANDS) {
@@ -66,17 +81,13 @@ public final class EconomyShopGuiReloader {
             }
         }
 
-        if (allowPluginCycle && cyclePlugin(plugin, logger)) {
-            return true;
-        }
-
         if (reloadViaPluginMethods(plugin, console, logger)) {
             return true;
         }
 
         logger.warning(
-                "EconomyShopGUI reload failed. Shop YAML files were updated; "
-                        + "run /sreload manually or restart the server."
+                "EconomyShopGUI soft reload failed. Live price sync does not need this; "
+                        + "if /shop is broken, restart Paper."
         );
         logStartupHints(logger);
         return false;
@@ -106,7 +117,8 @@ public final class EconomyShopGuiReloader {
             }
         }
         logger.info(
-                "EconomyShopGUI diagnostics: reload commands available="
+                "EconomyShopGUI diagnostics: reload strategy=live ShopItem fields "
+                        + "(no plugin cycle); soft commands available="
                         + (available.isEmpty() ? "none" : String.join(", ", available))
         );
         logStartupHints(logger);
@@ -180,29 +192,6 @@ public final class EconomyShopGuiReloader {
         return reloaded;
     }
 
-    private static boolean cyclePlugin(Plugin plugin, Logger logger) {
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        String pluginName = plugin.getName();
-        try {
-            pluginManager.disablePlugin(plugin);
-            Plugin reloaded = pluginManager.getPlugin(pluginName);
-            if (reloaded == null) {
-                logger.warning("EconomyShopGUI disappeared after disable");
-                return false;
-            }
-            pluginManager.enablePlugin(reloaded);
-            if (!reloaded.isEnabled()) {
-                logger.warning("EconomyShopGUI failed to re-enable after YAML sync");
-                return false;
-            }
-            logger.info("EconomyShopGUI reloaded via plugin disable/enable cycle");
-            return true;
-        } catch (Exception ex) {
-            logger.warning("EconomyShopGUI plugin cycle failed: " + ex.getMessage());
-            return false;
-        }
-    }
-
     private static boolean runCommandLine(ConsoleCommandSender console, String commandLine, Logger logger) {
         if (!isCommandRegistered(commandLine)) {
             return false;
@@ -222,7 +211,7 @@ public final class EconomyShopGuiReloader {
 
         try {
             command.execute(console, label, args);
-            logger.info("EconomyShopGUI reload triggered via /" + commandLine);
+            logger.info("EconomyShopGUI soft reload triggered via /" + commandLine);
             return true;
         } catch (Exception ex) {
             logger.fine("EconomyShopGUI reload via /" + commandLine + " failed: " + ex.getMessage());

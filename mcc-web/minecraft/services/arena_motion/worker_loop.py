@@ -181,6 +181,42 @@ class ArenaMotionWorker:
     def connect(self) -> None:
         self.gateway.connect()
 
+    def connect_with_retry(
+        self,
+        *,
+        delay_seconds: float = 2.0,
+        max_delay_seconds: float = 15.0,
+    ) -> None:
+        """
+        Wait until Paper RCON accepts connections.
+
+        A single ConnectionRefused during Paper restart must not kill the worker —
+        Admin would then see a dead PID / stale \"already running\" until manual restart.
+        """
+        delay = max(0.5, float(delay_seconds))
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self.gateway.connect()
+                if attempt > 1:
+                    logger.info("[arena_motion] RCON connected after %s attempt(s)", attempt)
+                return
+            except (ConnectionRefusedError, ConnectionError, OSError, TimeoutError) as exc:
+                logger.warning(
+                    "[arena_motion] waiting for Paper RCON (%s) attempt=%s sleep=%.1fs",
+                    exc,
+                    attempt,
+                    delay,
+                )
+                race_state.update_state(
+                    worker_heartbeat=time.time(),
+                    worker_pid=os.getpid(),
+                    last_error=f"Warte auf Paper-RCON: {exc}",
+                )
+                time.sleep(delay)
+                delay = min(max_delay_seconds, delay * 1.5)
+
     def close(self) -> None:
         self.gateway.close()
 
@@ -1012,13 +1048,31 @@ class ArenaMotionWorker:
             )
 
     def run_forever(self, *, poll_idle_seconds: float = 0.25) -> None:
-        self.connect()
+        self.connect_with_retry()
         race_state.update_state(worker_heartbeat=time.time(), worker_pid=os.getpid(), last_error="")
         logger.info("[arena_motion] worker started config=%s", self.config.config_path)
+        last_rcon_ping = 0.0
         try:
             while True:
                 self.process_pending()
                 st = race_state.load_state()
+                now = time.time()
+                # After Paper restart the TCP session can sit in CLOSE-WAIT while the
+                # idle loop only writes heartbeats — probe RCON periodically.
+                if now - last_rcon_ping >= 10.0:
+                    if not self.gateway.ping():
+                        race_state.update_state(
+                            worker_heartbeat=now,
+                            worker_pid=os.getpid(),
+                            last_error="Paper-RCON nicht erreichbar — reconnect läuft",
+                        )
+                    else:
+                        # Clear transient RCON wait errors once healthy again.
+                        if str(st.get("last_error") or "").startswith(
+                            ("Warte auf Paper-RCON", "Paper-RCON nicht erreichbar")
+                        ):
+                            race_state.update_state(last_error="")
+                    last_rcon_ping = now
                 if st.get("status") == race_state.STATUS_RUNNING and self.states:
                     self._tick()
                     time.sleep(self.config.tick_interval_seconds)
