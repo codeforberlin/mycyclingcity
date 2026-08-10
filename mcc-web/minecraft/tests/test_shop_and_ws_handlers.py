@@ -75,14 +75,26 @@ class TestShopCatalog:
         assert payload["version"] == 1
         assert len(payload["categories"]) == 1
         assert payload["categories"][0]["section"] == "blocks"
-        assert len(payload["categories"][0]["items"]) == 1
-        assert payload["categories"][0]["items"][0]["material"] == "STONE"
-        assert payload["categories"][0]["items"][0]["buy_price_velos"] == 5
-        assert payload["categories"][0]["items"][0]["sell_price_velos"] == 5
+        assert payload["categories"][0]["enabled"] is True
+        items = payload["categories"][0]["items"]
+        assert len(items) == 2
+        by_material = {i["material"]: i for i in items}
+        assert by_material["STONE"]["buy_price_velos"] == 5
+        assert by_material["STONE"]["sell_price_velos"] == 5
+        assert by_material["STONE"]["enabled"] is True
+        assert by_material["DISABLED"]["enabled"] is False
 
-    def test_build_shop_catalog_skips_disabled_categories(self):
-        MinecraftShopCategory.objects.create(slug="hidden", name="Hidden", enabled=False)
+    def test_build_shop_catalog_includes_disabled_categories(self):
+        MinecraftShopCategory.objects.create(
+            slug="weapons",
+            name="Weapons",
+            esgui_section="weapons",
+            enabled=False,
+        )
 
         payload = build_shop_catalog_payload()
 
-        assert payload["categories"] == []
+        assert len(payload["categories"]) == 1
+        assert payload["categories"][0]["section"] == "weapons"
+        assert payload["categories"][0]["enabled"] is False
+        assert payload["categories"][0]["items"] == []

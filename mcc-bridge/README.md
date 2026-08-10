@@ -93,6 +93,10 @@ MCC-Bridge pulls the catalog via WebSocket and writes buy **and sell** prices
 (`plugins/EconomyShopGUI/shops/*.yml`), then patches the loaded ShopItem
 `buyPrice`/`sellPrice` fields in memory so prices apply without a Paper restart.
 
+Category **Aktiv**/`enabled` is synced to the matching section file
+(`plugins/EconomyShopGUI/sections/**/<section>.yml` → `enable: true|false`).
+Disabled items get `buy/sell: -1` (not purchasable) while their category stays active.
+
 Do **not** disable/enable EconomyShopGUI on Paper 26 — that breaks its
 classloader (`zip file error`) until a full server restart.
 

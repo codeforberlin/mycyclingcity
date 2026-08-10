@@ -66,9 +66,12 @@
 </p>
 <p>
     <button type="button" class="button default" onclick="performMinecraftAction('push-shop', this)" {% if not shop_bridge_connected %}disabled{% endif %}>
-        {% trans 'Shop-Preise an Minecraft pushen' %}
+        {% trans 'Shop-Katalog an Minecraft pushen' %}
     </button>
-    <small>{% trans 'Überträgt den MCC-Katalog nach EconomyShopGUI auf dem MC-Server.' %}</small>
+    <small>
+        {% trans 'Überträgt Preise und Aktiv-Status (Kategorie enable / Artikel) nach EconomyShopGUI.' %}
+        {% trans 'Deaktivierte Kategorien (z. B. Weapons) erscheinen im Shop nicht mehr.' %}
+    </small>
 </p>
 
 <h2>{% trans 'Shop-Kaufguthaben (Ledger)' %}</h2>

@@ -7,11 +7,16 @@ from minecraft.models import MinecraftShopCategory, MinecraftShopItem
 
 
 def build_shop_catalog_payload() -> dict:
-    """Serialize enabled shop categories and items for MCC-Bridge / EconomyShopGUI sync."""
+    """
+    Serialize shop categories and items for MCC-Bridge / EconomyShopGUI sync.
+
+    Disabled categories/items are included with enabled=false so the Bridge can
+    set EconomyShopGUI section ``enable: false`` (or item buy:-1) on push.
+    """
     categories = []
-    for category in MinecraftShopCategory.objects.filter(enabled=True).prefetch_related("items"):
+    for category in MinecraftShopCategory.objects.all().prefetch_related("items"):
         items = []
-        for item in category.items.filter(enabled=True):
+        for item in category.items.all():
             buy_price = int(item.buy_price_velos)
             item_payload = {
                 "material": item.material.upper(),
@@ -21,6 +26,7 @@ def build_shop_catalog_payload() -> dict:
                 "sell_price_velos": buy_price,
                 "stack_size": int(item.stack_size),
                 "sort_order": int(item.sort_order),
+                "enabled": bool(item.enabled),
             }
             if item.esgui_item_key:
                 item_payload["esgui_item_key"] = item.esgui_item_key
@@ -33,6 +39,7 @@ def build_shop_catalog_payload() -> dict:
                 "name": category.name,
                 "section": category.section_key,
                 "sort_order": int(category.sort_order),
+                "enabled": bool(category.enabled),
                 "items": items,
             }
         )

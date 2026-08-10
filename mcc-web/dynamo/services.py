@@ -18,7 +18,68 @@ from django.utils import timezone
 
 from api.models import CyclistDeviceCurrentMileage, Group, HourlyMetric
 from dynamo.models import DynamoBatteryTarget, DynamoDisplaySettings
-from dynamo.physics import estimate_energy_from_distance
+from dynamo.physics import DEFAULT_SEND_INTERVAL_S, estimate_energy_from_distance
+
+# Live GUI: drop a rider after ~2 missed send intervals (immediate stop feedback).
+ACTIVE_INTERVAL_FACTOR = 2.0
+ACTIVE_TIMEOUT_MARGIN_S = 2.0
+ACTIVE_TIMEOUT_MIN_S = 8.0
+ACTIVE_TIMEOUT_MAX_S = 180.0
+
+
+def session_live_timeout_s(session: CyclistDeviceCurrentMileage) -> float:
+    """
+    Seconds after last_activity before the dynamo GUI treats a session as idle.
+
+    Uses 2× the device send interval (+ small margin for jitter), clamped.
+    """
+    interval = DEFAULT_SEND_INTERVAL_S
+    try:
+        configured = float(session.device.configuration.send_interval_seconds)
+        if configured > 0:
+            interval = configured
+    except Exception:
+        pass
+    return min(
+        ACTIVE_TIMEOUT_MAX_S,
+        max(ACTIVE_TIMEOUT_MIN_S, interval * ACTIVE_INTERVAL_FACTOR + ACTIVE_TIMEOUT_MARGIN_S),
+    )
+
+
+def is_session_live(session: CyclistDeviceCurrentMileage, now=None) -> bool:
+    """True if the session still counts as actively pedaling for the live GUI."""
+    if not session.last_activity:
+        return False
+    now = now or timezone.now()
+    age_s = (now - session.last_activity).total_seconds()
+    return age_s <= session_live_timeout_s(session)
+
+
+def get_active_sessions(group_ids: Optional[Set[int]] = None, active_seconds: Optional[int] = None):
+    """
+    Sessions that still count as live for the dynamo GUI.
+
+    Default: per-device timeout of ~2 send intervals (see ``session_live_timeout_s``).
+    ``active_seconds`` overrides with a fixed window (tests / callers).
+    """
+    now = timezone.now()
+    if active_seconds is not None:
+        cutoff = now - timedelta(seconds=active_seconds)
+    else:
+        cutoff = now - timedelta(seconds=ACTIVE_TIMEOUT_MAX_S)
+    qs = (
+        CyclistDeviceCurrentMileage.objects
+        .select_related('cyclist', 'device', 'device__configuration')
+        .prefetch_related('cyclist__groups')
+        .filter(last_activity__gte=cutoff)
+        .order_by('-last_power_w', '-last_activity')
+    )
+    sessions = list(qs)
+    if active_seconds is None:
+        sessions = [s for s in sessions if is_session_live(s, now)]
+    if group_ids is None:
+        return sessions
+    return [s for s in sessions if _session_in_scope(s, group_ids)]
 
 
 def get_descendant_group_ids(root: Group) -> Set[int]:
@@ -114,21 +175,6 @@ def _session_in_scope(session: CyclistDeviceCurrentMileage, group_ids: Optional[
     if not group_ids:
         return False
     return session.cyclist.groups.filter(id__in=group_ids).exists()
-
-
-def get_active_sessions(group_ids: Optional[Set[int]] = None, active_seconds: int = 180):
-    """Active sessions optionally filtered by group scope."""
-    cutoff = timezone.now() - timedelta(seconds=active_seconds)
-    qs = (
-        CyclistDeviceCurrentMileage.objects
-        .select_related('cyclist', 'device')
-        .prefetch_related('cyclist__groups')
-        .filter(last_activity__gte=cutoff)
-        .order_by('-last_power_w', '-last_activity')
-    )
-    if group_ids is None:
-        return list(qs)
-    return [s for s in qs if _session_in_scope(s, group_ids)]
 
 
 def sum_energy_wh(

@@ -13,12 +13,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class EconomyShopGuiApplier {
+    /** EconomyShopGUI: negative buy/sell → item cannot be bought/sold. */
+    private static final int DISABLED_ITEM_PRICE = -1;
+
     private final Plugin plugin;
     private final MccBridgeConfig config;
     private final Logger logger;
@@ -65,6 +69,8 @@ public final class EconomyShopGuiApplier {
                 : new JsonArray();
 
         Map<Path, List<EconomyShopGuiYamlWriter.PriceUpdate>> updatesByFile = new HashMap<>();
+        List<String> sectionsToEnable = new ArrayList<>();
+        List<Boolean> sectionEnabledFlags = new ArrayList<>();
         int matched = 0;
         int missing = 0;
         int catalogItems = 0;
@@ -74,12 +80,21 @@ public final class EconomyShopGuiApplier {
                 continue;
             }
             JsonObject category = categoryElement.getAsJsonObject();
-            if (!category.has("section") || !category.has("items")) {
+            if (!category.has("section")) {
                 continue;
             }
 
             String section = category.get("section").getAsString();
-            JsonArray items = category.getAsJsonArray("items");
+            boolean categoryEnabled = !category.has("enabled") || category.get("enabled").getAsBoolean();
+            sectionsToEnable.add(section);
+            sectionEnabledFlags.add(categoryEnabled);
+
+            JsonArray items = category.has("items") ? category.getAsJsonArray("items") : new JsonArray();
+            if (!categoryEnabled) {
+                // Section will be hidden — keep existing shop YAML prices for later re-enable.
+                continue;
+            }
+
             Map<String, String> materialToItemLoc = EconomyShopGuiYamlIndex.loadSectionIndex(section, logger);
             Path shopFile = EconomyShopGuiFiles.resolveShopFile(section);
             if (shopFile == null) {
@@ -111,11 +126,14 @@ public final class EconomyShopGuiApplier {
                 }
                 catalogItems++;
 
+                boolean itemEnabled = !item.has("enabled") || item.get("enabled").getAsBoolean();
                 String material = normalizeMaterial(item.get("material").getAsString());
-                int buyPrice = item.get("buy_price_velos").getAsInt();
-                int sellPrice = item.has("sell_price_velos")
-                        ? item.get("sell_price_velos").getAsInt()
-                        : buyPrice;
+                int buyPrice = itemEnabled ? item.get("buy_price_velos").getAsInt() : DISABLED_ITEM_PRICE;
+                int sellPrice = itemEnabled
+                        ? (item.has("sell_price_velos")
+                                ? item.get("sell_price_velos").getAsInt()
+                                : buyPrice)
+                        : DISABLED_ITEM_PRICE;
                 String itemLoc = item.has("esgui_item_loc") ? item.get("esgui_item_loc").getAsString() : "";
                 if (itemLoc == null || itemLoc.isBlank()) {
                     itemLoc = materialToItemLoc.get(material);
@@ -177,8 +195,49 @@ public final class EconomyShopGuiApplier {
             );
         }
 
-        // Apply live in-memory prices (Paper-safe). Never disable/enable EconomyShopGUI —
-        // that breaks its Paper classloader ("zip file error") until a full server restart.
+        int sectionsUpdated = 0;
+        int sectionsMissing = 0;
+        Map<String, Boolean> sectionEnabled = new HashMap<>();
+        for (int i = 0; i < sectionsToEnable.size(); i++) {
+            sectionEnabled.put(sectionsToEnable.get(i), sectionEnabledFlags.get(i));
+        }
+
+        // Park/restore section files + parent linkers first, then write enable flags
+        // (enable writes need the live YAML path after restore).
+        EconomyShopGuiSectionLinkSync.ApplyStats linkerStats =
+                EconomyShopGuiSectionLinkSync.syncLinkerVisibility(sectionEnabled, logger);
+
+        for (int i = 0; i < sectionsToEnable.size(); i++) {
+            String section = sectionsToEnable.get(i);
+            boolean enabled = sectionEnabledFlags.get(i);
+            EconomyShopGuiSectionSync.ApplyStats sectionStats =
+                    EconomyShopGuiSectionSync.applyCategoryEnabled(section, enabled, logger);
+            sectionsUpdated += sectionStats.updated();
+            sectionsMissing += sectionStats.missing();
+        }
+
+        // loadItems() alone does not re-add previously disabled sections; /sreload does.
+        // After section/linker changes, soft-reload ESGUI then patch live prices again.
+        boolean sectionLayoutChanged = sectionsUpdated > 0 || linkerStats.linkersUpdated() > 0
+                || linkerStats.filesUpdated() > 0;
+        if (sectionLayoutChanged) {
+            Set<String> reloadSections = new java.util.LinkedHashSet<>(sectionsToEnable);
+            reloadSections.addAll(linkerStats.parentShops());
+            for (String section : reloadSections) {
+                EconomyShopGuiSectionSync.reloadShopFromDisk(section, logger);
+                EconomyShopGuiSectionSync.reloadSectionFromDisk(section, logger);
+            }
+            boolean sreloadOk = EconomyShopGuiReloader.reload(logger, false);
+            if (!sreloadOk) {
+                EconomyShopGuiSectionSync.reloadShopItems(logger);
+            }
+        } else if (yamlUpdated > 0) {
+            for (String section : sectionsToEnable) {
+                EconomyShopGuiSectionSync.reloadShopFromDisk(section, logger);
+            }
+            EconomyShopGuiSectionSync.reloadShopItems(logger);
+        }
+
         int liveUpdated = 0;
         int liveMissing = 0;
         Map<String, List<EconomyShopGuiYamlWriter.PriceUpdate>> bySection = new HashMap<>();
@@ -208,7 +267,7 @@ public final class EconomyShopGuiApplier {
             );
         }
 
-        if (matched > 0 && yamlUpdated == 0 && liveUpdated == 0) {
+        if (matched > 0 && yamlUpdated == 0 && liveUpdated == 0 && sectionsUpdated == 0) {
             return ApplyResult.failed("EconomyShopGUI prices could not be written to shop YAML files");
         }
 
@@ -221,10 +280,19 @@ public final class EconomyShopGuiApplier {
                         + yamlSkipped
                         + " live_updated="
                         + liveUpdated
+                        + " sections_enable_updated="
+                        + sectionsUpdated
+                        + " sections_missing="
+                        + sectionsMissing
+                        + " linkers_updated="
+                        + linkerStats.linkersUpdated()
                         + " missing="
                         + missing
         );
-        return ApplyResult.ok(Math.max(yamlUpdated, liveUpdated), 0, missing);
+        int totalUpdated = Math.max(yamlUpdated, liveUpdated)
+                + sectionsUpdated
+                + linkerStats.linkersUpdated();
+        return ApplyResult.ok(totalUpdated, 0, missing + sectionsMissing);
     }
 
     public boolean isEconomyShopGuiAvailable() {
@@ -246,7 +314,7 @@ public final class EconomyShopGuiApplier {
                     true,
                     "EconomyShopGUI aktualisiert: "
                             + updated
-                            + " Preise, "
+                            + " Änderungen, "
                             + added
                             + " neu, "
                             + missing

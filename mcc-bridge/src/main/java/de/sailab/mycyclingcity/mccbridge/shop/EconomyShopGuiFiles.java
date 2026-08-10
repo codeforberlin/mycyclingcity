@@ -5,6 +5,8 @@ import org.bukkit.Bukkit;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
@@ -15,6 +17,41 @@ final class EconomyShopGuiFiles {
     }
 
     static Path resolveShopFile(String section) {
+        return resolvePluginYaml(section, "shops");
+    }
+
+    static Path resolveSectionFile(String section) {
+        return resolvePluginYaml(section, "sections");
+    }
+
+    /** All EconomyShopGUI shop YAML files (used to hide subsection linker tiles). */
+    static List<Path> listShopFiles() {
+        List<Path> files = new ArrayList<>();
+        for (String pluginFolder : PLUGIN_FOLDERS) {
+            Path rootDir = Bukkit.getPluginsFolder()
+                    .toPath()
+                    .resolve(pluginFolder)
+                    .resolve("shops");
+            if (!Files.isDirectory(rootDir)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(rootDir)) {
+                walk.filter(Files::isRegularFile)
+                        .filter(path -> {
+                            String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+                            return (name.endsWith(".yml") || name.endsWith(".yaml"))
+                                    && !name.endsWith(".bak")
+                                    && !name.contains(".yml.bak");
+                        })
+                        .forEach(files::add);
+            } catch (IOException ex) {
+                Bukkit.getLogger().fine("Could not list EconomyShopGUI shops: " + ex.getMessage());
+            }
+        }
+        return files;
+    }
+
+    private static Path resolvePluginYaml(String section, String subDir) {
         String normalized = section.replace("\\", "/");
         if (normalized.toLowerCase(Locale.ROOT).endsWith(".yml")) {
             normalized = normalized.substring(0, normalized.length() - 4);
@@ -24,20 +61,20 @@ final class EconomyShopGuiFiles {
 
         String expectedRelPath = normalized + ".yml";
         for (String pluginFolder : PLUGIN_FOLDERS) {
-            Path shopsDir = Bukkit.getPluginsFolder()
+            Path rootDir = Bukkit.getPluginsFolder()
                     .toPath()
                     .resolve(pluginFolder)
-                    .resolve("shops");
-            if (!Files.isDirectory(shopsDir)) {
+                    .resolve(subDir);
+            if (!Files.isDirectory(rootDir)) {
                 continue;
             }
 
-            Path exact = shopsDir.resolve(expectedRelPath);
+            Path exact = rootDir.resolve(expectedRelPath);
             if (Files.isRegularFile(exact)) {
                 return exact;
             }
 
-            Path nested = findYamlRelativeTo(shopsDir, expectedRelPath);
+            Path nested = findYamlRelativeTo(rootDir, expectedRelPath);
             if (nested != null) {
                 return nested;
             }
@@ -45,13 +82,13 @@ final class EconomyShopGuiFiles {
             String basename = expectedRelPath.contains("/")
                     ? expectedRelPath.substring(expectedRelPath.lastIndexOf('/') + 1)
                     : expectedRelPath;
-            Path flatMatch = findYamlRelativeTo(shopsDir, basename);
+            Path flatMatch = findYamlRelativeTo(rootDir, basename);
             if (flatMatch != null) {
                 return flatMatch;
             }
 
             if (!normalized.contains("/")) {
-                Path stemMatch = findByFileStem(shopsDir, normalized);
+                Path stemMatch = findByFileStem(rootDir, normalized);
                 if (stemMatch != null) {
                     return stemMatch;
                 }

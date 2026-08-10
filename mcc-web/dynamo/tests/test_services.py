@@ -7,6 +7,7 @@
 
 """Tests for dynamo aggregation and live API."""
 
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -20,7 +21,10 @@ from dynamo.services import (
     battery_progress,
     build_live_payload,
     daily_energy_wh,
+    get_active_sessions,
+    is_session_live,
     resolve_top_group_filter,
+    session_live_timeout_s,
 )
 
 
@@ -127,6 +131,40 @@ class TestLivePayloadAndViews:
         assert 'session_velos' in payload['cyclists'][0]
         assert 'session_km' in payload['cyclists'][0]
         assert payload['cyclists'][0]['session_km'] == pytest.approx(0.5)
+
+    def test_stale_session_excluded_after_two_intervals(self):
+        device = DeviceFactory()
+        device.configuration.send_interval_seconds = 5
+        device.configuration.save()
+        cyclist = CyclistFactory(user_id='stale1')
+        session = CyclistDeviceCurrentMileage.objects.create(
+            cyclist=cyclist,
+            device=device,
+            cumulative_mileage=Decimal('0.10000'),
+            last_power_w=2.8,
+            last_speed_kmh=14.0,
+        )
+        # Simulate last update older than 2×5s + margin
+        CyclistDeviceCurrentMileage.objects.filter(pk=session.pk).update(
+            last_activity=timezone.now() - timedelta(seconds=15),
+        )
+        session.refresh_from_db()
+        assert session_live_timeout_s(session) == pytest.approx(12.0)
+        assert is_session_live(session) is False
+        assert get_active_sessions() == []
+
+    def test_fresh_session_still_active(self):
+        device = DeviceFactory()
+        device.configuration.send_interval_seconds = 5
+        device.configuration.save()
+        cyclist = CyclistFactory(user_id='fresh1')
+        CyclistDeviceCurrentMileage.objects.create(
+            cyclist=cyclist,
+            device=device,
+            cumulative_mileage=Decimal('0.10000'),
+            last_power_w=2.8,
+        )
+        assert len(get_active_sessions()) == 1
 
     def test_dynamo_page_and_api(self, client):
         GroupFactory(name='FilterMe')
