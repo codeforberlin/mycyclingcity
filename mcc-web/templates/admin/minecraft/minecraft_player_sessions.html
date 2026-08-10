@@ -139,6 +139,20 @@
                                    {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Spawn' %}
                         </label>
+                        <select name="ms_username" class="mc-start-select" title="{% trans 'Microsoft-Login' %}"
+                                {% if card.is_active %}disabled{% endif %}>
+                            <option value="">{% trans 'Default-MS' %}{% if card.ms_username %} ({{ card.ms_username }}){% endif %}</option>
+                            {% for ms in allowed_ms_logins %}
+                              <option value="{{ ms }}">{{ ms }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="station_id" class="mc-start-select" title="{% trans 'Station (PC)' %}"
+                                {% if card.is_active %}disabled{% endif %}>
+                            <option value="">— {% trans 'Station' %} —</option>
+                            {% for st in play_stations %}
+                              <option value="{{ st.id }}">{{ st.name }}</option>
+                            {% endfor %}
+                        </select>
                         <button type="submit" class="mc-btn mc-btn-start" data-action="start"
                                 {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Start' %}

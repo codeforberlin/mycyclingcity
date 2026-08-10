@@ -543,6 +543,9 @@ class CyclistVelosRedemption(models.Model):
         verbose_name = _("Velos-Einlösung")
         verbose_name_plural = _("Velos-Einlösungen")
         ordering = ['-redeemed_at']
+        permissions = [
+            ('redeem_velos', _('Velos von Radlern einlösen')),
+        ]
 
     def __str__(self):
         return f"{self.cyclist.user_id}: {self.velos_redeemed} Velos"

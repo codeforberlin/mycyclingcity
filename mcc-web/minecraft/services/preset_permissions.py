@@ -128,6 +128,33 @@ def user_can_manage_builder_sessions(user: UserLike) -> bool:
     return user.has_perm("minecraft.manage_builder_sessions")
 
 
+def user_can_manage_minecraft_accounts(user: UserLike) -> bool:
+    """Unified play/builder account stammdaten in Admin."""
+    if not _is_active_staff(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return user.has_perm("minecraft.manage_minecraft_accounts")
+
+
+def user_can_manage_minecraft_operators(user: UserLike) -> bool:
+    """Vanilla /op and /deop via RCON (not for low-privilege session operators)."""
+    if not _is_active_staff(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return user.has_perm("minecraft.manage_minecraft_operators")
+
+
+def user_can_manage_minecraft_stations(user: UserLike) -> bool:
+    """Physical PCs and MS allowlist management."""
+    if not _is_active_staff(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return user.has_perm("minecraft.manage_minecraft_stations")
+
+
 def user_can_manage_presets(user: UserLike) -> bool:
     if not _is_active_staff(user):
         return False

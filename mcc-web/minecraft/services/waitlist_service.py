@@ -128,6 +128,9 @@ def add_waitlist_entry(
     duration_minutes: int | None = None,
     internal_note: str = "",
     user: AbstractBaseUser | None = None,
+    source: str = MinecraftSessionWaitlistEntry.SOURCE_MANUAL,
+    cyclist=None,
+    velos_redemption=None,
 ) -> MinecraftSessionWaitlistEntry:
     ticket = normalize_ticket_number(ticket_number) or generate_ticket_number()
     if ticket_number_in_use(ticket):
@@ -154,13 +157,17 @@ def add_waitlist_entry(
         duration_minutes=int(minutes),
         internal_note=(internal_note or "").strip(),
         queued_by=user if getattr(user, "is_authenticated", False) else None,
+        source=source,
+        cyclist=cyclist,
+        velos_redemption=velos_redemption,
     )
     logger.info(
-        "[waitlist] added entry id=%s type=%s ticket=%s minutes=%s",
+        "[waitlist] added entry id=%s type=%s ticket=%s minutes=%s source=%s",
         entry.pk,
         queue_type,
         ticket,
         minutes,
+        source,
     )
     return entry
 

@@ -52,6 +52,7 @@ def play_account(db):
         id_tag="Arena1",
         short_name="Arena1",
         display_name="PC 1",
+        ms_username="Arena1",
         sort_order=1,
     )
 
@@ -59,6 +60,10 @@ def play_account(db):
 @pytest.mark.unit
 @pytest.mark.django_db
 class TestWaitlistService:
+    @pytest.fixture(autouse=True)
+    def _authme_mode(self, settings):
+        settings.MCC_MINECRAFT_SESSION_AUTH_MODE = "authme"
+
     def test_duration_from_velos(self, waitlist_config):
         assert duration_from_velos(300, config=waitlist_config) == 15
 
@@ -73,6 +78,9 @@ class TestWaitlistService:
         assert entry.ticket_number == "4827"
         assert entry.duration_minutes == 15
         assert entry.status == MinecraftSessionWaitlistEntry.STATUS_WAITING
+        assert entry.source == MinecraftSessionWaitlistEntry.SOURCE_MANUAL
+        assert entry.cyclist is None
+        assert entry.velos_redemption is None
 
     def test_reject_duplicate_ticket(self, waitlist_config, player_manager):
         add_waitlist_entry(
@@ -112,6 +120,9 @@ class TestWaitlistService:
         assert updated.assigned_play_account_id == play_account.pk
         assert updated.mc_session_id is None
 
+    @patch("minecraft.services.sidebar_visibility.ensure_sidebar_routing_teams")
+    @patch("minecraft.services.sidebar_visibility.ensure_builder_station_team")
+    @patch("minecraft.services.sidebar_visibility.ensure_arena_station_team")
     @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
     @patch(
         "minecraft.services.session_control.run_commands_require_player",
@@ -119,7 +130,7 @@ class TestWaitlistService:
     )
     @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
     def test_session_start_activates_assigned_waitlist(
-        self, _rcon, _player_rcon, _wait, waitlist_config, player_manager, play_account
+        self, _rcon, _player_rcon, _wait, _arena, _builder, _sidebar, waitlist_config, player_manager, play_account
     ):
         from minecraft.services.session_control import start_player_session
         from minecraft.services.waitlist_service import assign_player_from_waitlist

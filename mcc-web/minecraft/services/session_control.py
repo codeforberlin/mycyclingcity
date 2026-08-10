@@ -81,6 +81,49 @@ class MissingMicrosoftLoginError(SessionControlError):
     code = "missing_ms_login"
 
 
+class MsAllowlistError(SessionControlError):
+    code = "ms_not_allowed"
+
+
+class StationBusyError(SessionControlError):
+    code = "station_busy"
+
+
+def _resolve_session_online_login(
+    *,
+    default_login: str,
+    ms_username_override: str | None,
+    station,
+    require_allowlist: bool,
+) -> str:
+    """Pick session MS login (override or default) and enforce allowlist when active."""
+    override = (ms_username_override or "").strip()
+    online_login = override or (default_login or "").strip()
+    if not online_login:
+        return ""
+    if require_allowlist:
+        from minecraft.services.station_admin import StationAdminError, assert_ms_login_allowed
+
+        try:
+            return assert_ms_login_allowed(online_login, station=station)
+        except StationAdminError as exc:
+            raise MsAllowlistError(str(exc), code=exc.code) from exc
+    return online_login
+
+
+def _resolve_start_station(station_id, *, role: str):
+    if station_id in (None, ""):
+        return None
+    from minecraft.services.station_admin import StationAdminError, resolve_station_for_session
+
+    try:
+        return resolve_station_for_session(station_id, role=role)
+    except StationAdminError as exc:
+        if exc.code == "station_busy":
+            raise StationBusyError(str(exc), code=exc.code) from exc
+        raise SessionControlError(str(exc), code=exc.code) from exc
+
+
 def _player_duration_default() -> int:
     return int(getattr(settings, "MCC_MINECRAFT_PLAYER_SESSION_MINUTES", 15))
 
@@ -483,11 +526,15 @@ def start_player_session(
     source: str = MCSession.SOURCE_ADMIN,
     teleport_to_spawn: bool = False,
     spawn_offset_index: int = 0,
+    ms_username: str | None = None,
+    station_id: int | str | None = None,
 ) -> MCSession:
     """
     Start a PLAYER session for a MinecraftPlayAccount.
 
     arena_ref may be id_tag or short_name (case-insensitive).
+    Optional ms_username overrides the account default for this session only.
+    Optional station_id binds the session to a physical PC (max one active).
     """
     ref = (arena_ref or "").strip()
     if not ref:
@@ -502,7 +549,14 @@ def start_player_session(
         raise AccountNotFoundError(f"Play account not found or inactive: {ref}")
 
     login = account.short_name
-    online_login = resolve_player_online_login(account)
+    station = _resolve_start_station(station_id, role="play")
+    default_login = resolve_player_online_login(account)
+    online_login = _resolve_session_online_login(
+        default_login=default_login,
+        ms_username_override=ms_username,
+        station=station,
+        require_allowlist=is_online_auth_mode() or bool((ms_username or "").strip()),
+    )
     if not online_login:
         raise MissingMicrosoftLoginError(
             f"Microsoft-Login fehlt für Spieler-Account {login}"
@@ -567,7 +621,7 @@ def start_player_session(
             raise AccountAlreadyActiveError(f"Session already active for {login}")
         session = MCSession(
             account_name=login,
-            ms_username=online_login if is_online_auth_mode() else "",
+            ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
             account_type=MCSession.ACCOUNT_PLAYER,
             timestamp_start=now,
             duration_minutes=minutes,
@@ -577,6 +631,7 @@ def start_player_session(
             started_by=user,
             teleport_to_spawn=bool(teleport_to_spawn),
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
+            station=station,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()
@@ -636,6 +691,8 @@ def start_builder_session(
     spawn_offset_index: int = 0,
     spawn_region=None,
     spawn_region_id: int | str | None = None,
+    ms_username: str | None = None,
+    station_id: int | str | None = None,
 ) -> MCSession:
     """Start a BUILDER session for an active MinecraftTeamRegistration."""
     name = (team_name or "").strip()
@@ -653,7 +710,14 @@ def start_builder_session(
         raise AccountNotFoundError(f"Builder group not visible: {name}")
 
     login = registration.mc_username
-    online_login = resolve_builder_online_login(registration)
+    station = _resolve_start_station(station_id, role="builder")
+    default_login = resolve_builder_online_login(registration)
+    online_login = _resolve_session_online_login(
+        default_login=default_login,
+        ms_username_override=ms_username,
+        station=station,
+        require_allowlist=is_online_auth_mode() or bool((ms_username or "").strip()),
+    )
     if not online_login:
         raise MissingMicrosoftLoginError(
             f"Microsoft-Login fehlt für Bau-Account {login}"
@@ -743,7 +807,7 @@ def start_builder_session(
             raise AccountAlreadyActiveError(f"Session already active for {login}")
         session = MCSession(
             account_name=login,
-            ms_username=online_login if is_online_auth_mode() else "",
+            ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
             account_type=MCSession.ACCOUNT_BUILDER,
             timestamp_start=now,
             duration_minutes=minutes,
@@ -754,6 +818,7 @@ def start_builder_session(
             teleport_to_spawn=use_world_spawn,
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
             spawn_region=resolved_region,
+            station=station,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()

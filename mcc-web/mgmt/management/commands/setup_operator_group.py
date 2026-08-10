@@ -21,7 +21,7 @@ from django.contrib.auth.models import Group as AuthGroup, Permission
 from django.contrib.contenttypes.models import ContentType
 from api.models import (
     Group as ApiGroup, Cyclist, TravelTrack, Milestone, GroupTravelStatus,
-    TravelHistory, GroupMilestoneAchievement
+    TravelHistory, GroupMilestoneAchievement, CyclistVelosRedemption
 )
 from eventboard.models import Event, EventHistory, GroupEventStatus
 from kiosk.models import KioskDevice, KioskPlaylistEntry
@@ -64,6 +64,18 @@ class Command(BaseCommand):
             Permission.objects.get(codename='change_cyclist', content_type=ContentType.objects.get_for_model(Cyclist)),
             Permission.objects.get(codename='delete_cyclist', content_type=ContentType.objects.get_for_model(Cyclist)),
             Permission.objects.get(codename='view_cyclist', content_type=ContentType.objects.get_for_model(Cyclist)),
+        ])
+
+        # Velos redemption (admin counter workflow)
+        permissions_to_assign.extend([
+            Permission.objects.get(
+                codename='redeem_velos',
+                content_type=ContentType.objects.get_for_model(CyclistVelosRedemption),
+            ),
+            Permission.objects.get(
+                codename='view_cyclistvelosredemption',
+                content_type=ContentType.objects.get_for_model(CyclistVelosRedemption),
+            ),
         ])
         
         # TravelTrack permissions

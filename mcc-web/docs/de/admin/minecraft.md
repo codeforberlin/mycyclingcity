@@ -89,11 +89,30 @@ MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS=server1,server2
 
 ## Admin GUI
 
-Unter `/admin/minecraft/` (nur Superuser):
+Unter `/admin/` → App **Minecraft** (rollenbasiert, nicht nur Superuser):
 
-- Worker- und Snapshot-Steuerung
+- Worker- und Snapshot-Steuerung (Control)
 - Manuelle Aktionen: Sync, Snapshot, RCON-Test, Cleanup
 - **Gruppen-Tabelle**: DB-Werte vs. Scoreboard-Snapshot pro `mc_username`
+- **Account-Management** (`/admin/minecraft/accounts/`): Anlegen/Bearbeiten/Löschen von Spieler-Accounts, Registrieren/Deaktivieren/Reaktivieren von Bau-Accounts, TOP-Filter, Vanilla-`/op`/`/deop`, temporäre Liste **Limbo ohne Account** (Velocity-Live, nicht persistiert)
+- **Spieler-Sessions** / **Bau-Sessions**: Session-Start, Kick, Zeit verlängern (eigene Permissions)
+
+Die alten Menü-Kacheln „Spieler-Accounts“ / „Bau-Accounts“ erscheinen nur noch als Fallback, wenn `manage_minecraft_accounts` fehlt.
+
+### Berechtigungen (Auswahl)
+
+| Permission | Zweck |
+|------------|--------|
+| `manage_player_sessions` | Spieler-Sessions (z. B. `minecraft_moderator` / FEZitty-Betrieb) |
+| `manage_builder_sessions` | Bau-Sessions und klassische Bau-Accounts-Liste |
+| `manage_minecraft_accounts` | Stammdaten Spieler + Bau in Minecraft-Accounts |
+| `manage_minecraft_operators` | Vanilla-OP zuweisen/entziehen (`ops.json` + RCON) |
+
+`minecraft_moderator` erhält absichtlich **keine** Account-/OP-Permissions — nur Sessions und Stadt/Arena. Setup: `python manage.py setup_minecraft_preset_groups`.
+
+### Vanilla-Operatoren
+
+OP-Status kommt aus `ops.json` unter `MCC_MINECRAFT_PAPER_DIR` (Vanilla hat keinen List-Befehl). Zuweisen/Entziehen läuft per RCON `op` / `deop` und wird in `MinecraftVanillaOpLog` protokolliert.
 
 ## Datenmodelle
 

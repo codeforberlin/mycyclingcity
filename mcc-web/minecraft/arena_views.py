@@ -185,7 +185,7 @@ def _allowed_scope(request, top_groups) -> set[int] | None:
 @user_passes_test(can_manage_arena)
 @require_http_methods(["GET", "POST"])
 def minecraft_arena_control(request):
-    title = _("Velo-Arena Steuerung")
+    title = _("Arena-Steuerung")
     error = ""
     if request.method == "POST":
         action = _post_action(request)

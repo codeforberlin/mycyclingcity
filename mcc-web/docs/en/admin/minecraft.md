@@ -66,11 +66,28 @@ MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS=server1,server2
 
 ## Admin GUI
 
-At `/admin/minecraft/` (superusers only):
+Under `/admin/` → **Minecraft** app (role-based, not superuser-only):
 
 - Worker and snapshot control
 - Manual actions: sync, snapshot, RCON test, cleanup
 - **Groups table**: DB values vs. scoreboard snapshot per `mc_username`
+- **Minecraft Accounts** (`/admin/minecraft/accounts/`): create/edit/delete play accounts; register/deactivate/reactivate builder accounts; TOP filter; Vanilla `/op`/`/deop`
+- **Player / Builder sessions**: start, kick, extend time (separate permissions)
+
+Legacy „Spieler-Accounts“ / „Bau-Accounts“ tiles only appear when `manage_minecraft_accounts` is missing.
+
+### Key permissions
+
+| Permission | Purpose |
+|------------|---------|
+| `manage_player_sessions` | Player sessions (e.g. `minecraft_moderator`) |
+| `manage_builder_sessions` | Builder sessions |
+| `manage_minecraft_accounts` | Play + builder stammdaten |
+| `manage_minecraft_operators` | Vanilla OP grant/revoke |
+
+`minecraft_moderator` intentionally has **no** account/OP permissions. Setup: `python manage.py setup_minecraft_preset_groups`.
+
+Vanilla OP status is read from `ops.json` under `MCC_MINECRAFT_PAPER_DIR`; mutations use RCON `op`/`deop` and are audited in `MinecraftVanillaOpLog`.
 
 ## Data Models
 

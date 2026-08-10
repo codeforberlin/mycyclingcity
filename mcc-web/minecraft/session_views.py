@@ -28,9 +28,11 @@ from minecraft.services.session_control import (
     AccountAlreadyActiveError,
     AccountNotFoundError,
     MissingMicrosoftLoginError,
+    MsAllowlistError,
     RconSequenceError,
     SessionControlError,
     SessionNotActiveError,
+    StationBusyError,
     add_session_time,
     end_session,
     expire_due_sessions,
@@ -228,7 +230,7 @@ def _active_sessions_by_name(account_names: list[str]) -> dict[str, MCSession]:
     sessions = MCSession.objects.filter(
         status=MCSession.STATUS_ACTIVE,
         account_name__in=account_names,
-    )
+    ).select_related("station")
     # Case-insensitive lookup map
     by_lower = {s.account_name.lower(): s for s in sessions}
     result: dict[str, MCSession] = {}
@@ -288,6 +290,9 @@ def _build_player_cards(*, include_presence: bool = True) -> list[dict]:
                 "gamemode_spectator": bool(session.gamemode_spectator) if session else False,
                 "play_gamemode": play_gamemode,
                 "prefer_spectator": bool(account.prefer_spectator),
+                "station_name": (
+                    session.station.name if session and getattr(session, "station_id", None) else ""
+                ),
             }
         )
     if include_presence:
@@ -357,6 +362,9 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
                 "play_gamemode": play_gamemode,
                 "prefer_spectator": bool(registration.prefer_spectator),
                 "spawn_regions": regions_for_builder_choices(registration),
+                "station_name": (
+                    session.station.name if session and getattr(session, "station_id", None) else ""
+                ),
             }
         )
     if include_presence:
@@ -608,6 +616,30 @@ def _handle_set_all_gamemode(
     return True, str(msg)
 
 
+def _post_ms_username(request) -> str:
+    return (request.POST.get("ms_username") or "").strip()
+
+
+def _post_station_id(request) -> str:
+    return (request.POST.get("station_id") or "").strip()
+
+
+def _session_start_context() -> dict:
+    from minecraft.services.station_admin import (
+        allowlist_is_enforced,
+        list_allowed_ms_usernames,
+        stations_for_role,
+    )
+
+    return {
+        "allowlist_enforced": allowlist_is_enforced(),
+        "allowed_ms_logins": list_allowed_ms_usernames(),
+        "play_stations": stations_for_role("play", only_free=False),
+        "builder_stations": stations_for_role("builder", only_free=False),
+        "stations_url": "/admin/minecraft/stations/",
+    }
+
+
 def _handle_player_action(request, action: str, account: str) -> tuple[bool, str]:
     if action == "set_all_gamemode":
         return _handle_set_all_gamemode(request, account_type=MCSession.ACCOUNT_PLAYER)
@@ -623,11 +655,15 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
                 account,
                 user=request.user,
                 teleport_to_spawn=_post_wants_spawn(request),
+                ms_username=_post_ms_username(request) or None,
+                station_id=_post_station_id(request) or None,
             )
             msg = _("Session gestartet: %(name)s (%(min)s Min.)") % {
                 "name": session.account_name,
                 "min": session.duration_minutes,
             }
+            if session.ms_username:
+                msg = f"{msg} · MS: {session.ms_username}"
             messages.success(request, msg)
             return True, str(msg)
         if action == "teleport_spawn":
@@ -674,6 +710,12 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
     except MissingMicrosoftLoginError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
+    except MsAllowlistError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except StationBusyError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
     except AccountNotFoundError:
         msg = _("Account nicht gefunden: %(name)s") % {"name": account}
         messages.error(request, msg)
@@ -713,11 +755,15 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                 user=request.user,
                 teleport_to_spawn=_post_wants_spawn(request),
                 spawn_region_id=_post_spawn_region_id(request) or None,
+                ms_username=_post_ms_username(request) or None,
+                station_id=_post_station_id(request) or None,
             )
             msg = _("Builder-Session gestartet: %(name)s (%(min)s Min.)") % {
                 "name": session.account_name,
                 "min": session.duration_minutes,
             }
+            if session.ms_username:
+                msg = f"{msg} · MS: {session.ms_username}"
             messages.success(request, msg)
             return True, str(msg)
         if action == "teleport_spawn":
@@ -762,6 +808,12 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
             messages.success(request, msg)
             return True, str(msg)
     except MissingMicrosoftLoginError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except MsAllowlistError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except StationBusyError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
     except AccountNotFoundError:
@@ -828,6 +880,7 @@ def minecraft_player_sessions(request):
             "poll_url": request.path + "?format=json",
             "proxy_presence_poll_seconds": _proxy_presence_poll_seconds(),
             "proxy_presence_poll_fast_seconds": _proxy_presence_poll_fast_seconds(),
+            **_session_start_context(),
         },
     )
 
@@ -873,5 +926,6 @@ def minecraft_builder_sessions(request):
             "poll_url": request.path + "?format=json",
             "proxy_presence_poll_seconds": _proxy_presence_poll_seconds(),
             "proxy_presence_poll_fast_seconds": _proxy_presence_poll_fast_seconds(),
+            **_session_start_context(),
         },
     )

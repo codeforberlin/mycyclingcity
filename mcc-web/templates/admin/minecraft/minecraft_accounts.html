@@ -1,0 +1,505 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .mca-panel {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    margin: 0 0 1rem;
+    backdrop-filter: blur(8px);
+  }
+  .mca-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .mca-table th, .mca-table td {
+    border: 1px solid #cbd5e1;
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .mca-table th { background: #f1f5f9; }
+  .mca-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .mca-badge-player { background: #dbeafe; color: #1d4ed8; }
+  .mca-badge-builder { background: #ffedd5; color: #c2410c; }
+  .mca-badge-op { background: #dcfce7; color: #15803d; }
+  .mca-badge-off { background: #f1f5f9; color: #64748b; }
+  .mca-filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+  .mca-filters label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
+  .mca-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .mca-actions form { display: inline; margin: 0; }
+  .mca-muted { color: #64748b; font-size: 0.85rem; }
+  .mca-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .mca-edit-grid label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
+  .mca-warn { color: #b45309; }
+  .mca-inactive td { opacity: 0.65; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; {% trans 'Account-Management' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-control">
+  <h1>{% trans 'Account-Management' %}</h1>
+  <p class="mca-muted">
+    {% trans 'Einheitliche Verwaltung für Spieler- und Bau-Accounts (inkl. Anlegen). Session-Steuerung bleibt in den Session-Dashboards.' %}
+    {% if can_edit %}
+      · <a href="{{ player_sessions_url }}">{% trans 'Spieler-Sessions' %}</a>
+      · <a href="{{ builder_sessions_url }}">{% trans 'Bau-Sessions' %}</a>
+    {% endif %}
+  </p>
+
+  <div class="mca-panel">
+    <strong>{% trans 'Limbo ohne Account (temporär)' %}</strong>
+    <p class="mca-muted" style="margin:0.35rem 0 0.6rem;">
+      {% trans 'Live-Abfrage Velocity-Warteraum. Namen werden nicht gespeichert — erst nach Übernehmen als Spieler- oder Bau-Account.' %}
+      · <a href="?{% if filter_type %}type={{ filter_type }}&{% endif %}{% if filter_top %}top={{ filter_top }}&{% endif %}{% if filter_q %}q={{ filter_q }}&{% endif %}filtered=1&inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Aktualisieren' %}</a>
+    </p>
+    {% if limbo_error %}
+      <p class="mca-warn">{{ limbo_error }}</p>
+    {% elif limbo_unknown %}
+      <table class="mca-table">
+        <thead>
+          <tr>
+            <th>{% trans 'Microsoft-Login (Limbo)' %}</th>
+            <th>{% trans 'Aktion' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name in limbo_unknown %}
+          <tr>
+            <td><code>{{ name }}</code></td>
+            <td>
+              {% if can_edit %}
+              <div class="mca-actions">
+                <a class="button default" href="?create=1&amp;ms_username={{ name|urlencode }}&amp;short_name={{ name|urlencode }}{% if filter_type %}&amp;type={{ filter_type }}{% endif %}{% if filter_top %}&amp;top={{ filter_top }}{% endif %}&amp;filtered=1&amp;inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Als Spieler' %}</a>
+                <a class="button" href="?adopt_builder=1&amp;ms_username={{ name|urlencode }}{% if filter_type %}&amp;type={{ filter_type }}{% endif %}{% if filter_top %}&amp;top={{ filter_top }}{% endif %}&amp;filtered=1&amp;inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Als Bau-Account' %}</a>
+              </div>
+              {% else %}
+              <span class="mca-muted">{% trans 'nur Anzeige' %}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="mca-muted">{% trans 'Keine unbekannten Spieler im Limbo.' %}</p>
+    {% endif %}
+
+    {% if show_adopt_builder and can_edit %}
+    <form method="post" style="margin-top:0.9rem;padding-top:0.75rem;border-top:1px solid #cbd5e1;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="adopt_builder">
+      <input type="hidden" name="ms_username" value="{{ prefill_ms_username }}">
+      <input type="hidden" name="filter_type" value="{{ filter_type }}">
+      <input type="hidden" name="filter_top" value="{{ filter_top }}">
+      <input type="hidden" name="filter_q" value="{{ filter_q }}">
+      <input type="hidden" name="filtered" value="1">
+      <input type="hidden" name="inactive" value="{% if include_inactive %}1{% else %}0{% endif %}">
+      <strong>{% blocktrans with name=prefill_ms_username %}„{{ name }}“ als Bau-Account übernehmen{% endblocktrans %}</strong>
+      {% if prefill_ms_uuid %}
+      <p class="mca-muted">{% trans 'UUID' %}: <code>{{ prefill_ms_uuid }}</code></p>
+      {% else %}
+      <p class="mca-warn">{% trans 'UUID konnte nicht automatisch ermittelt werden (usercache/Mojang) — nach erstem Paper-Join ergänzbar.' %}</p>
+      {% endif %}
+      <div class="mca-filters" style="margin-top:0.5rem;">
+        <label>{% trans 'Ziel (Gruppe / bestehender Bau-Account ohne MS-Login)' %}
+          <select name="builder_target" required style="min-width:22rem;">
+            <option value="">{% trans '— wählen —' %}</option>
+            {% for c in builder_adopt_choices %}
+            <option value="{{ c.value }}">{{ c.label }}</option>
+            {% empty %}
+            <option value="" disabled>{% trans 'Keine offenen Bau-Ziele' %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="default" {% if not builder_adopt_choices %}disabled{% endif %}>{% trans 'Bau-Account übernehmen' %}</button>
+        <a href="?{% if filter_type %}type={{ filter_type }}&{% endif %}{% if filter_top %}top={{ filter_top }}&{% endif %}filtered=1&inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Abbrechen' %}</a>
+      </div>
+      <p class="mca-muted" style="margin-top:0.35rem;">
+        {% trans 'Neu registrieren = Gruppe mit mc_username anlegen. Zuweisen = bestehenden Bau-Account ohne Microsoft-Login belegen.' %}
+      </p>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if can_edit %}
+  <div class="mca-panel">
+    <strong>{% trans 'Neu anlegen' %}</strong>
+    <div class="mca-actions" style="margin-top:0.5rem;">
+      <a class="button default" href="?create=1{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_top %}&top={{ filter_top }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}&filtered=1&inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Spieler-Account' %}</a>
+    </div>
+
+    {% if show_create %}
+    <form method="post" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_player">
+      <input type="hidden" name="filter_type" value="{{ filter_type }}">
+      <input type="hidden" name="filter_top" value="{{ filter_top }}">
+      <input type="hidden" name="filter_q" value="{{ filter_q }}">
+      <input type="hidden" name="filtered" value="1">
+      <input type="hidden" name="inactive" value="{% if include_inactive %}1{% else %}0{% endif %}">
+      <div class="mca-edit-grid">
+        <label>{% trans 'Kurzname / Login' %} *
+          <input type="text" name="short_name" maxlength="32" required placeholder="Arena1" value="{{ prefill_short_name }}">
+        </label>
+        <label>{% trans 'RFID-UID' %}
+          <input type="text" name="id_tag" maxlength="50" placeholder="{% trans 'leer = Kurzname' %}">
+        </label>
+        <label>{% trans 'Anzeigename' %}
+          <input type="text" name="display_name" maxlength="64" value="{{ prefill_ms_username }}">
+        </label>
+        <label>{% trans 'Microsoft-Login' %}
+          <input type="text" name="ms_username" maxlength="32" value="{{ prefill_ms_username }}">
+        </label>
+        <label>{% trans 'Microsoft-UUID' %}
+          <input type="text" name="ms_uuid" maxlength="36" value="{{ prefill_ms_uuid }}">
+        </label>
+        <label>{% trans 'TOP-Gruppe' %}
+          <select name="assigned_to_group_id">
+            <option value="">{% trans '— keine —' %}</option>
+            {% for g in top_groups %}
+            <option value="{{ g.pk }}">{{ g.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Session-Dauer (Min.)' %}
+          <input type="number" min="1" name="session_duration_minutes">
+        </label>
+        <label>{% trans 'Zeit hinzufügen (Min.)' %}
+          <input type="number" min="1" name="add_time_minutes">
+        </label>
+      </div>
+      <div class="mca-actions" style="margin-top:0.75rem;">
+        <button type="submit" class="default">{% trans 'Spieler-Account anlegen' %}</button>
+        <a href="?{% if filter_type %}type={{ filter_type }}&{% endif %}{% if filter_top %}top={{ filter_top }}&{% endif %}{% if filter_q %}q={{ filter_q }}&{% endif %}filtered=1&inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Abbrechen' %}</a>
+      </div>
+    </form>
+    {% endif %}
+
+    <form method="post" class="mca-filters" style="margin-top:1rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="register_builder">
+      <input type="hidden" name="filter_type" value="{{ filter_type }}">
+      <input type="hidden" name="filter_top" value="{{ filter_top }}">
+      <input type="hidden" name="filter_q" value="{{ filter_q }}">
+      <input type="hidden" name="filtered" value="1">
+      <input type="hidden" name="inactive" value="{% if include_inactive %}1{% else %}0{% endif %}">
+      <label>{% trans 'Bau-Account registrieren (Gruppe mit mc_username)' %}
+        <select name="group_id" required>
+          <option value="">{% trans '— Gruppe wählen —' %}</option>
+          {% for g in pending_builder_groups %}
+          <option value="{{ g.pk }}">{{ g.name }} ({{ g.mc_username }})</option>
+          {% empty %}
+          <option value="" disabled>{% trans 'Keine offenen Gruppen' %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="default" {% if not pending_builder_groups %}disabled{% endif %}>{% trans 'Bau registrieren' %}</button>
+    </form>
+    <p class="mca-muted" style="margin-top:0.4rem;">
+      {% trans 'Voraussetzung: sichtbare Leaf-Gruppe mit mc_username, noch nicht (aktiv) registriert. Ansonsten Gruppe im Gruppen-Admin anlegen.' %}
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="mca-panel">
+    <strong>{% trans 'Aktuelle Vanilla-Operatoren' %}</strong>
+    {% if ops_error %}
+      <p class="mca-warn">{{ ops_error }}</p>
+    {% elif operators %}
+      <ul>
+        {% for op in operators %}
+          <li>
+            <code>{{ op.name }}</code>
+            {% if op.level is not None %} · Level {{ op.level }}{% endif %}
+            {% if op.uuid %}<span class="mca-muted"> · {{ op.uuid }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mca-muted">{% trans 'Keine Operatoren in ops.json.' %}</p>
+    {% endif %}
+
+    {% if can_op %}
+    <form method="post" class="mca-filters" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="op_raw">
+      <label>{% trans 'Spielername (/op)' %}
+        <input type="text" name="player_name" maxlength="32" required placeholder="Gamertag">
+      </label>
+      <button type="submit" class="default">{% trans 'OP vergeben' %}</button>
+    </form>
+    <form method="post" class="mca-filters" style="margin-top:0.5rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="deop_raw">
+      <label>{% trans 'Spielername (/deop)' %}
+        <input type="text" name="player_name" maxlength="32" required placeholder="Gamertag">
+      </label>
+      <button type="submit">{% trans 'OP entziehen' %}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="mca-panel">
+    <form method="get" class="mca-filters">
+      <input type="hidden" name="filtered" value="1">
+      <label>{% trans 'Typ' %}
+        <select name="type">
+          <option value="">{% trans 'Alle' %}</option>
+          <option value="PLAYER" {% if filter_type == 'PLAYER' %}selected{% endif %}>{% trans 'Spieler' %}</option>
+          <option value="BUILDER" {% if filter_type == 'BUILDER' %}selected{% endif %}>{% trans 'Bau' %}</option>
+        </select>
+      </label>
+      <label>{% trans 'TOP-Gruppe' %}
+        <select name="top">
+          <option value="">{% trans 'Alle' %}</option>
+          {% for g in top_groups %}
+          <option value="{{ g.pk }}" {% if filter_top == g.pk|stringformat:'s' %}selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>{% trans 'Suche' %}
+        <input type="text" name="q" value="{{ filter_q }}" placeholder="Name / Login / RFID">
+      </label>
+      <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+        <input type="checkbox" name="inactive" value="1" {% if include_inactive %}checked{% endif %} onchange="this.form.submit()">
+        {% trans 'Inaktive anzeigen' %}
+      </label>
+      <button type="submit" class="default">{% trans 'Filtern' %}</button>
+    </form>
+  </div>
+
+  {% if edit_dto and can_edit %}
+  <div class="mca-panel">
+    <strong>{% trans 'Account bearbeiten' %}: {{ edit_dto.label }}
+      <span class="mca-badge {% if edit_dto.account_type == 'PLAYER' %}mca-badge-player{% else %}mca-badge-builder{% endif %}">
+        {{ edit_dto.account_type }}
+      </span>
+    </strong>
+    <form method="post" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_account">
+      <input type="hidden" name="account_type" value="{{ edit_dto.account_type }}">
+      <input type="hidden" name="pk" value="{{ edit_dto.pk }}">
+      <input type="hidden" name="filter_type" value="{{ filter_type }}">
+      <input type="hidden" name="filter_top" value="{{ filter_top }}">
+      <input type="hidden" name="filter_q" value="{{ filter_q }}">
+      <div class="mca-edit-grid">
+        <label>{% trans 'Microsoft-Login' %}
+          <input type="text" name="ms_username" value="{{ edit_dto.ms_username }}" maxlength="32">
+        </label>
+        <label>{% trans 'Microsoft-UUID' %}
+          <input type="text" name="ms_uuid" value="{{ edit_dto.ms_uuid }}" maxlength="36">
+        </label>
+        {% if edit_dto.account_type == 'PLAYER' %}
+        <label>{% trans 'Anzeigename' %}
+          <input type="text" name="display_name" value="{{ edit_dto.display_name }}" maxlength="64">
+        </label>
+        <label>{% trans 'TOP-Gruppe' %}
+          <select name="assigned_to_group_id">
+            <option value="">{% trans '— keine —' %}</option>
+            {% for g in top_groups %}
+            <option value="{{ g.pk }}" {% if edit_dto.top_group_id == g.pk %}selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label>{% trans 'Session-Dauer (Min.)' %}
+          <input type="number" min="1" name="session_duration_minutes" value="{{ edit_dto.session_duration_minutes|default_if_none:'' }}">
+        </label>
+        <label>{% trans 'Zeit hinzufügen (Min.)' %}
+          <input type="number" min="1" name="add_time_minutes" value="{{ edit_dto.add_time_minutes|default_if_none:'' }}">
+        </label>
+        <label>{% trans 'Bevorzugter Spielmodus' %}
+          <select name="prefer_gamemode">
+            <option value="" {% if not edit_dto.prefer_gamemode %}selected{% endif %}>{% trans 'Standard' %}</option>
+            <option value="survival" {% if edit_dto.prefer_gamemode == 'survival' %}selected{% endif %}>Survival</option>
+            <option value="adventure" {% if edit_dto.prefer_gamemode == 'adventure' %}selected{% endif %}>Adventure</option>
+            <option value="spectator" {% if edit_dto.prefer_gamemode == 'spectator' %}selected{% endif %}>Spectator</option>
+          </select>
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="prefer_spectator" value="1" {% if edit_dto.prefer_spectator %}checked{% endif %}>
+          {% trans 'Spectator bevorzugen' %}
+        </label>
+        {% if edit_dto.account_type == 'PLAYER' %}
+        <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="is_active" value="1" {% if edit_dto.is_active %}checked{% endif %}>
+          {% trans 'Aktiv' %}
+        </label>
+        {% endif %}
+      </div>
+      {% if edit_dto.account_type == 'BUILDER' %}
+      <p class="mca-muted" style="margin-top:0.75rem;">
+        {% trans 'Gruppe / mc_username bleiben über die Gruppen-Hierarchie. Aktiv/Inaktiv über „Deaktivieren“ / „Reaktivieren“ (Scoreboard-Sync).' %}
+        {% if edit_dto.group_name %} · {{ edit_dto.group_name }}{% endif %}
+        {% if edit_dto.top_group_name %} · TOP: {{ edit_dto.top_group_name }}{% endif %}
+      </p>
+      {% endif %}
+      <div class="mca-actions" style="margin-top:0.75rem;">
+        <button type="submit" class="default">{% trans 'Speichern' %}</button>
+        <a href="?{% if filter_type %}type={{ filter_type }}&{% endif %}{% if filter_top %}top={{ filter_top }}&{% endif %}{% if filter_q %}q={{ filter_q }}&{% endif %}">{% trans 'Abbrechen' %}</a>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="mca-panel">
+    <table class="mca-table">
+      <thead>
+        <tr>
+          <th>{% trans 'Typ' %}</th>
+          <th>{% trans 'Account' %}</th>
+          <th>{% trans 'Login / RFID' %}</th>
+          <th>{% trans 'MS-Login' %}</th>
+          <th>{% trans 'TOP' %}</th>
+          <th>{% trans 'Session' %}</th>
+          <th>{% trans 'OP' %}</th>
+          <th>{% trans 'Aktionen' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr class="{% if not a.is_active %}mca-inactive{% endif %}">
+          <td>
+            <span class="mca-badge {% if a.account_type == 'PLAYER' %}mca-badge-player{% else %}mca-badge-builder{% endif %}">
+              {% if a.account_type == 'PLAYER' %}{% trans 'Spieler' %}{% else %}{% trans 'Bau' %}{% endif %}
+            </span>
+          </td>
+          <td>
+            <strong>{{ a.label }}</strong>
+            {% if a.group_name %}<div class="mca-muted">{{ a.group_name }}</div>{% endif %}
+            {% if a.region_names %}<div class="mca-muted">{{ a.region_names|join:", " }}</div>{% endif %}
+          </td>
+          <td>
+            <code>{{ a.login_key }}</code>
+            {% if a.id_tag %}<div class="mca-muted">RFID: {{ a.id_tag }}</div>{% endif %}
+          </td>
+          <td>{{ a.ms_username|default:"—" }}</td>
+          <td>{{ a.top_group_name|default:"—" }}</td>
+          <td>
+            {% if a.session_duration_minutes %}{{ a.session_duration_minutes }} min{% else %}—{% endif %}
+            {% if a.prefer_gamemode %}<div class="mca-muted">{{ a.prefer_gamemode }}</div>{% endif %}
+            {% if a.active_session_id %}
+              <div>
+                <a href="{% if a.account_type == 'PLAYER' %}{{ player_sessions_url }}{% else %}{{ builder_sessions_url }}{% endif %}">
+                  {% trans 'aktive Session' %}
+                </a>
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.is_vanilla_op %}
+              <span class="mca-badge mca-badge-op">OP</span>
+            {% else %}
+              <span class="mca-badge mca-badge-off">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="mca-actions">
+              {% if can_edit %}
+              <a class="button" href="?edit={{ a.pk }}&edit_type={{ a.account_type }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_top %}&top={{ filter_top }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}&filtered=1&inactive={% if include_inactive %}1{% else %}0{% endif %}">{% trans 'Bearbeiten' %}</a>
+              {% if a.account_type == 'PLAYER' %}
+              <form method="post" onsubmit="return confirm('{% trans 'Spieler-Account wirklich löschen?' %}');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_player">
+                <input type="hidden" name="pk" value="{{ a.pk }}">
+                <button type="submit">{% trans 'Löschen' %}</button>
+              </form>
+              {% elif a.is_active %}
+              <form method="post" onsubmit="return confirm('{% trans 'Bau-Account deaktivieren (Scoreboard entfernen)?' %}');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="deactivate_builder">
+                <input type="hidden" name="pk" value="{{ a.pk }}">
+                <button type="submit">{% trans 'Deaktivieren' %}</button>
+              </form>
+              {% else %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reactivate_builder">
+                <input type="hidden" name="pk" value="{{ a.pk }}">
+                <button type="submit" class="default">{% trans 'Reaktivieren' %}</button>
+              </form>
+              {% endif %}
+              {% endif %}
+              {% if can_op and a.op_lookup_name %}
+                {% if a.is_vanilla_op %}
+                <form method="post" onsubmit="return confirm('{% trans 'OP wirklich entziehen?' %}');">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="deop">
+                  <input type="hidden" name="account_type" value="{{ a.account_type }}">
+                  <input type="hidden" name="pk" value="{{ a.pk }}">
+                  <button type="submit">{% trans 'deop' %}</button>
+                </form>
+                {% else %}
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="op">
+                  <input type="hidden" name="account_type" value="{{ a.account_type }}">
+                  <input type="hidden" name="pk" value="{{ a.pk }}">
+                  <button type="submit" class="default">{% trans 'op' %}</button>
+                </form>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">{% trans 'Keine Accounts gefunden.' %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if recent_ops and can_op %}
+  <div class="mca-panel">
+    <strong>{% trans 'Letzte OP-Aktionen' %}</strong>
+    <table class="mca-table" style="margin-top:0.5rem;">
+      <thead>
+        <tr>
+          <th>{% trans 'Zeit' %}</th>
+          <th>{% trans 'Aktion' %}</th>
+          <th>{% trans 'Spieler' %}</th>
+          <th>{% trans 'OK' %}</th>
+          <th>{% trans 'Von' %}</th>
+          <th>{% trans 'Detail' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in recent_ops %}
+        <tr>
+          <td>{{ row.created_at }}</td>
+          <td>{{ row.action }}</td>
+          <td><code>{{ row.player_name }}</code></td>
+          <td>{% if row.ok %}✓{% else %}✗{% endif %}</td>
+          <td>{{ row.created_by|default:"—" }}</td>
+          <td class="mca-muted">{{ row.detail|truncatechars:80 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -209,9 +209,9 @@
 
   {% if not has_assigned_cyclists %}
   <div class="sim-hint">
-    {% blocktrans %}Noch keine Radler zugewiesen. Ein Admin legt sie unter <strong>Velo-Arena</strong> fest (Radler + Gerät speichern). Danach hier Raten einstellen und starten.{% endblocktrans %}
+    {% blocktrans %}Noch keine Radler zugewiesen. Ein Admin legt sie unter <strong>Arena-Steuerung</strong> fest (Radler + Gerät speichern). Danach hier Raten einstellen und starten.{% endblocktrans %}
     {% if can_manage_full_arena %}
-      <a href="{% url 'admin:minecraft_arena_control' %}">{% trans 'Zur Velo-Arena' %}</a>
+      <a href="{% url 'admin:minecraft_arena_control' %}">{% trans 'Zur Arena-Steuerung' %}</a>
     {% endif %}
   </div>
   {% endif %}

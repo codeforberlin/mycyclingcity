@@ -1,0 +1,271 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .mcs-panel {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    margin: 0 0 1rem;
+  }
+  .mcs-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .mcs-table th, .mcs-table td {
+    border: 1px solid #cbd5e1;
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .mcs-table th { background: #f1f5f9; }
+  .mcs-muted { color: #64748b; font-size: 0.85rem; }
+  .mcs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .mcs-grid label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; }
+  .mcs-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .mcs-actions form { display: inline; margin: 0; }
+  .mcs-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .mcs-badge-ok { background: #dcfce7; color: #15803d; }
+  .mcs-badge-busy { background: #ffedd5; color: #c2410c; }
+  .mcs-badge-off { background: #f1f5f9; color: #64748b; }
+  .mcs-warn { color: #b45309; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="minecraft-control">
+  <h1>{{ title }}</h1>
+  <p class="mcs-muted">
+    {% trans 'Physische PCs für Spiel- und Bau-Sessions. MS-Allowlist steuert, welche Microsoft-Logins bei der Freigabe gewählt werden dürfen.' %}
+    · <a href="{{ player_sessions_url }}">{% trans 'Spieler-Sessions' %}</a>
+    · <a href="{{ builder_sessions_url }}">{% trans 'Bau-Sessions' %}</a>
+  </p>
+
+  {% if not allowlist_enforced %}
+  <p class="mcs-warn mcs-panel">
+    {% trans 'Allowlist ist leer — Freigabe prüft derzeit keine MS-Logins. Bitte Einträge anlegen (für FEZitty empfohlen).' %}
+  </p>
+  {% endif %}
+
+  <div class="mcs-panel">
+    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
+      <strong>{% trans 'Stationen' %}</strong>
+      <span>
+        <a href="?{% if include_inactive %}{% else %}inactive=1{% endif %}">
+          {% if include_inactive %}{% trans 'Nur aktive' %}{% else %}{% trans 'Inaktive einblenden' %}{% endif %}
+        </a>
+        · <a href="?create=1{% if include_inactive %}&inactive=1{% endif %}">{% trans 'Neue Station' %}</a>
+      </span>
+    </div>
+
+    {% if show_create %}
+    <form method="post" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_station">
+      <div class="mcs-grid">
+        <label>{% trans 'Name' %}<input name="name" required maxlength="64"></label>
+        <label>{% trans 'Standort' %}<input name="location" maxlength="120"></label>
+        <label>{% trans 'Rolle' %}
+          <select name="role">
+            {% for value, label in role_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Reihenfolge' %}<input name="sort_order" type="number" value="0"></label>
+        <label>{% trans 'Standard-Spiel-Slot' %}
+          <select name="default_play_account_id">
+            <option value="">—</option>
+            {% for acc in play_accounts %}
+              <option value="{{ acc.id }}">{{ acc.short_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Notiz' %}<input name="note" maxlength="255"></label>
+      </div>
+      <p style="margin-top:0.75rem;">
+        <button type="submit" class="button default">{% trans 'Anlegen' %}</button>
+        <a class="button" href="{% url 'admin:minecraft_stations' %}">{% trans 'Abbrechen' %}</a>
+      </p>
+    </form>
+    {% endif %}
+
+    {% if edit_station %}
+    <form method="post" style="margin-top:0.75rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_station">
+      <input type="hidden" name="station_id" value="{{ edit_station.id }}">
+      <div class="mcs-grid">
+        <label>{% trans 'Name' %}<input name="name" required maxlength="64" value="{{ edit_station.name }}"></label>
+        <label>{% trans 'Standort' %}<input name="location" maxlength="120" value="{{ edit_station.location }}"></label>
+        <label>{% trans 'Rolle' %}
+          <select name="role">
+            {% for value, label in role_choices %}
+              <option value="{{ value }}"{% if edit_station.role == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Reihenfolge' %}<input name="sort_order" type="number" value="{{ edit_station.sort_order }}"></label>
+        <label>{% trans 'Standard-Spiel-Slot' %}
+          <select name="default_play_account_id">
+            <option value="">—</option>
+            {% for acc in play_accounts %}
+              <option value="{{ acc.id }}"{% if edit_station.default_play_account_id == acc.id %} selected{% endif %}>{{ acc.short_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Notiz' %}<input name="note" maxlength="255" value="{{ edit_station.note }}"></label>
+        <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="is_active" value="1"{% if edit_station.is_active %} checked{% endif %}>
+          {% trans 'Aktiv' %}
+        </label>
+      </div>
+      <p style="margin-top:0.75rem;">
+        <button type="submit" class="button default">{% trans 'Speichern' %}</button>
+        <a class="button" href="{% url 'admin:minecraft_stations' %}">{% trans 'Abbrechen' %}</a>
+      </p>
+    </form>
+    {% endif %}
+
+    <table class="mcs-table" style="margin-top:0.75rem;">
+      <thead>
+        <tr>
+          <th>{% trans 'Name' %}</th>
+          <th>{% trans 'Standort' %}</th>
+          <th>{% trans 'Rolle' %}</th>
+          <th>{% trans 'Slot' %}</th>
+          <th>{% trans 'Status' %}</th>
+          <th>{% trans 'Aktionen' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stations %}
+        <tr>
+          <td><strong>{{ s.name }}</strong>{% if s.note %}<div class="mcs-muted">{{ s.note }}</div>{% endif %}</td>
+          <td>{{ s.location|default:"—" }}</td>
+          <td>{{ s.role_label }}</td>
+          <td>{{ s.default_play_account_name|default:"—" }}</td>
+          <td>
+            {% if not s.is_active %}
+              <span class="mcs-badge mcs-badge-off">{% trans 'Inaktiv' %}</span>
+            {% elif s.active_session_account %}
+              <span class="mcs-badge mcs-badge-busy">{% trans 'Belegt' %}: {{ s.active_session_account }}{% if s.active_session_ms %} / {{ s.active_session_ms }}{% endif %}</span>
+            {% else %}
+              <span class="mcs-badge mcs-badge-ok">{% trans 'Frei' %}</span>
+            {% endif %}
+          </td>
+          <td class="mcs-actions">
+            <a class="button" href="?edit={{ s.pk }}{% if include_inactive %}&inactive=1{% endif %}">{% trans 'Bearbeiten' %}</a>
+            <form method="post" onsubmit="return confirm('{% trans 'Station wirklich löschen?' %}');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_station">
+              <input type="hidden" name="station_id" value="{{ s.pk }}">
+              <button type="submit" class="button">{% trans 'Löschen' %}</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="mcs-muted">{% trans 'Noch keine Stationen angelegt.' %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mcs-panel">
+    <strong>{% trans 'MS-Allowlist' %}</strong>
+    <p class="mcs-muted">
+      {% trans 'Nur diese Microsoft-Logins dürfen bei Session-Freigabe gewählt werden. Leer = global; mit Station = nur für diesen PC.' %}
+    </p>
+    <form method="post" style="margin:0.75rem 0;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_allowlist">
+      <div class="mcs-grid">
+        <label>{% trans 'Microsoft-Login' %}<input name="ms_username" required maxlength="32" placeholder="Gamertag"></label>
+        <label>{% trans 'Station (optional)' %}
+          <select name="station_id">
+            <option value="">{% trans 'Global' %}</option>
+            {% for s in stations %}
+              {% if s.is_active %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        </label>
+        <label>{% trans 'Notiz' %}<input name="note" maxlength="255"></label>
+      </div>
+      <p style="margin-top:0.75rem;"><button type="submit" class="button default">{% trans 'Hinzufügen' %}</button></p>
+    </form>
+
+    <table class="mcs-table">
+      <thead>
+        <tr>
+          <th>{% trans 'MS-Login' %}</th>
+          <th>{% trans 'Geltung' %}</th>
+          <th>{% trans 'Notiz' %}</th>
+          <th>{% trans 'Status' %}</th>
+          <th>{% trans 'Aktionen' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in allowlist_entries %}
+        <tr>
+          <td><strong>{{ e.ms_username }}</strong></td>
+          <td>{% if e.station %}{{ e.station.name }}{% else %}{% trans 'Global' %}{% endif %}</td>
+          <td>{{ e.note|default:"—" }}</td>
+          <td>
+            {% if e.is_active %}
+              <span class="mcs-badge mcs-badge-ok">{% trans 'Aktiv' %}</span>
+            {% else %}
+              <span class="mcs-badge mcs-badge-off">{% trans 'Inaktiv' %}</span>
+            {% endif %}
+          </td>
+          <td class="mcs-actions">
+            {% if e.is_active %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="deactivate_allowlist">
+              <input type="hidden" name="entry_id" value="{{ e.pk }}">
+              <button type="submit" class="button">{% trans 'Deaktivieren' %}</button>
+            </form>
+            {% else %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="activate_allowlist">
+              <input type="hidden" name="entry_id" value="{{ e.pk }}">
+              <button type="submit" class="button">{% trans 'Aktivieren' %}</button>
+            </form>
+            {% endif %}
+            <form method="post" onsubmit="return confirm('{% trans 'Eintrag löschen?' %}');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_allowlist">
+              <input type="hidden" name="entry_id" value="{{ e.pk }}">
+              <button type="submit" class="button">{% trans 'Löschen' %}</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="mcs-muted">{% trans 'Noch keine Allowlist-Einträge.' %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

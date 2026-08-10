@@ -1,0 +1,281 @@
+{% extends "admin/base_site.html" %}
+{% load i18n map_filters %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .vr-wrap { max-width: 720px; }
+  .vr-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .vr-form label { display: block; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+  .vr-form input, .vr-form select, .vr-form textarea {
+    width: 100%;
+    max-width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  .vr-meta { color: #64748b; font-size: 0.92rem; margin: 0.25rem 0 0.75rem; }
+  .vr-presets { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.5rem 0 0.75rem; }
+  .vr-preset {
+    border: 1px solid #94a3b8;
+    background: #fff;
+    border-radius: 8px;
+    padding: 0.45rem 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: #334155;
+  }
+  .vr-preset:hover, .vr-preset.active { background: #0f766e; color: #fff; border-color: #0f766e; }
+  .vr-balance {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f766e;
+    font-variant-numeric: tabular-nums;
+    margin: 0.35rem 0;
+  }
+  .vr-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1.1rem;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 0.75rem;
+  }
+  .vr-btn-primary { background: #059669; color: #fff; }
+  .vr-btn-secondary { background: #2563eb; color: #fff; margin-right: 0.5rem; }
+  .vr-links { margin-top: 1rem; }
+  .vr-links a { margin-right: 1rem; }
+  .vr-row { display: grid; gap: 0.75rem; }
+  .vr-product {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+  .vr-product label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .vr-product input[type="radio"] { width: auto; margin-top: 0.2rem; }
+  .vr-hint-warn { color: #b45309; font-size: 0.92rem; margin: 0.35rem 0 0.75rem; }
+  @media (min-width: 640px) {
+    .vr-row.two { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="vr-wrap">
+  <h1>{{ title }}</h1>
+  <p class="vr-meta">
+    {% trans 'Teil- oder Volleinlösung aus dem Velos-Guthaben eines Radlers. Bei Restguthaben 0 wird die Geräte-Session beendet.' %}
+  </p>
+
+  <form method="get" class="vr-form vr-card" id="vr-search-form">
+    <h2 style="margin-top:0;">{% trans 'Radler suchen' %}</h2>
+    <div class="vr-row two">
+      <div>
+        <label for="top_group">{% trans 'TOP-Gruppe' %}</label>
+        <select id="top_group" name="top_group" onchange="this.form.submit()">
+          {% for group in top_groups %}
+            <option value="{{ group.id }}"{% if selected_top_group and selected_top_group.id == group.id %} selected{% endif %}>
+              {{ group.name }}
+            </option>
+          {% empty %}
+            <option value="">{% trans 'Keine TOP-Gruppe verfügbar' %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="cyclist_id">{% trans 'Radler aus Liste' %}</label>
+        <select id="cyclist_id" name="cyclist_id" onchange="document.getElementById('identifier').value=''; this.form.submit();">
+          <option value="">{% trans '— Bitte wählen —' %}</option>
+          {% for cyclist in cyclists %}
+            <option value="{{ cyclist.id }}"{% if cyclist_id == cyclist.id|stringformat:"s" %} selected{% endif %}>
+              {{ cyclist.user_id }} — {% format_velos_de_tag cyclist.velos_balance %} {% trans 'Velos' %}
+              {% if cyclist.id_tag %} · {{ cyclist.id_tag }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <p class="vr-or">{% trans 'oder' %}</p>
+    <div>
+      <label for="identifier">{% trans 'Radler (Name oder RFID-Tag)' %}</label>
+      <input id="identifier" name="identifier" type="text" value="{{ identifier }}"
+             placeholder="{% trans 'z. B. anna oder RFID-Tag' %}" autocomplete="off">
+    </div>
+    <button type="submit" class="vr-btn vr-btn-secondary">{% trans 'Radler laden' %}</button>
+  </form>
+
+  {% if selected_cyclist %}
+  <div class="vr-card">
+    <h2 style="margin-top:0;">{% trans 'Guthaben' %}</h2>
+    <p><strong>{{ selected_cyclist.user_id }}</strong>
+      {% if selected_cyclist.id_tag %} · {{ selected_cyclist.id_tag }}{% endif %}
+    </p>
+    <div class="vr-balance">{{ velos_balance_display }} {% trans 'Velos' %}</div>
+    <p class="vr-meta">
+      {% trans 'Gruppe(n)' %}:
+      {% for group in selected_cyclist.groups.all %}{{ group.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+    </p>
+  </div>
+  {% elif identifier %}
+  <div class="vr-card">
+    <p class="vr-meta">{% trans 'Kein Radler in der gewählten TOP-Gruppe gefunden.' %}</p>
+  </div>
+  {% endif %}
+
+  <form method="post" class="vr-form vr-card" id="vr-redeem-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="redeem">
+    <input type="hidden" name="top_group" value="{% if selected_top_group %}{{ selected_top_group.id }}{% endif %}">
+    <input type="hidden" name="cyclist_id" value="{{ cyclist_id }}">
+    <input type="hidden" name="identifier" value="{{ identifier }}">
+
+    <h2 style="margin-top:0;">{% trans 'Einlösungsart' %}</h2>
+    <div class="vr-product">
+      <label>
+        <input type="radio" name="product" value="{{ product_free }}"{% if product == product_free %} checked{% endif %}>
+        <span>
+          <strong>{% trans 'Freie Einlösung' %}</strong><br>
+          <span class="vr-meta">{% trans 'Nur Velos-Guthaben abziehen (Wuhlis o. Ä.), keine Minecraft-Warteliste.' %}</span>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="product" value="{{ product_player_session }}"{% if product == product_player_session %} checked{% endif %}>
+        <span>
+          <strong>{% trans 'Spiel-Session (Warteliste)' %}</strong><br>
+          <span class="vr-meta">{% trans 'Velos abziehen und Eintrag in der Session-Warteliste anlegen (Arena-Zuweisung wie bisher).' %}</span>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="product" value="{{ product_builder_session }}"{% if product == product_builder_session %} checked{% endif %}>
+        <span>
+          <strong>{% trans 'Bau-Session (Warteliste)' %}</strong><br>
+          <span class="vr-meta">{% trans 'Velos abziehen und Eintrag in der Bau-Warteliste anlegen (Team-Zuweisung wie bisher). Dauer wie bei Spiel-Session aus den Velos.' %}</span>
+        </span>
+      </label>
+    </div>
+    <p class="vr-hint-warn" id="vr-session-rate-hint"{% if product != product_player_session and product != product_builder_session %} hidden{% endif %}>
+      {% blocktrans with min=player_min_velos rate=player_velos_per_minute mins=minutes_for_min_velos %}Mindestens {{ min }} Velos. Dauer = Velos ÷ {{ rate }} (z. B. {{ min }} Velos → {{ mins }} Min.).{% endblocktrans %}
+    </p>
+
+    <h2>{% trans 'Betrag einlösen' %}</h2>
+    <p class="vr-meta">{% trans 'Schnellauswahl oder manuelle Eingabe:' %}</p>
+
+    <div class="vr-presets" id="vr-presets">
+      {% for preset in preset_amounts %}
+        <button type="button" class="vr-preset" data-amount="{{ preset }}">{{ preset }}</button>
+      {% endfor %}
+      {% if selected_cyclist and selected_cyclist.velos_balance %}
+        <button type="button" class="vr-preset" data-amount="{{ selected_cyclist.velos_balance }}">
+          {% trans 'Alles' %} ({{ velos_balance_display }})
+        </button>
+      {% endif %}
+    </div>
+
+    <label for="amount">{% trans 'Velos-Betrag' %}</label>
+    <input id="amount" name="amount" type="number" min="1" step="1" value="{{ amount_raw }}"
+           placeholder="{% trans 'Manuelle Eingabe' %}" required>
+
+    <div class="vr-row two">
+      <div>
+        <label for="external_currency">{% trans 'Externe Währung' %} ({% trans 'optional' %})</label>
+        <input id="external_currency" name="external_currency" type="text" value="{{ external_currency }}"
+               placeholder="{% trans 'z. B. Wuhlis' %}">
+      </div>
+      <div>
+        <label for="note">{% trans 'Notiz' %} ({% trans 'optional' %})</label>
+        <input id="note" name="note" type="text" value="{{ note }}">
+      </div>
+    </div>
+
+    <button type="submit" class="vr-btn vr-btn-primary"{% if not selected_cyclist %} disabled{% endif %} id="vr-submit-btn">
+      {% trans 'Velos einlösen' %}
+    </button>
+  </form>
+
+  <div class="vr-links vr-meta">
+    <a href="{{ history_url }}">{% trans 'Eingelöste Velos anzeigen' %}</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var amountInput = document.getElementById('amount');
+  var cyclistSelect = document.getElementById('cyclist_id');
+  var identifierInput = document.getElementById('identifier');
+  var sessionRateHint = document.getElementById('vr-session-rate-hint');
+  var submitBtn = document.getElementById('vr-submit-btn');
+  var productPlayerSession = '{{ product_player_session }}';
+  var productBuilderSession = '{{ product_builder_session }}';
+  var productInputs = document.querySelectorAll('input[name="product"]');
+
+  function selectedProduct() {
+    var checked = document.querySelector('input[name="product"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function updateProductUi() {
+    var product = selectedProduct();
+    var isPlayer = product === productPlayerSession;
+    var isBuilder = product === productBuilderSession;
+    if (sessionRateHint) sessionRateHint.hidden = !(isPlayer || isBuilder);
+    if (submitBtn) {
+      if (isPlayer) {
+        submitBtn.textContent = '{% trans "Spiel-Session einlösen" %}';
+      } else if (isBuilder) {
+        submitBtn.textContent = '{% trans "Bau-Session einlösen" %}';
+      } else {
+        submitBtn.textContent = '{% trans "Velos einlösen" %}';
+      }
+    }
+  }
+
+  productInputs.forEach(function (input) {
+    input.addEventListener('change', updateProductUi);
+  });
+  updateProductUi();
+
+  if (identifierInput) {
+    identifierInput.addEventListener('input', function () {
+      if (cyclistSelect) cyclistSelect.value = '';
+    });
+  }
+  var presets = document.querySelectorAll('.vr-preset');
+  presets.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      amountInput.value = btn.getAttribute('data-amount');
+      presets.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+  if (amountInput && amountInput.value) {
+    presets.forEach(function (btn) {
+      if (btn.getAttribute('data-amount') === amountInput.value) {
+        btn.classList.add('active');
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

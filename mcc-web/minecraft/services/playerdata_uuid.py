@@ -76,6 +76,105 @@ def detect_playerdata_layout(world_root: Path) -> str:
     return "players"
 
 
+def usercache_candidate_paths() -> list[Path]:
+    """Likely usercache.json locations (Paper / Velocity / Limbo)."""
+    from django.conf import settings
+
+    paths: list[Path] = []
+    paper = Path(getattr(settings, "MCC_MINECRAFT_PAPER_DIR", "") or "")
+    if paper.parts:
+        paths.append(paper / "usercache.json")
+    world = Path(
+        getattr(settings, "MCC_MINECRAFT_WORLD_DIR", "")
+        or "/data/games/mcc/mc-srv/MyCyclingCity"
+    )
+    paths.append(world.parent / "usercache.json")
+    for key in ("MCC_MINECRAFT_VELOCITY_DIR", "MCC_MINECRAFT_LIMBO_DIR"):
+        root = Path(getattr(settings, key, "") or "")
+        if root.parts:
+            paths.append(root / "usercache.json")
+    # De-dupe while preserving order
+    seen: set[str] = set()
+    out: list[Path] = []
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(path)
+    return out
+
+
+def lookup_ms_uuid_from_usercache(player_name: str) -> str | None:
+    """
+    Resolve Microsoft/online UUID for a login via usercache.json.
+
+    Returns a dashed UUID string, or None if not found.
+    """
+    import json
+
+    needle = (player_name or "").strip().lower()
+    if not needle:
+        return None
+    for cache_path in usercache_candidate_paths():
+        if not cache_path.is_file():
+            continue
+        try:
+            entries = json.loads(cache_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get("name", "")).lower() != needle:
+                continue
+            raw = str(entry.get("uuid") or "").strip()
+            if not raw:
+                continue
+            try:
+                return uuid_dashed(parse_ms_uuid(raw))
+            except ValueError:
+                continue
+    return None
+
+
+def lookup_ms_uuid_via_mojang(player_name: str, *, timeout: float = 3.0) -> str | None:
+    """Best-effort Mojang profile lookup for Java online UUID."""
+    import json
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    name = (player_name or "").strip()
+    if not name:
+        return None
+    url = f"https://api.mojang.com/users/profiles/minecraft/{urllib.parse.quote(name)}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310 — public Mojang API
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, OSError):
+        return None
+    raw = str((payload or {}).get("id") or "").strip()
+    if not raw:
+        return None
+    try:
+        return uuid_dashed(parse_ms_uuid(raw))
+    except ValueError:
+        return None
+
+
+def resolve_ms_uuid_for_login(player_name: str, *, allow_mojang: bool = True) -> str | None:
+    """Usercache first, optional Mojang fallback — for Limbo adopt / account create."""
+    found = lookup_ms_uuid_from_usercache(player_name)
+    if found:
+        return found
+    if allow_mojang:
+        return lookup_ms_uuid_via_mojang(player_name)
+    return None
+
+
 def resolve_source_player_file(
     world_root: Path,
     relative: str,

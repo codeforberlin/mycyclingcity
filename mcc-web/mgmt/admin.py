@@ -6971,6 +6971,40 @@ from django.urls import path
 # Override get_app_list to control app ordering in admin menu
 _original_get_app_list = admin.site.get_app_list
 
+
+def _order_models_after_cyclist(api_models, trailing_custom=None):
+    """Place cyclist-related menu entries directly under Cyclist (Radler)."""
+    followup_object_names = ['CyclistDeviceCurrentMileage']
+    by_object = {m.get('object_name'): m for m in api_models if m.get('object_name')}
+
+    followups = []
+    for name in followup_object_names:
+        entry = by_object.get(name)
+        if entry:
+            followups.append(entry)
+    if trailing_custom:
+        followups.extend(trailing_custom)
+
+    skip_names = set(followup_object_names)
+    skip_names.add('Velos Redeem')
+
+    result = []
+    inserted = False
+    for model in api_models:
+        name = model.get('object_name')
+        if name in skip_names:
+            continue
+        result.append(model)
+        if name == 'Cyclist':
+            result.extend(followups)
+            inserted = True
+
+    if not inserted and followups:
+        result.extend(followups)
+
+    return result
+
+
 def get_app_list_with_custom_ordering(self, request, app_label=None):
     """
     Custom app list ordering: MCC Core API & Models first, then Kiosk, then IOT Management last.
@@ -6980,6 +7014,27 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     from django.utils.translation import gettext_lazy as _
     
     app_dict = self._build_app_dict(request, app_label)
+
+    from mgmt.velos_redeem_views import user_can_redeem_velos
+
+    velos_redeem_menu = None
+    if user_can_redeem_velos(request.user):
+        if 'api' not in app_dict:
+            app_dict['api'] = {
+                'name': _('Gruppen & Radler'),
+                'app_label': 'api',
+                'app_url': reverse('admin:api_velos_redeem'),
+                'has_module_perms': True,
+                'models': [],
+            }
+        velos_redeem_menu = {
+            'name': _('Velos einlösen'),
+            'object_name': 'Velos Redeem',
+            'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+            'admin_url': reverse('admin:api_velos_redeem'),
+            'add_url': None,
+            'view_only': True,
+        }
     
     # Extract Travel-related models from api app to create separate "Reisen" menu
     travel_models = []
@@ -6990,6 +7045,13 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         travel_models = [m for m in api_models if m.get('object_name') in travel_model_names]
         # Remove travel models from api app
         app_dict['api']['models'] = [m for m in api_models if m.get('object_name') not in travel_model_names]
+
+    if 'api' in app_dict:
+        trailing = [velos_redeem_menu] if velos_redeem_menu else []
+        app_dict['api']['models'] = _order_models_after_cyclist(
+            app_dict['api']['models'],
+            trailing_custom=trailing,
+        )
     
     # Keep Eventboard app in menu (will be reordered below)
     
@@ -7039,6 +7101,9 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_manage_assigned_protected_regions,
         user_can_manage_auth_failover,
         user_can_manage_builder_sessions,
+        user_can_manage_minecraft_accounts,
+        user_can_manage_minecraft_operators,
+        user_can_manage_minecraft_stations,
         user_can_manage_player_sessions,
         user_can_run_arena_sim,
     )
@@ -7051,6 +7116,9 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         or user_can_access_minecraft_shop(request.user)
         or user_can_manage_player_sessions(request.user)
         or user_can_manage_builder_sessions(request.user)
+        or user_can_manage_minecraft_accounts(request.user)
+        or user_can_manage_minecraft_operators(request.user)
+        or user_can_manage_minecraft_stations(request.user)
         or user_can_manage_auth_failover(request.user)
         or user_can_manage_assigned_protected_regions(request.user)
         or user_can_run_arena_sim(request.user)
@@ -7100,6 +7168,122 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'view_only': True,
                 }
             )
+
+        # --- Account-Management + Sessions (directly under Auth-Failover) ---
+        if user_can_manage_minecraft_accounts(request.user) or user_can_manage_minecraft_operators(
+            request.user
+        ):
+            minecraft_management_models.append(
+                {
+                    'name': _('Account-Management'),
+                    'object_name': 'Minecraft Accounts',
+                    'perms': {
+                        'add': user_can_manage_minecraft_accounts(request.user),
+                        'change': user_can_manage_minecraft_accounts(request.user),
+                        'delete': user_can_manage_minecraft_accounts(request.user),
+                        'view': True,
+                    },
+                    'admin_url': reverse('admin:minecraft_accounts'),
+                    'add_url': reverse('admin:minecraft_accounts') + '?create=1'
+                    if user_can_manage_minecraft_accounts(request.user)
+                    else None,
+                    'view_only': not user_can_manage_minecraft_accounts(request.user),
+                }
+            )
+        elif (
+            request.user.has_perm('minecraft.view_minecraftplayaccount')
+            or request.user.has_perm('minecraft.change_minecraftplayaccount')
+        ):
+            # Legacy fallback only when unified account perm is missing.
+            minecraft_management_models.append(
+                {
+                    'name': _('Spieler-Accounts'),
+                    'object_name': 'MinecraftPlayAccount',
+                    'perms': {
+                        'add': request.user.has_perm('minecraft.add_minecraftplayaccount'),
+                        'change': request.user.has_perm('minecraft.change_minecraftplayaccount'),
+                        'delete': request.user.has_perm('minecraft.delete_minecraftplayaccount'),
+                        'view': request.user.has_perm('minecraft.view_minecraftplayaccount'),
+                    },
+                    'admin_url': reverse('admin:minecraft_minecraftplayaccount_changelist'),
+                    'add_url': reverse('admin:minecraft_minecraftplayaccount_add')
+                    if request.user.has_perm('minecraft.add_minecraftplayaccount')
+                    else None,
+                    'view_only': not request.user.has_perm('minecraft.change_minecraftplayaccount'),
+                }
+            )
+        if user_can_manage_minecraft_stations(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Stationen (PCs)'),
+                    'object_name': 'Minecraft Stations',
+                    'perms': {
+                        'add': True,
+                        'change': True,
+                        'delete': True,
+                        'view': True,
+                    },
+                    'admin_url': reverse('admin:minecraft_stations'),
+                    'add_url': reverse('admin:minecraft_stations') + '?create=1',
+                    'view_only': False,
+                }
+            )
+        if user_can_manage_player_sessions(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Spieler-Sessions'),
+                    'object_name': 'Minecraft Player Sessions',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_player_sessions'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_builder_sessions(request.user):
+            if not user_can_manage_minecraft_accounts(request.user):
+                minecraft_management_models.append(
+                    {
+                        'name': _('Bau-Accounts'),
+                        'object_name': 'Bau-Accounts',
+                        'perms': {'add': False, 'change': True, 'delete': False, 'view': True},
+                        'admin_url': reverse('admin:minecraft_minecraftbuilderaccount_changelist'),
+                        'add_url': None,
+                        'view_only': False,
+                    }
+                )
+            minecraft_management_models.append(
+                {
+                    'name': _('Bau-Sessions'),
+                    'object_name': 'Minecraft Builder Sessions',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_builder_sessions'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+
+        if user_can_manage_player_sessions(request.user) or user_can_manage_builder_sessions(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Session-Warteliste'),
+                    'object_name': 'Minecraft Waitlist',
+                    'perms': {'add': False, 'change': True, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_waitlist_manage'),
+                    'add_url': None,
+                    'view_only': False,
+                }
+            )
+            minecraft_management_models.append(
+                {
+                    'name': _('Wartelisten-Anzeige'),
+                    'object_name': 'Minecraft Waitlist Display',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_waitlist_display'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+
         if user_can_access_minecraft_city(request.user):
             minecraft_management_models.append(
                 {
@@ -7118,6 +7302,74 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'object_name': 'Minecraft My Build Zones',
                     'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
                     'admin_url': reverse('admin:minecraft_my_build_zones'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+
+        # --- Arena (directly under Meine Bauzonen) ---
+        if user_can_manage_player_sessions(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Arena-Steuerung'),
+                    'object_name': 'Minecraft Arena Control',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_arena_control'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if (
+            request.user.has_perm('minecraft.view_minecraftarenalane')
+            or request.user.has_perm('minecraft.change_minecraftarenalane')
+        ):
+            minecraft_management_models.append(
+                {
+                    'name': _('Arena-Bahnen (Geometrie)'),
+                    'object_name': 'MinecraftArenaLane',
+                    'perms': {
+                        'add': request.user.has_perm('minecraft.add_minecraftarenalane'),
+                        'change': request.user.has_perm('minecraft.change_minecraftarenalane'),
+                        'delete': request.user.has_perm('minecraft.delete_minecraftarenalane'),
+                        'view': request.user.has_perm('minecraft.view_minecraftarenalane'),
+                    },
+                    'admin_url': reverse('admin:minecraft_minecraftarenalane_changelist'),
+                    'add_url': reverse('admin:minecraft_minecraftarenalane_add')
+                    if request.user.has_perm('minecraft.add_minecraftarenalane')
+                    else None,
+                    'view_only': not request.user.has_perm('minecraft.change_minecraftarenalane'),
+                }
+            )
+        if (
+            request.user.has_perm('minecraft.view_minecraftarenamotionsettings')
+            or request.user.has_perm('minecraft.change_minecraftarenamotionsettings')
+        ):
+            minecraft_management_models.append(
+                {
+                    'name': _('Arena-Motion-Einstellungen'),
+                    'object_name': 'MinecraftArenaMotionSettings',
+                    'perms': {
+                        'add': request.user.has_perm('minecraft.add_minecraftarenamotionsettings'),
+                        'change': request.user.has_perm('minecraft.change_minecraftarenamotionsettings'),
+                        'delete': False,
+                        'view': request.user.has_perm('minecraft.view_minecraftarenamotionsettings'),
+                    },
+                    'admin_url': reverse(
+                        'admin:minecraft_minecraftarenamotionsettings_changelist'
+                    ),
+                    'add_url': None,
+                    'view_only': not request.user.has_perm(
+                        'minecraft.change_minecraftarenamotionsettings'
+                    ),
+                }
+            )
+        if user_can_run_arena_sim(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Arena-Simulation'),
+                    'object_name': 'Minecraft Arena Sim',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_arena_sim'),
                     'add_url': None,
                     'view_only': True,
                 }
@@ -7185,153 +7437,6 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
             category_entry = dict(shop_categories)
             category_entry['name'] = _('Shop-Kategorien')
             minecraft_management_models.append(category_entry)
-
-        # --- Spieler ---
-        if (
-            request.user.has_perm('minecraft.view_minecraftplayaccount')
-            or request.user.has_perm('minecraft.change_minecraftplayaccount')
-        ):
-            minecraft_management_models.append(
-                {
-                    'name': _('Spieler-Accounts'),
-                    'object_name': 'MinecraftPlayAccount',
-                    'perms': {
-                        'add': request.user.has_perm('minecraft.add_minecraftplayaccount'),
-                        'change': request.user.has_perm('minecraft.change_minecraftplayaccount'),
-                        'delete': request.user.has_perm('minecraft.delete_minecraftplayaccount'),
-                        'view': request.user.has_perm('minecraft.view_minecraftplayaccount'),
-                    },
-                    'admin_url': reverse('admin:minecraft_minecraftplayaccount_changelist'),
-                    'add_url': reverse('admin:minecraft_minecraftplayaccount_add')
-                    if request.user.has_perm('minecraft.add_minecraftplayaccount')
-                    else None,
-                    'view_only': not request.user.has_perm('minecraft.change_minecraftplayaccount'),
-                }
-            )
-        if user_can_manage_player_sessions(request.user):
-            minecraft_management_models.append(
-                {
-                    'name': _('Spieler-Sessions'),
-                    'object_name': 'Minecraft Player Sessions',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_player_sessions'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
-            minecraft_management_models.append(
-                {
-                    'name': _('Velo-Arena Steuerung'),
-                    'object_name': 'Minecraft Arena Control',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_arena_control'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
-
-        # Arena geometry / motion settings: model permissions only (not sessions perm).
-        if (
-            request.user.has_perm('minecraft.view_minecraftarenalane')
-            or request.user.has_perm('minecraft.change_minecraftarenalane')
-        ):
-            minecraft_management_models.append(
-                {
-                    'name': _('Arena-Bahnen (Geometrie)'),
-                    'object_name': 'MinecraftArenaLane',
-                    'perms': {
-                        'add': request.user.has_perm('minecraft.add_minecraftarenalane'),
-                        'change': request.user.has_perm('minecraft.change_minecraftarenalane'),
-                        'delete': request.user.has_perm('minecraft.delete_minecraftarenalane'),
-                        'view': request.user.has_perm('minecraft.view_minecraftarenalane'),
-                    },
-                    'admin_url': reverse('admin:minecraft_minecraftarenalane_changelist'),
-                    'add_url': reverse('admin:minecraft_minecraftarenalane_add')
-                    if request.user.has_perm('minecraft.add_minecraftarenalane')
-                    else None,
-                    'view_only': not request.user.has_perm('minecraft.change_minecraftarenalane'),
-                }
-            )
-        if (
-            request.user.has_perm('minecraft.view_minecraftarenamotionsettings')
-            or request.user.has_perm('minecraft.change_minecraftarenamotionsettings')
-        ):
-            minecraft_management_models.append(
-                {
-                    'name': _('Arena-Motion-Einstellungen'),
-                    'object_name': 'MinecraftArenaMotionSettings',
-                    'perms': {
-                        'add': request.user.has_perm('minecraft.add_minecraftarenamotionsettings'),
-                        'change': request.user.has_perm('minecraft.change_minecraftarenamotionsettings'),
-                        'delete': False,
-                        'view': request.user.has_perm('minecraft.view_minecraftarenamotionsettings'),
-                    },
-                    'admin_url': reverse(
-                        'admin:minecraft_minecraftarenamotionsettings_changelist'
-                    ),
-                    'add_url': None,
-                    'view_only': not request.user.has_perm(
-                        'minecraft.change_minecraftarenamotionsettings'
-                    ),
-                }
-            )
-
-        if user_can_run_arena_sim(request.user):
-            minecraft_management_models.append(
-                {
-                    'name': _('Arena-Simulation'),
-                    'object_name': 'Minecraft Arena Sim',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_arena_sim'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
-
-        # --- Bau ---
-        if user_can_manage_builder_sessions(request.user):
-            minecraft_management_models.append(
-                {
-                    'name': _('Bau-Accounts'),
-                    'object_name': 'Bau-Accounts',
-                    'perms': {'add': False, 'change': True, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_minecraftbuilderaccount_changelist'),
-                    'add_url': None,
-                    'view_only': False,
-                }
-            )
-            minecraft_management_models.append(
-                {
-                    'name': _('Bau-Sessions'),
-                    'object_name': 'Minecraft Builder Sessions',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_builder_sessions'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
-
-        if user_can_manage_player_sessions(request.user) or user_can_manage_builder_sessions(request.user):
-            minecraft_management_models.append(
-                {
-                    'name': _('Session-Warteliste'),
-                    'object_name': 'Minecraft Waitlist',
-                    'perms': {'add': False, 'change': True, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_waitlist_manage'),
-                    'add_url': None,
-                    'view_only': False,
-                }
-            )
-            minecraft_management_models.append(
-                {
-                    'name': _('Wartelisten-Anzeige'),
-                    'object_name': 'Minecraft Waitlist Display',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:minecraft_waitlist_display'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
 
         hidden_object_names = frozenset({
             'MinecraftTeamRegistration',
@@ -7891,6 +7996,8 @@ from minecraft.session_views import (
     minecraft_builder_sessions,
     minecraft_player_sessions,
 )
+from minecraft.account_views import minecraft_accounts
+from minecraft.station_views import minecraft_stations
 from minecraft.arena_views import (
     minecraft_arena_control,
     minecraft_arena_cyclists_json,
@@ -7902,12 +8009,19 @@ from minecraft.waitlist_views import (
     minecraft_waitlist_display,
     minecraft_waitlist_manage,
 )
+from mgmt.velos_redeem_views import velos_redeem_lookup_api, velos_redeem_view
 
 _original_get_urls = admin.site.get_urls
 def get_urls_with_custom_views():
     """Add analytics, log file viewer, server control, and deployment URLs to admin site."""
     urls = _original_get_urls()
     custom_urls = [
+        path('api/velos-redeem/', admin.site.admin_view(velos_redeem_view), name='api_velos_redeem'),
+        path(
+            'api/velos-redeem/lookup.json',
+            admin.site.admin_view(velos_redeem_lookup_api),
+            name='api_velos_redeem_lookup',
+        ),
         # Analytics URLs
         path('analytics/', admin.site.admin_view(analytics_dashboard), name='api_analytics_dashboard'),
         path('analytics/data/', admin.site.admin_view(analytics_data_api), name='api_analytics_data_api'),
@@ -7945,6 +8059,16 @@ def get_urls_with_custom_views():
         ),
         path('minecraft/shop-ops/', admin.site.admin_view(minecraft_shop_ops), name='minecraft_shop_ops'),
         path('minecraft/import-shop/', admin.site.admin_view(minecraft_import_shop), name='minecraft_import_shop'),
+        path(
+            'minecraft/accounts/',
+            admin.site.admin_view(minecraft_accounts),
+            name='minecraft_accounts',
+        ),
+        path(
+            'minecraft/stations/',
+            admin.site.admin_view(minecraft_stations),
+            name='minecraft_stations',
+        ),
         path(
             'minecraft/player-sessions/',
             admin.site.admin_view(minecraft_player_sessions),

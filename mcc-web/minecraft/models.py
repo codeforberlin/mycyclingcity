@@ -299,6 +299,18 @@ class MinecraftIntegrationConfig(models.Model):
                 "manage_assigned_protected_regions",
                 _("Zugewiesene Bauzonen (Subregionen der eigenen TOP-Gruppe)"),
             ),
+            (
+                "manage_minecraft_accounts",
+                _("Minecraft-Accounts (Spieler und Bau) verwalten"),
+            ),
+            (
+                "manage_minecraft_operators",
+                _("Vanilla-Operatorrechte (/op, /deop) verwalten"),
+            ),
+            (
+                "manage_minecraft_stations",
+                _("Minecraft-Stationen (PCs) und MS-Allowlist verwalten"),
+            ),
         ]
 
     def __str__(self):
@@ -343,6 +355,41 @@ class MinecraftPlayerdataTransferLog(models.Model):
 
     def __str__(self):
         return f"{self.direction} ({'dry' if self.dry_run else 'run'}) @ {self.created_at}"
+
+
+class MinecraftVanillaOpLog(models.Model):
+    """Audit log for Vanilla /op and /deop actions from the Admin GUI."""
+
+    ACTION_OP = "op"
+    ACTION_DEOP = "deop"
+    ACTION_CHOICES = [
+        (ACTION_OP, _("op")),
+        (ACTION_DEOP, _("deop")),
+    ]
+
+    action = models.CharField(max_length=8, choices=ACTION_CHOICES)
+    player_name = models.CharField(max_length=32, verbose_name=_("Spielername"))
+    account_type = models.CharField(max_length=16, blank=True, verbose_name=_("Account-Typ"))
+    account_ref = models.CharField(max_length=64, blank=True, verbose_name=_("Account-Ref"))
+    ok = models.BooleanField(default=False)
+    detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("Vanilla-OP-Aktion")
+        verbose_name_plural = _("Vanilla-OP-Aktionen")
+
+    def __str__(self):
+        status = "ok" if self.ok else "fail"
+        return f"{self.action} {self.player_name} ({status})"
 
 
 class MinecraftTeamRegistration(models.Model):
@@ -787,6 +834,18 @@ class MinecraftPlayAccount(models.Model):
             "Überschreibt „Spectator bevorzugen“, wenn gesetzt."
         ),
     )
+    assigned_to_group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_play_accounts",
+        verbose_name=_("TOP-Gruppe"),
+        help_text=_(
+            "Optionale Zuordnung zu einer TOP-Gruppe (parent is None) "
+            "für Filter und Organisation in der Account-Verwaltung."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Angelegt am"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Geändert am"))
 
@@ -950,6 +1009,15 @@ class MCSession(models.Model):
             "(statt Welt-Spawn)."
         ),
     )
+    station = models.ForeignKey(
+        "MinecraftStation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions",
+        verbose_name=_("Station (PC)"),
+        help_text=_("Physischer PC, an dem diese Session freigegeben wurde."),
+    )
 
     class Meta:
         ordering = ["-timestamp_start"]
@@ -1000,6 +1068,13 @@ class MinecraftSessionWaitlistEntry(models.Model):
         (STATUS_CANCELLED, _("Abgebrochen")),
     ]
 
+    SOURCE_MANUAL = "manual"
+    SOURCE_VELOS_REDEEM = "velos_redeem"
+    SOURCE_CHOICES = [
+        (SOURCE_MANUAL, _("Manuell (Flyer/Counter)")),
+        (SOURCE_VELOS_REDEEM, _("Velos-Einlösung (RFID)")),
+    ]
+
     queue_type = models.CharField(
         max_length=16,
         choices=QUEUE_TYPE_CHOICES,
@@ -1036,6 +1111,29 @@ class MinecraftSessionWaitlistEntry(models.Model):
         max_length=255,
         blank=True,
         verbose_name=_("Interne Notiz"),
+    )
+    source = models.CharField(
+        max_length=16,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_MANUAL,
+        db_index=True,
+        verbose_name=_("Herkunft"),
+    )
+    cyclist = models.ForeignKey(
+        "api.Cyclist",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="minecraft_waitlist_entries",
+        verbose_name=_("Radler (RFID-Einlösung)"),
+    )
+    velos_redemption = models.ForeignKey(
+        "api.CyclistVelosRedemption",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="minecraft_waitlist_entries",
+        verbose_name=_("Velos-Einlösung"),
     )
     assigned_play_account = models.ForeignKey(
         "MinecraftPlayAccount",
@@ -1094,6 +1192,105 @@ class MinecraftSessionWaitlistEntry(models.Model):
 
     def __str__(self):
         return f"#{self.ticket_number} [{self.queue_type}] {self.status}"
+
+
+class MinecraftStation(models.Model):
+    """Physical PC used for play and/or builder sessions."""
+
+    ROLE_PLAY = "play"
+    ROLE_BUILDER = "builder"
+    ROLE_BOTH = "both"
+    ROLE_CHOICES = [
+        (ROLE_PLAY, _("Nur Spiel")),
+        (ROLE_BUILDER, _("Nur Bau")),
+        (ROLE_BOTH, _("Spiel und Bau")),
+    ]
+
+    name = models.CharField(max_length=64, unique=True, verbose_name=_("Name"))
+    location = models.CharField(max_length=120, blank=True, verbose_name=_("Standort"))
+    role = models.CharField(
+        max_length=16,
+        choices=ROLE_CHOICES,
+        default=ROLE_BOTH,
+        db_index=True,
+        verbose_name=_("Rolle"),
+    )
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name=_("Aktiv"))
+    sort_order = models.PositiveIntegerField(default=0, verbose_name=_("Reihenfolge"))
+    default_play_account = models.ForeignKey(
+        "MinecraftPlayAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="default_for_stations",
+        verbose_name=_("Standard-Spiel-Slot"),
+    )
+    note = models.CharField(max_length=255, blank=True, verbose_name=_("Notiz"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        verbose_name = _("Station (PC)")
+        verbose_name_plural = _("Stationen (PCs)")
+
+    def __str__(self):
+        return self.name
+
+    def supports_play(self) -> bool:
+        return self.role in (self.ROLE_PLAY, self.ROLE_BOTH)
+
+    def supports_builder(self) -> bool:
+        return self.role in (self.ROLE_BUILDER, self.ROLE_BOTH)
+
+
+class MinecraftMsAllowlistEntry(models.Model):
+    """Allowed Microsoft logins for session freigabe (global or per station)."""
+
+    ms_username = models.CharField(
+        max_length=32,
+        db_index=True,
+        verbose_name=_("Microsoft-Login"),
+    )
+    station = models.ForeignKey(
+        MinecraftStation,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ms_allowlist_entries",
+        verbose_name=_("Nur für Station"),
+        help_text=_("Leer = global für alle Stationen."),
+    )
+    note = models.CharField(max_length=255, blank=True, verbose_name=_("Notiz"))
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name=_("Aktiv"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("Angelegt von"),
+    )
+
+    class Meta:
+        ordering = ["ms_username", "station_id"]
+        verbose_name = _("MS-Allowlist-Eintrag")
+        verbose_name_plural = _("MS-Allowlist")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ms_username", "station"],
+                name="minecraft_ms_allowlist_user_station_uniq",
+            ),
+        ]
+
+    def __str__(self):
+        scope = self.station.name if self.station_id else "global"
+        return f"{self.ms_username} ({scope})"
+
+    def save(self, *args, **kwargs):
+        self.ms_username = (self.ms_username or "").strip()
+        super().save(*args, **kwargs)
 
 
 class MinecraftArenaMotionSettings(models.Model):

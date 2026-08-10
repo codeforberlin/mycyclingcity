@@ -180,6 +180,7 @@ class MinecraftPlayAccountAdmin(admin.ModelAdmin):
         "ms_username",
         "id_tag",
         "display_name",
+        "assigned_to_group",
         "session_duration_minutes",
         "add_time_minutes",
         "is_active",
@@ -188,9 +189,10 @@ class MinecraftPlayAccountAdmin(admin.ModelAdmin):
     )
     list_display_links = ("short_name",)
     list_editable = ("is_active",)
-    list_filter = ("is_active",)
+    list_filter = ("is_active", "assigned_to_group")
     search_fields = ("short_name", "ms_username", "id_tag", "display_name")
     ordering = ("sort_order", "short_name")
+    autocomplete_fields = ("assigned_to_group",)
     fieldsets = (
         (
             None,
@@ -199,12 +201,14 @@ class MinecraftPlayAccountAdmin(admin.ModelAdmin):
                     "id_tag",
                     "short_name",
                     "display_name",
+                    "assigned_to_group",
                     "is_active",
                     "sort_order",
                 ),
                 "description": _(
                     "„Aktiv“ steuert die Sichtbarkeit in Spieler-Sessions, Warteliste und API. "
-                    "Deaktivierte Accounts bleiben erhalten und können jederzeit wieder eingeschaltet werden."
+                    "Deaktivierte Accounts bleiben erhalten und können jederzeit wieder eingeschaltet werden. "
+                    "TOP-Gruppe ist optional (Filter in Minecraft-Accounts)."
                 ),
             },
         ),
