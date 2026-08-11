@@ -172,6 +172,7 @@
                               <option value="{{ st.id }}">{{ st.name }}</option>
                             {% endfor %}
                         </select>
+                        {% include "admin/minecraft/_session_ticket_stepper.html" %}
                         <button type="submit" class="mc-btn mc-btn-start" data-action="start"
                                 {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Start' %}

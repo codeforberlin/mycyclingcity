@@ -205,6 +205,57 @@
     border-radius: 6px;
     background: #fff;
   }
+  .mc-ticket-stepper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .mc-ticket-label { white-space: nowrap; }
+  .mc-ticket-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .mc-ticket-btn {
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .mc-ticket-btn:hover:not(:disabled) { background: #f1f5f9; }
+  .mc-ticket-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .mc-ticket-input {
+    width: 2.75rem;
+    height: 1.85rem;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    padding: 0;
+    -moz-appearance: textfield;
+  }
+  .mc-ticket-input::-webkit-outer-spin-button,
+  .mc-ticket-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .mc-ticket-cost {
+    color: #64748b;
+    font-weight: 500;
+    min-height: 1em;
+  }
   .mc-region-select select {
     display: block;
     width: 100%;
@@ -318,6 +369,38 @@
     return pad(m) + ':' + pad(s);
   }
 
+  function syncTicketStepper(wrap, formDisabled) {
+    if (!wrap) return;
+    var input = wrap.querySelector('[data-ticket-input]');
+    var dec = wrap.querySelector('[data-ticket-dec]');
+    var inc = wrap.querySelector('[data-ticket-inc]');
+    var costEl = wrap.querySelector('[data-ticket-cost]');
+    if (!input) return;
+    var max = parseInt(wrap.getAttribute('data-ticket-max') || '10', 10);
+    var velos = parseInt(wrap.getAttribute('data-ticket-velos') || '100', 10);
+    if (!isFinite(max) || max < 1) max = 10;
+    if (!isFinite(velos) || velos < 1) velos = 100;
+    var n = parseInt(input.value, 10);
+    if (!isFinite(n) || n < 0) n = 0;
+    n = Math.min(max, Math.floor(n));
+    input.value = String(n);
+    input.disabled = !!formDisabled;
+    if (costEl) {
+      costEl.textContent = n > 0 ? (n + ' × ' + velos + ' = ' + (n * velos) + ' Velos') : '';
+    }
+    if (dec) dec.disabled = !!formDisabled || n <= 0;
+    if (inc) inc.disabled = !!formDisabled || n >= max;
+  }
+
+  function resetTicketCount(card, formDisabled) {
+    if (!card) return;
+    card.querySelectorAll('[data-ticket-stepper]').forEach(function (wrap) {
+      var input = wrap.querySelector('[data-ticket-input]');
+      if (input) input.value = '0';
+      syncTicketStepper(wrap, formDisabled);
+    });
+  }
+
   function applyPayload(data) {
     if (!data || !data.accounts) return;
     data.accounts.forEach(function (item) {
@@ -325,6 +408,7 @@
       if (!card) return;
       var countdown = card.querySelector('[data-countdown]');
       var statusEl = card.querySelector('[data-status-label]');
+      var wasActive = card.classList.contains('is-active');
       var isActive = item.status === 'ACTIVE';
       card.classList.toggle('is-active', isActive);
       card.setAttribute('data-remaining', String(item.remaining_seconds || 0));
@@ -359,6 +443,17 @@
       card.querySelectorAll('.mc-start-form select[name="spawn_region_id"]').forEach(function (sel) {
         sel.disabled = isActive;
       });
+      card.querySelectorAll('.mc-start-form select.mc-start-select').forEach(function (sel) {
+        sel.disabled = isActive;
+      });
+      // Reset ticket count only after kick/end (active→idle); keep count visible during session.
+      if (!isActive && wasActive) {
+        resetTicketCount(card, false);
+      } else {
+        card.querySelectorAll('[data-ticket-stepper]').forEach(function (wrap) {
+          syncTicketStepper(wrap, isActive);
+        });
+      }
       card.querySelectorAll('[data-action="set_gamemode"]').forEach(function (btn) {
         btn.disabled = !isActive;
         var mode = btn.getAttribute('data-mode') || '';
@@ -579,6 +674,10 @@
           }
         }
 
+        // Snapshot form fields BEFORE optimistic UI disables inputs
+        // (FormData omits disabled controls — would drop ticket_count).
+        var postBody = buildPostBody(form);
+
         // Optimistic UI: reflect the intended state immediately while the request runs.
         if (card && account) {
           if (action === 'start') {
@@ -593,6 +692,10 @@
               countdown.textContent = '…';
             }
             card.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+            // Keep ticket count visible during the session; sync disabled state only.
+            card.querySelectorAll('[data-ticket-stepper]').forEach(function (wrap) {
+              syncTicketStepper(wrap, true);
+            });
             markFastPoll(60);
           } else if (action === 'kick') {
             card.classList.add('is-busy');
@@ -607,6 +710,7 @@
               kickStatus.style.display = '';
               kickStatus.textContent = 'Beende…';
             }
+            resetTicketCount(card, false);
           } else if (action === 'add_time') {
             card.classList.add('is-busy');
           } else if (action === 'toggle_spectator' || action === 'set_gamemode') {
@@ -645,6 +749,7 @@
               st.style.display = '';
               st.textContent = 'Beende…';
             }
+            resetTicketCount(activeCard, false);
           });
           form.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
         }
@@ -665,6 +770,9 @@
               countdown.textContent = '…';
             }
             idleCard.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
+            idleCard.querySelectorAll('[data-ticket-stepper]').forEach(function (wrap) {
+              syncTicketStepper(wrap, true);
+            });
           });
           form.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
           markFastPoll(60);
@@ -679,7 +787,7 @@
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRFToken': csrfToken()
           },
-          body: buildPostBody(form)
+          body: postBody
         })
           .then(parseActionResponse)
           .then(function (result) {
@@ -730,6 +838,40 @@
     });
   }
 
+  function bindTicketSteppers() {
+    document.querySelectorAll('[data-ticket-stepper]').forEach(function (wrap) {
+      var input = wrap.querySelector('[data-ticket-input]');
+      var dec = wrap.querySelector('[data-ticket-dec]');
+      var inc = wrap.querySelector('[data-ticket-inc]');
+      if (!input) return;
+      var max = parseInt(wrap.getAttribute('data-ticket-max') || '10', 10);
+      if (!isFinite(max) || max < 1) max = 10;
+
+      function clamp(n) {
+        if (!isFinite(n) || n < 0) return 0;
+        return Math.min(max, Math.floor(n));
+      }
+
+      if (dec) {
+        dec.addEventListener('click', function () {
+          if (input.disabled) return;
+          input.value = String(clamp((parseInt(input.value, 10) || 0) - 1));
+          syncTicketStepper(wrap, false);
+        });
+      }
+      if (inc) {
+        inc.addEventListener('click', function () {
+          if (input.disabled) return;
+          input.value = String(clamp((parseInt(input.value, 10) || 0) + 1));
+          syncTicketStepper(wrap, false);
+        });
+      }
+      input.addEventListener('change', function () { syncTicketStepper(wrap, !!input.disabled); });
+      input.addEventListener('input', function () { syncTicketStepper(wrap, !!input.disabled); });
+      syncTicketStepper(wrap, !!input.disabled);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.mc-session-card[data-remaining]').forEach(function (card) {
       var countdown = card.querySelector('[data-countdown]');
@@ -753,6 +895,7 @@
         }
       });
     });
+    bindTicketSteppers();
     if (document.querySelector('.mc-session-card.is-active') ||
         document.querySelector('[data-proxy-status][data-waiting="1"]')) {
       markFastPoll(60);

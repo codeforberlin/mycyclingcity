@@ -145,6 +145,29 @@ class MinecraftIntegrationConfig(models.Model):
         verbose_name=_("Mindest-Velos Spiel-Warteliste"),
         help_text=_("Mindestbetrag für eine Spiel-Session aus der Warteliste."),
     )
+    world_ticket_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("MCC-Welt-Tickets aktiv"),
+        help_text=_(
+            "Zeigt den Ticket-Zähler auf den Session-Kacheln und vergibt "
+            "Paper-Tickets per RCON beim Freischalten."
+        ),
+    )
+    world_ticket_velos = models.PositiveIntegerField(
+        default=100,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Velos pro MCC-Ticket"),
+        help_text=_(
+            "Preis eines Paper-Tickets. Bei Radler-Konto (RFID/Warteliste) "
+            "wird Anzahl × dieser Betrag vom Guthaben abgezogen."
+        ),
+    )
+    world_ticket_max = models.PositiveIntegerField(
+        default=10,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Max. Tickets pro Freigabe"),
+        help_text=_("Obergrenze für den Ticket-Zähler auf den Session-Kacheln."),
+    )
     proxy_presence_poll_seconds = models.PositiveIntegerField(
         default=10,
         validators=[MinValueValidator(2)],
@@ -1017,6 +1040,15 @@ class MCSession(models.Model):
         related_name="sessions",
         verbose_name=_("Station (PC)"),
         help_text=_("Physischer PC, an dem diese Session freigegeben wurde."),
+    )
+    world_ticket_count = models.PositiveSmallIntegerField(
+        default=0,
+        db_default=0,
+        verbose_name=_("MCC-Welt-Tickets"),
+        help_text=_(
+            "Anzahl Paper-Tickets (custom_data mcc_ticket), die beim Bootstrap "
+            "per RCON ins Inventar gelegt werden."
+        ),
     )
 
     class Meta:

@@ -135,6 +135,20 @@ class MinecraftIntegrationConfigAdmin(admin.ModelAdmin):
             },
         ),
         (
+            _("MCC-Welt-Tickets"),
+            {
+                "fields": (
+                    "world_ticket_enabled",
+                    "world_ticket_velos",
+                    "world_ticket_max",
+                ),
+                "description": _(
+                    "Paper-Tickets (custom_data mcc_ticket) beim Session-Start. "
+                    "Bei Radler-Konto an der Warteliste: Anzahl × Ticketpreis vom Guthaben."
+                ),
+            },
+        ),
+        (
             _("Velo-Arena"),
             {
                 "fields": ("arena_default_time_limit_minutes",),

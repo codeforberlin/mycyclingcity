@@ -27,6 +27,7 @@ from minecraft.services.preset_permissions import (
 from minecraft.services.session_control import (
     AccountAlreadyActiveError,
     AccountNotFoundError,
+    InsufficientVelosError,
     MissingMicrosoftLoginError,
     MsAllowlistError,
     RconSequenceError,
@@ -624,6 +625,23 @@ def _post_station_id(request) -> str:
     return (request.POST.get("station_id") or "").strip()
 
 
+def _post_ticket_count(request) -> int:
+    from minecraft.services.world_tickets import normalize_ticket_count
+
+    return normalize_ticket_count(request.POST.get("ticket_count"))
+
+
+def _world_ticket_ui_context() -> dict:
+    from minecraft.services.world_tickets import get_world_ticket_settings
+
+    settings = get_world_ticket_settings()
+    return {
+        "world_ticket_enabled": settings.enabled,
+        "world_ticket_velos": settings.velos_per_ticket,
+        "world_ticket_max": settings.max_count,
+    }
+
+
 def _session_start_context() -> dict:
     from minecraft.services.station_admin import (
         allowlist_is_enforced,
@@ -637,6 +655,7 @@ def _session_start_context() -> dict:
         "play_stations": stations_for_role("play", only_free=False),
         "builder_stations": stations_for_role("builder", only_free=False),
         "stations_url": "/admin/minecraft/stations/",
+        **_world_ticket_ui_context(),
     }
 
 
@@ -657,11 +676,17 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
                 teleport_to_spawn=_post_wants_spawn(request),
                 ms_username=_post_ms_username(request) or None,
                 station_id=_post_station_id(request) or None,
+                ticket_count=_post_ticket_count(request),
             )
             msg = _("Session gestartet: %(name)s (%(min)s Min.)") % {
                 "name": session.account_name,
                 "min": session.duration_minutes,
             }
+            if session.world_ticket_count:
+                msg = _("%(base)s · %(n)s Ticket(s)") % {
+                    "base": msg,
+                    "n": session.world_ticket_count,
+                }
             if session.ms_username:
                 msg = f"{msg} · MS: {session.ms_username}"
             messages.success(request, msg)
@@ -708,6 +733,9 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
             messages.success(request, msg)
             return True, str(msg)
     except MissingMicrosoftLoginError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except InsufficientVelosError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
     except MsAllowlistError as exc:
@@ -757,11 +785,17 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                 spawn_region_id=_post_spawn_region_id(request) or None,
                 ms_username=_post_ms_username(request) or None,
                 station_id=_post_station_id(request) or None,
+                ticket_count=_post_ticket_count(request),
             )
             msg = _("Builder-Session gestartet: %(name)s (%(min)s Min.)") % {
                 "name": session.account_name,
                 "min": session.duration_minutes,
             }
+            if session.world_ticket_count:
+                msg = _("%(base)s · %(n)s Ticket(s)") % {
+                    "base": msg,
+                    "n": session.world_ticket_count,
+                }
             if session.ms_username:
                 msg = f"{msg} · MS: {session.ms_username}"
             messages.success(request, msg)
@@ -808,6 +842,9 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
             messages.success(request, msg)
             return True, str(msg)
     except MissingMicrosoftLoginError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except InsufficientVelosError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
     except MsAllowlistError as exc:

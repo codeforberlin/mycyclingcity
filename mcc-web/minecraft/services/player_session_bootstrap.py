@@ -54,6 +54,7 @@ def build_player_post_login_commands(
     spectator: bool = False,
     gamemode: str | None = None,
     team_label: str | None = None,
+    world_ticket_count: int = 0,
 ) -> list[str]:
     """Commands that require the player entity to exist (after login settles)."""
     from minecraft.services.gamemode_control import gamemode_command, play_gamemode_for_type
@@ -63,6 +64,7 @@ def build_player_post_login_commands(
     )
     from minecraft.models import MCSession
     from minecraft.services.account_login import normalize_play_gamemode
+    from minecraft.services.world_tickets import build_world_ticket_give_command
 
     name = (login or "").strip()
     label = (team_label if team_label is not None else name).strip()
@@ -75,12 +77,21 @@ def build_player_post_login_commands(
     commands = [gamemode_command(name, mode)]
     if emerald_count > 0 and mode != MCSession.GAMEMODE_SPECTATOR:
         commands.append(f"give {name} minecraft:emerald {emerald_count}")
+    if world_ticket_count > 0 and mode != MCSession.GAMEMODE_SPECTATOR:
+        ticket_cmd = build_world_ticket_give_command(name, world_ticket_count)
+        if ticket_cmd:
+            commands.append(ticket_cmd)
     # Arena/Reporter: ArenaLive via team color; tab prefix via station team.
     commands.extend(arena_visibility_commands(name, team_label=label))
     return commands
 
 
-def build_player_session_start_commands(login: str, *, emerald_count: int) -> list[str]:
+def build_player_session_start_commands(
+    login: str,
+    *,
+    emerald_count: int,
+    world_ticket_count: int = 0,
+) -> list[str]:
     """
     Conceptual full RCON sequence for starting a player session.
 
@@ -92,6 +103,11 @@ def build_player_session_start_commands(login: str, *, emerald_count: int) -> li
     commands.extend(build_player_world_commands())
     commands.append(f"authme forcelogin {name}")
     commands.extend(
-        build_player_post_login_commands(name, emerald_count=emerald_count, team_label=name)
+        build_player_post_login_commands(
+            name,
+            emerald_count=emerald_count,
+            team_label=name,
+            world_ticket_count=world_ticket_count,
+        )
     )
     return commands

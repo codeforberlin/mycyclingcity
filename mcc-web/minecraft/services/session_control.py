@@ -89,6 +89,10 @@ class StationBusyError(SessionControlError):
     code = "station_busy"
 
 
+class InsufficientVelosError(SessionControlError):
+    code = "insufficient_velos"
+
+
 def _resolve_session_online_login(
     *,
     default_login: str,
@@ -193,6 +197,71 @@ def resolve_add_time_for_session(
 
 def _emerald_count() -> int:
     return int(getattr(settings, "MCC_MINECRAFT_PLAYER_START_EMERALDS", 4))
+
+
+def _normalize_world_ticket_count(raw) -> int:
+    from minecraft.services.world_tickets import normalize_ticket_count
+
+    return normalize_ticket_count(raw)
+
+
+def _debit_world_tickets_if_needed(
+    *,
+    account_name: str,
+    queue_type: str,
+    ticket_count: int,
+    user=None,
+) -> None:
+    """Deduct Velos when an ASSIGNED waitlist entry has a linked cyclist."""
+    if ticket_count < 1:
+        return
+    from minecraft.services.world_tickets import (
+        debit_world_tickets_for_cyclist,
+        resolve_waitlist_cyclist,
+        ticket_cost_velos,
+    )
+
+    cyclist = resolve_waitlist_cyclist(account_name, account_type=queue_type)
+    if cyclist is None:
+        return
+    result = debit_world_tickets_for_cyclist(
+        cyclist,
+        ticket_count,
+        user=user,
+    )
+    if not result.success:
+        cost = ticket_cost_velos(ticket_count)
+        raise InsufficientVelosError(
+            result.message
+            or f"Nicht genug Velos für {ticket_count} Ticket(s) ({cost} Velos).",
+            code="insufficient_velos",
+        )
+
+
+def _assert_world_ticket_balance(
+    *,
+    account_name: str,
+    queue_type: str,
+    ticket_count: int,
+) -> None:
+    """Fail fast if a linked cyclist cannot afford the selected tickets."""
+    if ticket_count < 1:
+        return
+    from minecraft.services.world_tickets import (
+        resolve_waitlist_cyclist,
+        ticket_cost_velos,
+    )
+
+    cyclist = resolve_waitlist_cyclist(account_name, account_type=queue_type)
+    if cyclist is None:
+        return
+    cost = ticket_cost_velos(ticket_count)
+    balance = int(cyclist.velos_balance or 0)
+    if balance < cost:
+        raise InsufficientVelosError(
+            f"Nur {balance} Velos verfügbar, {cost} für {ticket_count} Ticket(s) benötigt.",
+            code="insufficient_velos",
+        )
 
 
 def _lobby_tp_command(player_name: str, *, dx: float = 0.0, dz: float = 0.0) -> str:
@@ -528,6 +597,7 @@ def start_player_session(
     spawn_offset_index: int = 0,
     ms_username: str | None = None,
     station_id: int | str | None = None,
+    ticket_count: int | None = None,
 ) -> MCSession:
     """
     Start a PLAYER session for a MinecraftPlayAccount.
@@ -535,6 +605,7 @@ def start_player_session(
     arena_ref may be id_tag or short_name (case-insensitive).
     Optional ms_username overrides the account default for this session only.
     Optional station_id binds the session to a physical PC (max one active).
+    Optional ticket_count issues Paper MCC-Tickets after login (0..max).
     """
     ref = (arena_ref or "").strip()
     if not ref:
@@ -549,6 +620,7 @@ def start_player_session(
         raise AccountNotFoundError(f"Play account not found or inactive: {ref}")
 
     login = account.short_name
+    tickets = _normalize_world_ticket_count(ticket_count)
     station = _resolve_start_station(station_id, role="play")
     default_login = resolve_player_online_login(account)
     online_login = _resolve_session_online_login(
@@ -580,6 +652,13 @@ def start_player_session(
         build_player_post_login_commands,
         build_player_world_commands,
     )
+    from minecraft.models import MinecraftSessionWaitlistEntry
+
+    _assert_world_ticket_balance(
+        account_name=login,
+        queue_type=MinecraftSessionWaitlistEntry.QUEUE_PLAYER,
+        ticket_count=tickets,
+    )
 
     initial_mode = preferred_gamemode_for_account(
         MCSession.ACCOUNT_PLAYER,
@@ -609,6 +688,7 @@ def start_player_session(
         spectator=initial_mode == MCSession.GAMEMODE_SPECTATOR,
         gamemode=initial_mode,
         team_label=login,
+        world_ticket_count=tickets,
     )
     if teleport_to_spawn:
         post_cmds.append(
@@ -619,6 +699,12 @@ def start_player_session(
     with transaction.atomic():
         if _active_session_for(login):
             raise AccountAlreadyActiveError(f"Session already active for {login}")
+        _debit_world_tickets_if_needed(
+            account_name=login,
+            queue_type=MinecraftSessionWaitlistEntry.QUEUE_PLAYER,
+            ticket_count=tickets,
+            user=user,
+        )
         session = MCSession(
             account_name=login,
             ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
@@ -632,6 +718,7 @@ def start_player_session(
             teleport_to_spawn=bool(teleport_to_spawn),
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
             station=station,
+            world_ticket_count=tickets,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()
@@ -665,11 +752,13 @@ def start_player_session(
         _clear_pending_bootstrap(session)
 
     logger.info(
-        "[minecraft_session] player started account=%s online=%s duration=%s source=%s bootstrap_ok=%s",
+        "[minecraft_session] player started account=%s online=%s duration=%s source=%s "
+        "tickets=%s bootstrap_ok=%s",
         login,
         online_login,
         minutes,
         source,
+        tickets,
         ok,
     )
     return session
@@ -693,6 +782,7 @@ def start_builder_session(
     spawn_region_id: int | str | None = None,
     ms_username: str | None = None,
     station_id: int | str | None = None,
+    ticket_count: int | None = None,
 ) -> MCSession:
     """Start a BUILDER session for an active MinecraftTeamRegistration."""
     name = (team_name or "").strip()
@@ -710,6 +800,7 @@ def start_builder_session(
         raise AccountNotFoundError(f"Builder group not visible: {name}")
 
     login = registration.mc_username
+    tickets = _normalize_world_ticket_count(ticket_count)
     station = _resolve_start_station(station_id, role="builder")
     default_login = resolve_builder_online_login(registration)
     online_login = _resolve_session_online_login(
@@ -765,6 +856,13 @@ def start_builder_session(
         build_builder_post_login_commands,
         build_builder_world_commands,
     )
+    from minecraft.models import MinecraftSessionWaitlistEntry
+
+    _assert_world_ticket_balance(
+        account_name=login,
+        queue_type=MinecraftSessionWaitlistEntry.QUEUE_BUILDER,
+        ticket_count=tickets,
+    )
 
     initial_mode = preferred_gamemode_for_account(
         MCSession.ACCOUNT_BUILDER,
@@ -793,6 +891,7 @@ def start_builder_session(
         team_label=login,
         spectator=initial_mode == MCSession.GAMEMODE_SPECTATOR,
         gamemode=initial_mode,
+        world_ticket_count=tickets,
     )
     if resolved_region is not None:
         post_cmds.append(region_spawn_tp_command(online_login, resolved_region))
@@ -805,6 +904,12 @@ def start_builder_session(
     with transaction.atomic():
         if _active_session_for(login):
             raise AccountAlreadyActiveError(f"Session already active for {login}")
+        _debit_world_tickets_if_needed(
+            account_name=login,
+            queue_type=MinecraftSessionWaitlistEntry.QUEUE_BUILDER,
+            ticket_count=tickets,
+            user=user,
+        )
         session = MCSession(
             account_name=login,
             ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
@@ -819,6 +924,7 @@ def start_builder_session(
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
             spawn_region=resolved_region,
             station=station,
+            world_ticket_count=tickets,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()
@@ -850,11 +956,13 @@ def start_builder_session(
         _clear_pending_bootstrap(session)
 
     logger.info(
-        "[minecraft_session] builder started account=%s online=%s duration=%s source=%s bootstrap_ok=%s",
+        "[minecraft_session] builder started account=%s online=%s duration=%s source=%s "
+        "tickets=%s bootstrap_ok=%s",
         login,
         online_login,
         minutes,
         source,
+        tickets,
         ok,
     )
     return session
@@ -906,6 +1014,7 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
                 team_label=session.account_name,
                 spectator=mode == MCSession.GAMEMODE_SPECTATOR,
                 gamemode=mode,
+                world_ticket_count=int(session.world_ticket_count or 0),
             )
         else:
             commands = build_player_post_login_commands(
@@ -914,6 +1023,7 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
                 spectator=mode == MCSession.GAMEMODE_SPECTATOR,
                 gamemode=mode,
                 team_label=session.account_name,
+                world_ticket_count=int(session.world_ticket_count or 0),
             )
         if session.teleport_to_spawn:
             commands.append(

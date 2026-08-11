@@ -1,0 +1,21 @@
+{% load i18n %}
+{% if world_ticket_enabled %}
+<div class="mc-ticket-stepper" data-ticket-stepper
+     data-ticket-velos="{{ world_ticket_velos }}"
+     data-ticket-max="{{ world_ticket_max }}">
+  <span class="mc-ticket-label">{% trans 'MCC-Tickets' %}</span>
+  <div class="mc-ticket-controls">
+    <button type="button" class="mc-ticket-btn" data-ticket-dec
+            {% if card.is_active %}disabled{% endif %}
+            aria-label="{% trans 'Ticket weniger' %}">−</button>
+    <input type="number" name="ticket_count" class="mc-ticket-input" data-ticket-input
+           value="0" min="0" max="{{ world_ticket_max }}" step="1" inputmode="numeric"
+           {% if card.is_active %}disabled{% endif %}
+           title="{% blocktrans with price=world_ticket_velos %}Anzahl Tickets (á {{ price }} Velos){% endblocktrans %}">
+    <button type="button" class="mc-ticket-btn" data-ticket-inc
+            {% if card.is_active %}disabled{% endif %}
+            aria-label="{% trans 'Ticket mehr' %}">+</button>
+  </div>
+  <span class="mc-ticket-cost" data-ticket-cost></span>
+</div>
+{% endif %}
