@@ -42,6 +42,29 @@ class TestManageMinecraftProxyPermission:
 
 
 @pytest.mark.unit
+class TestResolvePaperJarVersion:
+    def test_symlink_to_versioned_build(self, tmp_path):
+        from minecraft.admin_views import _resolve_paper_jar_version
+
+        build = tmp_path / "paper-26.2-112.jar"
+        build.write_bytes(b"x")
+        link = tmp_path / "paper.jar"
+        link.symlink_to(build.name)
+
+        info = _resolve_paper_jar_version(tmp_path, "paper.jar")
+        assert info["jar_name"] == "paper.jar"
+        assert info["jar_build"] == "paper-26.2-112.jar"
+        assert info["jar_version"] == "26.2-112"
+
+    def test_missing_jar(self, tmp_path):
+        from minecraft.admin_views import _resolve_paper_jar_version
+
+        info = _resolve_paper_jar_version(tmp_path, "paper.jar")
+        assert info["jar_version"] == ""
+        assert info["jar_build"] == ""
+
+
+@pytest.mark.unit
 @pytest.mark.django_db
 class TestProxyAdminActions:
     @pytest.fixture

@@ -485,11 +485,12 @@ MCC_MINECRAFT_PAPER_LOG = config(
     'MCC_MINECRAFT_PAPER_LOG',
     default=str(DATA_DIR / 'logs' / 'minecraft-paper.log'),
 )
+# Substring matched in Java cmdline for status/stop — must match -jar argument.
 MCC_MINECRAFT_PAPER_JAR_MATCH = config(
-    'MCC_MINECRAFT_PAPER_JAR_MATCH', default='paper-'
+    'MCC_MINECRAFT_PAPER_JAR_MATCH', default='paper.jar'
 )
 MCC_MINECRAFT_PAPER_JAR_NAME = config(
-    'MCC_MINECRAFT_PAPER_JAR_NAME', default='paper-26.1.2-74.jar'
+    'MCC_MINECRAFT_PAPER_JAR_NAME', default='paper.jar'
 )
 MCC_MINECRAFT_PAPER_STOP_WAIT = config(
     'MCC_MINECRAFT_PAPER_STOP_WAIT', default=90, cast=int

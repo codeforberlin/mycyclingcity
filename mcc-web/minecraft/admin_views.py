@@ -201,11 +201,11 @@ def _paper_script_env() -> dict[str, str]:
         getattr(settings, "MCC_MINECRAFT_PAPER_LOG", "") or ""
     )
     env["MCC_MINECRAFT_PAPER_JAR_MATCH"] = str(
-        getattr(settings, "MCC_MINECRAFT_PAPER_JAR_MATCH", "paper-") or "paper-"
+        getattr(settings, "MCC_MINECRAFT_PAPER_JAR_MATCH", "paper.jar")
+        or "paper.jar"
     )
-    env["MCC_MINECRAFT_PAPER_JAR_NAME"] = str(
-        getattr(settings, "MCC_MINECRAFT_PAPER_JAR_NAME", "") or ""
-    )
+    # Start script forces paper.jar; keep env aligned for status/match.
+    env["MCC_MINECRAFT_PAPER_JAR_NAME"] = "paper.jar"
     env["MCC_MINECRAFT_PAPER_STOP_WAIT"] = str(
         getattr(settings, "MCC_MINECRAFT_PAPER_STOP_WAIT", 90)
     )
@@ -281,8 +281,50 @@ def _get_limbo_status(script_path: Path) -> dict:
     return _run_script_status(script_path, "limbo-status", env=_proxy_script_env())
 
 
+def _resolve_paper_jar_version(
+    paper_dir: str | Path | None = None,
+    jar_name: str | None = None,
+) -> dict[str, str]:
+    """
+    Resolve configured paper.jar (often a symlink) to build filename + version.
+
+    Example: paper.jar -> paper-26.2-112.jar => version "26.2-112".
+    """
+    directory = Path(
+        paper_dir
+        if paper_dir is not None
+        else (getattr(settings, "MCC_MINECRAFT_PAPER_DIR", "") or "")
+    )
+    name = (
+        jar_name
+        if jar_name is not None
+        else (getattr(settings, "MCC_MINECRAFT_PAPER_JAR_NAME", None) or "paper.jar")
+    ).strip() or "paper.jar"
+    jar_path = directory / name
+    info = {
+        "jar_name": name,
+        "jar_build": "",
+        "jar_version": "",
+    }
+    if not directory.as_posix() or not jar_path.exists():
+        return info
+    try:
+        resolved = jar_path.resolve(strict=False)
+    except OSError:
+        resolved = jar_path
+    build = resolved.name
+    info["jar_build"] = build
+    if build.startswith("paper-") and build.endswith(".jar"):
+        info["jar_version"] = build[len("paper-") : -len(".jar")]
+    elif build.endswith(".jar") and build != name:
+        info["jar_version"] = build[: -len(".jar")]
+    return info
+
+
 def _get_paper_status(script_path: Path) -> dict:
-    return _run_script_status(script_path, "status", env=_paper_script_env())
+    status = _run_script_status(script_path, "status", env=_paper_script_env())
+    status.update(_resolve_paper_jar_version())
+    return status
 
 
 def _ws_events_url() -> str:

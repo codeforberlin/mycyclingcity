@@ -24,8 +24,13 @@ fi
 PAPER_DIR="${MCC_MINECRAFT_PAPER_DIR:-$DEFAULT_PAPER_DIR}"
 PAPER_PIDFILE="${MCC_MINECRAFT_PAPER_PIDFILE:-$TMP_DIR/minecraft-paper.pid}"
 PAPER_LOG="${MCC_MINECRAFT_PAPER_LOG:-$LOG_DIR/minecraft-paper.log}"
-PAPER_JAR_MATCH="${MCC_MINECRAFT_PAPER_JAR_MATCH:-paper-}"
-PAPER_JAR_NAME="${MCC_MINECRAFT_PAPER_JAR_NAME:-}"
+# Canonical start name only (symlink to the active build, e.g. paper-26.2-112.jar).
+# Ignore any versioned MCC_MINECRAFT_PAPER_JAR_NAME override — must always be paper.jar.
+if [ -n "${MCC_MINECRAFT_PAPER_JAR_NAME:-}" ] && [ "$MCC_MINECRAFT_PAPER_JAR_NAME" != "paper.jar" ]; then
+    echo "Warning: ignoring MCC_MINECRAFT_PAPER_JAR_NAME=$MCC_MINECRAFT_PAPER_JAR_NAME (forcing paper.jar)" >&2
+fi
+PAPER_JAR_NAME="paper.jar"
+PAPER_JAR_MATCH="${MCC_MINECRAFT_PAPER_JAR_MATCH:-paper.jar}"
 STOP_WAIT_SECONDS="${MCC_MINECRAFT_PAPER_STOP_WAIT:-90}"
 
 # Aikar flags from mc-srv/start.sh (override via MCC_MINECRAFT_PAPER_JAVA_OPTS).
@@ -84,21 +89,16 @@ verify_pid() {
 }
 
 find_paper_jar() {
-    local jar
-    if [ -n "$PAPER_JAR_NAME" ] && [ -f "$PAPER_DIR/$PAPER_JAR_NAME" ]; then
+    # Only the configured jar name — never fall back to paper-*.jar versioned files.
+    if [ -z "$PAPER_JAR_NAME" ]; then
+        echo "PAPER_JAR_NAME is empty" >&2
+        return 1
+    fi
+    if [ -f "$PAPER_DIR/$PAPER_JAR_NAME" ]; then
         echo "$PAPER_DIR/$PAPER_JAR_NAME"
         return 0
     fi
-    # Prefer explicitly used production jar if present
-    if [ -f "$PAPER_DIR/paper-26.1.2-74.jar" ]; then
-        echo "$PAPER_DIR/paper-26.1.2-74.jar"
-        return 0
-    fi
-    jar=$(ls -1 "$PAPER_DIR"/paper-*.jar 2>/dev/null | sort -V | tail -1 || true)
-    if [ -n "$jar" ] && [ -f "$jar" ]; then
-        echo "$jar"
-        return 0
-    fi
+    echo "$PAPER_JAR_NAME not found in $PAPER_DIR" >&2
     return 1
 }
 
@@ -111,12 +111,17 @@ paper_running() {
 find_orphan_pids() {
     local pid cmdline cwd work_dir_norm
     work_dir_norm=$(readlink -f "$PAPER_DIR" 2>/dev/null || echo "$PAPER_DIR")
-    for pid in $(pgrep -f "$PAPER_JAR_MATCH" 2>/dev/null || true); do
+    # Broad match: paper.jar and any paper-*.jar (catches stale versioned starts).
+    for pid in $(pgrep -f 'java.*-jar paper' 2>/dev/null || true); do
         if ! pid_alive "$pid"; then
             continue
         fi
-        if ! cmdline_matches_jar "$pid" "$PAPER_JAR_MATCH"; then
-            continue
+        if [ -r "/proc/$pid/cmdline" ]; then
+            cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline")
+            case "$cmdline" in
+                *"-jar paper.jar"*|*" -jar paper-"*) ;;
+                *) continue ;;
+            esac
         fi
         if [ -r "/proc/$pid/cwd" ]; then
             cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
@@ -155,7 +160,7 @@ PY
 
 stop_graceful() {
     local pid="$1"
-    local i
+    local i cmdline
 
     if ! pid_alive "$pid"; then
         rm -f "$PAPER_PIDFILE"
@@ -164,8 +169,18 @@ stop_graceful() {
     fi
 
     if ! cmdline_matches_jar "$pid" "$PAPER_JAR_MATCH"; then
-        echo "Warning: PID $pid does not look like Paper ($PAPER_JAR_MATCH); refusing to kill"
-        return 1
+        # Allow stopping legacy starts that used a versioned paper-*.jar name.
+        cmdline=""
+        if [ -r "/proc/$pid/cmdline" ]; then
+            cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline")
+        fi
+        case "$cmdline" in
+            *"-jar paper-"*|*"-jar paper.jar"*) ;;
+            *)
+                echo "Warning: PID $pid does not look like Paper ($PAPER_JAR_MATCH); refusing to kill"
+                return 1
+                ;;
+        esac
     fi
 
     echo "Stopping Paper (PID: $pid) via RCON stop..."
@@ -244,22 +259,33 @@ start_paper() {
         return 1
     fi
     jar=$(find_paper_jar) || {
-        echo "paper-*.jar not found in $PAPER_DIR"
+        echo "Configured Paper jar not found in $PAPER_DIR (expected: $PAPER_JAR_NAME)"
         return 1
     }
+    # Resolve symlink so logs show the real build; still start via paper.jar name.
+    jar_resolved=$(readlink -f "$jar" 2>/dev/null || echo "$jar")
 
     cd "$PAPER_DIR" || return 1
     # Truncate previous console capture (avoids leftover jline spam from older starts)
     : > "$PAPER_LOG"
     # stdin from /dev/null: prevents interactive console prompt spam when redirected
+    # Always pass -jar paper.jar (never a versioned filename).
     # shellcheck disable=SC2086
-    nohup "$java_cmd" $PAPER_JAVA_OPTS -jar "$(basename "$jar")" --nogui \
+    nohup "$java_cmd" $PAPER_JAVA_OPTS -jar "$PAPER_JAR_NAME" --nogui \
         < /dev/null >> "$PAPER_LOG" 2>&1 &
     echo $! > "$PAPER_PIDFILE"
     sleep 2
     if paper_running; then
         echo "Paper started (PID: $(read_pid "$PAPER_PIDFILE"))"
-        echo "Jar: $(basename "$jar")"
+        echo "Jar: $PAPER_JAR_NAME"
+        echo "Build: $(basename "$jar_resolved")"
+        case "$(basename "$jar_resolved")" in
+            paper-*.jar)
+                _v="$(basename "$jar_resolved")"
+                _v="${_v#paper-}"
+                echo "Version: ${_v%.jar}"
+                ;;
+        esac
         echo "Log: $PAPER_LOG"
         return 0
     fi
@@ -282,16 +308,45 @@ stop_paper() {
     return $rc
 }
 
+paper_jar_version_line() {
+    # Resolve PAPER_JAR_NAME (usually paper.jar symlink) to the real build filename.
+    local jar_path target base version
+    jar_path="$PAPER_DIR/$PAPER_JAR_NAME"
+    if [ ! -e "$jar_path" ]; then
+        echo "Jar: $PAPER_JAR_NAME (missing)"
+        return
+    fi
+    echo "Jar: $PAPER_JAR_NAME"
+    if [ -L "$jar_path" ]; then
+        target=$(readlink -f "$jar_path" 2>/dev/null || readlink "$jar_path" || true)
+        base=$(basename "${target:-}")
+        if [ -n "$base" ]; then
+            echo "Build: $base"
+            case "$base" in
+                paper-*.jar)
+                    version="${base#paper-}"
+                    version="${version%.jar}"
+                    echo "Version: $version"
+                    ;;
+            esac
+        fi
+    elif [ -f "$jar_path" ]; then
+        echo "Build: $PAPER_JAR_NAME"
+    fi
+}
+
 status_paper() {
     local pid
     pid=$(read_pid "$PAPER_PIDFILE")
     if verify_pid "$pid"; then
         echo "Paper running (PID: $pid)"
+        paper_jar_version_line
         echo "Dir: $PAPER_DIR"
         echo "Log: $PAPER_LOG"
         return 0
     fi
     echo "Paper stopped"
+    paper_jar_version_line
     echo "Dir: $PAPER_DIR"
     echo "Log: $PAPER_LOG"
     return 1

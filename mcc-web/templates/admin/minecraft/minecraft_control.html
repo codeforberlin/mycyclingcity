@@ -68,6 +68,13 @@
         {% else %}
             <strong>✗ {% trans 'Paper gestoppt' %}</strong>
         {% endif %}
+        {% if paper_status.jar_version %}
+            <br><small>{% trans 'Version' %}: <code>{{ paper_status.jar_version }}</code>
+            {% if paper_status.jar_build %}({{ paper_status.jar_name }} → {{ paper_status.jar_build }}){% endif %}
+            </small>
+        {% elif paper_status.jar_build %}
+            <br><small>{% trans 'Build' %}: <code>{{ paper_status.jar_build }}</code></small>
+        {% endif %}
         {% if paper_status.error %}
             <br><small>{% trans 'Fehler' %}: {{ paper_status.error }}</small>
         {% elif paper_status.output %}
