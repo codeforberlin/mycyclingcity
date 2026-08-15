@@ -197,6 +197,7 @@ class MinecraftPlayAccountAdmin(admin.ModelAdmin):
         "assigned_to_group",
         "session_duration_minutes",
         "add_time_minutes",
+        "session_unlimited",
         "is_active",
         "sort_order",
         "updated_at",
@@ -243,6 +244,7 @@ class MinecraftPlayAccountAdmin(admin.ModelAdmin):
                 "fields": (
                     "session_duration_minutes",
                     "add_time_minutes",
+                    "session_unlimited",
                     "prefer_gamemode",
                     "prefer_spectator",
                 ),
@@ -398,6 +400,7 @@ class MinecraftBuilderAccountAdmin(admin.ModelAdmin):
         "is_active",
         "session_duration_minutes",
         "add_time_minutes",
+        "session_unlimited",
         "registered_at",
     )
     list_display_links = ("mc_username",)
@@ -427,6 +430,7 @@ class MinecraftBuilderAccountAdmin(admin.ModelAdmin):
                     "is_active",
                     "session_duration_minutes",
                     "add_time_minutes",
+                    "session_unlimited",
                     "prefer_gamemode",
                     "prefer_spectator",
                 ),

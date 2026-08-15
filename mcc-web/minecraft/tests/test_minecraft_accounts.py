@@ -215,6 +215,16 @@ class TestAccountFacade:
         delete_play_account(acc)
         assert not MinecraftPlayAccount.objects.filter(short_name="Arena9").exists()
 
+    def test_update_session_unlimited(self, play_account):
+        update_play_account(play_account, {"session_unlimited": True})
+        play_account.refresh_from_db()
+        assert play_account.session_unlimited is True
+        dto = list_account_dtos(account_type=ACCOUNT_PLAYER, ops=[])[0]
+        assert dto.session_unlimited is True
+        update_play_account(play_account, {"session_unlimited": False})
+        play_account.refresh_from_db()
+        assert play_account.session_unlimited is False
+
     def test_register_deactivate_reactivate_builder(self, db):
         top = GroupFactory(name="TOP Bau", mc_username="")
         leaf = GroupFactory(name="Team Bau", mc_username="team_bau", parent=top)

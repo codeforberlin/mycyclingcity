@@ -189,6 +189,10 @@
         <label>{% trans 'Zeit hinzufügen (Min.)' %}
           <input type="number" min="1" name="add_time_minutes">
         </label>
+        <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="session_unlimited" value="1">
+          {% trans 'Unbegrenzte Session' %}
+        </label>
       </div>
       <div class="mca-actions" style="margin-top:0.75rem;">
         <button type="submit" class="default">{% trans 'Spieler-Account anlegen' %}</button>
@@ -331,6 +335,10 @@
         <label>{% trans 'Zeit hinzufügen (Min.)' %}
           <input type="number" min="1" name="add_time_minutes" value="{{ edit_dto.add_time_minutes|default_if_none:'' }}">
         </label>
+        <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="session_unlimited" value="1" {% if edit_dto.session_unlimited %}checked{% endif %}>
+          {% trans 'Unbegrenzte Session' %}
+        </label>
         <label>{% trans 'Bevorzugter Spielmodus' %}
           <select name="prefer_gamemode">
             <option value="" {% if not edit_dto.prefer_gamemode %}selected{% endif %}>{% trans 'Standard' %}</option>
@@ -399,7 +407,13 @@
           <td>{{ a.ms_username|default:"—" }}</td>
           <td>{{ a.top_group_name|default:"—" }}</td>
           <td>
-            {% if a.session_duration_minutes %}{{ a.session_duration_minutes }} min{% else %}—{% endif %}
+            {% if a.session_unlimited %}
+              {% trans 'unbegrenzt' %}
+            {% elif a.session_duration_minutes %}
+              {{ a.session_duration_minutes }} min
+            {% else %}
+              —
+            {% endif %}
             {% if a.prefer_gamemode %}<div class="mca-muted">{{ a.prefer_gamemode }}</div>{% endif %}
             {% if a.active_session_id %}
               <div>

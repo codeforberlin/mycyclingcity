@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -144,9 +144,12 @@ def resolve_player_duration(
     account: MinecraftPlayAccount,
     *,
     override: int | None = None,
-) -> int:
+) -> int | None:
+    """Return minutes, or None for an unlimited (no timeout) session."""
     if override is not None:
         return int(override)
+    if getattr(account, "session_unlimited", False):
+        return None
     if account.session_duration_minutes is not None:
         return int(account.session_duration_minutes)
     return _player_duration_default()
@@ -156,12 +159,25 @@ def resolve_builder_duration(
     registration: MinecraftTeamRegistration,
     *,
     override: int | None = None,
-) -> int:
+) -> int | None:
+    """Return minutes, or None for an unlimited (no timeout) session."""
     if override is not None:
         return int(override)
+    if getattr(registration, "session_unlimited", False):
+        return None
     if registration.session_duration_minutes is not None:
         return int(registration.session_duration_minutes)
     return _builder_duration_default()
+
+
+def _session_timing(minutes: int | None) -> tuple[int, datetime | None]:
+    """Map resolved duration to (duration_minutes, ends_at). None = unlimited."""
+    now = timezone.now()
+    if minutes is None:
+        return 0, None
+    if minutes < 1:
+        raise SessionControlError("duration must be >= 1", code="invalid_duration")
+    return int(minutes), now + timedelta(minutes=int(minutes))
 
 
 def resolve_player_add_time(account: MinecraftPlayAccount) -> int:
@@ -645,8 +661,7 @@ def start_player_session(
             duration = assigned.duration_minutes
 
     minutes = resolve_player_duration(account, override=duration)
-    if minutes < 1:
-        raise SessionControlError("duration must be >= 1", code="invalid_duration")
+    duration_minutes, ends_at = _session_timing(minutes)
 
     from minecraft.services.player_session_bootstrap import (
         build_player_post_login_commands,
@@ -710,8 +725,8 @@ def start_player_session(
             ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
             account_type=MCSession.ACCOUNT_PLAYER,
             timestamp_start=now,
-            duration_minutes=minutes,
-            ends_at=now + timedelta(minutes=minutes),
+            duration_minutes=duration_minutes,
+            ends_at=ends_at,
             status=MCSession.STATUS_ACTIVE,
             source=source,
             started_by=user,
@@ -849,8 +864,7 @@ def start_builder_session(
             duration = assigned.duration_minutes
 
     minutes = resolve_builder_duration(registration, override=duration)
-    if minutes < 1:
-        raise SessionControlError("duration must be >= 1", code="invalid_duration")
+    duration_minutes, ends_at = _session_timing(minutes)
 
     from minecraft.services.builder_session_bootstrap import (
         build_builder_post_login_commands,
@@ -915,8 +929,8 @@ def start_builder_session(
             ms_username=online_login if is_online_auth_mode() else ((ms_username or "").strip()),
             account_type=MCSession.ACCOUNT_BUILDER,
             timestamp_start=now,
-            duration_minutes=minutes,
-            ends_at=now + timedelta(minutes=minutes),
+            duration_minutes=duration_minutes,
+            ends_at=ends_at,
             status=MCSession.STATUS_ACTIVE,
             source=source,
             started_by=user,
@@ -1113,6 +1127,11 @@ def add_session_time(
     session = _active_session_for(name)
     if session is None:
         raise SessionNotActiveError(f"No active session for {name}")
+    if session.ends_at is None:
+        raise SessionControlError(
+            "Unbegrenzte Session kann nicht verlängert werden.",
+            code="unlimited_session",
+        )
 
     add_min = resolve_add_time_for_session(session, override=minutes)
     if add_min < 1:
@@ -1479,10 +1498,14 @@ def toggle_session_spectator(account_name: str) -> MCSession:
 
 
 def expire_due_sessions(*, limit: int = 50) -> list[MCSession]:
-    """End ACTIVE sessions whose ends_at is in the past."""
+    """End ACTIVE sessions whose ends_at is in the past (skips unlimited)."""
     now = timezone.now()
     due_names = list(
-        MCSession.objects.filter(status=MCSession.STATUS_ACTIVE, ends_at__lte=now)
+        MCSession.objects.filter(
+            status=MCSession.STATUS_ACTIVE,
+            ends_at__isnull=False,
+            ends_at__lte=now,
+        )
         .order_by("ends_at")
         .values_list("account_name", flat=True)[:limit]
     )

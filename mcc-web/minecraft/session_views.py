@@ -199,6 +199,7 @@ def _session_payload(account_name: str, session: MCSession | None, *, card: dict
             "status": "IDLE",
             "ends_at": None,
             "remaining_seconds": 0,
+            "session_unlimited": bool((card or {}).get("session_unlimited")) if card else False,
             "gamemode_spectator": False,
             "play_gamemode": "",
             "ms_username": (card or {}).get("ms_username", "") if card else "",
@@ -209,11 +210,13 @@ def _session_payload(account_name: str, session: MCSession | None, *, card: dict
         }
         return payload
     ends_at = session.ends_at.isoformat() if session.ends_at else None
+    unlimited = session.is_unlimited or bool((card or {}).get("session_unlimited"))
     return {
         "account_name": account_name,
         "status": session.status,
         "ends_at": ends_at,
         "remaining_seconds": session.remaining_seconds,
+        "session_unlimited": unlimited,
         "gamemode_spectator": bool(getattr(session, "gamemode_spectator", False)),
         "play_gamemode": getattr(session, "play_gamemode", "") or "",
         "ms_username": getattr(session, "ms_username", "")
@@ -254,11 +257,16 @@ def _build_player_cards(*, include_presence: bool = True) -> list[dict]:
     for account in accounts:
         session = sessions.get(account.short_name)
         assigned = None if session else get_assigned_player_entry(account.short_name)
-        start_minutes = (
-            assigned.duration_minutes
-            if assigned is not None
-            else resolve_player_duration(account)
-        )
+        if session is not None:
+            session_unlimited = session.is_unlimited
+            start_minutes = None if session_unlimited else session.duration_minutes
+        elif assigned is not None:
+            session_unlimited = False
+            start_minutes = assigned.duration_minutes
+        else:
+            resolved = resolve_player_duration(account)
+            session_unlimited = resolved is None
+            start_minutes = resolved
         play_gamemode = ""
         if session:
             play_gamemode = session.play_gamemode or (
@@ -280,9 +288,11 @@ def _build_player_cards(*, include_presence: bool = True) -> list[dict]:
                 "remaining_seconds": session.remaining_seconds if session else 0,
                 "ends_at": session.ends_at if session else None,
                 "start_minutes": start_minutes,
+                "session_unlimited": session_unlimited,
                 "add_minutes": resolve_player_add_time(account),
                 "uses_custom_settings": (
-                    account.session_duration_minutes is not None
+                    bool(account.session_unlimited)
+                    or account.session_duration_minutes is not None
                     or account.add_time_minutes is not None
                 ),
                 "waitlist_ticket": assigned.ticket_number if assigned else "",
@@ -325,11 +335,16 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
     for registration in registrations:
         session = sessions.get(registration.mc_username)
         assigned = None if session else get_assigned_builder_entry(registration.mc_username)
-        start_minutes = (
-            assigned.duration_minutes
-            if assigned is not None
-            else resolve_builder_duration(registration)
-        )
+        if session is not None:
+            session_unlimited = session.is_unlimited
+            start_minutes = None if session_unlimited else session.duration_minutes
+        elif assigned is not None:
+            session_unlimited = False
+            start_minutes = assigned.duration_minutes
+        else:
+            resolved = resolve_builder_duration(registration)
+            session_unlimited = resolved is None
+            start_minutes = resolved
         play_gamemode = ""
         if session:
             play_gamemode = session.play_gamemode or (
@@ -351,9 +366,11 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
                 "remaining_seconds": session.remaining_seconds if session else 0,
                 "ends_at": session.ends_at if session else None,
                 "start_minutes": start_minutes,
+                "session_unlimited": session_unlimited,
                 "add_minutes": resolve_builder_add_time(registration),
                 "uses_custom_settings": (
-                    registration.session_duration_minutes is not None
+                    bool(registration.session_unlimited)
+                    or registration.session_duration_minutes is not None
                     or registration.add_time_minutes is not None
                 ),
                 "waitlist_ticket": assigned.ticket_number if assigned else "",
@@ -678,10 +695,15 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
                 station_id=_post_station_id(request) or None,
                 ticket_count=_post_ticket_count(request),
             )
-            msg = _("Session gestartet: %(name)s (%(min)s Min.)") % {
-                "name": session.account_name,
-                "min": session.duration_minutes,
-            }
+            if session.is_unlimited:
+                msg = _("Session gestartet: %(name)s (unbegrenzt)") % {
+                    "name": session.account_name,
+                }
+            else:
+                msg = _("Session gestartet: %(name)s (%(min)s Min.)") % {
+                    "name": session.account_name,
+                    "min": session.duration_minutes,
+                }
             if session.world_ticket_count:
                 msg = _("%(base)s · %(n)s Ticket(s)") % {
                     "base": msg,
@@ -787,10 +809,15 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                 station_id=_post_station_id(request) or None,
                 ticket_count=_post_ticket_count(request),
             )
-            msg = _("Builder-Session gestartet: %(name)s (%(min)s Min.)") % {
-                "name": session.account_name,
-                "min": session.duration_minutes,
-            }
+            if session.is_unlimited:
+                msg = _("Builder-Session gestartet: %(name)s (unbegrenzt)") % {
+                    "name": session.account_name,
+                }
+            else:
+                msg = _("Builder-Session gestartet: %(name)s (%(min)s Min.)") % {
+                    "name": session.account_name,
+                    "min": session.duration_minutes,
+                }
             if session.world_ticket_count:
                 msg = _("%(base)s · %(n)s Ticket(s)") % {
                     "base": msg,

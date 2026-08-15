@@ -14,6 +14,7 @@ from minecraft.services.session_control import (
     AccountAlreadyActiveError,
     AccountNotFoundError,
     MissingMicrosoftLoginError,
+    SessionControlError,
     SessionNotActiveError,
     add_session_time,
     end_session,
@@ -133,6 +134,39 @@ class TestSessionControlPlayer:
         play_account.save()
         session = start_player_session("Arena1")
         assert session.duration_minutes == 25
+
+    @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
+    @patch(
+        "minecraft.services.session_control.run_commands_require_player",
+        return_value=(True, "ok"),
+    )
+    @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
+    def test_start_unlimited_session(self, mock_rcon, mock_player_rcon, mock_wait, play_account, settings):
+        settings.MCC_MINECRAFT_PLAYER_SESSION_MINUTES = 15
+        play_account.session_unlimited = True
+        play_account.session_duration_minutes = 25
+        play_account.save()
+        session = start_player_session("Arena1")
+        assert session.duration_minutes == 0
+        assert session.ends_at is None
+        assert session.is_unlimited is True
+        assert session.remaining_seconds == 0
+
+    @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
+    @patch(
+        "minecraft.services.session_control.run_commands_require_player",
+        return_value=(True, "ok"),
+    )
+    @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
+    def test_unlimited_override_by_explicit_duration(
+        self, mock_rcon, mock_player_rcon, mock_wait, play_account
+    ):
+        play_account.session_unlimited = True
+        play_account.save()
+        session = start_player_session("Arena1", duration=12)
+        assert session.duration_minutes == 12
+        assert session.ends_at is not None
+        assert session.is_unlimited is False
 
     @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
     @patch(
@@ -574,6 +608,36 @@ class TestRegionsForBuilder:
         assert len(finished) == 1
         session.refresh_from_db()
         assert session.status == MCSession.STATUS_FINISHED
+
+    @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
+    @patch(
+        "minecraft.services.session_control.run_commands_require_player",
+        return_value=(True, "ok"),
+    )
+    @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
+    def test_expire_skips_unlimited_sessions(self, mock_rcon, mock_player_rcon, mock_wait, play_account):
+        play_account.session_unlimited = True
+        play_account.save()
+        session = start_player_session("Arena1")
+        assert session.ends_at is None
+        finished = expire_due_sessions()
+        assert finished == []
+        session.refresh_from_db()
+        assert session.status == MCSession.STATUS_ACTIVE
+
+    @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
+    @patch(
+        "minecraft.services.session_control.run_commands_require_player",
+        return_value=(True, "ok"),
+    )
+    @patch("minecraft.services.session_control.run_commands", return_value=(True, "ok"))
+    def test_add_time_rejected_for_unlimited(self, mock_rcon, mock_player_rcon, mock_wait, play_account):
+        play_account.session_unlimited = True
+        play_account.save()
+        start_player_session("Arena1")
+        with pytest.raises(SessionControlError) as exc_info:
+            add_session_time("Arena1", minutes=10)
+        assert exc_info.value.code == "unlimited_session"
 
     @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
     @patch(

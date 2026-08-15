@@ -108,6 +108,121 @@ def get_operator_managed_group_ids(user):
     
     return list(all_group_ids)
 
+
+class OperatorManagedGroupFieldListFilter(admin.RelatedFieldListFilter):
+    """
+    Related-field sidebar filter limited to groups the operator may manage.
+
+    Superusers keep the default related choices. Operators only see groups
+    returned by get_operator_managed_group_ids (TOP group + descendants).
+    """
+
+    def field_choices(self, field, request, model_admin):
+        ordering = self.field_admin_ordering(field, request, model_admin)
+        if request.user.is_superuser:
+            return field.get_choices(include_blank=False, ordering=ordering)
+        managed_ids = get_operator_managed_group_ids(request.user)
+        return field.get_choices(
+            include_blank=False,
+            limit_choices_to={'pk__in': managed_ids or []},
+            ordering=ordering,
+        )
+
+
+class OperatorManagedCyclistFieldListFilter(admin.RelatedFieldListFilter):
+    """
+    Related-field sidebar filter limited to cyclists in managed groups.
+
+    Superusers keep the default related choices. Operators only see cyclists
+    that belong to at least one managed group.
+    """
+
+    def field_choices(self, field, request, model_admin):
+        ordering = self.field_admin_ordering(field, request, model_admin)
+        if request.user.is_superuser:
+            return field.get_choices(include_blank=False, ordering=ordering)
+        managed_ids = get_operator_managed_group_ids(request.user)
+        cyclist_ids = []
+        if managed_ids:
+            cyclist_ids = list(
+                Cyclist.objects.filter(groups__id__in=managed_ids)
+                .distinct()
+                .values_list('pk', flat=True)
+            )
+        return field.get_choices(
+            include_blank=False,
+            limit_choices_to={'pk__in': cyclist_ids},
+            ordering=ordering,
+        )
+
+
+def get_operator_managed_travel_track_ids(user):
+    """
+    TravelTrack PKs visible to the operator (same scope as TravelTrackAdmin.get_queryset).
+    """
+    if user.is_superuser:
+        return list(TravelTrack.objects.values_list('id', flat=True))
+    managed_group_ids = get_operator_managed_group_ids(user)
+    if not managed_group_ids:
+        return []
+    from django.db.models import Q
+    return list(
+        TravelTrack.objects.filter(
+            Q(assigned_to_group_id__in=managed_group_ids) |
+            Q(group_statuses__group__id__in=managed_group_ids)
+        ).distinct().values_list('id', flat=True)
+    )
+
+
+def get_operator_managed_milestone_ids(user):
+    """
+    Milestone PKs visible to the operator (same scope as MilestoneAdmin.get_queryset).
+    """
+    if user.is_superuser:
+        return list(Milestone.objects.values_list('id', flat=True))
+    managed_group_ids = get_operator_managed_group_ids(user)
+    if not managed_group_ids:
+        return []
+    from django.db.models import Q
+    return list(
+        Milestone.objects.filter(
+            Q(assigned_to_group_id__in=managed_group_ids) |
+            Q(track__assigned_to_group_id__in=managed_group_ids) |
+            Q(track__group_statuses__group__id__in=managed_group_ids)
+        ).distinct().values_list('id', flat=True)
+    )
+
+
+class OperatorManagedTravelTrackFieldListFilter(admin.RelatedFieldListFilter):
+    """Sidebar track filter limited to routes the operator may manage."""
+
+    def field_choices(self, field, request, model_admin):
+        ordering = self.field_admin_ordering(field, request, model_admin)
+        if request.user.is_superuser:
+            return field.get_choices(include_blank=False, ordering=ordering)
+        track_ids = get_operator_managed_travel_track_ids(request.user)
+        return field.get_choices(
+            include_blank=False,
+            limit_choices_to={'pk__in': track_ids or []},
+            ordering=ordering,
+        )
+
+
+class OperatorManagedMilestoneFieldListFilter(admin.RelatedFieldListFilter):
+    """Sidebar milestone filter limited to milestones the operator may manage."""
+
+    def field_choices(self, field, request, model_admin):
+        ordering = self.field_admin_ordering(field, request, model_admin)
+        if request.user.is_superuser:
+            return field.get_choices(include_blank=False, ordering=ordering)
+        milestone_ids = get_operator_managed_milestone_ids(request.user)
+        return field.get_choices(
+            include_blank=False,
+            limit_choices_to={'pk__in': milestone_ids or []},
+            ordering=ordering,
+        )
+
+
 def calculate_gps_from_distance(track_geojson_data, target_distance_km):
     """
     Calculate GPS coordinates for a point on a track at a specific distance.
@@ -2090,7 +2205,8 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     search_fields = ('user_id', 'id_tag')
     readonly_fields = ('avatar_preview',)
     list_filter = (
-        'groups', 'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed', 'last_active',
+        ('groups', OperatorManagedGroupFieldListFilter),
+        'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed', 'last_active',
     )
     actions = ['redeem_velos_action']
 
@@ -2246,11 +2362,23 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
 @admin.register(CyclistVelosRedemption)
 class CyclistVelosRedemptionAdmin(BaseAdmin):
     list_display = ('redeemed_at', 'cyclist', 'leaf_group', 'velos_redeemed', 'external_currency', 'redeemed_by')
-    list_filter = ('redeemed_at', 'leaf_group', 'external_currency')
+    list_filter = (
+        'redeemed_at',
+        ('leaf_group', OperatorManagedGroupFieldListFilter),
+        'external_currency',
+    )
     search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'note')
     readonly_fields = (
         'cyclist', 'leaf_group', 'velos_redeemed', 'redeemed_at', 'redeemed_by', 'note', 'external_currency',
     )
+
+    def get_queryset(self, request):
+        """Filter redemptions based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(leaf_group_id__in=managed_group_ids)
 
     def has_add_permission(self, request):
         return False
@@ -3645,7 +3773,11 @@ class MilestoneAdmin(admin.ModelAdmin):
     form = MilestoneAdminForm
     change_form_template = 'admin/api/milestone/change_form.html'
     list_display = ('name', 'distance_km_display', 'track', 'winner_group_display', 'reached_at', 'deletion_warning')
-    list_filter = ('track', 'winner_group', 'reached_at')
+    list_filter = (
+        ('track', OperatorManagedTravelTrackFieldListFilter),
+        ('winner_group', OperatorManagedGroupFieldListFilter),
+        'reached_at',
+    )
     search_fields = ('name', 'track__name', 'winner_group__name', 'description')
     
     def winner_group_display(self, obj):
@@ -3899,7 +4031,10 @@ class MilestoneAdmin(admin.ModelAdmin):
 @admin.register(GroupTravelStatus)
 class GroupTravelStatusAdmin(admin.ModelAdmin):
     list_display = ('group_display', 'track', 'current_travel_distance_display', 'abort_trip_action')
-    list_filter = ('track',)
+    list_filter = (
+        ('track', OperatorManagedTravelTrackFieldListFilter),
+        ('group', OperatorManagedGroupFieldListFilter),
+    )
     search_fields = ('group__name', 'track__name')
     actions = ['abort_trip_bulk_action']
     readonly_fields = ('leaf_groups_contributions_display',)
@@ -4204,7 +4339,11 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
 @admin.register(TravelHistory)
 class TravelHistoryAdmin(admin.ModelAdmin):
     list_display = ('track', 'group_display', 'action_type', 'start_time', 'end_time', 'total_distance_km_display', 'travel_duration_display', 'created_at')
-    list_filter = ('track', 'group', 'action_type', 'start_time', 'end_time')
+    list_filter = (
+        ('track', OperatorManagedTravelTrackFieldListFilter),
+        ('group', OperatorManagedGroupFieldListFilter),
+        'action_type', 'start_time', 'end_time',
+    )
     search_fields = ('track__name', 'group__name')
     readonly_fields = ('track', 'group', 'action_type', 'start_time', 'end_time', 'total_distance_km', 'created_at', 'travel_duration_display')
     date_hierarchy = 'end_time'
@@ -4264,7 +4403,12 @@ class TravelHistoryAdmin(admin.ModelAdmin):
 @admin.register(GroupMilestoneAchievement)
 class GroupMilestoneAchievementAdmin(admin.ModelAdmin):
     list_display = ('leaf_group_display', 'top_group_display', 'milestone_display', 'track', 'reached_at', 'reward_text', 'is_redeemed', 'redeemed_at', 'redeem_reward_action')
-    list_filter = ('track', 'group', 'milestone', 'is_redeemed', 'reached_at', 'redeemed_at')
+    list_filter = (
+        ('track', OperatorManagedTravelTrackFieldListFilter),
+        ('group', OperatorManagedGroupFieldListFilter),
+        ('milestone', OperatorManagedMilestoneFieldListFilter),
+        'is_redeemed', 'reached_at', 'redeemed_at',
+    )
     search_fields = ('group__name', 'milestone__name', 'track__name', 'reward_text')
     readonly_fields = ('group', 'milestone_display_detail', 'track', 'reached_at', 'reached_distance', 'reward_text', 'redeemed_at', 'redeem_reward_action')
     date_hierarchy = 'reached_at'
@@ -4807,7 +4951,11 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
 @admin.register(EventHistory)
 class EventHistoryAdmin(admin.ModelAdmin):
     list_display = ('event', 'group', 'start_time', 'end_time', 'total_velos_display', 'best_leaf_group_display', 'best_leaf_group_goal_reached_at_display', 'created_at')
-    list_filter = ('event', 'group', 'start_time', 'end_time')
+    list_filter = (
+        'event',
+        ('group', OperatorManagedGroupFieldListFilter),
+        'start_time', 'end_time',
+    )
     search_fields = ('event__name', 'group__name', 'best_leaf_group__name')
     readonly_fields = ('event', 'group', 'start_time', 'end_time', 'total_velos', 'best_leaf_group', 'best_leaf_group_goal_reached_at', 'created_at')
     date_hierarchy = 'end_time'
@@ -4883,7 +5031,12 @@ class EventHistoryAdmin(admin.ModelAdmin):
 class HourlyMetricAdmin(admin.ModelAdmin):
     list_display = ('timestamp', 'cyclist', 'distance_km_display', 'velos', 'energy_wh', 'device', 'group_at_time')
     readonly_fields = ('device', 'cyclist', 'timestamp', 'distance_km', 'velos', 'energy_wh', 'group_at_time')
-    list_filter = ('timestamp', 'device', 'cyclist', 'group_at_time')
+    list_filter = (
+        'timestamp',
+        'device',
+        ('cyclist', OperatorManagedCyclistFieldListFilter),
+        ('group_at_time', OperatorManagedGroupFieldListFilter),
+    )
     search_fields = ('cyclist__user_id', 'cyclist__id_tag', 'device__name')
     
     def has_module_permission(self, request):
@@ -5726,7 +5879,10 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     )
     list_display_links = ('name',)
     list_editable = ('display_name', 'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed')
-    list_filter = ('group', 'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed')
+    list_filter = (
+        ('group', OperatorManagedGroupFieldListFilter),
+        'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed',
+    )
     fields = (
         'name', 'display_name', 'group', 'is_visible', 'is_km_collection_enabled',
         'is_arena_sim_allowed', 'distance_total', 'gps_latitude', 'gps_longitude',
@@ -5734,6 +5890,22 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     )
     formfield_overrides = {models.DecimalField: {'widget': MapInputWidget}}
     inlines = [DeviceConfigurationInline, DeviceConfigurationReportInline]
+
+    def get_queryset(self, request):
+        """Filter devices based on operator permissions."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        managed_group_ids = get_operator_managed_group_ids(request.user)
+        return qs.filter(group_id__in=managed_group_ids)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'group' and not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            kwargs['queryset'] = Group.objects.filter(
+                id__in=managed_group_ids, is_visible=True
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_fields(self, request, obj=None):
         fields = list(super().get_fields(request, obj))
@@ -7889,7 +8061,11 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
 @admin.register(YearEndSnapshotDetail)
 class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
     list_display = ('snapshot', 'entity_display', 'distance_total_display', 'velos_total', 'entity_type')
-    list_filter = ('snapshot', 'snapshot__group', 'snapshot__snapshot_date')
+    list_filter = (
+        'snapshot',
+        ('snapshot__group', OperatorManagedGroupFieldListFilter),
+        'snapshot__snapshot_date',
+    )
     search_fields = ('snapshot__group__name', 'group__name', 'cyclist__user_id', 'device__name')
     readonly_fields = ('snapshot', 'group', 'cyclist', 'device', 'distance_total', 'velos_total', 'entity_type')
     date_hierarchy = 'snapshot__snapshot_date'

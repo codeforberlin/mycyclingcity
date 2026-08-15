@@ -410,13 +410,19 @@
       var statusEl = card.querySelector('[data-status-label]');
       var wasActive = card.classList.contains('is-active');
       var isActive = item.status === 'ACTIVE';
+      var isUnlimited = !!item.session_unlimited;
       card.classList.toggle('is-active', isActive);
       card.setAttribute('data-remaining', String(item.remaining_seconds || 0));
+      card.setAttribute('data-unlimited', isUnlimited ? '1' : '0');
       if (item.play_gamemode) {
         card.setAttribute('data-play-gamemode', item.play_gamemode);
       }
       if (countdown) {
-        countdown.textContent = isActive ? formatMmSs(item.remaining_seconds) : '';
+        if (isActive && isUnlimited) {
+          countdown.textContent = '∞';
+        } else {
+          countdown.textContent = isActive ? formatMmSs(item.remaining_seconds) : '';
+        }
         countdown.style.display = isActive ? '' : 'none';
       }
       var waiting = !!item.waiting_in_lobby;
@@ -435,7 +441,7 @@
       var addBtn = card.querySelector('[data-action="add_time"]');
       var kickBtn = card.querySelector('[data-action="kick"]');
       if (startBtn) startBtn.disabled = isActive;
-      if (addBtn) addBtn.disabled = !isActive;
+      if (addBtn) addBtn.disabled = !isActive || isUnlimited;
       if (kickBtn) kickBtn.disabled = !isActive;
       card.querySelectorAll('.mc-start-form input[name="teleport_to_spawn"]').forEach(function (cb) {
         cb.disabled = isActive;
@@ -514,6 +520,13 @@
 
   function tickLocal() {
     document.querySelectorAll('.mc-session-card.is-active[data-remaining]').forEach(function (card) {
+      if (card.getAttribute('data-unlimited') === '1') {
+        var unlimitedCd = card.querySelector('[data-countdown]');
+        if (unlimitedCd) {
+          unlimitedCd.textContent = '∞';
+        }
+        return;
+      }
       var remaining = parseInt(card.getAttribute('data-remaining') || '0', 10);
       if (remaining > 0) {
         remaining -= 1;
@@ -689,7 +702,7 @@
             var countdown = card.querySelector('[data-countdown]');
             if (countdown) {
               countdown.style.display = '';
-              countdown.textContent = '…';
+              countdown.textContent = card.getAttribute('data-unlimited') === '1' ? '∞' : '…';
             }
             card.querySelectorAll('button').forEach(function (btn) { btn.disabled = true; });
             // Keep ticket count visible during the session; sync disabled state only.
@@ -876,7 +889,11 @@
     document.querySelectorAll('.mc-session-card[data-remaining]').forEach(function (card) {
       var countdown = card.querySelector('[data-countdown]');
       if (countdown && card.classList.contains('is-active')) {
-        countdown.textContent = formatMmSs(parseInt(card.getAttribute('data-remaining') || '0', 10));
+        if (card.getAttribute('data-unlimited') === '1') {
+          countdown.textContent = '∞';
+        } else {
+          countdown.textContent = formatMmSs(parseInt(card.getAttribute('data-remaining') || '0', 10));
+        }
       }
     });
     // Bau-Kachel: Region-Select und Welt-Spawn-Checkbox schließen sich aus.

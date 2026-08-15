@@ -470,6 +470,15 @@ class MinecraftTeamRegistration(models.Model):
         verbose_name=_("Zeit hinzufügen (Min.)"),
         help_text=_("Leer = globaler Standard (MCC_MINECRAFT_SESSION_ADD_MINUTES)"),
     )
+    session_unlimited = models.BooleanField(
+        default=False,
+        verbose_name=_("Unbegrenzte Session"),
+        help_text=_(
+            "Kein Zeitlimit beim Admin-Start. Session endet bei manuellem Kick "
+            "oder wenn der Spieler den Server verlässt (Logout). "
+            "Wartelisten-Zuweisungen bleiben zeitbegrenzt."
+        ),
+    )
     authme_is_registered = models.BooleanField(
         default=False,
         verbose_name=_("Auf MC-Server angelegt"),
@@ -839,6 +848,15 @@ class MinecraftPlayAccount(models.Model):
         verbose_name=_("Zeit hinzufügen (Min.)"),
         help_text=_("Leer = globaler Standard (MCC_MINECRAFT_SESSION_ADD_MINUTES)"),
     )
+    session_unlimited = models.BooleanField(
+        default=False,
+        verbose_name=_("Unbegrenzte Session"),
+        help_text=_(
+            "Kein Zeitlimit beim Admin-Start. Session endet bei manuellem Kick "
+            "oder wenn der Spieler den Server verlässt (Logout). "
+            "Wartelisten-Zuweisungen bleiben zeitbegrenzt."
+        ),
+    )
     prefer_spectator = models.BooleanField(
         default=False,
         verbose_name=_("Spectator-Modus bevorzugen"),
@@ -966,8 +984,17 @@ class MCSession(models.Model):
         verbose_name=_("Account-Typ"),
     )
     timestamp_start = models.DateTimeField(default=timezone.now, verbose_name=_("Start"))
-    duration_minutes = models.PositiveIntegerField(verbose_name=_("Dauer (Minuten)"))
-    ends_at = models.DateTimeField(db_index=True, verbose_name=_("Geplantes Ende"))
+    duration_minutes = models.PositiveIntegerField(
+        verbose_name=_("Dauer (Minuten)"),
+        help_text=_("0 = unbegrenzte Session (ends_at ist dann leer)."),
+    )
+    ends_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name=_("Geplantes Ende"),
+        help_text=_("Leer bei unbegrenzter Session (kein Timeout)."),
+    )
     timestamp_end = models.DateTimeField(null=True, blank=True, verbose_name=_("Tatsächliches Ende"))
     status = models.CharField(
         max_length=16,
@@ -1070,8 +1097,14 @@ class MCSession(models.Model):
         return f"{self.account_name} [{self.account_type}] {self.status}"
 
     @property
+    def is_unlimited(self) -> bool:
+        return self.ends_at is None
+
+    @property
     def remaining_seconds(self) -> int:
         if self.status != self.STATUS_ACTIVE:
+            return 0
+        if self.ends_at is None:
             return 0
         delta = (self.ends_at - timezone.now()).total_seconds()
         return max(0, int(delta))

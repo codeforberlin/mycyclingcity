@@ -1,9 +1,13 @@
 {% load i18n %}
 <div class="mc-session-times{% if card.uses_custom_settings %} is-custom{% endif %}">
     <span class="mc-session-times-label">
+        {% if card.session_unlimited %}
+        {% trans 'Dauer unbegrenzt' %}
+        {% else %}
         {% blocktrans with duration=card.start_minutes %}
         Dauer {{ duration }} Min.
         {% endblocktrans %}
+        {% endif %}
     </span>
     {% if card.uses_custom_settings %}
     <span class="mc-custom-badge">{% trans 'Individuell' %}</span>

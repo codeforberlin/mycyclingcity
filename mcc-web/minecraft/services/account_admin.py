@@ -38,6 +38,7 @@ class AccountDTO:
     is_active: bool = True
     session_duration_minutes: int | None = None
     add_time_minutes: int | None = None
+    session_unlimited: bool = False
     prefer_gamemode: str = ""
     prefer_spectator: bool = False
     group_id: int | None = None
@@ -132,6 +133,7 @@ def play_account_to_dto(
         is_active=bool(account.is_active),
         session_duration_minutes=account.session_duration_minutes,
         add_time_minutes=account.add_time_minutes,
+        session_unlimited=bool(account.session_unlimited),
         prefer_gamemode=(account.prefer_gamemode or "").strip(),
         prefer_spectator=bool(account.prefer_spectator),
         group_id=None,
@@ -178,6 +180,7 @@ def builder_account_to_dto(
         is_active=bool(reg.is_active),
         session_duration_minutes=reg.session_duration_minutes,
         add_time_minutes=reg.add_time_minutes,
+        session_unlimited=bool(reg.session_unlimited),
         prefer_gamemode=(reg.prefer_gamemode or "").strip(),
         prefer_spectator=bool(reg.prefer_spectator),
         group_id=group.pk if group else None,
@@ -306,6 +309,8 @@ def update_play_account(account: MinecraftPlayAccount, data: dict[str, Any]) -> 
     if "add_time_minutes" in data:
         raw = data.get("add_time_minutes")
         account.add_time_minutes = int(raw) if raw not in (None, "") else None
+    if "session_unlimited" in data:
+        account.session_unlimited = bool(data["session_unlimited"])
     if "prefer_gamemode" in data:
         account.prefer_gamemode = (data.get("prefer_gamemode") or "").strip()
     if "prefer_spectator" in data:
@@ -337,6 +342,8 @@ def update_builder_account(
     if "add_time_minutes" in data:
         raw = data.get("add_time_minutes")
         reg.add_time_minutes = int(raw) if raw not in (None, "") else None
+    if "session_unlimited" in data:
+        reg.session_unlimited = bool(data["session_unlimited"])
     if "prefer_gamemode" in data:
         reg.prefer_gamemode = (data.get("prefer_gamemode") or "").strip()
     if "prefer_spectator" in data:
@@ -385,6 +392,7 @@ def create_play_account(data: dict[str, Any]) -> MinecraftPlayAccount:
             if data.get("add_time_minutes") not in (None, "")
             else None
         ),
+        session_unlimited=bool(data.get("session_unlimited", False)),
         prefer_gamemode=(data.get("prefer_gamemode") or "").strip(),
         prefer_spectator=bool(data.get("prefer_spectator", False)),
     )

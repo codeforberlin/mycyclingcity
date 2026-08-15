@@ -85,7 +85,10 @@ Legacy „Spieler-Accounts“ / „Bau-Accounts“ tiles only appear when `manag
 | `manage_minecraft_accounts` | Play + builder stammdaten |
 | `manage_minecraft_operators` | Vanilla OP grant/revoke |
 
-`minecraft_moderator` intentionally has **no** account/OP permissions. Setup: `python manage.py setup_minecraft_preset_groups`.
+`minecraft_moderator` intentionally has **no** account/OP permissions.
+
+Full Minecraft menu access: assign auth group **`minecraft_admin`** to staff users.  
+Setup / refresh: `python manage.py setup_minecraft_preset_groups`.
 
 Vanilla OP status is read from `ops.json` under `MCC_MINECRAFT_PAPER_DIR`; mutations use RCON `op`/`deop` and are audited in `MinecraftVanillaOpLog`.
 

@@ -108,7 +108,10 @@ Die alten Menü-Kacheln „Spieler-Accounts“ / „Bau-Accounts“ erscheinen n
 | `manage_minecraft_accounts` | Stammdaten Spieler + Bau in Minecraft-Accounts |
 | `manage_minecraft_operators` | Vanilla-OP zuweisen/entziehen (`ops.json` + RCON) |
 
-`minecraft_moderator` erhält absichtlich **keine** Account-/OP-Permissions — nur Sessions und Stadt/Arena. Setup: `python manage.py setup_minecraft_preset_groups`.
+`minecraft_moderator` erhält absichtlich **keine** Account-/OP-Permissions — nur Sessions und Stadt/Arena.
+
+Vollzugriff auf alle Minecraft-Menüpunkte: Auth-Gruppe **`minecraft_admin`** (Staff-Benutzer zuweisen).  
+Setup / Aktualisieren: `python manage.py setup_minecraft_preset_groups`.
 
 ### Vanilla-Operatoren
 

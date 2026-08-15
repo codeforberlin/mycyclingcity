@@ -36,7 +36,9 @@ from mgmt.admin import (
     GroupAdmin, CyclistAdmin, TravelTrackAdmin, MilestoneAdmin,
     GroupTravelStatusAdmin, TravelHistoryAdmin, GroupMilestoneAchievementAdmin,
     EventAdmin, EventHistoryAdmin, GroupTypeAdmin, CyclistDeviceCurrentMileageAdmin,
-    HourlyMetricAdmin, get_operator_managed_group_ids
+    HourlyMetricAdmin, get_operator_managed_group_ids,
+    OperatorManagedGroupFieldListFilter, OperatorManagedCyclistFieldListFilter,
+    OperatorManagedTravelTrackFieldListFilter, OperatorManagedMilestoneFieldListFilter,
 )
 
 User = get_user_model()
@@ -228,7 +230,68 @@ class TestOperatorPermissions:
         assert cyclist1 in qs
         # Should NOT see cyclist2
         assert cyclist2 not in qs
-    
+
+    def test_cyclist_admin_group_list_filter_choices(self, operator_user, group_hierarchy_for_operator):
+        """Sidebar group filter must only list managed groups for operators."""
+        top_group = group_hierarchy_for_operator['top_group']
+        child1 = group_hierarchy_for_operator['child1']
+        child2 = group_hierarchy_for_operator['child2']
+        other_top_group = group_hierarchy_for_operator['other_top_group']
+
+        top_group.managers.add(operator_user)
+
+        request = RequestFactory().get('/admin/api/cyclist/')
+        request.user = operator_user
+
+        admin = CyclistAdmin(Cyclist, AdminSite())
+        field = Cyclist._meta.get_field('groups')
+        list_filter = OperatorManagedGroupFieldListFilter(
+            field,
+            request,
+            {},
+            Cyclist,
+            admin,
+            'groups',
+        )
+        choice_ids = {pk for pk, _label in list_filter.lookup_choices}
+
+        assert top_group.id in choice_ids
+        assert child1.id in choice_ids
+        assert child2.id in choice_ids
+        assert other_top_group.id not in choice_ids
+
+    def test_cyclist_list_filter_choices(self, operator_user, group_hierarchy_for_operator):
+        """Sidebar cyclist filter must only list cyclists in managed groups."""
+        top_group = group_hierarchy_for_operator['top_group']
+        child1 = group_hierarchy_for_operator['child1']
+        other_top_group = group_hierarchy_for_operator['other_top_group']
+
+        top_group.managers.add(operator_user)
+
+        cyclist1 = CyclistFactory()
+        cyclist1.groups.add(child1)
+        cyclist2 = CyclistFactory()
+        cyclist2.groups.add(other_top_group)
+
+        request = RequestFactory().get('/admin/api/hourlymetric/')
+        request.user = operator_user
+
+        from api.models import HourlyMetric
+        admin = HourlyMetricAdmin(HourlyMetric, AdminSite())
+        field = HourlyMetric._meta.get_field('cyclist')
+        list_filter = OperatorManagedCyclistFieldListFilter(
+            field,
+            request,
+            {},
+            HourlyMetric,
+            admin,
+            'cyclist',
+        )
+        choice_ids = {pk for pk, _label in list_filter.lookup_choices}
+
+        assert cyclist1.id in choice_ids
+        assert cyclist2.id not in choice_ids
+
     def test_travel_track_admin_filtering(self, operator_user, group_hierarchy_for_operator):
         """Test TravelTrackAdmin filters tracks for operators."""
         top_group = group_hierarchy_for_operator['top_group']
@@ -254,7 +317,71 @@ class TestOperatorPermissions:
         assert track1 in qs
         # Should NOT see track2
         assert track2 not in qs
-    
+
+    def test_travel_submenu_track_and_milestone_list_filter_choices(
+        self, operator_user, group_hierarchy_for_operator
+    ):
+        """Travel submenu filters must only list managed tracks/milestones."""
+        top_group = group_hierarchy_for_operator['top_group']
+        child1 = group_hierarchy_for_operator['child1']
+        other_top_group = group_hierarchy_for_operator['other_top_group']
+
+        top_group.managers.add(operator_user)
+
+        track1 = TravelTrackFactory()
+        GroupTravelStatusFactory(track=track1, group=child1)
+        milestone1 = MilestoneFactory(track=track1)
+
+        track2 = TravelTrackFactory()
+        GroupTravelStatusFactory(track=track2, group=other_top_group)
+        milestone2 = MilestoneFactory(track=track2)
+
+        request = RequestFactory().get('/admin/api/milestone/')
+        request.user = operator_user
+
+        admin = MilestoneAdmin(Milestone, AdminSite())
+        track_field = Milestone._meta.get_field('track')
+        track_filter = OperatorManagedTravelTrackFieldListFilter(
+            track_field, request, {}, Milestone, admin, 'track',
+        )
+        track_choice_ids = {pk for pk, _label in track_filter.lookup_choices}
+        assert track1.id in track_choice_ids
+        assert track2.id not in track_choice_ids
+
+        status_admin = GroupTravelStatusAdmin(GroupTravelStatus, AdminSite())
+        status_track_field = GroupTravelStatus._meta.get_field('track')
+        status_track_filter = OperatorManagedTravelTrackFieldListFilter(
+            status_track_field, request, {}, GroupTravelStatus, status_admin, 'track',
+        )
+        status_track_ids = {pk for pk, _label in status_track_filter.lookup_choices}
+        assert track1.id in status_track_ids
+        assert track2.id not in status_track_ids
+
+        history_admin = TravelHistoryAdmin(TravelHistory, AdminSite())
+        history_track_field = TravelHistory._meta.get_field('track')
+        history_track_filter = OperatorManagedTravelTrackFieldListFilter(
+            history_track_field, request, {}, TravelHistory, history_admin, 'track',
+        )
+        history_track_ids = {pk for pk, _label in history_track_filter.lookup_choices}
+        assert track1.id in history_track_ids
+        assert track2.id not in history_track_ids
+
+        achievement_admin = GroupMilestoneAchievementAdmin(
+            GroupMilestoneAchievement, AdminSite()
+        )
+        milestone_field = GroupMilestoneAchievement._meta.get_field('milestone')
+        milestone_filter = OperatorManagedMilestoneFieldListFilter(
+            milestone_field,
+            request,
+            {},
+            GroupMilestoneAchievement,
+            achievement_admin,
+            'milestone',
+        )
+        milestone_choice_ids = {pk for pk, _label in milestone_filter.lookup_choices}
+        assert milestone1.id in milestone_choice_ids
+        assert milestone2.id not in milestone_choice_ids
+
     def test_event_admin_filtering(self, operator_user, group_hierarchy_for_operator):
         """Test EventAdmin filters events for operators."""
         top_group = group_hierarchy_for_operator['top_group']
@@ -299,7 +426,7 @@ class TestOperatorPermissions:
         assert event2 not in qs
         # event4 has no GroupEventStatus — visible to all operators (new-event rule)
         assert event4 in qs
-    
+
     def test_hidden_admin_classes(self, operator_user):
         """Test that hidden admin classes are not visible to operators."""
         request = RequestFactory().get('/admin/api/grouptype/')

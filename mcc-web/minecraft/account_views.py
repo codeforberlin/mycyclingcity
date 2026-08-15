@@ -133,6 +133,7 @@ def minecraft_accounts(request):
                             request.POST.get("session_duration_minutes")
                         ),
                         "add_time_minutes": _optional_int(request.POST.get("add_time_minutes")),
+                        "session_unlimited": _parse_bool(request.POST.get("session_unlimited")),
                     }
                 )
                 messages.success(
@@ -231,6 +232,7 @@ def minecraft_accounts(request):
                         request.POST.get("session_duration_minutes")
                     ),
                     "add_time_minutes": _optional_int(request.POST.get("add_time_minutes")),
+                    "session_unlimited": _parse_bool(request.POST.get("session_unlimited")),
                     "prefer_gamemode": (request.POST.get("prefer_gamemode") or "").strip(),
                     "prefer_spectator": _parse_bool(request.POST.get("prefer_spectator")),
                 }
