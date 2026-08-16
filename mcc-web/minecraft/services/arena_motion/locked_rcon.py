@@ -103,11 +103,11 @@ class LockedRconGateway:
         self.command_count = 0
 
     def connect(self) -> None:
-        from mcrcon import MCRcon
+        from minecraft.services.thread_safe_mcrcon import ThreadSafeMCRcon
 
         # Drop a half-dead session (e.g. Paper restarted → CLOSE-WAIT) before reconnect.
         self.close()
-        mcr = MCRcon(self.host, self.password, port=self.port)
+        mcr = ThreadSafeMCRcon(self.host, self.password, port=self.port)
         mcr.connect()
         self._mcr = mcr
         self._command = mcr.command

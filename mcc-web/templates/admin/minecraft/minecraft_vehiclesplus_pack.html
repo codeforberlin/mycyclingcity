@@ -1,0 +1,372 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/minecraft/_minecraft_admin_assets.html" %}
+<style>
+  .vp-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.25rem;
+    max-width: 820px;
+  }
+  .vp-panel h2 { margin-top: 0; }
+  .vp-hint { color: #475569; font-size: 13px; margin: 0.35rem 0 0.75rem; }
+  .vp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+  }
+  .vp-grid label { display: block; font-size: 12px; color: #64748b; margin-bottom: 0.2rem; }
+  .vp-grid input, .vp-grid select { width: 100%; box-sizing: border-box; padding: 0.35rem 0.5rem; }
+  .vp-grid .full { grid-column: 1 / -1; }
+  .vp-actions { margin-top: 0.85rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .vp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .vp-table th, .vp-table td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid #e2e8f0; word-break: break-all; }
+  pre.vp-code {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 0.75rem;
+    border-radius: 8px;
+    overflow: auto;
+    font-size: 12px;
+    max-height: 360px;
+  }
+  .vp-model-list { max-height: 280px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+  .vp-model-list label {
+    display: block;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .vp-model-list label:hover { background: #f1f5f9; }
+  .vp-model-list .meta { color: #64748b; font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:minecraft_city' %}">{% trans 'Stadtsteuerung' %}</a>
+&rsaquo; {% trans 'VehiclesPlus Resourcepack' %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<ul class="messagelist">
+  {% for message in messages %}
+  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<div class="vp-panel">
+  <h2>{% trans 'Werkzeuge' %}</h2>
+  <p class="vp-hint">
+    {% trans 'Gekaufte Modell-ZIPs (z. B. Pixelmine) oder Blockbench-JSON ins bestehende MCC-Pack mergen.' %}
+  </p>
+  <p>
+    <a href="{{ blockbench_url }}" target="_blank" rel="noopener">{% trans 'Blockbench (Web)' %}</a>
+    ·
+    <a href="{{ blockbench_download_url }}" target="_blank" rel="noopener">{% trans 'Blockbench Download' %}</a>
+    ·
+    <a href="{{ vp_generator_url }}" target="_blank" rel="noopener">{% trans 'VP Resourcepack Generator (extern, optional)' %}</a>
+  </p>
+  <p class="vp-hint">
+    {% trans 'Pack-Verzeichnis' %}: <code>{{ packs_dir }}</code>
+    {% if http_base %}
+      · {% trans 'HTTP' %}: <code>{{ http_base }}/</code>
+    {% endif %}
+  </p>
+</div>
+
+<div class="vp-panel">
+  <h2>{% trans 'Vorhandene Packs' %}</h2>
+  {% if pack_rows %}
+  <table class="vp-table">
+    <thead>
+      <tr>
+        <th>{% trans 'Datei' %}</th>
+        <th>{% trans 'Größe' %}</th>
+        <th>SHA1</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in pack_rows %}
+      <tr>
+        <td>{{ row.name }}</td>
+        <td>{{ row.size }}</td>
+        <td><code>{{ row.sha1 }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="vp-hint">{% trans 'Keine ZIP-Dateien im Pack-Verzeichnis.' %}</p>
+  {% endif %}
+</div>
+
+<div class="vp-panel">
+  <h2>{% trans 'Fahrzeug exportieren (Sicherung / Re-Import)' %}</h2>
+  <p class="vp-hint">
+    {% blocktrans with path=vehicles_dir %}
+    Einzelnes Fahrzeug aus dem Plugin-Verzeichnis ({{ path }}) als ZIP herunterladen:
+    HJSON + Modell/Texturen aus dem gewählten Quell-Pack (falls vorhanden).
+    {% endblocktrans %}
+  </p>
+  {% if export_vehicles %}
+  <form method="post" action="{% url 'admin:minecraft_vehiclesplus_pack' %}">
+    {% csrf_token %}
+    <div class="vp-grid">
+      <div class="full">
+        <label for="id_export_vehicle_id">{% trans 'Fahrzeug' %}</label>
+        <select id="id_export_vehicle_id" name="export_vehicle_id" required>
+          {% for v in export_vehicles %}
+          <option value="{{ v.model_id }}"{% if form.export_vehicle_id == v.model_id %} selected{% endif %}>
+            {{ v.category }}/{{ v.model_id }} — {{ v.display_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="full">
+        <label for="id_export_source_pack">{% trans 'Pack für Modell/Texturen' %}</label>
+        <select id="id_export_source_pack" name="source_pack">
+          {% for name in packs %}
+          <option value="{{ name }}"{% if form.source_pack == name %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+        <p class="vp-hint">{% trans 'HJSON kommt immer vom Live-Plugin; 3D-Assets aus diesem Pack-ZIP.' %}</p>
+      </div>
+    </div>
+    <div class="vp-actions">
+      <button type="submit" class="default" name="action" value="export_vehicle">{% trans 'ZIP herunterladen' %}</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="vp-hint">{% trans 'Keine *.hjson im VehiclesPlus-vehicles-Verzeichnis gefunden.' %}</p>
+  {% endif %}
+</div>
+
+<div class="vp-panel">
+  <h2>{% trans 'Ziel-Pack' %}</h2>
+  <p class="vp-hint">
+    {% trans 'Gilt für ZIP-Import und JSON-Upload: Quell-Pack kopieren, Modell hinzufügen, unter Zielname speichern.' %}
+  </p>
+  <form method="post" enctype="multipart/form-data" action="{% url 'admin:minecraft_vehiclesplus_pack' %}" id="vp-pack-form">
+    {% csrf_token %}
+    <div class="vp-grid">
+      <div>
+        <label for="id_source_pack">{% trans 'Quell-Resourcepack' %}</label>
+        <input id="id_source_pack" type="text" name="source_pack" list="vp-pack-names"
+               value="{{ form.source_pack }}" required
+               placeholder="VPExample-v3-1.21.7-1.21.8_MCC.zip"
+               autocomplete="off">
+        <datalist id="vp-pack-names">
+          {% for name in packs %}
+          <option value="{{ name }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label for="id_output_pack">{% trans 'Name des erweiterten Packs' %}</label>
+        <input id="id_output_pack" type="text" name="output_pack" list="vp-pack-names"
+               value="{{ form.output_pack }}" required
+               placeholder="VPExample-v3-1.21.7-1.21.8_MCC.zip"
+               autocomplete="off">
+      </div>
+      <div>
+        <label for="id_model_stem">{% trans 'Modell-ID (Dateiname im Pack)' %}</label>
+        <input id="id_model_stem" type="text" name="model_stem" value="{{ form.model_stem }}"
+               list="vp-existing-stems"
+               placeholder="{% if zip_inspection %}{% trans 'wird aus ZIP übernommen' %}{% else %}school_bus{% endif %}"
+               autocomplete="off">
+        <datalist id="vp-existing-stems">
+          {% for stem in existing_stems %}
+          <option value="{{ stem }}"></option>
+          {% endfor %}
+        </datalist>
+        <p class="vp-hint">
+          {% if existing_stems %}
+          {% blocktrans with n=existing_stems|length %}ZIP-Import: aus Archiv. Zum Ersetzen eine der {{ n }} IDs im Quell-Pack wählen.{% endblocktrans %}
+          {% else %}
+          {% trans 'ZIP-Import: aus Archiv. Blockbench: selbst vergeben. Leer bei ZIP = Stem des gewählten Modells.' %}
+          {% endif %}
+        </p>
+      </div>
+      <div>
+        <label for="id_custom_model_data">{% trans 'custom_model_data' %}</label>
+        <input id="id_custom_model_data" type="number" min="1" name="custom_model_data"
+               value="{{ form.custom_model_data }}"
+               placeholder="{% if suggested_cmd %}{{ suggested_cmd }}{% endif %}">
+        {% if form.replace_existing %}
+        <p class="vp-hint">{% trans 'Ersetzen: leer = bestehendes CMD der Modell-ID behalten. Optional andere Nummer setzen.' %}</p>
+        {% elif suggested_cmd %}
+        <p class="vp-hint">{% blocktrans %}Leer = nächste freie Nummer ({{ suggested_cmd }}). Vendor-CMD aus dem ZIP wird nicht übernommen.{% endblocktrans %}</p>
+        {% else %}
+        <p class="vp-hint">{% trans 'Leer = nächste freie Nummer im Ziel-Pack. Vendor-CMD wird nicht übernommen.' %}</p>
+        {% endif %}
+      </div>
+      <div>
+        <label for="id_leather_item">{% trans 'Leder-Item' %}</label>
+        <select id="id_leather_item" name="leather_item">
+          <option value=""{% if not form.leather_item %} selected{% endif %}>{% trans '— aus ZIP / Standard leather_boots —' %}</option>
+          {% for item in leather_items %}
+          <option value="{{ item }}"{% if form.leather_item == item %} selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="full">
+        <label>
+          <input type="checkbox" name="overwrite_output" value="1"{% if form.overwrite_output %} checked{% endif %}>
+          {% trans 'Ziel-Pack überschreiben, falls vorhanden' %}
+        </label>
+      </div>
+      <div class="full">
+        <label>
+          <input type="checkbox" name="replace_existing" value="1"{% if form.replace_existing %} checked{% endif %}>
+          {% trans 'Modell ersetzen erzwingen (CMD beibehalten; bei gleicher ID ohnehin automatisch)' %}
+        </label>
+        <p class="vp-hint">
+          {% trans 'Gleiche Modell-ID wie im Pack → wird automatisch ersetzt (JSON/Texturen neu, CMD bleibt). Haken nur nötig, wenn die Datei fehlt, aber die CMD-Bindung getauscht werden soll.' %}
+        </p>
+      </div>
+      <div class="full">
+        <label>
+          <input type="checkbox" name="write_hjson" value="1"{% if form.write_hjson %} checked{% endif %}>
+          {% trans 'VehiclesPlus-HJSON unter vehicles/bikes/ schreiben (Vorlage Bike)' %}
+        </label>
+      </div>
+      <div class="full">
+        <label>
+          <input type="checkbox" name="update_server_properties" value="1"{% if form.update_server_properties %} checked{% endif %}>
+          {% trans 'server.properties aktualisieren (resource-pack + SHA1; Backup mit Zeitstempel)' %}
+        </label>
+        <p class="vp-hint">
+          {% blocktrans with path=server_properties_path %}
+          Schreibt auch VehiclesPlus resourcePackUrl. Datei: {{ path }}
+          {% endblocktrans %}
+        </p>
+      </div>
+    </div>
+
+    <h2 style="margin-top:1.25rem">{% trans '1) Modell-ZIP importieren' %}</h2>
+    <p class="vp-hint">
+      {% trans 'Fertiges Modell-ZIP hochladen. Neu: CMD leer = nächste freie Nummer. Ersetzen: gleiche Modell-ID + Haken „Modell ersetzen“ — CMD bleibt.' %}
+    </p>
+    {% if not zip_inspection %}
+    <div class="vp-grid">
+      <div class="full">
+        <label for="id_vendor_zip">{% trans 'Modell- / Resourcepack-ZIP' %}</label>
+        <input id="id_vendor_zip" type="file" name="vendor_zip" accept=".zip,application/zip">
+      </div>
+    </div>
+    <div class="vp-actions">
+      <button type="submit" class="default" name="action" value="analyze_zip">{% trans 'ZIP analysieren' %}</button>
+    </div>
+    {% else %}
+    <input type="hidden" name="staging_token" value="{{ form.staging_token }}">
+    <p class="vp-hint">
+      {% blocktrans with name=zip_inspection.original_name n=zip_inspection.models|length t=zip_inspection.texture_count %}
+      Archiv {{ name }}: {{ n }} Modell(e), {{ t }} Textur(en).
+      {% endblocktrans %}
+    </p>
+    <div class="vp-model-list" id="vp-model-list">
+      {% for m in zip_inspection.models %}
+      <label>
+        <input type="radio" name="selected_model_path" value="{{ m.path }}"
+               data-stem="{{ m.stem }}"
+               data-leather="{{ m.leather_item }}"
+               data-vendor-cmd="{% if m.vendor_cmd %}{{ m.vendor_cmd }}{% endif %}"
+               {% if form.selected_model_path == m.path %}checked{% endif %}>
+        <strong>{{ m.stem }}</strong>
+        <div class="meta">
+          {% if m.leather_item %}item={{ m.leather_item }}{% endif %}
+          {% if m.vendor_cmd %} · vendor-CMD={{ m.vendor_cmd }} (wird neu vergeben){% endif %}
+          · textures {{ m.texture_files_found }}/{{ m.texture_refs|length }}
+          {% if m.has_elements %} · elements{% endif %}
+          <br><code>{{ m.path }}</code>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="vp-actions">
+      <button type="submit" class="default" name="action" value="import_zip">{% trans 'Gewähltes Modell importieren' %}</button>
+      <button type="submit" name="action" value="cancel_zip" formnovalidate>{% trans 'Abbrechen' %}</button>
+    </div>
+    <script>
+    (function () {
+      var list = document.getElementById('vp-model-list');
+      if (!list) return;
+      function apply(radio) {
+        if (!radio) return;
+        var stem = document.getElementById('id_model_stem');
+        var leather = document.getElementById('id_leather_item');
+        var cmd = document.getElementById('id_custom_model_data');
+        if (stem) stem.value = radio.getAttribute('data-stem') || '';
+        if (cmd) cmd.value = '';
+        if (leather) {
+          var item = radio.getAttribute('data-leather') || '';
+          leather.value = item;
+        }
+      }
+      list.addEventListener('change', function (ev) {
+        if (ev.target && ev.target.name === 'selected_model_path') apply(ev.target);
+      });
+    })();
+    </script>
+    {% endif %}
+
+    <h2 style="margin-top:1.5rem">{% trans '2) Blockbench-JSON (optional)' %}</h2>
+    <p class="vp-hint">
+      {% trans 'Alternativ einzelne Modell-JSON + PNGs — wenn kein ZIP-Import aktiv ist.' %}
+    </p>
+    <div class="vp-grid">
+      <div class="full">
+        <label for="id_model_json">{% trans 'Modell-JSON (Blockbench Export)' %}</label>
+        <input id="id_model_json" type="file" name="model_json" accept=".json,application/json"{% if zip_inspection %} disabled{% endif %}>
+      </div>
+      <div class="full">
+        <label for="id_textures">{% trans 'Texturen (optional, PNG)' %}</label>
+        <input id="id_textures" type="file" name="textures" accept=".png,.mcmeta,image/png" multiple{% if zip_inspection %} disabled{% endif %}>
+      </div>
+    </div>
+    <div class="vp-actions">
+      <button type="submit" name="action" value="merge_json"{% if zip_inspection %} disabled{% endif %}>{% trans 'JSON ins Pack mergen' %}</button>
+    </div>
+  </form>
+</div>
+
+{% if result %}
+<div class="vp-panel">
+  <h2>{% trans 'Ergebnis' %}</h2>
+  <p>
+    <strong>{% trans 'Datei' %}:</strong> <code>{{ result.output_path.name }}</code><br>
+    <strong>SHA1:</strong> <code>{{ result.sha1 }}</code><br>
+    <strong>custom_model_data:</strong> {{ result.custom_model_data }}<br>
+    <strong>{% trans 'Modell' %}:</strong> <code>{{ result.model_resource }}</code><br>
+    {% if http_base %}
+    <strong>URL:</strong> <code>{{ result.http_url }}</code>
+    {% endif %}
+  </p>
+  <p class="vp-hint">
+    {% if server_apply %}
+      {% trans 'server.properties wurde geschrieben — Paper neu starten.' %}
+      Backup: <code>{{ server_apply.properties_backup.name }}</code>
+    {% else %}
+      {% trans 'In server.properties resource-pack / resource-pack-sha1 setzen und Paper neu starten. Python-httpd muss das Pack ausliefern.' %}
+    {% endif %}
+  </p>
+  {% if hjson_preview %}
+  <h3>{% trans 'HJSON-Vorschau' %}</h3>
+  <pre class="vp-code">{{ hjson_preview }}</pre>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

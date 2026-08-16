@@ -1,14 +1,13 @@
 import re
-import socket
-import threading
 import time
 from dataclasses import dataclass
 
 from django.conf import settings
-from mcrcon import MCRcon, MCRconException
+from mcrcon import MCRconException
 
 from config.logger_utils import get_logger
 from minecraft.services.arena_motion.locked_rcon import rcon_file_lock
+from minecraft.services.thread_safe_mcrcon import ThreadSafeMCRcon
 
 
 logger = get_logger("minecraft")
@@ -50,7 +49,7 @@ def _send_command(command: str) -> str:
     try:
         # Share file lock with arena motion worker so both can coexist on one RCON port.
         with rcon_file_lock():
-            with MCRcon(config.host, config.password, port=config.port) as mcr:
+            with ThreadSafeMCRcon(config.host, config.password, port=config.port) as mcr:
                 logger.debug(f"[minecraft_rcon] sending command='{command}'")
                 response = mcr.command(command)
                 logger.debug(f"[minecraft_rcon] response='{response}'")
@@ -64,15 +63,8 @@ def _send_command(command: str) -> str:
 def check_connection() -> tuple[bool, str, str]:
     """
     Returns (ok, message, mode).
-    mode: "auth" (RCON login tested) or "port" (TCP port reachability only).
+    mode: "auth" (RCON login tested) — thread-safe via ThreadSafeMCRcon.
     """
-    if threading.current_thread() is not threading.main_thread():
-        try:
-            config = get_rcon_config()
-            with socket.create_connection((config.host, config.port), timeout=3):
-                return True, "", "port"
-        except Exception as exc:
-            return False, str(exc), "port"
     try:
         _send_command("list")
         return True, "", "auth"

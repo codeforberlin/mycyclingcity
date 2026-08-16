@@ -338,6 +338,10 @@ class MinecraftIntegrationConfig(models.Model):
                 "manage_grant_catalog",
                 _("Vergabe-Katalog (Fahrzeuge, Items) verwalten"),
             ),
+            (
+                "manage_vehiclesplus_packs",
+                _("VehiclesPlus Resourcepacks erzeugen/erweitern"),
+            ),
         ]
 
     def __str__(self):

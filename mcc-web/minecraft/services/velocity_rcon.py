@@ -6,14 +6,12 @@
 
 from __future__ import annotations
 
-import socket
-import threading
-
 from django.conf import settings
-from mcrcon import MCRcon, MCRconException
+from mcrcon import MCRconException
 
 from config.logger_utils import get_logger
 from minecraft.services.rcon_client import RconConfig, describe_rcon_error
+from minecraft.services.thread_safe_mcrcon import ThreadSafeMCRcon
 
 logger = get_logger("minecraft")
 
@@ -30,18 +28,10 @@ def check_connection() -> tuple[bool, str, str]:
     """
     Probe Velocircon (Velocity proxy RCON).
 
-    Returns ``(ok, message, mode)`` where mode is ``auth`` (login + command)
-    or ``port`` (TCP reachability only, used off the main thread).
+    Returns ``(ok, message, mode)`` where mode is ``auth`` (login + command).
+    Uses ThreadSafeMCRcon so this works under Gunicorn gthread workers.
     """
-    config = get_velocity_rcon_config()
-    if threading.current_thread() is not threading.main_thread():
-        try:
-            with socket.create_connection((config.host, config.port), timeout=3):
-                return True, "", "port"
-        except Exception as exc:
-            return False, str(exc), "port"
     try:
-        # Lightweight Velocircon command — proves auth + plugin command path.
         send_velocity_command("glist")
         return True, "", "auth"
     except Exception as exc:
@@ -51,7 +41,7 @@ def check_connection() -> tuple[bool, str, str]:
 def send_velocity_command(command: str) -> str:
     config = get_velocity_rcon_config()
     try:
-        with MCRcon(config.host, config.password, port=config.port) as mcr:
+        with ThreadSafeMCRcon(config.host, config.password, port=config.port) as mcr:
             logger.debug("[minecraft_velocity_rcon] sending command='%s'", command)
             response = mcr.command(command)
             logger.debug("[minecraft_velocity_rcon] response='%s'", response)

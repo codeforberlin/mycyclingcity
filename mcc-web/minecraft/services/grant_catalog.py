@@ -79,19 +79,47 @@ def _garage_player_for_record(record: MinecraftGrantRecord, *, fallback: str) ->
     ms = (record.ms_username or "").strip()
     if ms:
         return ms
-    try:
-        from minecraft.models import MinecraftPlayAccount
+    return resolve_garage_player_for_account(fallback)
 
-        account = (
-            MinecraftPlayAccount.objects.filter(short_name__iexact=fallback)
+
+def resolve_garage_player_for_account(account_name: str) -> str:
+    """
+    Resolve the VehiclesPlus garage name for a play/builder slot.
+
+    Prefer MS login from the account row, then the latest grant record.
+    """
+    name = (account_name or "").strip()
+    if not name:
+        return ""
+    try:
+        from minecraft.models import MinecraftBuilderAccount, MinecraftPlayAccount
+
+        play = (
+            MinecraftPlayAccount.objects.filter(short_name__iexact=name)
             .only("ms_username")
             .first()
         )
-        if account is not None and (account.ms_username or "").strip():
-            return (account.ms_username or "").strip()
+        if play is not None and (play.ms_username or "").strip():
+            return (play.ms_username or "").strip()
+        builder = (
+            MinecraftBuilderAccount.objects.filter(mc_username__iexact=name)
+            .only("ms_username")
+            .first()
+        )
+        if builder is not None and (builder.ms_username or "").strip():
+            return (builder.ms_username or "").strip()
     except Exception:
         pass
-    return (fallback or "").strip()
+    last = (
+        MinecraftGrantRecord.objects.filter(account_name__iexact=name)
+        .exclude(ms_username="")
+        .order_by("-id")
+        .only("ms_username")
+        .first()
+    )
+    if last is not None and (last.ms_username or "").strip():
+        return (last.ms_username or "").strip()
+    return name
 
 
 def catalog_items_for_account_type(account_type: str) -> list[MinecraftGrantCatalogItem]:
@@ -247,23 +275,58 @@ def clear_active_grants_for_account(
     account_name: str,
     *,
     user: AbstractBaseUser | None = None,
+    commit: bool = True,
 ) -> tuple[int, list[str]]:
     """
-    Mark all active grants on the slot as revoked and collect RCON revoke commands.
+    Collect revoke/wipe RCON commands for the slot.
 
-    Returns (revoked_count, rcon_commands). Caller runs RCON.
+    With ``commit=True`` (default), marks active grants revoked immediately.
+    Prefer :func:`clear_grants_with_rcon` so RCON runs before the DB update.
+    """
+    records, commands = build_clear_grant_commands(account_name)
+    if commit and records:
+        mark_grants_revoked(records, user=user)
+    elif not records and commands:
+        logger.info(
+            "[grant_catalog] garage wipe without active rows account=%s cmds=%s by=%s",
+            account_name,
+            commands,
+            getattr(user, "username", None),
+        )
+    return len(records), commands
+
+
+def _dedupe_commands(commands: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for cmd in commands:
+        key = (cmd or "").strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    return out
+
+
+def build_clear_grant_commands(
+    account_name: str,
+) -> tuple[list[MinecraftGrantRecord], list[str]]:
+    """
+    Collect active grant rows and RCON revoke commands (no DB writes).
+
+    Always includes ``mccbridge vpremove <garage> *`` when the garage player is
+    known, so VehiclesPlus storage is emptied even if grant rows are already
+    revoked or vehicles were given outside the catalog.
     """
     name = (account_name or "").strip()
-    records = active_records_for_account(name)
-    if not records:
-        return 0, []
-
-    now = timezone.now()
+    records = list(active_records_for_account(name))
     commands: list[str] = []
-    player = ""
+    garage_player = ""
     for record in records:
-        garage_player = _garage_player_for_record(record, fallback=name)
-        player = garage_player or player
+        garage_player = _garage_player_for_record(record, fallback=name) or garage_player
+        if record.catalog_item.kind == MinecraftGrantCatalogItem.KIND_VEHICLE_GARAGE:
+            # Covered by the full garage wipe below.
+            continue
         cmd = render_rcon_template(
             revoke_template_for_item(record.catalog_item),
             player=garage_player or name,
@@ -272,17 +335,34 @@ def clear_active_grants_for_account(
         )
         if cmd:
             commands.append(cmd)
+
+    if not garage_player:
+        garage_player = resolve_garage_player_for_account(name)
+    if garage_player:
+        commands.insert(0, f"mccbridge vpremove {garage_player} *")
+
+    return records, _dedupe_commands(commands)
+
+
+def mark_grants_revoked(
+    records: list[MinecraftGrantRecord],
+    *,
+    user: AbstractBaseUser | None = None,
+) -> int:
+    if not records:
+        return 0
+    now = timezone.now()
+    for record in records:
         record.status = MinecraftGrantRecord.STATUS_REVOKED
         record.revoked_at = now
         record.save(update_fields=["status", "revoked_at"])
-
     logger.info(
         "[grant_catalog] cleared account=%s count=%s by=%s",
-        name,
+        records[0].account_name,
         len(records),
         getattr(user, "username", None),
     )
-    return len(records), commands
+    return len(records)
 
 
 @transaction.atomic
@@ -430,9 +510,28 @@ def clear_grants_with_rcon(
     *,
     user: AbstractBaseUser | None = None,
 ) -> int:
-    count, cmds = clear_active_grants_for_account(account_name, user=user)
+    """
+    Wipe VehiclesPlus garage + revoke catalog grants via RCON, then update DB.
+
+    RCON runs first so a failed wipe does not leave the DB claiming „geleert“.
+    Works even when grant rows are already revoked but vehicles remain in garage.
+    """
+    records, cmds = build_clear_grant_commands(account_name)
+    if not cmds:
+        return 0
     run_grant_rcon_commands(cmds)
-    return count
+    if records:
+        with transaction.atomic():
+            fresh = list(active_records_for_account((account_name or "").strip()))
+            mark_grants_revoked(fresh or records, user=user)
+            return len(fresh or records)
+    logger.info(
+        "[grant_catalog] garage wiped (no active grant rows) account=%s cmds=%s by=%s",
+        account_name,
+        cmds,
+        getattr(user, "username", None),
+    )
+    return 0
 
 
 def repair_vehicle_with_rcon(

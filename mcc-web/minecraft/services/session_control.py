@@ -667,7 +667,6 @@ def start_player_session(
     login = account.short_name
     tickets = _normalize_world_ticket_count(ticket_count)
     from minecraft.services.grant_catalog import (
-        clear_active_grants_for_account,
         normalize_grant_slugs,
         sync_grant_records_for_session,
     )
@@ -722,16 +721,17 @@ def start_player_session(
     )
 
     if clear_grants_before_start:
-        _count, clear_cmds = clear_active_grants_for_account(login, user=user)
-        if clear_cmds:
-            try:
-                _run_or_raise(clear_cmds)
-            except RconSequenceError as exc:
-                logger.warning(
-                    "[minecraft_session] grant clear RCON failed account=%s error=%s",
-                    login,
-                    exc,
-                )
+        from minecraft.services.grant_catalog import clear_grants_with_rcon
+
+        try:
+            clear_grants_with_rcon(login, user=user)
+        except RconSequenceError as exc:
+            logger.warning(
+                "[minecraft_session] grant clear RCON failed account=%s error=%s",
+                login,
+                exc,
+            )
+            raise
 
     try:
         from minecraft.services.sidebar_visibility import (
@@ -885,7 +885,6 @@ def start_builder_session(
     login = registration.mc_username
     tickets = _normalize_world_ticket_count(ticket_count)
     from minecraft.services.grant_catalog import (
-        clear_active_grants_for_account,
         normalize_grant_slugs,
         sync_grant_records_for_session,
     )
@@ -963,16 +962,17 @@ def start_builder_session(
     )
 
     if clear_grants_before_start:
-        _count, clear_cmds = clear_active_grants_for_account(login, user=user)
-        if clear_cmds:
-            try:
-                _run_or_raise(clear_cmds)
-            except RconSequenceError as exc:
-                logger.warning(
-                    "[minecraft_session] grant clear RCON failed account=%s error=%s",
-                    login,
-                    exc,
-                )
+        from minecraft.services.grant_catalog import clear_grants_with_rcon
+
+        try:
+            clear_grants_with_rcon(login, user=user)
+        except RconSequenceError as exc:
+            logger.warning(
+                "[minecraft_session] grant clear RCON failed account=%s error=%s",
+                login,
+                exc,
+            )
+            raise
 
     try:
         from minecraft.services.sidebar_visibility import (

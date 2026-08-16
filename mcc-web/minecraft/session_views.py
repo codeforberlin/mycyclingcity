@@ -756,10 +756,15 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
             from minecraft.services.grant_catalog import clear_grants_with_rcon
 
             count = clear_grants_with_rcon(account, user=request.user)
-            msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
-                "name": account,
-                "n": count,
-            }
+            if count:
+                msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
+                    "name": account,
+                    "n": count,
+                }
+            else:
+                msg = _("Garage geleert: %(name)s (keine aktiven Vergabe-Einträge)") % {
+                    "name": account,
+                }
             messages.success(request, msg)
             return True, str(msg)
         if action == "repair_vehicle":
@@ -904,10 +909,15 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
             from minecraft.services.grant_catalog import clear_grants_with_rcon
 
             count = clear_grants_with_rcon(account, user=request.user)
-            msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
-                "name": account,
-                "n": count,
-            }
+            if count:
+                msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
+                    "name": account,
+                    "n": count,
+                }
+            else:
+                msg = _("Garage geleert: %(name)s (keine aktiven Vergabe-Einträge)") % {
+                    "name": account,
+                }
             messages.success(request, msg)
             return True, str(msg)
         if action == "repair_vehicle":

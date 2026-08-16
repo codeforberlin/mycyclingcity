@@ -20,6 +20,7 @@ MINECRAFT_ADMIN_PERMISSION_CODENAMES: tuple[str, ...] = (
     "manage_player_sessions",
     "manage_builder_sessions",
     "manage_grant_catalog",
+    "manage_vehiclesplus_packs",
     # Accounts / stations / OP
     "manage_minecraft_accounts",
     "manage_minecraft_operators",
@@ -70,6 +71,7 @@ MCC_OPERATOR_PERMISSION_CODENAMES: tuple[str, ...] = (
     "manage_player_sessions",
     "manage_builder_sessions",
     "manage_grant_catalog",
+    "manage_vehiclesplus_packs",
     "manage_minecraft_accounts",
     "manage_minecraft_operators",
     "manage_minecraft_stations",

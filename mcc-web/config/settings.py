@@ -482,6 +482,19 @@ MCC_MINECRAFT_VEHICLESPLUS_VEHICLES_DIR = config(
     'MCC_MINECRAFT_VEHICLESPLUS_VEHICLES_DIR',
     default=str(Path(MCC_MINECRAFT_PAPER_DIR) / 'plugins' / 'VehiclesPlus' / 'vehicles'),
 )
+# Resource packs for VehiclesPlus (Python http.server / media)
+MCC_MINECRAFT_RESOURCE_PACKS_DIR = config(
+    'MCC_MINECRAFT_RESOURCE_PACKS_DIR',
+    default=str(DATA_DIR / 'media' / 'mc-packs'),
+)
+MCC_MINECRAFT_RESOURCE_PACK_HTTP_BASE = config(
+    'MCC_MINECRAFT_RESOURCE_PACK_HTTP_BASE',
+    default='http://192.168.90.14:8000',
+)
+MCC_MINECRAFT_RESOURCE_PACK_DEFAULT_SOURCE = config(
+    'MCC_MINECRAFT_RESOURCE_PACK_DEFAULT_SOURCE',
+    default='VPExample-v3-1.21.7-1.21.8_MCC.zip',
+)
 MCC_MINECRAFT_PAPER_PIDFILE = config(
     'MCC_MINECRAFT_PAPER_PIDFILE',
     default=str(DATA_DIR / 'tmp' / 'minecraft-paper.pid'),

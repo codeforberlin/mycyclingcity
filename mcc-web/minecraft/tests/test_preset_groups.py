@@ -20,6 +20,7 @@ from minecraft.services.preset_permissions import (
     user_can_manage_minecraft_proxy,
     user_can_manage_minecraft_stations,
     user_can_manage_player_sessions,
+    user_can_manage_vehiclesplus_packs,
     user_can_run_arena_sim,
 )
 
@@ -56,6 +57,7 @@ class TestMinecraftPresetGroups:
         assert user_can_manage_player_sessions(user)
         assert user_can_manage_builder_sessions(user)
         assert user_can_manage_grant_catalog(user)
+        assert user_can_manage_vehiclesplus_packs(user)
         assert user_can_manage_minecraft_accounts(user)
         assert user_can_manage_minecraft_operators(user)
         assert user_can_manage_minecraft_stations(user)

@@ -85,8 +85,19 @@ class TestGrantCatalogHelpers:
         assert summary.velos_redeems == 1
         count, cmds = clear_active_grants_for_account("Arena1")
         assert count == 2
-        assert any("mccbridge vpremove" in c for c in cmds)
+        assert cmds[0] == "mccbridge vpremove Arena1 *"
         assert summarize_active_grants("Arena1").total_active == 0
+
+    def test_clear_wipes_garage_without_active_rows(self):
+        ensure_default_catalog_items()
+        MinecraftPlayAccount.objects.create(
+            id_tag="Arena1",
+            short_name="Arena1",
+            ms_username="Tandemino",
+        )
+        count, cmds = clear_active_grants_for_account("Arena1", commit=True)
+        assert count == 0
+        assert cmds == ["mccbridge vpremove Tandemino *"]
 
 
 @pytest.mark.unit

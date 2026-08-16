@@ -7274,6 +7274,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_manage_auth_failover,
         user_can_manage_builder_sessions,
         user_can_manage_grant_catalog,
+        user_can_manage_vehiclesplus_packs,
         user_can_manage_minecraft_accounts,
         user_can_manage_minecraft_operators,
         user_can_manage_minecraft_stations,
@@ -7290,6 +7291,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         or user_can_manage_player_sessions(request.user)
         or user_can_manage_builder_sessions(request.user)
         or user_can_manage_grant_catalog(request.user)
+        or user_can_manage_vehiclesplus_packs(request.user)
         or user_can_manage_minecraft_accounts(request.user)
         or user_can_manage_minecraft_operators(request.user)
         or user_can_manage_minecraft_stations(request.user)
@@ -7466,6 +7468,17 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'perms': {'add': True, 'change': True, 'delete': True, 'view': True},
                     'admin_url': reverse('admin:minecraft_grant_catalog_list'),
                     'add_url': reverse('admin:minecraft_grant_catalog_add'),
+                    'view_only': False,
+                }
+            )
+        if user_can_manage_vehiclesplus_packs(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('VehiclesPlus Resourcepack'),
+                    'object_name': 'Minecraft VehiclesPlus Pack',
+                    'perms': {'add': False, 'change': True, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:minecraft_vehiclesplus_pack'),
+                    'add_url': None,
                     'view_only': False,
                 }
             )
@@ -8187,6 +8200,7 @@ from minecraft.grant_views import (
     minecraft_grant_catalog_edit,
     minecraft_grant_catalog_list,
 )
+from minecraft.pack_authoring_views import minecraft_vehiclesplus_pack_authoring
 from minecraft.session_views import (
     minecraft_builder_sessions,
     minecraft_player_sessions,
@@ -8341,6 +8355,11 @@ def get_urls_with_custom_views():
             'minecraft/grant-catalog/<int:item_id>/delete/',
             admin.site.admin_view(minecraft_grant_catalog_delete),
             name='minecraft_grant_catalog_delete',
+        ),
+        path(
+            'minecraft/vehiclesplus-pack/',
+            admin.site.admin_view(minecraft_vehiclesplus_pack_authoring),
+            name='minecraft_vehiclesplus_pack',
         ),
         path('minecraft/register/<int:group_id>/', admin.site.admin_view(minecraft_register_team), name='minecraft_register_team'),
         path('minecraft/deactivate/<int:registration_id>/', admin.site.admin_view(minecraft_deactivate_team), name='minecraft_deactivate_team'),

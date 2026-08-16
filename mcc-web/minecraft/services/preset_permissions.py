@@ -75,6 +75,17 @@ def user_can_manage_grant_catalog(user: UserLike) -> bool:
     return user.has_perm("minecraft.manage_grant_catalog")
 
 
+def user_can_manage_vehiclesplus_packs(user: UserLike) -> bool:
+    """Author / merge VehiclesPlus resource packs under media/mc-packs."""
+    if not _is_active_staff(user):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return user.has_perm("minecraft.manage_vehiclesplus_packs") or user.has_perm(
+        "minecraft.manage_grant_catalog"
+    )
+
+
 def user_can_run_arena_sim(user: UserLike) -> bool:
     """Arena distance-simulation GUI (permission: minecraft.run_arena_sim)."""
     if not _is_active_staff(user):
