@@ -3,6 +3,25 @@
 
 """Default RCON preset command lists (Minecraft 1.21+ gamerule names)."""
 
+# WorldGuard city policy on __global__ (-w injected by normalize_preset_commands).
+# VehiclesPlus place/drive needs vehicles-* plus use/interact; build stays denied.
+_CITY_WORLDGUARD_FLAGS = [
+    "rg flag __global__ build deny",
+    "rg flag __global__ use allow",
+    "rg flag __global__ interact allow",
+    "rg flag __global__ vehicles-spawn allow",
+    "rg flag __global__ vehicles-drive allow",
+]
+
+# VehiclesPlus model permissions (see vehicles/*.hjson + config.yml wildcards).
+# Without these, players see: "You don't have permission to drive this vehicle!"
+_CITY_VEHICLESPLUS_LP = [
+    "lp group default permission set vp.ride.* true",
+    "lp group default permission set vp.spawn.* true",
+    "lp group default permission set vp.buy.* true",
+    "lp group default permission set vp.adjust.* true",
+]
+
 CITY_MODE_PRESET = {
     "slug": "city-gamerules",
     "name": "Stadtmodus (Spielregeln)",
@@ -10,7 +29,8 @@ CITY_MODE_PRESET = {
     "sort_order": 10,
     "description": (
         "Sichere Bau-Welt: kein Schleim/Monster, kein Fallschaden, kein PvP, "
-        "Inventar behalten, Blöcke droppen beim Abbauen."
+        "Inventar behalten, Blöcke droppen; VehiclesPlus platzieren/fahren "
+        "(__global__ + LuckPerms default)."
     ),
     "commands": [
         "difficulty peaceful",
@@ -29,13 +49,10 @@ CITY_MODE_PRESET = {
         "gamerule mob_drops false",
         "kill @e[type=minecraft:slime]",
         "kill @e[type=minecraft:magma_cube]",
+        *_CITY_WORLDGUARD_FLAGS,
+        *_CITY_VEHICLESPLUS_LP,
     ],
 }
-
-# WorldGuard lock: -w is injected at runtime by normalize_preset_commands if omitted.
-_SESSION_BOOTSTRAP_EXTRA = [
-    "rg flag __global__ build deny",
-]
 
 BUILDER_SESSION_BOOTSTRAP_PRESET = {
     "slug": "builder-session-bootstrap",
@@ -46,7 +63,7 @@ BUILDER_SESSION_BOOTSTRAP_PRESET = {
         "Wird automatisch beim Start einer Bau-Session ausgeführt: stellt den "
         "sicheren Stadtmodus her, ohne manuelle Stadtsteuerung im Admin."
     ),
-    "commands": list(CITY_MODE_PRESET["commands"]) + list(_SESSION_BOOTSTRAP_EXTRA),
+    "commands": list(CITY_MODE_PRESET["commands"]),
 }
 
 PLAYER_SESSION_BOOTSTRAP_PRESET = {
@@ -59,7 +76,7 @@ PLAYER_SESSION_BOOTSTRAP_PRESET = {
         "sicheren Stadtmodus her. Adventure Mode setzt die Session-Steuerung "
         "danach zwingend per RCON."
     ),
-    "commands": list(CITY_MODE_PRESET["commands"]) + list(_SESSION_BOOTSTRAP_EXTRA),
+    "commands": list(CITY_MODE_PRESET["commands"]),
 }
 
 # Minecraft 1.21.11+: doDaylightCycle -> advance_time, doWeatherCycle -> advance_weather

@@ -54,6 +54,7 @@ def build_builder_post_login_commands(
     spectator: bool = False,
     gamemode: str | None = None,
     world_ticket_count: int = 0,
+    grant_catalog_slugs: list[str] | None = None,
 ) -> list[str]:
     """Commands that require the player entity to exist (after login settles)."""
     from minecraft.services.gamemode_control import gamemode_command, play_gamemode_for_type
@@ -64,6 +65,7 @@ def build_builder_post_login_commands(
     )
     from minecraft.models import MCSession
     from minecraft.services.account_login import normalize_play_gamemode
+    from minecraft.services.grant_catalog import build_grant_commands
     from minecraft.services.world_tickets import build_world_ticket_give_command
 
     name = (login or "").strip()
@@ -79,6 +81,14 @@ def build_builder_post_login_commands(
         ticket_cmd = build_world_ticket_give_command(name, world_ticket_count)
         if ticket_cmd:
             commands.append(ticket_cmd)
+    if grant_catalog_slugs and mode != MCSession.GAMEMODE_SPECTATOR:
+        commands.extend(
+            build_grant_commands(
+                name,
+                grant_catalog_slugs,
+                account_type=MCSession.ACCOUNT_BUILDER,
+            )
+        )
     commands.extend(builder_visibility_commands(name, team_label=label))
     commands.extend(builder_session_intro_commands(name, label))
     return commands

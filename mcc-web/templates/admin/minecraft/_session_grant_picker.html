@@ -1,0 +1,34 @@
+{% load i18n %}
+{% if grant_items %}
+<div class="mc-grant-picker" data-grant-picker data-grant-count="{{ grant_items|length }}">
+  <button type="button" class="mc-grant-toggle" data-grant-toggle
+          {% if card.is_active %}disabled{% endif %}
+          aria-expanded="false">
+    <span class="mc-grant-toggle-label">{% trans "Vergabe" %}</span>
+    <span class="mc-grant-badge" data-grant-badge>0</span>
+  </button>
+  <div class="mc-grant-panel" data-grant-panel hidden>
+    {% if grant_items|length >= 6 %}
+    <input type="search" class="mc-grant-filter" data-grant-filter
+           placeholder="{% trans 'Filtern…' %}"
+           {% if card.is_active %}disabled{% endif %}
+           autocomplete="off">
+    {% endif %}
+    <div class="mc-grant-options" data-grant-options>
+      {% for item in grant_items %}
+      <label class="mc-grant-option" data-grant-label data-filter="{{ item.name|lower }} {{ item.slug|lower }}">
+        <input type="checkbox" name="grant_item" value="{{ item.slug }}"
+               data-grant-cb
+               {% if card.is_active %}disabled{% endif %}>
+        <span>{{ item.name }}{% if item.velos_cost %} · {{ item.velos_cost }} Velos{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <label class="mc-grant-clear">
+    <input type="checkbox" name="clear_grants" value="1"
+           {% if card.is_active %}disabled{% endif %}>
+    <span>{% trans "Vor Start: vorhandene Vergaben löschen" %}</span>
+  </label>
+</div>
+{% endif %}

@@ -280,11 +280,6 @@ def _assert_world_ticket_balance(
         )
 
 
-def _lobby_tp_command(player_name: str, *, dx: float = 0.0, dz: float = 0.0) -> str:
-    x, y, z = resolve_world_spawn_xyz()
-    return f"tp {player_name} {_format_coord(x + dx)} {_format_coord(y)} {_format_coord(z + dz)}"
-
-
 def _format_coord(value: float) -> str:
     """Format coordinates without trailing .0 when whole numbers."""
     number = float(value)
@@ -361,12 +356,24 @@ def world_spawn_tp_command(
     *,
     offset_index: int = 0,
 ) -> str:
-    """RCON: teleport player to configured world/lobby spawn (optional grid offset)."""
+    """
+    RCON: teleport player onto solid ground at world/lobby spawn XZ.
+
+    Uses ``positioned over world_surface`` so a high default lobby Y (e.g. 64)
+    does not drop the player from mid-air. Optional grid offset spreads players.
+    """
+    x, _y, z = resolve_world_spawn_xyz()
     dx, dz = spawn_offset_xz(offset_index)
-    cmd = _lobby_tp_command(player_name, dx=dx, dz=dz)
+    px = _format_coord(x + dx)
+    pz = _format_coord(z + dz)
+    name = (player_name or "").strip()
+    cmd = (
+        f"execute as {name} positioned {px} 0 {pz} "
+        f"positioned over world_surface run tp @s ~ ~ ~"
+    )
     logger.info(
         "[minecraft_session] spawn_tp player=%s offset=%s dx=%s dz=%s cmd=%s",
-        player_name,
+        name,
         offset_index,
         dx,
         dz,
@@ -573,13 +580,14 @@ def _finish_session(session: MCSession, *, error: str = "") -> MCSession:
 
 
 def terminate_account(account_name: str, *, account_type: str | None = None, ms_username: str = "") -> str:
-    """Spectator + lobby TP + leave team; AuthMe logout or Velocity send to limbo."""
+    """Spectator + leave team; AuthMe logout or Velocity send to limbo (no lobby TP)."""
     from minecraft.services.sidebar_visibility import clear_visibility_commands
 
     player = (ms_username or account_name or "").strip()
+    # Do not teleport on Paper before limbo: lobby Y is high above the city and
+    # would be saved as logout position, causing a sky-drop on the next join.
     commands = [
         f"gamemode spectator {player}",
-        _lobby_tp_command(player),
     ]
     commands.extend(clear_visibility_commands(player))
     logs: list[str] = []
@@ -603,6 +611,23 @@ def terminate_account(account_name: str, *, account_type: str | None = None, ms_
     return "\n".join(logs)
 
 
+def _post_login_with_spawn_first(
+    post_login_commands: list[str],
+    spawn_tp_command: str | None,
+) -> list[str]:
+    """
+    Run spawn TP before gamemode/effects.
+
+    Players often rejoin still in spectator; teleporting first then setting the
+    play mode avoids falling from mid-air before the spawn TP lands.
+    """
+    cmds = list(post_login_commands or [])
+    spawn = (spawn_tp_command or "").strip()
+    if not spawn:
+        return cmds
+    return [spawn, *cmds]
+
+
 def start_player_session(
     arena_ref: str,
     *,
@@ -614,6 +639,8 @@ def start_player_session(
     ms_username: str | None = None,
     station_id: int | str | None = None,
     ticket_count: int | None = None,
+    grant_catalog_slugs: list[str] | None = None,
+    clear_grants_before_start: bool = False,
 ) -> MCSession:
     """
     Start a PLAYER session for a MinecraftPlayAccount.
@@ -622,6 +649,8 @@ def start_player_session(
     Optional ms_username overrides the account default for this session only.
     Optional station_id binds the session to a physical PC (max one active).
     Optional ticket_count issues Paper MCC-Tickets after login (0..max).
+    Optional grant_catalog_slugs issues Vergabe-Katalog items (e.g. VP garage).
+    Optional clear_grants_before_start revokes active slot grants first.
     """
     ref = (arena_ref or "").strip()
     if not ref:
@@ -637,6 +666,16 @@ def start_player_session(
 
     login = account.short_name
     tickets = _normalize_world_ticket_count(ticket_count)
+    from minecraft.services.grant_catalog import (
+        clear_active_grants_for_account,
+        normalize_grant_slugs,
+        sync_grant_records_for_session,
+    )
+
+    grant_slugs = normalize_grant_slugs(
+        grant_catalog_slugs,
+        account_type=MCSession.ACCOUNT_PLAYER,
+    )
     station = _resolve_start_station(station_id, role="play")
     default_login = resolve_player_online_login(account)
     online_login = _resolve_session_online_login(
@@ -662,6 +701,7 @@ def start_player_session(
 
     minutes = resolve_player_duration(account, override=duration)
     duration_minutes, ends_at = _session_timing(minutes)
+    _ = teleport_to_spawn  # start always lands on world surface; flag kept for API/UI
 
     from minecraft.services.player_session_bootstrap import (
         build_player_post_login_commands,
@@ -680,6 +720,18 @@ def start_player_session(
         prefer_gamemode=getattr(account, "prefer_gamemode", "") or "",
         prefer_spectator=bool(account.prefer_spectator),
     )
+
+    if clear_grants_before_start:
+        _count, clear_cmds = clear_active_grants_for_account(login, user=user)
+        if clear_cmds:
+            try:
+                _run_or_raise(clear_cmds)
+            except RconSequenceError as exc:
+                logger.warning(
+                    "[minecraft_session] grant clear RCON failed account=%s error=%s",
+                    login,
+                    exc,
+                )
 
     try:
         from minecraft.services.sidebar_visibility import (
@@ -704,11 +756,13 @@ def start_player_session(
         gamemode=initial_mode,
         team_label=login,
         world_ticket_count=tickets,
+        grant_catalog_slugs=grant_slugs,
     )
-    if teleport_to_spawn:
-        post_cmds.append(
-            world_spawn_tp_command(online_login, offset_index=spawn_offset_index)
-        )
+    # Always land on world spawn before play gamemode (safe ground, then mode).
+    post_cmds = _post_login_with_spawn_first(
+        post_cmds,
+        world_spawn_tp_command(online_login, offset_index=spawn_offset_index),
+    )
 
     now = timezone.now()
     with transaction.atomic():
@@ -730,10 +784,11 @@ def start_player_session(
             status=MCSession.STATUS_ACTIVE,
             source=source,
             started_by=user,
-            teleport_to_spawn=bool(teleport_to_spawn),
+            teleport_to_spawn=True,
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
             station=station,
             world_ticket_count=tickets,
+            grant_catalog_slugs=grant_slugs,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()
@@ -765,15 +820,26 @@ def start_player_session(
         )
     else:
         _clear_pending_bootstrap(session)
+        try:
+            sync_grant_records_for_session(
+                session, player=online_login, user=user
+            )
+        except Exception as exc:
+            logger.warning(
+                "[minecraft_session] grant records failed account=%s error=%s",
+                login,
+                exc,
+            )
 
     logger.info(
         "[minecraft_session] player started account=%s online=%s duration=%s source=%s "
-        "tickets=%s bootstrap_ok=%s",
+        "tickets=%s grants=%s bootstrap_ok=%s",
         login,
         online_login,
         minutes,
         source,
         tickets,
+        grant_slugs,
         ok,
     )
     return session
@@ -798,6 +864,8 @@ def start_builder_session(
     ms_username: str | None = None,
     station_id: int | str | None = None,
     ticket_count: int | None = None,
+    grant_catalog_slugs: list[str] | None = None,
+    clear_grants_before_start: bool = False,
 ) -> MCSession:
     """Start a BUILDER session for an active MinecraftTeamRegistration."""
     name = (team_name or "").strip()
@@ -816,6 +884,16 @@ def start_builder_session(
 
     login = registration.mc_username
     tickets = _normalize_world_ticket_count(ticket_count)
+    from minecraft.services.grant_catalog import (
+        clear_active_grants_for_account,
+        normalize_grant_slugs,
+        sync_grant_records_for_session,
+    )
+
+    grant_slugs = normalize_grant_slugs(
+        grant_catalog_slugs,
+        account_type=MCSession.ACCOUNT_BUILDER,
+    )
     station = _resolve_start_station(station_id, role="builder")
     default_login = resolve_builder_online_login(registration)
     online_login = _resolve_session_online_login(
@@ -839,8 +917,8 @@ def start_builder_session(
         # Ensure the provided region is allowed for this builder.
         resolved_region = resolve_builder_spawn_region(registration, resolved_region.pk)
 
-    # Region spawn takes priority over world-spawn checkbox.
-    use_world_spawn = bool(teleport_to_spawn) and resolved_region is None
+    # Region spawn takes priority; otherwise always world-surface spawn.
+    _ = teleport_to_spawn  # retained for call-site / UI compatibility
 
     if not is_online_auth_mode() and not registration.authme_is_registered:
         from minecraft.services.builder_account_provision import register_builder_account_on_minecraft
@@ -884,6 +962,18 @@ def start_builder_session(
         prefer_spectator=bool(registration.prefer_spectator),
     )
 
+    if clear_grants_before_start:
+        _count, clear_cmds = clear_active_grants_for_account(login, user=user)
+        if clear_cmds:
+            try:
+                _run_or_raise(clear_cmds)
+            except RconSequenceError as exc:
+                logger.warning(
+                    "[minecraft_session] grant clear RCON failed account=%s error=%s",
+                    login,
+                    exc,
+                )
+
     try:
         from minecraft.services.sidebar_visibility import (
             ensure_builder_station_team,
@@ -906,13 +996,16 @@ def start_builder_session(
         spectator=initial_mode == MCSession.GAMEMODE_SPECTATOR,
         gamemode=initial_mode,
         world_ticket_count=tickets,
+        grant_catalog_slugs=grant_slugs,
     )
+    # Always land on safe ground before play gamemode.
     if resolved_region is not None:
-        post_cmds.append(region_spawn_tp_command(online_login, resolved_region))
-    elif use_world_spawn:
-        post_cmds.append(
-            world_spawn_tp_command(online_login, offset_index=spawn_offset_index)
+        spawn_tp = region_spawn_tp_command(online_login, resolved_region)
+    else:
+        spawn_tp = world_spawn_tp_command(
+            online_login, offset_index=spawn_offset_index
         )
+    post_cmds = _post_login_with_spawn_first(post_cmds, spawn_tp)
 
     now = timezone.now()
     with transaction.atomic():
@@ -934,11 +1027,12 @@ def start_builder_session(
             status=MCSession.STATUS_ACTIVE,
             source=source,
             started_by=user,
-            teleport_to_spawn=use_world_spawn,
+            teleport_to_spawn=resolved_region is None,
             spawn_offset_index=max(0, int(spawn_offset_index or 0)),
             spawn_region=resolved_region,
             station=station,
             world_ticket_count=tickets,
+            grant_catalog_slugs=grant_slugs,
         )
         apply_play_gamemode_fields(session, initial_mode)
         session.save()
@@ -968,15 +1062,26 @@ def start_builder_session(
         )
     else:
         _clear_pending_bootstrap(session)
+        try:
+            sync_grant_records_for_session(
+                session, player=online_login, user=user
+            )
+        except Exception as exc:
+            logger.warning(
+                "[minecraft_session] grant records failed account=%s error=%s",
+                login,
+                exc,
+            )
 
     logger.info(
         "[minecraft_session] builder started account=%s online=%s duration=%s source=%s "
-        "tickets=%s bootstrap_ok=%s",
+        "tickets=%s grants=%s bootstrap_ok=%s",
         login,
         online_login,
         minutes,
         source,
         tickets,
+        grant_slugs,
         ok,
     )
     return session
@@ -996,7 +1101,9 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
         MCSession.objects.filter(
             status=MCSession.STATUS_ACTIVE,
             last_error__startswith=PENDING_BOOTSTRAP_PREFIX,
-        ).order_by("timestamp_start")[:limit]
+        )
+        .select_related("spawn_region")
+        .order_by("timestamp_start")[:limit]
     )
     if not pending:
         return 0
@@ -1029,6 +1136,7 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
                 spectator=mode == MCSession.GAMEMODE_SPECTATOR,
                 gamemode=mode,
                 world_ticket_count=int(session.world_ticket_count or 0),
+                grant_catalog_slugs=list(session.grant_catalog_slugs or []),
             )
         else:
             commands = build_player_post_login_commands(
@@ -1038,14 +1146,17 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
                 gamemode=mode,
                 team_label=session.account_name,
                 world_ticket_count=int(session.world_ticket_count or 0),
+                grant_catalog_slugs=list(session.grant_catalog_slugs or []),
             )
-        if session.teleport_to_spawn:
-            commands.append(
-                world_spawn_tp_command(
-                    player,
-                    offset_index=int(session.spawn_offset_index or 0),
-                )
+        spawn_tp = None
+        if session.spawn_region_id:
+            spawn_tp = region_spawn_tp_command(player, session.spawn_region)
+        else:
+            spawn_tp = world_spawn_tp_command(
+                player,
+                offset_index=int(session.spawn_offset_index or 0),
             )
+        commands = _post_login_with_spawn_first(commands, spawn_tp)
         try:
             _run_player_effects_or_raise(commands, player=player)
         except RconSequenceError as exc:
@@ -1057,6 +1168,16 @@ def retry_pending_session_bootstraps(*, limit: int = 20) -> int:
             )
             continue
         _clear_pending_bootstrap(session)
+        try:
+            from minecraft.services.grant_catalog import sync_grant_records_for_session
+
+            sync_grant_records_for_session(session, player=player)
+        except Exception as exc:
+            logger.warning(
+                "[minecraft_session] pending grant records failed account=%s error=%s",
+                session.account_name,
+                exc,
+            )
         applied += 1
         logger.info(
             "[minecraft_session] pending bootstrap applied account=%s player=%s",

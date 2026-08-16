@@ -477,6 +477,11 @@ MCC_MINECRAFT_LIMBO_LOG = config(
 MCC_MINECRAFT_PAPER_DIR = config(
     'MCC_MINECRAFT_PAPER_DIR', default='/data/games/mcc/mc-srv'
 )
+# VehiclesPlus vehicle definitions (*.hjson) for Vergabe-Katalog picker.
+MCC_MINECRAFT_VEHICLESPLUS_VEHICLES_DIR = config(
+    'MCC_MINECRAFT_VEHICLESPLUS_VEHICLES_DIR',
+    default=str(Path(MCC_MINECRAFT_PAPER_DIR) / 'plugins' / 'VehiclesPlus' / 'vehicles'),
+)
 MCC_MINECRAFT_PAPER_PIDFILE = config(
     'MCC_MINECRAFT_PAPER_PIDFILE',
     default=str(DATA_DIR / 'tmp' / 'minecraft-paper.pid'),

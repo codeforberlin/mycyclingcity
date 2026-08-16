@@ -1,0 +1,149 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="mc-grant-catalog-form">
+  <h1>{{ title }}</h1>
+  {% if errors %}
+  <ul class="errorlist">
+    {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <form method="post" id="grant-catalog-form">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <div class="form-row">
+        <label>{% trans "VehiclesPlus-Modell" %}</label>
+        <select id="vp-model-pick" {% if not vp_models_available %}disabled{% endif %}>
+          <option value="">— {% trans "aus Server-Bestand wählen" %} —</option>
+          {% for category, models in vp_model_groups %}
+          <optgroup label="{{ category }}">
+            {% for m in models %}
+            <option value="{{ m.id }}"
+                    data-display="{{ m.display_name }}"
+                    data-category="{{ m.category }}"
+                    {% if item.model_id == m.id %}selected{% endif %}>
+              {{ m.display_name }} ({{ m.id }})
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+        {% if vp_models_available %}
+        <p class="help">{% trans "Auswahl füllt Modell-ID, Name und RCON-Defaults. Freitext bleibt editierbar." %}</p>
+        {% else %}
+        <p class="help" style="color:#b45309;">
+          {% blocktrans with path=vp_vehicles_dir %}Keine VehiclesPlus-Modelle gefunden (Pfad prüfen: {{ path }}).{% endblocktrans %}
+        </p>
+        {% endif %}
+      </div>
+      <div class="form-row"><label>{% trans "Name" %}</label>
+        <input type="text" name="name" id="id_name" value="{{ item.name }}" required maxlength="128"></div>
+      <div class="form-row"><label>{% trans "Slug" %}</label>
+        <input type="text" name="slug" id="id_slug" value="{{ item.slug }}" maxlength="64"
+               placeholder="{% trans 'leer = aus Name' %}"></div>
+      <div class="form-row"><label>{% trans "Art" %}</label>
+        <select name="kind" id="id_kind">
+          {% for value, label in kind_choices %}
+          <option value="{{ value }}" {% if item.kind == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label>{% trans "Sortierung" %}</label>
+        <input type="number" name="sort_order" value="{{ item.sort_order|default:100 }}" min="0"></div>
+      <div class="form-row"><label>{% trans "Modell-ID" %}</label>
+        <input type="text" name="model_id" id="id_model_id" value="{{ item.model_id }}" maxlength="64"
+               placeholder="ExampleBike"></div>
+      <div class="form-row"><label>{% trans "Menge" %}</label>
+        <input type="number" name="quantity_default" value="{{ item.quantity_default|default:1 }}" min="1"></div>
+      <div class="form-row"><label>{% trans "Velos-Kosten" %}</label>
+        <input type="number" name="velos_cost" value="{{ item.velos_cost|default:0 }}" min="0"></div>
+      <div class="form-row"><label>{% trans "Reparatur-Velos" %}</label>
+        <input type="number" name="repair_velos_cost" value="{{ item.repair_velos_cost|default:0 }}" min="0"></div>
+      <div class="form-row"><label>{% trans "RCON Vergabe" %}</label>
+        <input type="text" name="rcon_grant_template" id="id_rcon_grant" value="{{ item.rcon_grant_template }}"
+               style="width:100%;" maxlength="512" required></div>
+      <div class="form-row"><label>{% trans "RCON Entfernen" %}</label>
+        <input type="text" name="rcon_revoke_template" value="{{ item.rcon_revoke_template }}"
+               style="width:100%;" maxlength="512"></div>
+      <div class="form-row"><label>{% trans "RCON Reparatur" %}</label>
+        <input type="text" name="rcon_repair_template" id="id_rcon_repair" value="{{ item.rcon_repair_template }}"
+               style="width:100%;" maxlength="512"></div>
+      <div class="form-row"><label>{% trans "Hinweis" %}</label>
+        <input type="text" name="notes" value="{{ item.notes }}" style="width:100%;" maxlength="255"></div>
+      <div class="form-row">
+        <label><input type="checkbox" name="enabled" value="1" {% if item.enabled or not item.pk %}checked{% endif %}> {% trans "Aktiv" %}</label>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" name="applies_to_player" value="1" {% if item.applies_to_player or not item.pk %}checked{% endif %}> {% trans "Spieler-Sessions" %}</label>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" name="applies_to_builder" value="1" {% if item.applies_to_builder or not item.pk %}checked{% endif %}> {% trans "Bau-Sessions" %}</label>
+      </div>
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" class="default" value="{% trans 'Speichern' %}">
+      <a href="{% url 'admin:minecraft_grant_catalog_list' %}" class="button cancel-link">{% trans "Abbrechen" %}</a>
+      {% if item.pk %}
+      <button type="submit" form="delete-form" class="deletelink"
+              onclick="return confirm('{% trans 'Wirklich löschen?' %}');">{% trans "Löschen" %}</button>
+      {% endif %}
+    </div>
+  </form>
+  {% if item.pk %}
+  <form id="delete-form" method="post" action="{% url 'admin:minecraft_grant_catalog_delete' item.pk %}">
+    {% csrf_token %}
+  </form>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var pick = document.getElementById('vp-model-pick');
+  if (!pick) return;
+
+  function slugify(text) {
+    return String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50) || 'item';
+  }
+
+  pick.addEventListener('change', function () {
+    var opt = pick.options[pick.selectedIndex];
+    if (!opt || !opt.value) return;
+    var modelId = opt.value;
+    var display = opt.getAttribute('data-display') || modelId;
+    var nameEl = document.getElementById('id_name');
+    var slugEl = document.getElementById('id_slug');
+    var modelEl = document.getElementById('id_model_id');
+    var kindEl = document.getElementById('id_kind');
+    var grantEl = document.getElementById('id_rcon_grant');
+    var repairEl = document.getElementById('id_rcon_repair');
+
+    if (modelEl) modelEl.value = modelId;
+    if (nameEl && (!nameEl.value || nameEl.dataset.autofilled === '1')) {
+      nameEl.value = display;
+      nameEl.dataset.autofilled = '1';
+    }
+    if (slugEl && (!slugEl.value || slugEl.dataset.autofilled === '1')) {
+      slugEl.value = slugify(modelId);
+      slugEl.dataset.autofilled = '1';
+    }
+    if (kindEl) kindEl.value = 'vehicle_garage';
+    if (grantEl && (!grantEl.value || grantEl.value === 'v give {player} {model}')) {
+      grantEl.value = 'v give {player} {model}';
+    }
+    if (repairEl && (!repairEl.value || repairEl.value === 'v repair {player}')) {
+      repairEl.value = 'v repair {player}';
+    }
+    var revokeEl = document.querySelector('[name="rcon_revoke_template"]');
+    if (revokeEl && (!revokeEl.value || revokeEl.value.indexOf('mccbridge vpremove') === 0)) {
+      revokeEl.value = 'mccbridge vpremove {player} {model}';
+    }
+  });
+})();
+</script>
+{% endblock %}

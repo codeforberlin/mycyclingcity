@@ -30,8 +30,18 @@ class TestPlayerSessionBootstrap:
         assert commands == ["difficulty peaceful", "gamerule pvp false"]
 
     def test_get_bootstrap_preset_commands_fallback(self):
+        from minecraft.models import MinecraftRconPreset
+
+        MinecraftRconPreset.objects.filter(
+            slug=PLAYER_SESSION_BOOTSTRAP_PRESET["slug"]
+        ).delete()
         commands = get_bootstrap_preset_commands()
         assert commands[0] == "difficulty peaceful"
+        assert "rg flag -w MyCyclingCity __global__ vehicles-spawn allow" in commands
+        assert "rg flag -w MyCyclingCity __global__ vehicles-drive allow" in commands
+        assert "rg flag -w MyCyclingCity __global__ build deny" in commands
+        assert "lp group default permission set vp.ride.* true" in commands
+        assert "lp group default permission set vp.spawn.* true" in commands
         assert "gamerule pvp false" in commands
 
     @override_settings(MCC_MINECRAFT_PLAYER_SESSION_BOOTSTRAP_ENABLED=True)
@@ -118,7 +128,9 @@ class TestPlayerSessionBootstrapIntegration:
         assert ["difficulty peaceful"] in world_calls
         assert ["authme forcelogin Arena1"] in world_calls
         player_cmds = mock_player_rcon.call_args[0][0]
-        assert player_cmds[0] == "gamemode adventure Arena1"
-        assert "minecraft:emerald" in player_cmds[1]
+        assert player_cmds[0].startswith("execute as Arena1 positioned ")
+        assert "positioned over world_surface run tp @s" in player_cmds[0]
+        assert player_cmds[1] == "gamemode adventure Arena1"
+        assert "minecraft:emerald" in player_cmds[2]
         assert player_cmds[-2] == "tag Arena1 add mcc_arena"
         assert player_cmds[-1] == "team join mcc_arena1 Arena1"

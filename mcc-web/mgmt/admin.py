@@ -7273,6 +7273,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_manage_assigned_protected_regions,
         user_can_manage_auth_failover,
         user_can_manage_builder_sessions,
+        user_can_manage_grant_catalog,
         user_can_manage_minecraft_accounts,
         user_can_manage_minecraft_operators,
         user_can_manage_minecraft_stations,
@@ -7288,6 +7289,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         or user_can_access_minecraft_shop(request.user)
         or user_can_manage_player_sessions(request.user)
         or user_can_manage_builder_sessions(request.user)
+        or user_can_manage_grant_catalog(request.user)
         or user_can_manage_minecraft_accounts(request.user)
         or user_can_manage_minecraft_operators(request.user)
         or user_can_manage_minecraft_stations(request.user)
@@ -7453,6 +7455,18 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'admin_url': reverse('admin:minecraft_waitlist_display'),
                     'add_url': None,
                     'view_only': True,
+                }
+            )
+
+        if user_can_manage_grant_catalog(request.user):
+            minecraft_management_models.append(
+                {
+                    'name': _('Vergabe-Katalog'),
+                    'object_name': 'Minecraft Grant Catalog',
+                    'perms': {'add': True, 'change': True, 'delete': True, 'view': True},
+                    'admin_url': reverse('admin:minecraft_grant_catalog_list'),
+                    'add_url': reverse('admin:minecraft_grant_catalog_add'),
+                    'view_only': False,
                 }
             )
 
@@ -8168,6 +8182,11 @@ from minecraft.preset_views import (
     minecraft_preset_list,
     minecraft_run_preset,
 )
+from minecraft.grant_views import (
+    minecraft_grant_catalog_delete,
+    minecraft_grant_catalog_edit,
+    minecraft_grant_catalog_list,
+)
 from minecraft.session_views import (
     minecraft_builder_sessions,
     minecraft_player_sessions,
@@ -8303,6 +8322,26 @@ def get_urls_with_custom_views():
         path('minecraft/presets/<int:preset_id>/delete/', admin.site.admin_view(minecraft_preset_delete), name='minecraft_preset_delete'),
         path('minecraft/presets/export/', admin.site.admin_view(minecraft_preset_export), name='minecraft_preset_export'),
         path('minecraft/presets/import/', admin.site.admin_view(minecraft_preset_import), name='minecraft_preset_import'),
+        path(
+            'minecraft/grant-catalog/',
+            admin.site.admin_view(minecraft_grant_catalog_list),
+            name='minecraft_grant_catalog_list',
+        ),
+        path(
+            'minecraft/grant-catalog/add/',
+            admin.site.admin_view(minecraft_grant_catalog_edit),
+            name='minecraft_grant_catalog_add',
+        ),
+        path(
+            'minecraft/grant-catalog/<int:item_id>/edit/',
+            admin.site.admin_view(minecraft_grant_catalog_edit),
+            name='minecraft_grant_catalog_edit',
+        ),
+        path(
+            'minecraft/grant-catalog/<int:item_id>/delete/',
+            admin.site.admin_view(minecraft_grant_catalog_delete),
+            name='minecraft_grant_catalog_delete',
+        ),
         path('minecraft/register/<int:group_id>/', admin.site.admin_view(minecraft_register_team), name='minecraft_register_team'),
         path('minecraft/deactivate/<int:registration_id>/', admin.site.admin_view(minecraft_deactivate_team), name='minecraft_deactivate_team'),
         path('minecraft/reactivate/<int:registration_id>/', admin.site.admin_view(minecraft_reactivate_team), name='minecraft_reactivate_team'),

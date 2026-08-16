@@ -1,6 +1,7 @@
 package de.sailab.mycyclingcity.mccbridge;
 
 import de.sailab.mycyclingcity.mccbridge.economy.VelosEconomyProvider;
+import de.sailab.mycyclingcity.mccbridge.vehiclesplus.VehiclesPlusGarageCleaner;
 import de.sailab.mycyclingcity.mccbridge.region.RegionOutlineService;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiApplier;
 import de.sailab.mycyclingcity.mccbridge.shop.EconomyShopGuiReloader;
@@ -117,7 +118,7 @@ public final class MccBridgePlugin extends JavaPlugin {
         }
         if (args.length == 0) {
             sender.sendMessage(
-                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus>"
+                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus|vpremove>"
             );
             return true;
         }
@@ -140,6 +141,12 @@ public final class MccBridgePlugin extends JavaPlugin {
                                 + regionOutlineService.regionCount()
                                 + " regions, enabled="
                                 + regionOutlineService.isOutlineEnabled()
+                );
+                sender.sendMessage(
+                        "VehiclesPlus: "
+                                + (VehiclesPlusGarageCleaner.isVehiclesPlusPresent()
+                                        ? VehiclesPlusGarageCleaner.pluginVersionHint()
+                                        : "not loaded")
                 );
             }
             case "reload" -> {
@@ -199,8 +206,37 @@ public final class MccBridgePlugin extends JavaPlugin {
                                 : "EconomyShopGUI reload failed — see server log"
                 );
             });
+            case "vpremove" -> {
+                if (args.length < 3) {
+                    sender.sendMessage("Usage: /mccbridge vpremove <garage|player> <modelId|*>");
+                    return true;
+                }
+                String garageName = args[1];
+                String modelId = args[2];
+                // Console/RCON is already on the main thread — run inline so the
+                // caller gets a result after the garage was actually updated.
+                Runnable work = () -> {
+                    try {
+                        int n = VehiclesPlusGarageCleaner.removeFromGarage(
+                                garageName, modelId, getLogger()
+                        );
+                        sender.sendMessage(
+                                "VehiclesPlus: removed " + n + " vehicle(s) from garage '"
+                                        + garageName + "' (model=" + modelId + ")"
+                        );
+                    } catch (Exception ex) {
+                        getLogger().warning("[vpremove] failed: " + ex.getMessage());
+                        sender.sendMessage("VehiclesPlus remove failed: " + ex.getMessage());
+                    }
+                };
+                if (getServer().isPrimaryThread()) {
+                    work.run();
+                } else {
+                    getServer().getScheduler().runTask(this, work);
+                }
+            }
             default -> sender.sendMessage(
-                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus>"
+                    "Usage: /mccbridge <status|reload|synccatalog|syncregions|esguireload|esguistatus|vpremove>"
             );
         }
         return true;

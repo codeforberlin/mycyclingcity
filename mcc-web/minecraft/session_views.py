@@ -67,6 +67,8 @@ VALID_ACTIONS = frozenset(
         "start_all",
         "spawn_all",
         "teleport_spawn",
+        "clear_grants",
+        "repair_vehicle",
     }
 )
 BULK_ACTIONS = frozenset({"set_all_gamemode", "kick_all", "start_all", "spawn_all"})
@@ -193,6 +195,12 @@ def _builder_duration() -> int:
 
 
 def _session_payload(account_name: str, session: MCSession | None, *, card: dict | None = None) -> dict:
+    grant = {
+        "grant_active_count": int((card or {}).get("grant_active_count") or 0),
+        "grant_session_count": int((card or {}).get("grant_session_count") or 0),
+        "grant_velos_count": int((card or {}).get("grant_velos_count") or 0),
+        "grant_labels": list((card or {}).get("grant_labels") or []),
+    }
     if session is None:
         payload = {
             "account_name": account_name,
@@ -207,6 +215,7 @@ def _session_payload(account_name: str, session: MCSession | None, *, card: dict
             "proxy_server": (card or {}).get("proxy_server", "") if card else "",
             "proxy_label": (card or {}).get("proxy_label", "") if card else "",
             "waiting_in_lobby": bool((card or {}).get("waiting_in_lobby")) if card else False,
+            **grant,
         }
         return payload
     ends_at = session.ends_at.isoformat() if session.ends_at else None
@@ -225,6 +234,7 @@ def _session_payload(account_name: str, session: MCSession | None, *, card: dict
         "proxy_server": (card or {}).get("proxy_server", "") if card else "",
         "proxy_label": (card or {}).get("proxy_label", "") if card else "",
         "waiting_in_lobby": bool((card or {}).get("waiting_in_lobby")) if card else False,
+        **grant,
     }
 
 
@@ -306,6 +316,7 @@ def _build_player_cards(*, include_presence: bool = True) -> list[dict]:
                 ),
             }
         )
+        _attach_grant_summary(cards[-1])
     if include_presence:
         # Skip Paper override on dashboard polls — glist is enough for tiles and
         # avoids an extra RCON round-trip that blocks the single Gunicorn worker.
@@ -385,6 +396,7 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
                 ),
             }
         )
+        _attach_grant_summary(cards[-1])
     if include_presence:
         presence_by_ms = _presence_lookup_for_cards(
             [c["ms_username"] for c in cards],
@@ -399,8 +411,6 @@ def _build_builder_cards(*, include_presence: bool = True) -> list[dict]:
             card["proxy_label"] = ""
             card["waiting_in_lobby"] = False
     return cards
-
-
 
 
 def _is_connectivity_error(exc: BaseException) -> bool:
@@ -665,6 +675,8 @@ def _session_start_context() -> dict:
         list_allowed_ms_usernames,
         stations_for_role,
     )
+    from minecraft.services.grant_catalog import catalog_items_for_account_type
+    from minecraft.models import MCSession
 
     return {
         "allowlist_enforced": allowlist_is_enforced(),
@@ -672,8 +684,28 @@ def _session_start_context() -> dict:
         "play_stations": stations_for_role("play", only_free=False),
         "builder_stations": stations_for_role("builder", only_free=False),
         "stations_url": "/admin/minecraft/stations/",
+        "grant_catalog_player": catalog_items_for_account_type(MCSession.ACCOUNT_PLAYER),
+        "grant_catalog_builder": catalog_items_for_account_type(MCSession.ACCOUNT_BUILDER),
         **_world_ticket_ui_context(),
     }
+
+
+def _post_grant_slugs(request) -> list[str]:
+    return [s for s in request.POST.getlist("grant_item") if (s or "").strip()]
+
+
+def _post_clear_grants(request) -> bool:
+    return request.POST.get("clear_grants") == "1"
+
+
+def _attach_grant_summary(card: dict) -> None:
+    from minecraft.services.grant_catalog import summarize_active_grants
+
+    summary = summarize_active_grants(card["account_name"])
+    card["grant_active_count"] = summary.total_active
+    card["grant_session_count"] = summary.session_grants
+    card["grant_velos_count"] = summary.velos_redeems
+    card["grant_labels"] = list(summary.labels)
 
 
 def _handle_player_action(request, action: str, account: str) -> tuple[bool, str]:
@@ -694,6 +726,8 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
                 ms_username=_post_ms_username(request) or None,
                 station_id=_post_station_id(request) or None,
                 ticket_count=_post_ticket_count(request),
+                grant_catalog_slugs=_post_grant_slugs(request),
+                clear_grants_before_start=_post_clear_grants(request),
             )
             if session.is_unlimited:
                 msg = _("Session gestartet: %(name)s (unbegrenzt)") % {
@@ -709,8 +743,37 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
                     "base": msg,
                     "n": session.world_ticket_count,
                 }
+            if session.grant_catalog_slugs:
+                msg = _("%(base)s · %(n)s Vergabe(n)") % {
+                    "base": msg,
+                    "n": len(session.grant_catalog_slugs),
+                }
             if session.ms_username:
                 msg = f"{msg} · MS: {session.ms_username}"
+            messages.success(request, msg)
+            return True, str(msg)
+        if action == "clear_grants":
+            from minecraft.services.grant_catalog import clear_grants_with_rcon
+
+            count = clear_grants_with_rcon(account, user=request.user)
+            msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
+                "name": account,
+                "n": count,
+            }
+            messages.success(request, msg)
+            return True, str(msg)
+        if action == "repair_vehicle":
+            from minecraft.services.grant_catalog import repair_vehicle_with_rcon
+
+            label = repair_vehicle_with_rcon(
+                account,
+                catalog_slug=(request.POST.get("grant_slug") or "").strip() or None,
+                user=request.user,
+            )
+            msg = _("Reparatur ausgelöst: %(item)s (%(name)s)") % {
+                "item": label,
+                "name": account,
+            }
             messages.success(request, msg)
             return True, str(msg)
         if action == "teleport_spawn":
@@ -758,6 +821,9 @@ def _handle_player_action(request, action: str, account: str) -> tuple[bool, str
         messages.error(request, str(exc))
         return False, str(exc)
     except InsufficientVelosError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except ValueError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
     except MsAllowlistError as exc:
@@ -808,6 +874,8 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                 ms_username=_post_ms_username(request) or None,
                 station_id=_post_station_id(request) or None,
                 ticket_count=_post_ticket_count(request),
+                grant_catalog_slugs=_post_grant_slugs(request),
+                clear_grants_before_start=_post_clear_grants(request),
             )
             if session.is_unlimited:
                 msg = _("Builder-Session gestartet: %(name)s (unbegrenzt)") % {
@@ -823,8 +891,37 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
                     "base": msg,
                     "n": session.world_ticket_count,
                 }
+            if session.grant_catalog_slugs:
+                msg = _("%(base)s · %(n)s Vergabe(n)") % {
+                    "base": msg,
+                    "n": len(session.grant_catalog_slugs),
+                }
             if session.ms_username:
                 msg = f"{msg} · MS: {session.ms_username}"
+            messages.success(request, msg)
+            return True, str(msg)
+        if action == "clear_grants":
+            from minecraft.services.grant_catalog import clear_grants_with_rcon
+
+            count = clear_grants_with_rcon(account, user=request.user)
+            msg = _("Vergaben geleert: %(name)s (%(n)s)") % {
+                "name": account,
+                "n": count,
+            }
+            messages.success(request, msg)
+            return True, str(msg)
+        if action == "repair_vehicle":
+            from minecraft.services.grant_catalog import repair_vehicle_with_rcon
+
+            label = repair_vehicle_with_rcon(
+                account,
+                catalog_slug=(request.POST.get("grant_slug") or "").strip() or None,
+                user=request.user,
+            )
+            msg = _("Reparatur ausgelöst: %(item)s (%(name)s)") % {
+                "item": label,
+                "name": account,
+            }
             messages.success(request, msg)
             return True, str(msg)
         if action == "teleport_spawn":
@@ -872,6 +969,9 @@ def _handle_builder_action(request, action: str, account: str) -> tuple[bool, st
         messages.error(request, str(exc))
         return False, str(exc)
     except InsufficientVelosError as exc:
+        messages.error(request, str(exc))
+        return False, str(exc)
+    except ValueError as exc:
         messages.error(request, str(exc))
         return False, str(exc)
     except MsAllowlistError as exc:

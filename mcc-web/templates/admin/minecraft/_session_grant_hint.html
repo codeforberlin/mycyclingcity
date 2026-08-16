@@ -1,0 +1,36 @@
+{% load i18n %}
+{% if card.grant_active_count %}
+<div class="mc-grant-hint">
+  {% blocktrans count n=card.grant_active_count %}
+  Noch {{ n }} Item in der Garage/Vergabe
+  {% plural %}
+  Noch {{ n }} Items in der Garage/Vergabe
+  {% endblocktrans %}
+  {% if card.grant_velos_count %}
+    · {% blocktrans count n=card.grant_velos_count %}{{ n }} Velos-Einlösung{% plural %}{{ n }} Velos-Einlösungen{% endblocktrans %}
+  {% endif %}
+  {% if card.grant_labels %}
+    <div class="mc-grant-hint-list">{{ card.grant_labels|join:", " }}</div>
+  {% endif %}
+  {% if not card.is_active %}
+  <form method="post" class="mc-inline-form" style="margin-top:0.35rem;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="clear_grants">
+    <input type="hidden" name="account" value="{{ card.account_name }}">
+    <button type="submit" class="mc-btn mc-btn-sm">
+      {% trans "Jetzt leeren" %}
+    </button>
+  </form>
+  {% else %}
+  <form method="post" class="mc-inline-form" style="margin-top:0.35rem;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="repair_vehicle">
+    <input type="hidden" name="account" value="{{ card.account_name }}">
+    <button type="submit" class="mc-btn mc-btn-sm"
+            title="{% trans 'Admin-Reparatur gegen Velos (VehiclesPlus)' %}">
+      {% trans "Reparieren (Admin)" %}
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}

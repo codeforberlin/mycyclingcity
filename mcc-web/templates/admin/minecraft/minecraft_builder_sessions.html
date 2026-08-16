@@ -137,8 +137,7 @@
             {% endif %}
 
             <div class="mc-actions">
-                <div class="mc-actions-row">
-                    <form method="post" class="mc-start-form">
+                    <form method="post" class="mc-start-form" id="mc-start-{{ card.account_name|slugify }}">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="start">
                         <input type="hidden" name="account" value="{{ card.account_name }}">
@@ -174,11 +173,15 @@
                             {% endfor %}
                         </select>
                         {% include "admin/minecraft/_session_ticket_stepper.html" %}
+                        {% include "admin/minecraft/_session_grant_picker.html" with grant_items=grant_catalog_builder %}
+                    </form>
+                    {% include "admin/minecraft/_session_grant_hint.html" %}
+                <div class="mc-actions-row">
                         <button type="submit" class="mc-btn mc-btn-start" data-action="start"
+                                form="mc-start-{{ card.account_name|slugify }}"
                                 {% if card.is_active %}disabled{% endif %}>
                             {% trans 'Start' %}
                         </button>
-                    </form>
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="add_time">

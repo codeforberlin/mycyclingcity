@@ -169,12 +169,19 @@
   .mc-actions-row {
     display: flex;
     gap: 0.5rem;
+    align-items: stretch;
   }
-  .mc-actions-row form { flex: 1; }
+  .mc-actions-row form { flex: 1; min-width: 0; }
+  .mc-actions-row > .mc-btn {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+  }
   .mc-start-form {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    width: 100%;
   }
   .mc-spawn-check {
     display: inline-flex;
@@ -256,6 +263,100 @@
     font-weight: 500;
     min-height: 1em;
   }
+  .mc-grant-picker {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.45rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    font-size: 0.78rem;
+    text-align: left;
+  }
+  .mc-grant-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+    padding: 0.35rem 0.45rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .mc-grant-toggle:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .mc-grant-badge {
+    min-width: 1.4rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .mc-grant-badge.has-selection {
+    background: #0f766e;
+    color: #fff;
+  }
+  .mc-grant-panel {
+    margin-top: 0.35rem;
+  }
+  .mc-grant-filter {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.3rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font: inherit;
+  }
+  .mc-grant-options {
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+  }
+  .mc-grant-option, .mc-grant-clear {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0.15rem 0;
+    color: #0f172a;
+  }
+  .mc-grant-option.is-filtered-out {
+    display: none;
+  }
+  .mc-grant-clear {
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  .mc-grant-hint {
+    margin-top: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    color: #9a3412;
+    font-size: 0.78rem;
+    text-align: left;
+  }
+  .mc-grant-hint-list {
+    margin-top: 0.2rem;
+    color: #7c2d12;
+    font-size: 0.72rem;
+  }
+  .mc-btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
   .mc-region-select select {
     display: block;
     width: 100%;
@@ -290,6 +391,7 @@
     cursor: pointer;
     color: #fff;
     text-align: center;
+    white-space: nowrap;
   }
   .mc-btn-start { background: var(--mc-start); }
   .mc-btn-add { background: var(--mc-add); }
@@ -446,6 +548,20 @@
       card.querySelectorAll('.mc-start-form input[name="teleport_to_spawn"]').forEach(function (cb) {
         cb.disabled = isActive;
       });
+      card.querySelectorAll('.mc-start-form [data-grant-toggle], .mc-start-form [data-grant-filter]').forEach(function (el) {
+        el.disabled = isActive;
+      });
+      card.querySelectorAll('.mc-start-form input[name="grant_item"], .mc-start-form input[name="clear_grants"]').forEach(function (cb) {
+        cb.disabled = isActive;
+      });
+      if (isActive) {
+        card.querySelectorAll('[data-grant-panel]').forEach(function (panel) {
+          panel.hidden = true;
+        });
+        card.querySelectorAll('[data-grant-toggle]').forEach(function (btn) {
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      }
       card.querySelectorAll('.mc-start-form select[name="spawn_region_id"]').forEach(function (sel) {
         sel.disabled = isActive;
       });
@@ -654,7 +770,11 @@
         var action = actionInput ? actionInput.value : '';
         var account = accountInput ? accountInput.value : '';
         var card = form.closest('.mc-session-card');
-        var submitBtn = form.querySelector('button[type="submit"]');
+        var submitBtn = ev.submitter || form.querySelector('button[type="submit"]');
+        // Start may live outside the form via HTML form= attribute.
+        if ((!submitBtn || !submitBtn.matches('[data-action="start"]')) && action === 'start' && card) {
+          submitBtn = card.querySelector('[data-action="start"]') || submitBtn;
+        }
         if (submitBtn) submitBtn.disabled = true;
 
         if (action === 'kick_all') {
@@ -805,6 +925,10 @@
           .then(parseActionResponse)
           .then(function (result) {
             var data = result.data || {};
+            if (result.httpOk && (action === 'clear_grants' || action === 'repair_vehicle')) {
+              window.location.reload();
+              return;
+            }
             if (data.accounts) {
               applyPayload(data);
             }
@@ -813,6 +937,13 @@
             }
             if (!result.httpOk && data.message) {
               window.alert(data.message);
+              if (action === 'start' && card) {
+                card.classList.remove('is-active', 'is-busy');
+                var startBtn = card.querySelector('[data-action="start"]');
+                if (startBtn) startBtn.disabled = false;
+              } else if (submitBtn) {
+                submitBtn.disabled = false;
+              }
             }
             if (card) {
               card.classList.remove('is-busy');
@@ -848,6 +979,47 @@
             });
           });
       });
+    });
+  }
+
+  function bindGrantPickers() {
+    function syncBadge(picker) {
+      var n = picker.querySelectorAll('[data-grant-cb]:checked').length;
+      var badge = picker.querySelector('[data-grant-badge]');
+      if (!badge) return;
+      badge.textContent = String(n);
+      badge.classList.toggle('has-selection', n > 0);
+      badge.title = n === 1 ? '1 ausgewählt' : (n + ' ausgewählt');
+    }
+
+    document.querySelectorAll('[data-grant-picker]').forEach(function (picker) {
+      var toggle = picker.querySelector('[data-grant-toggle]');
+      var panel = picker.querySelector('[data-grant-panel]');
+      var filter = picker.querySelector('[data-grant-filter]');
+      if (toggle && panel) {
+        toggle.addEventListener('click', function () {
+          if (toggle.disabled) return;
+          var open = panel.hidden;
+          panel.hidden = !open;
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open && filter) {
+            try { filter.focus(); } catch (e) {}
+          }
+        });
+      }
+      if (filter) {
+        filter.addEventListener('input', function () {
+          var q = (filter.value || '').trim().toLowerCase();
+          picker.querySelectorAll('[data-grant-label]').forEach(function (label) {
+            var hay = label.getAttribute('data-filter') || '';
+            label.classList.toggle('is-filtered-out', q && hay.indexOf(q) < 0);
+          });
+        });
+      }
+      picker.querySelectorAll('[data-grant-cb]').forEach(function (cb) {
+        cb.addEventListener('change', function () { syncBadge(picker); });
+      });
+      syncBadge(picker);
     });
   }
 
@@ -913,6 +1085,7 @@
       });
     });
     bindTicketSteppers();
+    bindGrantPickers();
     if (document.querySelector('.mc-session-card.is-active') ||
         document.querySelector('[data-proxy-status][data-waiting="1"]')) {
       markFastPoll(60);

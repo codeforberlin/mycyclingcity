@@ -334,6 +334,10 @@ class MinecraftIntegrationConfig(models.Model):
                 "manage_minecraft_stations",
                 _("Minecraft-Stationen (PCs) und MS-Allowlist verwalten"),
             ),
+            (
+                "manage_grant_catalog",
+                _("Vergabe-Katalog (Fahrzeuge, Items) verwalten"),
+            ),
         ]
 
     def __str__(self):
@@ -1075,6 +1079,15 @@ class MCSession(models.Model):
         help_text=_(
             "Anzahl Paper-Tickets (custom_data mcc_ticket), die beim Bootstrap "
             "per RCON ins Inventar gelegt werden."
+        ),
+    )
+    grant_catalog_slugs = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Vergabe-Katalog (Slugs)"),
+        help_text=_(
+            "Katalog-Slugs, die beim Session-Bootstrap per RCON vergeben werden "
+            "(z. B. VehiclesPlus-Garage). Für Pending-Retry persistiert."
         ),
     )
 
@@ -1846,3 +1859,178 @@ class MinecraftProtectedRegion(models.Model):
         if not skip_clean:
             self.full_clean()
         return super().save(*args, **kwargs)
+
+
+class MinecraftGrantCatalogItem(models.Model):
+    """
+    Generic grant catalog for Stadtsteuerung (VehiclesPlus garage, diamonds, tickets, …).
+
+    RCON templates may use ``{player}``, ``{model}``, ``{quantity}``, ``{slug}``.
+    """
+
+    KIND_VEHICLE_GARAGE = "vehicle_garage"
+    KIND_INVENTORY = "inventory"
+    KIND_CURRENCY = "currency"
+    KIND_OTHER = "other"
+    KIND_CHOICES = [
+        (KIND_VEHICLE_GARAGE, _("Fahrzeug (Garage)")),
+        (KIND_INVENTORY, _("Inventar-Item")),
+        (KIND_CURRENCY, _("Währung / Guthaben")),
+        (KIND_OTHER, _("Sonstiges")),
+    ]
+
+    slug = models.SlugField(max_length=64, unique=True, verbose_name=_("Slug"))
+    name = models.CharField(max_length=128, verbose_name=_("Anzeigename"))
+    kind = models.CharField(
+        max_length=32,
+        choices=KIND_CHOICES,
+        default=KIND_VEHICLE_GARAGE,
+        db_index=True,
+        verbose_name=_("Art"),
+    )
+    enabled = models.BooleanField(default=True, verbose_name=_("Aktiv"))
+    sort_order = models.PositiveIntegerField(default=100, verbose_name=_("Sortierung"))
+    applies_to_player = models.BooleanField(
+        default=True,
+        verbose_name=_("Spieler-Sessions"),
+    )
+    applies_to_builder = models.BooleanField(
+        default=True,
+        verbose_name=_("Bau-Sessions"),
+    )
+    model_id = models.CharField(
+        max_length=64,
+        blank=True,
+        verbose_name=_("Modell-ID"),
+        help_text=_("z. B. VehiclesPlus ExampleBike — Platzhalter {model}."),
+    )
+    quantity_default = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Standard-Menge"),
+    )
+    velos_cost = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Velos-Kosten"),
+        help_text=_("0 = kostenlose Session-Vergabe; >0 = Einlösung vom Radler-Konto."),
+    )
+    repair_velos_cost = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Reparatur-Velos"),
+        help_text=_("Admin-Reparatur (VehiclesPlus); 0 = keine Reparatur-Aktion."),
+    )
+    rcon_grant_template = models.CharField(
+        max_length=512,
+        verbose_name=_("RCON Vergabe"),
+        help_text=_("z. B. v give {player} {model}"),
+    )
+    rcon_revoke_template = models.CharField(
+        max_length=512,
+        blank=True,
+        verbose_name=_("RCON Entfernen"),
+        help_text=_(
+            "Optional beim Slot-Clear. Leer = nur DB-Status; "
+            "Ingame-Garage ggf. manuell/andere Mittel."
+        ),
+    )
+    rcon_repair_template = models.CharField(
+        max_length=512,
+        blank=True,
+        verbose_name=_("RCON Reparatur"),
+        help_text=_("z. B. v repair {player}. Leer = Art ohne Admin-Reparatur."),
+    )
+    notes = models.CharField(max_length=255, blank=True, verbose_name=_("Hinweis"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        verbose_name = _("Vergabe-Katalogeintrag")
+        verbose_name_plural = _("Vergabe-Katalog")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class MinecraftGrantRecord(models.Model):
+    """Active/revoked grant of a catalog item on a play/builder slot."""
+
+    STATUS_ACTIVE = "active"
+    STATUS_REVOKED = "revoked"
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, _("Aktiv")),
+        (STATUS_REVOKED, _("Widerrufen")),
+    ]
+
+    SOURCE_SESSION = "session_grant"
+    SOURCE_VELOS = "velos_redeem"
+    SOURCE_CHOICES = [
+        (SOURCE_SESSION, _("Session-Vergabe")),
+        (SOURCE_VELOS, _("Velos-Einlösung")),
+    ]
+
+    catalog_item = models.ForeignKey(
+        MinecraftGrantCatalogItem,
+        on_delete=models.CASCADE,
+        related_name="records",
+        verbose_name=_("Katalog"),
+    )
+    account_name = models.CharField(
+        max_length=100,
+        db_index=True,
+        verbose_name=_("Account-Slot"),
+    )
+    account_type = models.CharField(
+        max_length=16,
+        choices=MCSession.ACCOUNT_TYPE_CHOICES,
+        verbose_name=_("Account-Typ"),
+    )
+    session = models.ForeignKey(
+        MCSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="grant_records",
+        verbose_name=_("Session"),
+    )
+    ms_username = models.CharField(max_length=32, blank=True, verbose_name=_("MS-Login"))
+    source = models.CharField(
+        max_length=16,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_SESSION,
+        verbose_name=_("Herkunft"),
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE,
+        db_index=True,
+        verbose_name=_("Status"),
+    )
+    quantity = models.PositiveIntegerField(default=1, verbose_name=_("Menge"))
+    velos_charged = models.PositiveIntegerField(default=0, verbose_name=_("Velos abgezogen"))
+    granted_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Vergeben"))
+    revoked_at = models.DateTimeField(null=True, blank=True, verbose_name=_("Widerrufen"))
+    granted_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("Vergeben von"),
+    )
+    last_error = models.TextField(blank=True, verbose_name=_("Letzter Fehler"))
+
+    class Meta:
+        ordering = ["-granted_at"]
+        verbose_name = _("Vergabe-Eintrag")
+        verbose_name_plural = _("Vergabe-Einträge")
+        indexes = [
+            models.Index(
+                fields=["account_name", "status"],
+                name="minecraft_grant_acct_status",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.account_name}: {self.catalog_item_id} [{self.status}]"

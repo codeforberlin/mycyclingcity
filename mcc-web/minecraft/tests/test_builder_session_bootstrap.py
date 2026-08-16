@@ -32,9 +32,19 @@ class TestBuilderSessionBootstrap:
         assert commands == ["difficulty peaceful", "gamerule pvp false"]
 
     def test_get_bootstrap_preset_commands_fallback(self):
+        from minecraft.models import MinecraftRconPreset
+
+        MinecraftRconPreset.objects.filter(
+            slug=BUILDER_SESSION_BOOTSTRAP_PRESET["slug"]
+        ).delete()
         commands = get_bootstrap_preset_commands()
         assert commands[0] == "difficulty peaceful"
         assert "gamerule pvp false" in commands
+        assert "rg flag -w MyCyclingCity __global__ vehicles-spawn allow" in commands
+        assert "rg flag -w MyCyclingCity __global__ vehicles-drive allow" in commands
+        assert "rg flag -w MyCyclingCity __global__ build deny" in commands
+        assert "lp group default permission set vp.ride.* true" in commands
+        assert "lp group default permission set vp.spawn.* true" in commands
 
     @override_settings(
         MCC_MINECRAFT_BUILDER_SESSION_BOOTSTRAP_ENABLED=True,
@@ -123,6 +133,10 @@ class TestBuilderSessionBootstrapIntegration:
         assert ["difficulty peaceful"] in world_calls
         assert ["authme forcelogin Kette"] in world_calls
         assert mock_player_rcon.call_args[0][0] == [
+            (
+                "execute as Kette positioned 0 0 0 "
+                "positioned over world_surface run tp @s ~ ~ ~"
+            ),
             "gamemode adventure Kette",
             "team join mcc_kette Kette",
             'tellraw Kette {"text":"Du spielst als ","extra":[{"text":"Kette","bold":true,"color":"gold"},{"text":"."}]}',

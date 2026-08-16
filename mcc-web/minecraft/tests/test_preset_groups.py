@@ -14,6 +14,7 @@ from minecraft.services.preset_permissions import (
     user_can_access_minecraft_control,
     user_can_access_minecraft_shop,
     user_can_manage_builder_sessions,
+    user_can_manage_grant_catalog,
     user_can_manage_minecraft_accounts,
     user_can_manage_minecraft_operators,
     user_can_manage_minecraft_proxy,
@@ -54,6 +55,7 @@ class TestMinecraftPresetGroups:
         assert user_can_access_minecraft_shop(user)
         assert user_can_manage_player_sessions(user)
         assert user_can_manage_builder_sessions(user)
+        assert user_can_manage_grant_catalog(user)
         assert user_can_manage_minecraft_accounts(user)
         assert user_can_manage_minecraft_operators(user)
         assert user_can_manage_minecraft_stations(user)

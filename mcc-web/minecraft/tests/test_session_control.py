@@ -72,8 +72,10 @@ class TestSessionControlPlayer:
         assert mock_rcon.call_args[0][0] == ["authme forcelogin Arena1"]
         mock_wait.assert_called_once_with("Arena1", timeout_sec=0.5)
         player_cmds = mock_player_rcon.call_args[0][0]
-        assert player_cmds[0] == "gamemode adventure Arena1"
-        assert "minecraft:emerald" in player_cmds[1]
+        assert player_cmds[0].startswith("execute as Arena1 positioned ")
+        assert "positioned over world_surface run tp @s" in player_cmds[0]
+        assert player_cmds[1] == "gamemode adventure Arena1"
+        assert "minecraft:emerald" in player_cmds[2]
         assert player_cmds[-2] == "tag Arena1 add mcc_arena"
         assert player_cmds[-1] == "team join mcc_arena1 Arena1"
 
@@ -92,7 +94,11 @@ class TestSessionControlPlayer:
         session = start_player_session("Arena1", duration=15, teleport_to_spawn=True)
         assert session.teleport_to_spawn is True
         player_cmds = mock_player_rcon.call_args[0][0]
-        assert player_cmds[-1] == "tp Arena1 12 70 -8"
+        assert player_cmds[0] == (
+            "execute as Arena1 positioned 12 0 -8 "
+            "positioned over world_surface run tp @s ~ ~ ~"
+        )
+        assert player_cmds[1] == "gamemode adventure Arena1"
 
     def test_spawn_offset_grid(self):
         from minecraft.services.session_control import spawn_offset_xz, world_spawn_tp_command
@@ -106,8 +112,9 @@ class TestSessionControlPlayer:
         cmd0 = world_spawn_tp_command("A", offset_index=0)
         cmd1 = world_spawn_tp_command("B", offset_index=1)
         assert cmd0 != cmd1
-        assert "tp A " in cmd0
-        assert "tp B " in cmd1
+        assert "execute as A positioned " in cmd0
+        assert "execute as B positioned " in cmd1
+        assert "world_surface" in cmd0
         assert spawn_offset_xz(0) == (0.0, 0.0)
 
     @patch("minecraft.services.session_control.wait_for_player_online", return_value=True)
@@ -335,6 +342,10 @@ class TestSessionControlBuilder:
         assert session.account_name == "Kette"
         assert mock_rcon.call_args[0][0] == ["authme forcelogin Kette"]
         assert mock_player_rcon.call_args[0][0] == [
+            (
+                "execute as Kette positioned 0 0 0 "
+                "positioned over world_surface run tp @s ~ ~ ~"
+            ),
             "gamemode adventure Kette",
             "team join mcc_kette Kette",
             'tellraw Kette {"text":"Du spielst als ","extra":[{"text":"Kette","bold":true,"color":"gold"},{"text":"."}]}',
@@ -428,12 +439,12 @@ class TestSessionControlBuilder:
         tall = MinecraftProtectedRegion.objects.create(
             region_id="kette_tall",
             world="MyCyclingCity",
-            min_x=0,
+            min_x=50,
             min_y=-64,
-            min_z=0,
-            max_x=10,
+            min_z=50,
+            max_x=60,
             max_y=320,
-            max_z=10,
+            max_z=60,
         )
         _, tall_y, _ = region_spawn_xyz(tall)
         assert tall_y > 0  # not deep underground (min_y+2)
@@ -454,6 +465,9 @@ class TestSessionControlBuilder:
         assert session.teleport_to_spawn is False
         joined = " ".join(mock_player_rcon.call_args[0][0])
         assert "tp Kette 3.5 14 4.5" in joined
+        player_cmds = mock_player_rcon.call_args[0][0]
+        assert player_cmds[0] == "tp Kette 3.5 14 4.5"
+        assert player_cmds[1].startswith("gamemode ")
         # World lobby spawn must not be used when region is set.
         assert session.teleport_to_spawn is False
 
@@ -541,13 +555,13 @@ class TestRegionsForBuilder:
         session = end_session("Arena1")
         assert session.status == MCSession.STATUS_FINISHED
         assert session.timestamp_end is not None
-        # terminate: spectator+tp+team leave, then authme logout
+        # terminate: spectator + team leave, then authme logout (no lobby TP)
         assert mock_rcon.call_count >= 2
         first = mock_rcon.call_args_list[0][0][0]
         assert first[0] == "gamemode spectator Arena1"
-        assert first[1] == "tp Arena1 10 70 -5"
-        assert first[2] == "tag Arena1 remove mcc_arena"
-        assert first[3] == "team leave Arena1"
+        assert first[1] == "tag Arena1 remove mcc_arena"
+        assert first[2] == "team leave Arena1"
+        assert not any(str(c).startswith("tp ") for c in first)
         second = mock_rcon.call_args_list[1][0][0]
         assert second == ["authme logout Arena1"]
 
@@ -652,7 +666,8 @@ class TestRegionsForBuilder:
         assert session.gamemode_spectator is True
         assert session.play_gamemode == MCSession.GAMEMODE_SPECTATOR
         player_cmds = mock_player_rcon.call_args[0][0]
-        assert player_cmds[0] == "gamemode spectator Arena1"
+        assert player_cmds[0].startswith("execute as Arena1 positioned ")
+        assert player_cmds[1] == "gamemode spectator Arena1"
 
     @patch(
         "minecraft.services.session_control.run_commands_require_player",
@@ -719,6 +734,10 @@ class TestSessionControlOnlineMode:
         mock_send.assert_called_once_with("mccpc01")
         mock_wait.assert_called_once_with("mccpc01", timeout_sec=0.5)
         assert mock_player_rcon.call_args[0][0] == [
+            (
+                "execute as mccpc01 positioned 0 0 0 "
+                "positioned over world_surface run tp @s ~ ~ ~"
+            ),
             "gamemode adventure mccpc01",
             "team join mcc_kette mccpc01",
             'tellraw mccpc01 {"text":"Du spielst als ","extra":[{"text":"Kette","bold":true,"color":"gold"},{"text":"."}]}',
@@ -765,3 +784,4 @@ class TestSessionControlOnlineMode:
         first = mock_rcon.call_args_list[0][0][0]
         assert first[0] == "gamemode spectator mccpc01"
         assert "team leave mccpc01" in first
+        assert not any(str(c).startswith("tp ") for c in first)

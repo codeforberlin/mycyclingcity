@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="mc-grant-catalog">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;">
+    <h1 style="margin:0;">{{ title }}</h1>
+    <a class="button" href="{% url 'admin:minecraft_grant_catalog_add' %}">{% trans "Neu" %}</a>
+  </div>
+  <p class="help">{% trans "Generischer Katalog für Session-Vergaben (z. B. VehiclesPlus-Garage). Platzhalter: {player}, {model}, {quantity}, {slug}." %}</p>
+  <table class="adminlist">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Slug" %}</th>
+        <th>{% trans "Art" %}</th>
+        <th>{% trans "Aktiv" %}</th>
+        <th>{% trans "Spieler/Bau" %}</th>
+        <th>{% trans "Velos" %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td><code>{{ item.slug }}</code></td>
+        <td>{{ item.get_kind_display }}</td>
+        <td>{% if item.enabled %}✓{% else %}—{% endif %}</td>
+        <td>
+          {% if item.applies_to_player %}P{% endif %}{% if item.applies_to_player and item.applies_to_builder %}/{% endif %}{% if item.applies_to_builder %}B{% endif %}
+        </td>
+        <td>{{ item.velos_cost }} / R{{ item.repair_velos_cost }}</td>
+        <td>
+          <a href="{% url 'admin:minecraft_grant_catalog_edit' item.pk %}">{% trans "Bearbeiten" %}</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">{% trans "Keine Einträge." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
