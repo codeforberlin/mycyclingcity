@@ -110,3 +110,33 @@ def get_active_cyclists_for_eventboard(event_id=None, group_filter_id=None):
             pass
     
     return base_cyclists.distinct()
+
+
+def group_status_metrics(status) -> dict:
+    """Velos and real event km for a GroupEventStatus row."""
+    return {
+        'current_velos': float(status.current_velos),
+        'current_event_km': float(status.current_event_km or 0),
+    }
+
+
+def event_statistics_from_groups(groups_data: list) -> dict:
+    """Aggregate Velos and km for eventboard statistics footer."""
+    if not groups_data:
+        return {
+            'total_velos': 0.0,
+            'total_km': 0.0,
+            'group_count': 0,
+            'average_velos': 0.0,
+            'average_km': 0.0,
+        }
+    total_velos = sum(g['current_velos'] for g in groups_data)
+    total_km = sum(g['current_event_km'] for g in groups_data)
+    count = len(groups_data)
+    return {
+        'total_velos': total_velos,
+        'total_km': total_km,
+        'group_count': count,
+        'average_velos': total_velos / count,
+        'average_km': total_km / count,
+    }

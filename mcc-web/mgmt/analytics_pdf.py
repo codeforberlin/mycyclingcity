@@ -205,16 +205,28 @@ def build_analytics_pdf(
         chart_width,
     )
 
-    record_rows = [
-        [_('Tagesrekord'), _record_label(aggregated.get('daily_record_holder')),
-         _format_metric(aggregated.get('daily_record_value', 0) or aggregated.get('daily_total', 0), metric_mode, with_unit=True)],
-        [_('Wochenrekord'), _record_label(aggregated.get('weekly_record_holder')),
-         _format_metric(aggregated.get('weekly_record_value', 0) or aggregated.get('weekly_total', 0), metric_mode, with_unit=True)],
-        [_('Monatsrekord'), _record_label(aggregated.get('monthly_record_holder')),
-         _format_metric(aggregated.get('monthly_record_value', 0) or aggregated.get('monthly_total', 0), metric_mode, with_unit=True)],
-        [_('Jahresrekord'), _record_label(aggregated.get('yearly_record_holder')),
-         _format_metric(aggregated.get('yearly_record_value', 0) or aggregated.get('yearly_total', 0), metric_mode, with_unit=True)],
-    ]
+    record_rows = []
+    for period_key, period_label in (
+        ('daily', _('Tag')),
+        ('weekly', _('Woche')),
+        ('monthly', _('Monat')),
+        ('yearly', _('Jahr')),
+    ):
+        current_holder = aggregated.get(f'{period_key}_current_holder')
+        current_value = aggregated.get(f'{period_key}_current_value', 0)
+        peak_holder = aggregated.get(f'{period_key}_peak_holder')
+        peak_value = aggregated.get(f'{period_key}_peak_value', 0)
+        peak_period = aggregated.get(f'{period_key}_peak_period') or ''
+        record_rows.append([
+            f"{period_label} ({_('Aktuell')})",
+            _record_label(current_holder),
+            _format_metric(current_value, metric_mode, with_unit=True),
+        ])
+        record_rows.append([
+            f"{period_label} ({_('Rekord')}{': ' + peak_period if peak_period else ''})",
+            _record_label(peak_holder),
+            _format_metric(peak_value, metric_mode, with_unit=True),
+        ])
     record_table = Table(
         [[_('Periode'), _('Rekordhalter'), metric_unit_header]] + record_rows,
         colWidths=[3.2 * cm, 8.5 * cm, 4.5 * cm],
@@ -231,7 +243,7 @@ def build_analytics_pdf(
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     story.append(Spacer(1, 0.2 * cm))
-    story.append(Paragraph(_('Kalender-Rekorde'), section_style))
+    story.append(Paragraph(_('Perioden: Aktuell & Rekord'), section_style))
     story.append(record_table)
 
     def _append_top_table(title: str, headers: List[str], items: List[Dict[str, Any]], row_builder):

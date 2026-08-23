@@ -128,8 +128,12 @@ class Event(models.Model):
         return int(total)
 
     def get_total_distance_km(self):
-        """Deprecated alias — returns Velos total for backward-compatible callers."""
-        return Decimal(self.get_total_velos())
+        """Total real kilometers collected by all groups in this event."""
+        from django.db.models import Sum
+        total = self.group_statuses.aggregate(
+            total=Sum('current_event_km')
+        )['total'] or Decimal('0')
+        return total
 
     def save_event_to_history(self):
         """Save current event progress to history for all participating groups."""
@@ -145,6 +149,7 @@ class Event(models.Model):
                 defaults={
                     'end_time': now,
                     'total_velos': status.current_velos,
+                    'total_km': status.current_event_km,
                     'best_leaf_group': status.best_leaf_group,
                     'best_leaf_group_goal_reached_at': status.best_leaf_group_goal_reached_at
                 }
@@ -153,19 +158,22 @@ class Event(models.Model):
             if not created:
                 history_entry.end_time = now
                 history_entry.total_velos = status.current_velos
+                history_entry.total_km = status.current_event_km
                 history_entry.best_leaf_group = status.best_leaf_group
                 history_entry.best_leaf_group_goal_reached_at = status.best_leaf_group_goal_reached_at
                 history_entry.save()
         # Reset event statuses after saving to history
         self.group_statuses.update(
             current_velos=0,
+            current_event_km=Decimal('0.00000'),
             start_velos_offset=0,
             best_leaf_group=None,
             best_leaf_group_goal_reached_at=None
         )
         # Also reset leaf group contributions
         LeafGroupEventContribution.objects.filter(event=self).update(
-            current_event_velos=0
+            current_event_velos=0,
+            current_event_km=Decimal('0.00000'),
         )
     
     def restart_event(self):
@@ -183,6 +191,7 @@ class Event(models.Model):
         # Reset all group event statuses
         self.group_statuses.update(
             current_velos=0,
+            current_event_km=Decimal('0.00000'),
             start_velos_offset=0,
             goal_reached_at=None,
             best_leaf_group=None,
@@ -190,7 +199,8 @@ class Event(models.Model):
         )
         # Also reset leaf group contributions
         LeafGroupEventContribution.objects.filter(event=self).update(
-            current_event_velos=0
+            current_event_velos=0,
+            current_event_km=Decimal('0.00000'),
         )
     
     def get_progress_percentage(self):
@@ -240,6 +250,13 @@ class GroupEventStatus(models.Model):
         default=0,
         verbose_name=_("Aktuelle Velos")
     )
+    current_event_km = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Aktuelle Event-km"),
+        help_text=_("Während des Events erstrampelte Kilometer (real, unabhängig vom Radumfang)"),
+    )
     start_velos_offset = models.IntegerField(
         default=0,
         verbose_name=_("Start-Offset (Velos)")
@@ -273,7 +290,7 @@ class GroupEventStatus(models.Model):
         unique_together = [['group', 'event']]
 
     def __str__(self):
-        return f"{self.group.name} - {self.event.name} ({self.current_velos} Velos)"
+        return f"{self.group.name} - {self.event.name} ({self.current_velos} Velos, {self.current_event_km} km)"
 
 
 class LeafGroupEventContribution(models.Model):
@@ -307,6 +324,13 @@ class LeafGroupEventContribution(models.Model):
         verbose_name=_("Aktuelle Event-Velos"),
         help_text=_("Die von dieser Leaf-Gruppe während des aktuellen Events erstrampelten Velos")
     )
+    current_event_km = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Aktuelle Event-km"),
+        help_text=_("Die von dieser Leaf-Gruppe während des aktuellen Events erstrampelten Kilometer"),
+    )
     updated_at = models.DateTimeField(
         auto_now=True,
         verbose_name=_("Aktualisiert am")
@@ -322,7 +346,7 @@ class LeafGroupEventContribution(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.leaf_group.name} - {self.event.name}: {self.current_event_velos} Velos"
+        return f"{self.leaf_group.name} - {self.event.name}: {self.current_event_velos} Velos, {self.current_event_km} km"
 
 
 class EventHistory(models.Model):
@@ -342,6 +366,12 @@ class EventHistory(models.Model):
     start_time = models.DateTimeField(verbose_name=_("Startzeitpunkt"))
     end_time = models.DateTimeField(verbose_name=_("Endzeitpunkt"))
     total_velos = models.IntegerField(default=0, verbose_name=_("Gesammelte Velos"))
+    total_km = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Gesammelte Kilometer"),
+    )
     best_leaf_group = models.ForeignKey(
         'api.Group',
         on_delete=models.SET_NULL,

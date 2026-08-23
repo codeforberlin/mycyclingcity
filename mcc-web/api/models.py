@@ -109,18 +109,28 @@ class ExternalDisplaySettings(models.Model):
     """Admin-controlled display options for public GUIs (leaderboard, ranking)."""
 
     show_km_in_leaderboard_footer = models.BooleanField(
-        default=True,
+        default=False,
         verbose_name=_("Kilometer im Leaderboard-Footer"),
         help_text=_(
-            "Zeigt die Summe der Kilometer (HourlyMetric) neben den Velos im Footer "
-            "von Leaderboard und Kiosk-Leaderboard an."
+            "Zeigt die Summe der Gesamt-km (Group.distance_total, wie im Ranking) neben "
+            "den Velos im Footer von Leaderboard und Kiosk-Leaderboard an. "
+            "Standard: aus — Velos im Leaderboard nutzen weiterhin HourlyMetric-Zeiträume."
         ),
     )
     show_km_in_ranking_headers = models.BooleanField(
         default=True,
         verbose_name=_("Kilometer in Ranking-Gruppenköpfen"),
         help_text=_(
-            "Zeigt Kilometer zusätzlich zu Velos in den Kopfzeilen der Ranking-Hierarchie."
+            "Zeigt Gesamt-km aus Group.distance_total zusätzlich zu Velos "
+            "in den Kopfzeilen der Ranking-Hierarchie."
+        ),
+    )
+    show_km_in_eventboard = models.BooleanField(
+        default=True,
+        verbose_name=_("Kilometer im Eventboard"),
+        help_text=_(
+            "Zeigt Event-km zusätzlich zu Velos auf dem Eventboard (Event-Auswahl, "
+            "Gruppenkarten, Podest, Statistik)."
         ),
     )
     km_display_decimals = models.IntegerField(
@@ -136,9 +146,10 @@ class ExternalDisplaySettings(models.Model):
         verbose_name_plural = _("Externe GUI-Anzeige")
 
     def __str__(self):
-        return _("Anzeige-Einstellungen (Leaderboard-Footer: %(footer)s, Ranking: %(ranking)s)") % {
+        return _("Anzeige-Einstellungen (Leaderboard: %(footer)s, Ranking: %(ranking)s, Eventboard: %(eventboard)s)") % {
             'footer': _('ja') if self.show_km_in_leaderboard_footer else _('nein'),
             'ranking': _('ja') if self.show_km_in_ranking_headers else _('nein'),
+            'eventboard': _('ja') if self.show_km_in_eventboard else _('nein'),
         }
 
     @classmethod
@@ -1251,8 +1262,8 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
     group.refresh_from_db()
     logger.debug(f"[update_group_hierarchy_progress] Updated Group distance_total for '{group.name}' - old: {old_group_distance}, new: {group.distance_total}")
 
-    # 2.5. IMPORTANT: Track leaf group contributions for events (Velos)
-    if delta_velos > 0 and group.is_leaf_group():
+    # 2.5. Track leaf group contributions for events (Velos + real km)
+    if (delta_velos > 0 or delta_km > 0) and group.is_leaf_group():
         leaf_event_statuses = group.event_statuses.select_related('event').all()
         if leaf_event_statuses.exists():
             logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' directly participates in {leaf_event_statuses.count()} event(s)")
@@ -1270,12 +1281,17 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                     contribution, created = LeafGroupEventContribution.objects.get_or_create(
                         leaf_group=group,
                         event=event,
-                        defaults={'current_event_velos': delta_velos}
+                        defaults={
+                            'current_event_velos': delta_velos,
+                            'current_event_km': delta_km,
+                        }
                     )
 
                     if not created:
                         old_contribution = contribution.current_event_velos
                         new_contribution = old_contribution + delta_velos
+                        old_contribution_km = contribution.current_event_km
+                        new_contribution_km = old_contribution_km + delta_km
 
                         if event.target_velos and event.target_velos > 0:
                             if new_contribution >= event.target_velos and old_contribution < event.target_velos:
@@ -1286,7 +1302,8 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                                 logger.debug(f"[update_group_hierarchy_progress] Leaf group '{group.name}' already at goal in event '{event.name}', capping at {new_contribution} Velos")
 
                         LeafGroupEventContribution.objects.filter(pk=contribution.pk).update(
-                            current_event_velos=new_contribution
+                            current_event_velos=new_contribution,
+                            current_event_km=new_contribution_km,
                         )
                         contribution.refresh_from_db()
                         logger.debug(f"[update_group_hierarchy_progress] Updated LeafGroupEventContribution for '{group.name}' on event '{event.name}' - old: {old_contribution}, new: {contribution.current_event_velos}")
@@ -1310,14 +1327,19 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                     contribution, created = LeafGroupEventContribution.objects.get_or_create(
                         leaf_group=group,
                         event=event,
-                        defaults={'current_event_velos': delta_velos if not parent_goal_reached else 0}
+                        defaults={
+                            'current_event_velos': delta_velos if not parent_goal_reached else 0,
+                            'current_event_km': delta_km if not parent_goal_reached else Decimal('0.00000'),
+                        }
                     )
 
                     if not created and not parent_goal_reached:
                         old_contribution = contribution.current_event_velos
                         new_contribution = old_contribution + delta_velos
+                        new_contribution_km = contribution.current_event_km + delta_km
                         LeafGroupEventContribution.objects.filter(pk=contribution.pk).update(
-                            current_event_velos=new_contribution
+                            current_event_velos=new_contribution,
+                            current_event_km=new_contribution_km,
                         )
                         contribution.refresh_from_db()
                         logger.debug(f"[update_group_hierarchy_progress] Updated LeafGroupEventContribution for '{group.name}' on event '{event.name}' - old: {old_contribution}, new: {contribution.current_event_velos}")
@@ -1334,8 +1356,8 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                             parent_update_fields['best_leaf_group_goal_reached_at'] = timezone.now()
                         GroupEventStatus.objects.filter(pk=parent_event_status.pk).update(**parent_update_fields)
 
-    # 2.6. Update Event statuses for active events (Velos)
-    if delta_velos > 0:
+    # 2.6. Update Event statuses for active events (Velos + real km)
+    if delta_velos > 0 or delta_km > 0:
         if 'GroupEventStatus' not in locals():
             from eventboard.models import GroupEventStatus, LeafGroupEventContribution, EventHistory
         event_statuses = group.event_statuses.select_related('event').all()
@@ -1362,6 +1384,7 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                 logger.debug(f"[update_group_hierarchy_progress] Group '{group.name}' already reached goal in event '{event.name}' ({old_event_velos} >= {event.target_velos} Velos)")
             else:
                 new_event_velos = old_event_velos + delta_velos
+                new_event_km = event_status.current_event_km + delta_km
                 goal_reached = False
                 if event.target_velos and event.target_velos > 0:
                     if new_event_velos >= event.target_velos and old_event_velos < event.target_velos:
@@ -1371,7 +1394,10 @@ def update_group_hierarchy_progress(group, delta_km, delta_velos: int = 0):
                     elif new_event_velos > event.target_velos:
                         new_event_velos = event.target_velos
 
-                update_fields = {'current_velos': new_event_velos}
+                update_fields = {
+                    'current_velos': new_event_velos,
+                    'current_event_km': new_event_km,
+                }
                 if goal_reached and not event_status.goal_reached_at:
                     update_fields['goal_reached_at'] = timezone.now()
                 GroupEventStatus.objects.filter(pk=event_status.pk).update(**update_fields)

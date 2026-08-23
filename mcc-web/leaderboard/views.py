@@ -916,6 +916,7 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
             'parent_group_name': parent_group_name,
             'top_parent_id': top_parent_id,  # For color mapping
             'distance_total': distance_total_from_metrics,
+            'ranking_km': float(group.distance_total or 0),
             'velos_total': velos_total,
             'daily_km': daily_km,
             'daily_velos': daily_velos,

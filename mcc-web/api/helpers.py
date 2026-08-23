@@ -14,9 +14,10 @@ Shared helper functions for building group hierarchies and data structures.
 Used by map, ranking, and leaderboard apps.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from django.db.models import QuerySet, Sum, Max, Q
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from functools import reduce
 from datetime import timedelta
 import operator
@@ -37,6 +38,7 @@ def get_external_display_settings_context() -> Dict[str, Any]:
     return {
         'show_km_in_leaderboard_footer': settings_obj.show_km_in_leaderboard_footer,
         'show_km_in_ranking_headers': settings_obj.show_km_in_ranking_headers,
+        'show_km_in_eventboard': settings_obj.show_km_in_eventboard,
         'km_display_decimals': settings_obj.km_display_decimals,
     }
 
@@ -45,12 +47,17 @@ def sum_display_totals_from_groups_data(groups_data: List[Dict[str, Any]]) -> Di
     """
     Sum Velos and km from leaderboard-style group dicts (filtered view).
 
-    Uses the same per-group values already prepared for the UI (HourlyMetric-based
-    where applicable).
+    Velos use HourlyMetric-based per-group totals already prepared for the UI.
+    Kilometer use Group.distance_total (ranking_km), matching the Ranking display.
     """
+    def _footer_km(entry: Dict[str, Any]) -> float:
+        if 'ranking_km' in entry:
+            return float(entry.get('ranking_km') or 0)
+        return float(entry.get('distance_total', 0) or 0)
+
     return {
         'total_velos': sum(int(g.get('velos_total', 0) or 0) for g in groups_data),
-        'total_km': sum(float(g.get('distance_total', 0) or 0) for g in groups_data),
+        'total_km': sum(_footer_km(g) for g in groups_data),
     }
 
 
@@ -602,11 +609,10 @@ def _calculate_group_totals_from_metrics(groups: List[Group], use_cache: bool = 
 
 def _cyclist_member_entry(
     cyclist: Cyclist,
-    cyclist_totals: Dict[int, float],
     cyclist_velos_totals: Dict[int, int],
 ) -> Dict[str, Any]:
     """Build a single cyclist dict for group hierarchy tables."""
-    total_km = cyclist_totals.get(cyclist.id, 0.0)
+    total_km = float(cyclist.distance_total or 0)
     # Sum of HourlyMetric.velos (mcc_worker syncs active sessions periodically).
     # Do not add session_velos here — after worker sync the current hour is already included.
     total_velos = int(cyclist_velos_totals.get(cyclist.id, 0))
@@ -645,22 +651,28 @@ def _group_velos_for_ranking(
 
 
 def _group_km_for_ranking(
-    _group: Group,
-    member_entries: List[Dict[str, Any]],
+    group: Group,
     child_entries: Optional[List[Dict[str, Any]]] = None,
-    group_metric_km: float = 0.0,
 ) -> float:
-    """Km total for map/ranking group rows (HourlyMetric-based, mirrors Velos logic)."""
-    members_km = sum(float(m.get('km', 0) or 0) for m in member_entries)
-    children_km = sum(float(c.get('km', 0) or 0) for c in (child_entries or []))
-    leaf_km = max(members_km, float(group_metric_km or 0))
+    """Km total for ranking/map group rows from Group.distance_total (lifetime ledger)."""
+    if child_entries:
+        return sum(float(c.get('km', 0) or 0) for c in child_entries)
+    return float(group.distance_total or 0)
 
-    if child_entries is not None:
-        if child_entries:
-            return children_km
-        return leaf_km
 
-    return leaf_km
+def group_km_for_ranking_row(group: Group) -> float:
+    """
+    Km shown on a ranking or analytics group row.
+
+    TOP/parent groups: sum of direct visible children (same as ranking headers).
+    Leaf groups: own Group.distance_total.
+    Direct members on a parent are excluded from the parent row total (ranking behaviour).
+    """
+    children = list(group.children.filter(is_visible=True))
+    if children:
+        child_entries = [{'km': _group_km_for_ranking(child)} for child in children]
+        return _group_km_for_ranking(group, child_entries=child_entries)
+    return _group_km_for_ranking(group)
 
 
 def _members_for_group(
@@ -677,10 +689,9 @@ def _members_for_group(
         'cyclistdevicecurrentmileage__device__configuration',
     )
     members_list = list(members_qs)
-    cyclist_totals = _calculate_cyclist_totals_from_metrics(members_list, use_cache=True)
     cyclist_velos_totals = _calculate_cyclist_velos_from_metrics(members_list, use_cache=True)
     members = [
-        _cyclist_member_entry(m, cyclist_totals, cyclist_velos_totals)
+        _cyclist_member_entry(m, cyclist_velos_totals)
         for m in members_list
     ]
     return sorted(members, key=lambda x: x['velos'], reverse=True)
@@ -694,8 +705,9 @@ def build_hierarchy_from_parent_groups(
     """
     Build hierarchy data from a parent-group queryset (map/ranking shared helper).
 
-    All Velos totals come from HourlyMetric (synced by mcc_worker for active sessions).
-    Parent groups: sum of child group metric totals.
+    Velos totals come from HourlyMetric (synced by mcc_worker for active sessions).
+    Kilometer totals use Group.distance_total (lifetime ledger).
+    Parent groups: sum of child group km; Velos from HourlyMetric aggregation.
     """
     group_filter = {'is_visible': True}
     member_filter = {'is_visible': True}
@@ -708,7 +720,6 @@ def build_hierarchy_from_parent_groups(
         groups_for_metrics.append(p_group)
         groups_for_metrics.extend(list(p_group.children.filter(**group_filter)))
     group_velos_by_id = _calculate_group_velos_from_metrics(groups_for_metrics, use_cache=True)
-    group_km_by_id = _calculate_group_totals_from_metrics(groups_for_metrics, use_cache=True)
 
     for p_group in parent_groups:
         direct_members = _members_for_group(p_group, member_filter, show_cyclists)
@@ -723,11 +734,7 @@ def build_hierarchy_from_parent_groups(
                 sub_member_data,
                 group_metric_velos=group_velos_by_id.get(sub.id, 0),
             )
-            sub_km = _group_km_for_ranking(
-                sub,
-                sub_member_data,
-                group_metric_km=group_km_by_id.get(sub.id, 0.0),
-            )
+            sub_km = _group_km_for_ranking(sub)
             if not kiosk or (sub_velos > 0 or sub_member_data):
                 subgroups_data.append({
                     'id': sub.id,
@@ -744,12 +751,7 @@ def build_hierarchy_from_parent_groups(
             child_entries=subgroups_data,
             group_metric_velos=group_velos_by_id.get(p_group.id, 0),
         )
-        p_km = _group_km_for_ranking(
-            p_group,
-            direct_members,
-            child_entries=subgroups_data,
-            group_metric_km=group_km_by_id.get(p_group.id, 0.0),
-        )
+        p_km = _group_km_for_ranking(p_group, child_entries=subgroups_data)
         if not kiosk or (p_velos > 0 or subgroups_data or direct_members):
             hierarchy.append({
                 'id': p_group.id,
@@ -793,6 +795,239 @@ def build_group_hierarchy(
     )
 
 
+def _format_snapshot_period_date_range(
+    start: Optional[timezone.datetime],
+    end: Optional[timezone.datetime],
+) -> str:
+    if not start or not end:
+        return ''
+    return f'{start.strftime("%d.%m.%Y")} – {end.strftime("%d.%m.%Y")}'
+
+
+def _is_full_calendar_year(
+    start: Optional[timezone.datetime],
+    end: Optional[timezone.datetime],
+) -> bool:
+    if not start or not end:
+        return False
+    return (
+        start.year == end.year
+        and start.month == 1
+        and start.day == 1
+        and end.month == 12
+        and end.day == 31
+    )
+
+
+def format_ranking_snapshot_label(snapshot: YearEndSnapshot) -> str:
+    """
+    Human-readable label for a year-end snapshot in ranking period selectors.
+
+    Uses neutral wording (Periode + date range) so it fits schools, FEZitty-style
+    summer runs, and other TOP groups — not only full school years.
+    """
+    start = snapshot.period_start_date
+    end = snapshot.period_end_date
+    date_range = _format_snapshot_period_date_range(start, end)
+
+    if not date_range:
+        return str(snapshot)
+
+    if snapshot.period_type == 'calendar_year' and _is_full_calendar_year(start, end) and end:
+        return str(_('Kalenderjahr %(year)s (%(range)s)') % {
+            'year': end.year,
+            'range': date_range,
+        })
+
+    return str(_('Periode %(range)s') % {'range': date_range})
+
+
+def get_ranking_period_options(
+    top_group_ids: Optional[List[int]] = None,
+) -> List[Dict[str, Any]]:
+    """List archived ranking periods (non-undone year-end snapshots)."""
+    qs = (
+        YearEndSnapshot.objects.filter(is_undone=False)
+        .select_related('group')
+        .order_by('-snapshot_date', '-id')
+    )
+    if top_group_ids:
+        qs = qs.filter(group_id__in=top_group_ids)
+    return [
+        {
+            'id': snapshot.id,
+            'label': format_ranking_snapshot_label(snapshot),
+            'top_group_id': snapshot.group_id,
+            'top_group_name': snapshot.group.name,
+            'period_start': snapshot.period_start_date,
+            'period_end': snapshot.period_end_date,
+            'period_type': snapshot.period_type,
+        }
+        for snapshot in qs
+    ]
+
+
+def get_ranking_snapshot_for_view(snapshot_id: Optional[int]) -> Optional[YearEndSnapshot]:
+    """Load a year-end snapshot for ranking archive view, or None if invalid."""
+    if not snapshot_id:
+        return None
+    try:
+        return YearEndSnapshot.objects.select_related('group').get(
+            id=snapshot_id,
+            is_undone=False,
+        )
+    except (YearEndSnapshot.DoesNotExist, ValueError, TypeError):
+        return None
+
+
+def snapshot_matches_group_filter(
+    snapshot: YearEndSnapshot,
+    target_groups: List[Group],
+) -> bool:
+    """True when snapshot TOP group matches at least one filtered group's TOP ancestor."""
+    if not target_groups:
+        return True
+    allowed_top_ids = set()
+    for group in target_groups:
+        top = group
+        visited = set()
+        while top.parent and top.id not in visited:
+            visited.add(top.id)
+            top = top.parent
+        allowed_top_ids.add(top.id)
+    return snapshot.group_id in allowed_top_ids
+
+
+def _load_snapshot_metric_maps(
+    snapshot: YearEndSnapshot,
+) -> Tuple[Dict[int, Dict[str, Any]], Dict[int, Dict[str, Any]]]:
+    """Build group_id and cyclist_id → km/velos maps from snapshot details."""
+    from api.models import YearEndSnapshotDetail
+
+    group_metrics: Dict[int, Dict[str, Any]] = {}
+    cyclist_metrics: Dict[int, Dict[str, Any]] = {}
+    for detail in YearEndSnapshotDetail.objects.filter(snapshot=snapshot).select_related(
+        'cyclist',
+    ):
+        if detail.group_id:
+            group_metrics[detail.group_id] = {
+                'km': float(detail.distance_total or 0),
+                'velos': int(detail.velos_total or 0),
+            }
+        elif detail.cyclist_id:
+            cyclist_metrics[detail.cyclist_id] = {
+                'km': float(detail.distance_total or 0),
+                'velos': int(detail.velos_total or 0),
+                'name': detail.cyclist.user_id if detail.cyclist else '',
+            }
+    return group_metrics, cyclist_metrics
+
+
+def _archive_members_for_group(
+    group: Group,
+    member_filter: Dict[str, Any],
+    show_cyclists: bool,
+    cyclist_metrics: Dict[int, Dict[str, Any]],
+    include_zero: bool,
+) -> List[Dict[str, Any]]:
+    if not show_cyclists:
+        return []
+    members: List[Dict[str, Any]] = []
+    for cyclist in group.members.filter(**member_filter):
+        stored = cyclist_metrics.get(cyclist.id)
+        if stored:
+            members.append({
+                'name': stored['name'] or cyclist.user_id,
+                'km': round(stored['km'], 3),
+                'velos': stored['velos'],
+                'session_velos': 0,
+            })
+        elif include_zero:
+            members.append({
+                'name': cyclist.user_id,
+                'km': 0.0,
+                'velos': 0,
+                'session_velos': 0,
+            })
+    return sorted(members, key=lambda x: x['velos'], reverse=True)
+
+
+def build_group_hierarchy_from_snapshot(
+    snapshot: YearEndSnapshot,
+    target_group: Optional[Group] = None,
+    kiosk: bool = False,
+    show_cyclists: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Build ranking hierarchy from a year-end snapshot (read-only archive).
+
+    Uses YearEndSnapshotDetail totals and the current visible group tree.
+    """
+    group_metrics, cyclist_metrics = _load_snapshot_metric_maps(snapshot)
+    group_filter = {'is_visible': True}
+    member_filter = {'is_visible': True}
+
+    if target_group:
+        parent_groups = Group.objects.filter(id=target_group.id, **group_filter).order_by('name')
+    else:
+        parent_groups = Group.objects.filter(id=snapshot.group_id, **group_filter).order_by('name')
+
+    hierarchy: List[Dict[str, Any]] = []
+    for p_group in parent_groups:
+        subgroups_qs = p_group.children.filter(**group_filter).order_by('name')
+        subgroups_data: List[Dict[str, Any]] = []
+
+        for sub in subgroups_qs:
+            metrics = group_metrics.get(sub.id, {'km': 0.0, 'velos': 0})
+            sub_velos = metrics['velos']
+            sub_km = metrics['km']
+            members = _archive_members_for_group(
+                sub,
+                member_filter,
+                show_cyclists,
+                cyclist_metrics,
+                include_zero=not kiosk,
+            )
+            if not kiosk or sub_velos > 0 or members:
+                subgroups_data.append({
+                    'id': sub.id,
+                    'name': sub.name,
+                    'km': round(sub_km, 3),
+                    'velos': sub_velos,
+                    'members': members,
+                })
+
+        subgroups_data.sort(key=lambda x: x['velos'], reverse=True)
+
+        if subgroups_data:
+            p_km = sum(s['km'] for s in subgroups_data)
+            p_velos = sum(s['velos'] for s in subgroups_data)
+        else:
+            parent_metrics = group_metrics.get(p_group.id, {'km': 0.0, 'velos': 0})
+            p_km = parent_metrics['km']
+            p_velos = parent_metrics['velos']
+
+        direct_members = _archive_members_for_group(
+            p_group,
+            member_filter,
+            show_cyclists,
+            cyclist_metrics,
+            include_zero=not kiosk,
+        ) if not subgroups_data else []
+
+        if not kiosk or p_velos > 0 or subgroups_data or direct_members:
+            hierarchy.append({
+                'id': p_group.id,
+                'name': p_group.name,
+                'km': round(p_km, 3),
+                'velos': p_velos,
+                'direct_members': direct_members,
+                'subgroups': subgroups_data,
+            })
+
+    return sorted(hierarchy, key=lambda x: x['velos'], reverse=True)
+
+
 def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
     """
     Build event data structure for display.
@@ -823,12 +1058,14 @@ def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
             event_groups.append({
                 'name': status.group.name,
                 'velos': int(status.current_velos),
+                'km': float(status.current_event_km or 0),
                 'group_id': status.group.id
             })
         # In kiosk mode, only add event if it has groups with Velos > 0
         if event_groups and (not kiosk or len(event_groups) > 0):
             event_groups_sorted = sorted(event_groups, key=lambda x: x['velos'], reverse=True)[:10]
             total_velos = sum(g['velos'] for g in event_groups)
+            total_km = sum(g['km'] for g in event_groups)
             is_ended = event.end_time and now > event.end_time
             events_data.append({
                 'id': event.id,
@@ -838,6 +1075,7 @@ def build_events_data(kiosk: bool = False) -> List[Dict[str, Any]]:
                 'start_time': event.start_time,
                 'end_time': event.end_time,
                 'total_velos': total_velos,
+                'total_km': total_km,
                 'is_ended': is_ended,
                 'groups': event_groups_sorted
             })

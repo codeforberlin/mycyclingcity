@@ -139,6 +139,54 @@
         font-weight: bold;
         color: #417690;
     }
+    .period-tile-section {
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+    .period-tile-section + .period-tile-section {
+        border-top: 1px solid rgba(0, 0, 0, 0.12);
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    .stat-card[style*="color: white"] .period-tile-section + .period-tile-section {
+        border-top-color: rgba(255, 255, 255, 0.25);
+    }
+    .period-tile-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.75;
+        margin-bottom: 4px;
+    }
+    .period-tile-parent {
+        font-size: 11px;
+        font-weight: 600;
+        opacity: 0.9;
+        margin-bottom: 2px;
+        min-height: 14px;
+    }
+    .period-tile-holder {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 2px;
+        min-height: 16px;
+    }
+    .period-tile-meta {
+        font-size: 10px;
+        opacity: 0.85;
+        margin-bottom: 2px;
+        min-height: 12px;
+    }
+    .period-tile-value {
+        font-size: 22px;
+        font-weight: bold;
+        line-height: 1.1;
+    }
+    .period-tile-section.peak .period-tile-value {
+        font-size: 18px;
+        opacity: 0.95;
+    }
     .top-list {
         background: white;
         padding: 20px;
@@ -257,6 +305,60 @@
         font-size: 13px;
         margin-left: auto;
     }
+    .top-list-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    .top-list-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .top-list-actions button {
+        padding: 4px 10px;
+        font-size: 12px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .top-list-actions button:hover {
+        background: #f1f5f9;
+    }
+    .top-list-selection-summary {
+        display: none;
+        margin: 0 0 10px 0;
+        padding: 10px 14px;
+        background: #eef6fb;
+        border: 1px solid #b8d4e8;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e3a5f;
+    }
+    .top-list table {
+        width: 100%;
+    }
+    .top-list-table-wrap {
+        max-height: 420px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+    }
+    .top-list-select-col {
+        width: 36px;
+        text-align: center;
+    }
+    .top-list-select-col input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
 </style>
 {% endblock %}
 
@@ -367,28 +469,68 @@
             <div class="value" id="totalDistance">-</div>
         </div>
         <div class="stat-card" style="background: linear-gradient(to bottom right, #fbbf24, #f59e0b); color: #1e293b; text-align: center;">
-            <h4 style="color: #1e293b; margin-bottom: 8px;">🏆 {% trans "Daily Record" %}</h4>
-            <div id="dailyRecordParent" style="font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 2px; opacity: 0.9;">-</div>
-            <div id="dailyRecordHolder" style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">-</div>
-            <div class="value" id="dailyTotal" style="color: #1e293b; font-size: 24px;">-</div>
+            <h4 style="color: #1e293b; margin-bottom: 4px;">🏆 {% trans "Tag" %}</h4>
+            <div class="period-tile-section">
+                <div class="period-tile-label">{% trans "Aktuell" %}</div>
+                <div class="period-tile-parent" id="dailyCurrentParent"></div>
+                <div class="period-tile-holder" id="dailyCurrentHolder">-</div>
+                <div class="period-tile-value" id="dailyCurrentValue" style="color: #1e293b;">-</div>
+            </div>
+            <div class="period-tile-section peak">
+                <div class="period-tile-label">{% trans "Rekord" %}</div>
+                <div class="period-tile-parent" id="dailyPeakParent"></div>
+                <div class="period-tile-holder" id="dailyPeakHolder">-</div>
+                <div class="period-tile-meta" id="dailyPeakPeriod"></div>
+                <div class="period-tile-value" id="dailyPeakValue" style="color: #1e293b;">-</div>
+            </div>
         </div>
         <div class="stat-card" style="background: linear-gradient(to bottom right, #60a5fa, #4f46e5); color: white; text-align: center;">
-            <h4 style="color: white; margin-bottom: 8px;">📅 {% trans "Weekly Record" %}</h4>
-            <div id="weeklyRecordParent" style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 2px; opacity: 0.9;">-</div>
-            <div id="weeklyRecordHolder" style="font-size: 14px; font-weight: 600; color: white; margin-bottom: 4px;">-</div>
-            <div class="value" id="weeklyTotal" style="color: white; font-size: 24px;">-</div>
+            <h4 style="color: white; margin-bottom: 4px;">📅 {% trans "Woche" %}</h4>
+            <div class="period-tile-section">
+                <div class="period-tile-label">{% trans "Aktuell" %}</div>
+                <div class="period-tile-parent" id="weeklyCurrentParent"></div>
+                <div class="period-tile-holder" id="weeklyCurrentHolder">-</div>
+                <div class="period-tile-value" id="weeklyCurrentValue" style="color: white;">-</div>
+            </div>
+            <div class="period-tile-section peak">
+                <div class="period-tile-label">{% trans "Rekord" %}</div>
+                <div class="period-tile-parent" id="weeklyPeakParent"></div>
+                <div class="period-tile-holder" id="weeklyPeakHolder">-</div>
+                <div class="period-tile-meta" id="weeklyPeakPeriod"></div>
+                <div class="period-tile-value" id="weeklyPeakValue" style="color: white;">-</div>
+            </div>
         </div>
         <div class="stat-card" style="background: linear-gradient(to bottom right, #4ade80, #10b981); color: #1e293b; text-align: center;">
-            <h4 style="color: #1e293b; margin-bottom: 8px;">🗓️ {% trans "Monthly Record" %}</h4>
-            <div id="monthlyRecordParent" style="font-size: 12px; font-weight: 600; color: #1e293b; margin-bottom: 2px; opacity: 0.9;">-</div>
-            <div id="monthlyRecordHolder" style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">-</div>
-            <div class="value" id="monthlyTotal" style="color: #1e293b; font-size: 24px;">-</div>
+            <h4 style="color: #1e293b; margin-bottom: 4px;">🗓️ {% trans "Monat" %}</h4>
+            <div class="period-tile-section">
+                <div class="period-tile-label">{% trans "Aktuell" %}</div>
+                <div class="period-tile-parent" id="monthlyCurrentParent"></div>
+                <div class="period-tile-holder" id="monthlyCurrentHolder">-</div>
+                <div class="period-tile-value" id="monthlyCurrentValue" style="color: #1e293b;">-</div>
+            </div>
+            <div class="period-tile-section peak">
+                <div class="period-tile-label">{% trans "Rekord" %}</div>
+                <div class="period-tile-parent" id="monthlyPeakParent"></div>
+                <div class="period-tile-holder" id="monthlyPeakHolder">-</div>
+                <div class="period-tile-meta" id="monthlyPeakPeriod"></div>
+                <div class="period-tile-value" id="monthlyPeakValue" style="color: #1e293b;">-</div>
+            </div>
         </div>
         <div class="stat-card" style="background: linear-gradient(to bottom right, #a78bfa, #ec4899); color: white; text-align: center;">
-            <h4 style="color: white; margin-bottom: 8px;">📆 {% trans "Yearly Record" %}</h4>
-            <div id="yearlyRecordParent" style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 2px; opacity: 0.9;">-</div>
-            <div id="yearlyRecordHolder" style="font-size: 14px; font-weight: 600; color: white; margin-bottom: 4px;">-</div>
-            <div class="value" id="yearlyTotal" style="color: white; font-size: 24px;">-</div>
+            <h4 style="color: white; margin-bottom: 4px;">📆 {% trans "Jahr" %}</h4>
+            <div class="period-tile-section">
+                <div class="period-tile-label">{% trans "Aktuell" %}</div>
+                <div class="period-tile-parent" id="yearlyCurrentParent"></div>
+                <div class="period-tile-holder" id="yearlyCurrentHolder">-</div>
+                <div class="period-tile-value" id="yearlyCurrentValue" style="color: white;">-</div>
+            </div>
+            <div class="period-tile-section peak">
+                <div class="period-tile-label">{% trans "Rekord" %}</div>
+                <div class="period-tile-parent" id="yearlyPeakParent"></div>
+                <div class="period-tile-holder" id="yearlyPeakHolder">-</div>
+                <div class="period-tile-meta" id="yearlyPeakPeriod"></div>
+                <div class="period-tile-value" id="yearlyPeakValue" style="color: white;">-</div>
+            </div>
         </div>
     </div>
     
@@ -443,61 +585,95 @@
     </div>
     
     <!-- Top Lists -->
-    <div class="top-list">
-        <h3 id="topGroupsTableTitle">{% trans "Gruppen nach Velos" %}</h3>
-        <table id="topGroupsTable">
-            <thead>
-                <tr>
-                    <th>{% trans "Rank" %}</th>
-                    <th>{% trans "Group" %}</th>
-                    <th>{% trans "Type" %}</th>
-                    <th id="topGroupsMetricHeader">{% trans "Velos" %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4" class="loading">{% trans "Loading..." %}</td>
-                </tr>
-            </tbody>
-        </table>
+    <p id="analyticsKmHint" style="display: none; font-size: 13px; color: #666; margin: 0 0 16px 0;">
+        {% trans "Gruppen-/Radler-/Geräte-km, Gesamtdistanz und Jahreskachel „Aktuell“: Ledger (wie Ranking). Tag/Woche/Monat „Aktuell“: HourlyMetric (Kalenderperioden). „Rekord“: historische Spitzenwerte aus HourlyMetric." %}
+    </p>
+    <div class="top-list" id="topGroupsListSection">
+        <div class="top-list-header-row">
+            <h3 id="topGroupsTableTitle" style="margin: 0;">{% trans "Gruppen nach Velos" %}</h3>
+            <div class="top-list-actions">
+                <button type="button" class="top-list-select-all-btn" data-list="groups">{% trans "Alle" %}</button>
+                <button type="button" class="top-list-select-none-btn" data-list="groups">{% trans "Keine" %}</button>
+            </div>
+        </div>
+        <p id="topGroupsKmHint" style="display: none;"></p>
+        <div id="topGroupsSelectionSummary" class="top-list-selection-summary"></div>
+        <div class="top-list-table-wrap">
+            <table id="topGroupsTable">
+                <thead>
+                    <tr>
+                        <th class="top-list-select-col"><input type="checkbox" class="top-list-select-all-cb" data-list="groups" title="{% trans 'Alle auswählen' %}"></th>
+                        <th>{% trans "Rank" %}</th>
+                        <th>{% trans "Group" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th id="topGroupsMetricHeader">{% trans "Velos" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="loading">{% trans "Loading..." %}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <div class="top-list">
-        <h3 id="topCyclistsTableTitle">{% trans "Top Radler nach Velos" %}</h3>
-        <table id="topPlayersTable">
-            <thead>
-                <tr>
-                    <th>{% trans "Rank" %}</th>
-                    <th>{% trans "Cyclist" %}</th>
-                    <th>{% trans "ID Tag" %}</th>
-                    <th>{% trans "Group" %}</th>
-                    <th id="topCyclistsMetricHeader">{% trans "Velos" %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="5" class="loading">{% trans "Loading..." %}</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="top-list" id="topCyclistsListSection">
+        <div class="top-list-header-row">
+            <h3 id="topCyclistsTableTitle" style="margin: 0;">{% trans "Top Radler nach Velos" %}</h3>
+            <div class="top-list-actions">
+                <button type="button" class="top-list-select-all-btn" data-list="cyclists">{% trans "Alle" %}</button>
+                <button type="button" class="top-list-select-none-btn" data-list="cyclists">{% trans "Keine" %}</button>
+            </div>
+        </div>
+        <div id="topCyclistsSelectionSummary" class="top-list-selection-summary"></div>
+        <div class="top-list-table-wrap">
+            <table id="topPlayersTable">
+                <thead>
+                    <tr>
+                        <th class="top-list-select-col"><input type="checkbox" class="top-list-select-all-cb" data-list="cyclists" title="{% trans 'Alle auswählen' %}"></th>
+                        <th>{% trans "Rank" %}</th>
+                        <th>{% trans "Cyclist" %}</th>
+                        <th>{% trans "ID Tag" %}</th>
+                        <th>{% trans "Group" %}</th>
+                        <th id="topCyclistsMetricHeader">{% trans "Velos" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="loading">{% trans "Loading..." %}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <div class="top-list">
-        <h3 id="topDevicesTableTitle">{% trans "Top Geräte nach Velos" %}</h3>
-        <table id="topDevicesTable">
-            <thead>
-                <tr>
-                    <th>{% trans "Rank" %}</th>
-                    <th>{% trans "Device" %}</th>
-                    <th id="topDevicesMetricHeader">{% trans "Velos" %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="3" class="loading">{% trans "Loading..." %}</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="top-list" id="topDevicesListSection">
+        <div class="top-list-header-row">
+            <h3 id="topDevicesTableTitle" style="margin: 0;">{% trans "Top Geräte nach Velos" %}</h3>
+            <div class="top-list-actions">
+                <button type="button" class="top-list-select-all-btn" data-list="devices">{% trans "Alle" %}</button>
+                <button type="button" class="top-list-select-none-btn" data-list="devices">{% trans "Keine" %}</button>
+            </div>
+        </div>
+        <div id="topDevicesSelectionSummary" class="top-list-selection-summary"></div>
+        <div class="top-list-table-wrap">
+            <table id="topDevicesTable">
+                <thead>
+                    <tr>
+                        <th class="top-list-select-col"><input type="checkbox" class="top-list-select-all-cb" data-list="devices" title="{% trans 'Alle auswählen' %}"></th>
+                        <th>{% trans "Rank" %}</th>
+                        <th>{% trans "Device" %}</th>
+                        <th id="topDevicesMetricHeader">{% trans "Velos" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" class="loading">{% trans "Loading..." %}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
     
     <!-- Export Section -->
@@ -648,6 +824,187 @@ function formatMetricWithUnit(value) {
     function getGroupType() {
         const groupTypeToggle = document.getElementById('groupTypeToggle');
         return groupTypeToggle && groupTypeToggle.checked ? 'top_groups' : 'subgroups';
+    }
+
+    const TOP_LIST_CONFIG = {
+        groups: {
+            tableSelector: '#topGroupsTable',
+            summarySelector: '#topGroupsSelectionSummary',
+            emptyColSpan: 5,
+        },
+        cyclists: {
+            tableSelector: '#topPlayersTable',
+            summarySelector: '#topCyclistsSelectionSummary',
+            emptyColSpan: 6,
+        },
+        devices: {
+            tableSelector: '#topDevicesTable',
+            summarySelector: '#topDevicesSelectionSummary',
+            emptyColSpan: 4,
+        },
+    };
+
+    const topListSelectedIds = {
+        groups: new Set(),
+        cyclists: new Set(),
+        devices: new Set(),
+    };
+
+    function getTopListCheckboxes(listKey) {
+        const cfg = TOP_LIST_CONFIG[listKey];
+        if (!cfg) return [];
+        const table = document.querySelector(cfg.tableSelector);
+        if (!table) return [];
+        return table.querySelectorAll('.top-list-row-cb[data-list="' + listKey + '"]');
+    }
+
+    function updateTopListSelectionSummary(listKey) {
+        const cfg = TOP_LIST_CONFIG[listKey];
+        const summary = document.querySelector(cfg.summarySelector);
+        const headerCb = document.querySelector('.top-list-select-all-cb[data-list="' + listKey + '"]');
+        const checkboxes = getTopListCheckboxes(listKey);
+        let sum = 0;
+        let count = 0;
+        topListSelectedIds[listKey].clear();
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                count += 1;
+                sum += parseFloat(cb.dataset.distance || '0') || 0;
+                topListSelectedIds[listKey].add(cb.dataset.itemId);
+            }
+        });
+
+        if (headerCb) {
+            headerCb.indeterminate = count > 0 && count < checkboxes.length;
+            headerCb.checked = checkboxes.length > 0 && count === checkboxes.length;
+        }
+
+        if (!summary) return;
+        if (count === 0) {
+            summary.style.display = 'none';
+            summary.textContent = '';
+            return;
+        }
+        summary.style.display = 'block';
+        summary.textContent = count + ' {% trans "ausgewählt" %} · {% trans "Summe" %}: ' + formatMetricWithUnit(sum);
+    }
+
+    function setTopListSelection(listKey, selected) {
+        getTopListCheckboxes(listKey).forEach(cb => {
+            cb.checked = selected;
+        });
+        updateTopListSelectionSummary(listKey);
+    }
+
+    function appendTopListCheckboxCell(row, listKey, item) {
+        const itemId = String(
+            item.group_id || item.cyclist_id || item.device_id || item.name || ''
+        );
+        const cbCell = row.insertCell(0);
+        cbCell.className = 'top-list-select-col';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'top-list-row-cb';
+        cb.dataset.list = listKey;
+        cb.dataset.itemId = itemId;
+        cb.dataset.distance = String(item.distance || 0);
+        cb.checked = topListSelectedIds[listKey].has(itemId);
+        cb.addEventListener('change', () => updateTopListSelectionSummary(listKey));
+        cbCell.appendChild(cb);
+    }
+
+    function renderTopListEmptyRow(tbody, colSpan, message) {
+        tbody.innerHTML = '';
+        const row = tbody.insertRow();
+        const cell = row.insertCell(0);
+        cell.colSpan = colSpan;
+        cell.textContent = message;
+        cell.style.textAlign = 'center';
+        cell.style.padding = '20px';
+    }
+
+    function renderTopGroupsTable(items) {
+        const tbody = document.querySelector('#topGroupsTable tbody');
+        if (!items || items.length === 0) {
+            renderTopListEmptyRow(
+                tbody,
+                TOP_LIST_CONFIG.groups.emptyColSpan,
+                '{% trans "No data available for the selected filters." %}'
+            );
+            updateTopListSelectionSummary('groups');
+            return;
+        }
+        tbody.innerHTML = '';
+        items.forEach((group, index) => {
+            const row = tbody.insertRow();
+            appendTopListCheckboxCell(row, 'groups', group);
+            row.insertCell(1).textContent = index + 1;
+            row.insertCell(2).textContent = group.name || '{% trans "Unknown" %}';
+            row.insertCell(3).textContent = group.type || '';
+            row.insertCell(4).textContent = formatMetricValue(group.distance || 0);
+        });
+        updateTopListSelectionSummary('groups');
+    }
+
+    function renderTopCyclistsTable(items) {
+        const tbody = document.querySelector('#topPlayersTable tbody');
+        if (!items || items.length === 0) {
+            renderTopListEmptyRow(
+                tbody,
+                TOP_LIST_CONFIG.cyclists.emptyColSpan,
+                '{% trans "No data available for the selected filters." %}'
+            );
+            updateTopListSelectionSummary('cyclists');
+            return;
+        }
+        tbody.innerHTML = '';
+        items.forEach((cyclist, index) => {
+            const row = tbody.insertRow();
+            appendTopListCheckboxCell(row, 'cyclists', cyclist);
+            row.insertCell(1).textContent = index + 1;
+            row.insertCell(2).textContent = cyclist.user_id || '';
+            row.insertCell(3).textContent = cyclist.id_tag || '';
+            row.insertCell(4).textContent = cyclist.group || '{% trans "Unknown" %}';
+            row.insertCell(5).textContent = formatMetricValue(cyclist.distance || 0);
+        });
+        updateTopListSelectionSummary('cyclists');
+    }
+
+    function renderTopDevicesTable(items) {
+        const tbody = document.querySelector('#topDevicesTable tbody');
+        if (!items || items.length === 0) {
+            renderTopListEmptyRow(
+                tbody,
+                TOP_LIST_CONFIG.devices.emptyColSpan,
+                '{% trans "No data available for the selected filters." %}'
+            );
+            updateTopListSelectionSummary('devices');
+            return;
+        }
+        tbody.innerHTML = '';
+        items.forEach((device, index) => {
+            const row = tbody.insertRow();
+            appendTopListCheckboxCell(row, 'devices', device);
+            row.insertCell(1).textContent = index + 1;
+            row.insertCell(2).textContent = device.name || '';
+            row.insertCell(3).textContent = formatMetricValue(device.distance || 0);
+        });
+        updateTopListSelectionSummary('devices');
+    }
+
+    function initTopListSelectionControls() {
+        document.querySelectorAll('.top-list-select-all-cb').forEach(headerCb => {
+            headerCb.addEventListener('change', () => {
+                setTopListSelection(headerCb.dataset.list, headerCb.checked);
+            });
+        });
+        document.querySelectorAll('.top-list-select-all-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTopListSelection(btn.dataset.list, true));
+        });
+        document.querySelectorAll('.top-list-select-none-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTopListSelection(btn.dataset.list, false));
+        });
     }
 
     function getChartPrefsKey() {
@@ -908,6 +1265,14 @@ function formatMetricWithUnit(value) {
         if (topGroupsTitle) {
             topGroupsTitle.textContent = isKm ? '{% trans "Gruppen nach Kilometer" %}' : '{% trans "Gruppen nach Velos" %}';
         }
+        const topGroupsKmHint = document.getElementById('topGroupsKmHint');
+        if (topGroupsKmHint) {
+            topGroupsKmHint.style.display = 'none';
+        }
+        const analyticsKmHint = document.getElementById('analyticsKmHint');
+        if (analyticsKmHint) {
+            analyticsKmHint.style.display = isKm ? 'block' : 'none';
+        }
         const topCyclistsTitle = document.getElementById('topCyclistsTableTitle');
         if (topCyclistsTitle) {
             topCyclistsTitle.textContent = isKm ? '{% trans "Top Radler nach Kilometer" %}' : '{% trans "Top Radler nach Velos" %}';
@@ -962,6 +1327,55 @@ function formatMetricWithUnit(value) {
     }
     
     // Function to load aggregated data
+    function formatPeakPeriodLabel(periodLabel) {
+        if (!periodLabel) return '';
+        const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(periodLabel);
+        if (isoMatch) {
+            return isoMatch[3] + '.' + isoMatch[2] + '.' + isoMatch[1];
+        }
+        return periodLabel;
+    }
+
+    function updatePeriodTile(prefix, currentHolder, currentValue, peakHolder, peakValue, peakPeriod, fallbackTotal) {
+        const currentParentEl = document.getElementById(prefix + 'CurrentParent');
+        const currentHolderEl = document.getElementById(prefix + 'CurrentHolder');
+        const currentValueEl = document.getElementById(prefix + 'CurrentValue');
+        const peakParentEl = document.getElementById(prefix + 'PeakParent');
+        const peakHolderEl = document.getElementById(prefix + 'PeakHolder');
+        const peakPeriodEl = document.getElementById(prefix + 'PeakPeriod');
+        const peakValueEl = document.getElementById(prefix + 'PeakValue');
+
+        if (currentHolder && currentValue > 0) {
+            if (currentParentEl) {
+                currentParentEl.textContent = currentHolder.parent_group_name
+                    ? '🏫 ' + currentHolder.parent_group_name : '';
+            }
+            if (currentHolderEl) currentHolderEl.textContent = currentHolder.name || '-';
+            if (currentValueEl) currentValueEl.textContent = formatMetricWithUnit(currentValue);
+        } else {
+            if (currentParentEl) currentParentEl.textContent = '';
+            if (currentHolderEl) currentHolderEl.textContent = '-';
+            if (currentValueEl) {
+                currentValueEl.textContent = formatMetricWithUnit(fallbackTotal || 0);
+            }
+        }
+
+        if (peakHolder && peakValue > 0) {
+            if (peakParentEl) {
+                peakParentEl.textContent = peakHolder.parent_group_name
+                    ? '🏫 ' + peakHolder.parent_group_name : '';
+            }
+            if (peakHolderEl) peakHolderEl.textContent = peakHolder.name || '-';
+            if (peakPeriodEl) peakPeriodEl.textContent = formatPeakPeriodLabel(peakPeriod);
+            if (peakValueEl) peakValueEl.textContent = formatMetricWithUnit(peakValue);
+        } else {
+            if (peakParentEl) peakParentEl.textContent = '';
+            if (peakHolderEl) peakHolderEl.textContent = '-';
+            if (peakPeriodEl) peakPeriodEl.textContent = '';
+            if (peakValueEl) peakValueEl.textContent = '-';
+        }
+    }
+
     function loadAggregatedData() {
             const groupTypeToggle = document.getElementById('groupTypeToggle');
             const showTopGroups = groupTypeToggle ? groupTypeToggle.checked : true;
@@ -989,174 +1403,47 @@ function formatMetricWithUnit(value) {
                     document.getElementById('totalDistance').textContent = 
                         formatMetricWithUnit(data.aggregated.total_distance || 0);
                     
-                    // Update daily record holder
-                    const dailyRecordParentEl = document.getElementById('dailyRecordParent');
-                    const dailyRecordHolderEl = document.getElementById('dailyRecordHolder');
-                    const dailyTotalEl = document.getElementById('dailyTotal');
-                    if (data.aggregated.daily_record_holder && data.aggregated.daily_record_value > 0) {
-                        if (dailyRecordParentEl) {
-                            dailyRecordParentEl.textContent = data.aggregated.daily_record_holder.parent_group_name ? 
-                                '🏫 ' + data.aggregated.daily_record_holder.parent_group_name : '';
-                        }
-                        if (dailyRecordHolderEl) {
-                            dailyRecordHolderEl.textContent = data.aggregated.daily_record_holder.name || '-';
-                        }
-                        if (dailyTotalEl) {
-                            dailyTotalEl.textContent = formatMetricWithUnit(data.aggregated.daily_record_value || 0);
-                        }
-                    } else {
-                        // Show total even if no record holder
-                        if (dailyRecordParentEl) {
-                            dailyRecordParentEl.textContent = '';
-                        }
-                        if (dailyRecordHolderEl) {
-                            dailyRecordHolderEl.textContent = '-';
-                        }
-                        if (dailyTotalEl) {
-                            dailyTotalEl.textContent = formatMetricWithUnit(data.aggregated.daily_total || 0);
-                        }
-                    }
-                    
-                    // Update weekly record holder
-                    const weeklyRecordParentEl = document.getElementById('weeklyRecordParent');
-                    const weeklyRecordHolderEl = document.getElementById('weeklyRecordHolder');
-                    const weeklyTotalEl = document.getElementById('weeklyTotal');
-                    if (data.aggregated.weekly_record_holder && data.aggregated.weekly_record_value > 0) {
-                        if (weeklyRecordParentEl) {
-                            weeklyRecordParentEl.textContent = data.aggregated.weekly_record_holder.parent_group_name ? 
-                                '🏫 ' + data.aggregated.weekly_record_holder.parent_group_name : '';
-                        }
-                        if (weeklyRecordHolderEl) {
-                            weeklyRecordHolderEl.textContent = data.aggregated.weekly_record_holder.name || '-';
-                        }
-                        if (weeklyTotalEl) {
-                            weeklyTotalEl.textContent = formatMetricWithUnit(data.aggregated.weekly_record_value || 0);
-                        }
-                    } else {
-                        // Show total even if no record holder
-                        if (weeklyRecordParentEl) {
-                            weeklyRecordParentEl.textContent = '';
-                        }
-                        if (weeklyRecordHolderEl) {
-                            weeklyRecordHolderEl.textContent = '-';
-                        }
-                        if (weeklyTotalEl) {
-                            weeklyTotalEl.textContent = formatMetricWithUnit(data.aggregated.weekly_total || 0);
-                        }
-                    }
-                    
-                    // Update monthly record holder
-                    const monthlyRecordParentEl = document.getElementById('monthlyRecordParent');
-                    const monthlyRecordHolderEl = document.getElementById('monthlyRecordHolder');
-                    const monthlyTotalEl = document.getElementById('monthlyTotal');
-                    if (data.aggregated.monthly_record_holder && data.aggregated.monthly_record_value > 0) {
-                        if (monthlyRecordParentEl) {
-                            monthlyRecordParentEl.textContent = data.aggregated.monthly_record_holder.parent_group_name ? 
-                                '🏫 ' + data.aggregated.monthly_record_holder.parent_group_name : '';
-                        }
-                        if (monthlyRecordHolderEl) {
-                            monthlyRecordHolderEl.textContent = data.aggregated.monthly_record_holder.name || '-';
-                        }
-                        if (monthlyTotalEl) {
-                            monthlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.monthly_record_value || 0);
-                        }
-                    } else {
-                        // Show total even if no record holder
-                        if (monthlyRecordParentEl) {
-                            monthlyRecordParentEl.textContent = '';
-                        }
-                        if (monthlyRecordHolderEl) {
-                            monthlyRecordHolderEl.textContent = '-';
-                        }
-                        if (monthlyTotalEl) {
-                            monthlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.monthly_total || 0);
-                        }
-                    }
-                    
-                    // Update yearly record holder
-                    const yearlyRecordParentEl = document.getElementById('yearlyRecordParent');
-                    const yearlyRecordHolderEl = document.getElementById('yearlyRecordHolder');
-                    const yearlyTotalEl = document.getElementById('yearlyTotal');
-                    if (data.aggregated.yearly_record_holder && data.aggregated.yearly_record_value > 0) {
-                        if (yearlyRecordParentEl) {
-                            yearlyRecordParentEl.textContent = data.aggregated.yearly_record_holder.parent_group_name ? 
-                                '🏫 ' + data.aggregated.yearly_record_holder.parent_group_name : '';
-                        }
-                        if (yearlyRecordHolderEl) {
-                            yearlyRecordHolderEl.textContent = data.aggregated.yearly_record_holder.name || '-';
-                        }
-                        if (yearlyTotalEl) {
-                            yearlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.yearly_record_value || 0);
-                        }
-                    } else {
-                        // Show total even if no record holder
-                        if (yearlyRecordParentEl) {
-                            yearlyRecordParentEl.textContent = '';
-                        }
-                        if (yearlyRecordHolderEl) {
-                            yearlyRecordHolderEl.textContent = '-';
-                        }
-                        if (yearlyTotalEl) {
-                            yearlyTotalEl.textContent = formatMetricWithUnit(data.aggregated.yearly_total || 0);
-                        }
-                    }
-                    
-                    // Update top groups
-                    const topGroupsTbody = document.querySelector('#topGroupsTable tbody');
-                    topGroupsTbody.innerHTML = '';
-                    if (data.aggregated.top_groups && data.aggregated.top_groups.length > 0) {
-                        data.aggregated.top_groups.forEach((group, index) => {
-                            const row = topGroupsTbody.insertRow();
-                            row.insertCell(0).textContent = index + 1;
-                            row.insertCell(1).textContent = group.name || '{% trans "Unknown" %}';
-                            row.insertCell(2).textContent = group.type || '';
-                            row.insertCell(3).textContent = formatMetricValue(group.distance || 0);
-                        });
-                    } else {
-                        const row = topGroupsTbody.insertRow();
-                        row.insertCell(0).colSpan = 4;
-                        row.insertCell(0).textContent = '{% trans "No data available for the selected filters." %}';
-                        row.insertCell(0).style.textAlign = 'center';
-                        row.insertCell(0).style.padding = '20px';
-                    }
-                    
-                    // Update top cyclists
-                    const topPlayersTbody = document.querySelector('#topPlayersTable tbody');
-                    topPlayersTbody.innerHTML = '';
-                    if (data.aggregated.top_cyclists && data.aggregated.top_cyclists.length > 0) {
-                        data.aggregated.top_cyclists.forEach((cyclist, index) => {
-                            const row = topPlayersTbody.insertRow();
-                            row.insertCell(0).textContent = index + 1;
-                            row.insertCell(1).textContent = cyclist.user_id || '';
-                            row.insertCell(2).textContent = cyclist.id_tag || '';
-                            row.insertCell(3).textContent = cyclist.group || '{% trans "Unknown" %}';
-                            row.insertCell(4).textContent = formatMetricValue(cyclist.distance || 0);
-                        });
-                    } else {
-                        const row = topPlayersTbody.insertRow();
-                        row.insertCell(0).colSpan = 5;
-                        row.insertCell(0).textContent = '{% trans "No data available for the selected filters." %}';
-                        row.insertCell(0).style.textAlign = 'center';
-                        row.insertCell(0).style.padding = '20px';
-                    }
-                    
-                    // Update top devices
-                    const topDevicesTbody = document.querySelector('#topDevicesTable tbody');
-                    topDevicesTbody.innerHTML = '';
-                    if (data.aggregated.top_devices && data.aggregated.top_devices.length > 0) {
-                        data.aggregated.top_devices.forEach((device, index) => {
-                            const row = topDevicesTbody.insertRow();
-                            row.insertCell(0).textContent = index + 1;
-                            row.insertCell(1).textContent = device.name || '';
-                            row.insertCell(2).textContent = formatMetricValue(device.distance || 0);
-                        });
-                    } else {
-                        const row = topDevicesTbody.insertRow();
-                        row.insertCell(0).colSpan = 3;
-                        row.insertCell(0).textContent = '{% trans "No data available for the selected filters." %}';
-                        row.insertCell(0).style.textAlign = 'center';
-                        row.insertCell(0).style.padding = '20px';
-                    }
+                    updatePeriodTile(
+                        'daily',
+                        data.aggregated.daily_current_holder,
+                        data.aggregated.daily_current_value,
+                        data.aggregated.daily_peak_holder,
+                        data.aggregated.daily_peak_value,
+                        data.aggregated.daily_peak_period,
+                        data.aggregated.daily_total,
+                    );
+                    updatePeriodTile(
+                        'weekly',
+                        data.aggregated.weekly_current_holder,
+                        data.aggregated.weekly_current_value,
+                        data.aggregated.weekly_peak_holder,
+                        data.aggregated.weekly_peak_value,
+                        data.aggregated.weekly_peak_period,
+                        data.aggregated.weekly_total,
+                    );
+                    updatePeriodTile(
+                        'monthly',
+                        data.aggregated.monthly_current_holder,
+                        data.aggregated.monthly_current_value,
+                        data.aggregated.monthly_peak_holder,
+                        data.aggregated.monthly_peak_value,
+                        data.aggregated.monthly_peak_period,
+                        data.aggregated.monthly_total,
+                    );
+                    updatePeriodTile(
+                        'yearly',
+                        data.aggregated.yearly_current_holder,
+                        data.aggregated.yearly_current_value,
+                        data.aggregated.yearly_peak_holder,
+                        data.aggregated.yearly_peak_value,
+                        data.aggregated.yearly_peak_period,
+                        data.aggregated.yearly_total,
+                    );
+
+                    // Update top groups / cyclists / devices (with checkbox selection)
+                    renderTopGroupsTable(data.aggregated.top_groups || []);
+                    renderTopCyclistsTable(data.aggregated.top_cyclists || []);
+                    renderTopDevicesTable(data.aggregated.top_devices || []);
                 }
             })
             .catch(error => console.error('Error loading aggregated data:', error));
@@ -1350,6 +1637,7 @@ function formatMetricWithUnit(value) {
         try {
             console.log('Calling initCharts()...');
             initCharts();
+            initTopListSelectionControls();
             updateMetricLabels();
             console.log('Charts initialized successfully');
             

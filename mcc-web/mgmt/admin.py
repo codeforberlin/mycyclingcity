@@ -6265,6 +6265,7 @@ class ExternalDisplaySettingsAdmin(admin.ModelAdmin):
     list_display = (
         'show_km_in_leaderboard_footer',
         'show_km_in_ranking_headers',
+        'show_km_in_eventboard',
         'km_display_decimals',
         'updated_at',
     )
@@ -6274,12 +6275,14 @@ class ExternalDisplaySettingsAdmin(admin.ModelAdmin):
             'fields': (
                 'show_km_in_leaderboard_footer',
                 'show_km_in_ranking_headers',
+                'show_km_in_eventboard',
                 'km_display_decimals',
             ),
             'description': _(
-                'Steuert, ob und wie Kilometer (aus HourlyMetric) zusätzlich zu Velos '
-                'in Leaderboard-Footer und Ranking angezeigt werden. Velos bleiben '
-                'die primäre Wettbewerbsmetrik.'
+                'Steuert, ob und wie Kilometer zusätzlich zu Velos in Leaderboard, '
+                'Ranking und Eventboard angezeigt werden. Leaderboard-km entsprechen '
+                'dem Ranking (Group.distance_total); Velos bleiben die primäre '
+                'Wettbewerbsmetrik mit HourlyMetric-Zeiträumen.'
             ),
         }),
         (_('Zeitstempel'), {

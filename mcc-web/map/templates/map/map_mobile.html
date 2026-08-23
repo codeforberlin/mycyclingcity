@@ -1394,7 +1394,7 @@
                             {% if event.event_type %}<small style="font-size: 0.85em; opacity: 0.9;">({{ event.event_type }})</small>{% endif %}
                             {% if event.is_ended %}<span style="font-size: 0.85em; opacity: 0.8;">- {% trans "Beendet" %}</span>{% endif %}
                         </span>
-                        <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {% format_velos_de_tag event.total_velos|default:0 %} {% trans "Velos" %}</span>
+                        <span style="font-weight: bold;">{{ event.groups|length }} {% if event.groups|length == 1 %}{% trans "Gruppe" %}{% else %}{% trans "Gruppen" %}{% endif %} | {% format_velos_de_tag event.total_velos|default:0 %} {% trans "Velos" %}{% if show_km_in_ranking_headers %} | {% format_km_de_tag event.total_km|default:0 km_display_decimals %} {% trans "km" %}{% endif %}</span>
                     </div>
                     
                     <div class="table-group-content">
@@ -1420,7 +1420,7 @@
                         <div class="table-subgroup" style="border-left-color: {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">
                             <div class="table-subgroup-header">
                                 <span>👥 {{ group.name }}</span>
-                                <span style="font-weight: bold; color: {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">{% format_velos_de_tag group.velos|default:0 %} {% trans "Velos" %}</span>
+                                <span style="font-weight: bold; color: {% if event.is_ended %}#6c757d{% else %}#28a745{% endif %};">{% format_velos_de_tag group.velos|default:0 %} {% trans "Velos" %}{% if show_km_in_ranking_headers %} · {% format_km_de_tag group.km|default:0 km_display_decimals %} {% trans "km" %}{% endif %}</span>
                             </div>
                         </div>
                         {% endfor %}

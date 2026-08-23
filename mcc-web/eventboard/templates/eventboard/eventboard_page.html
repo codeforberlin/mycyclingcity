@@ -6,7 +6,7 @@
      @note    This code was developed with the assistance of AI (LLMs).
 -->
 
-{% load i18n %}
+{% load i18n ranking_filters %}
 {% load static %}
 {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
@@ -466,6 +466,19 @@
             color: #666;
             font-weight: 500;
         }
+
+        .group-card-km,
+        .podium-group-km {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #555;
+            margin-top: 0.15rem;
+        }
+
+        .podium-leaf-km {
+            font-size: 0.85rem;
+            color: #666;
+        }
         
         .group-card-progress {
             height: 20px;
@@ -720,6 +733,12 @@
             color: #666;
             margin-top: 0.25rem;
         }
+
+        .event-card-km-stat {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #555;
+        }
         
         /* Mobile Optimizations */
         @media screen and (max-width: 1023px) {
@@ -866,9 +885,15 @@
                     </div>
                     <div class="event-card-stats">
                         <div class="stat">
-                            <span class="stat-value" data-stat="distance">{{ event_item.total_velos }} Velos</span>
+                            <span class="stat-value" data-stat="distance">{% format_velos_de_tag event_item.total_velos %} {% trans "Velos" %}</span>
                             <span class="stat-label">{% trans "Gesamt" %}</span>
                         </div>
+                        {% if show_km_in_eventboard %}
+                        <div class="stat">
+                            <span class="stat-value event-card-km-stat" data-stat="distance_km">{% format_km_de_tag event_item.total_km 1 %} km</span>
+                            <span class="stat-label">{% trans "Kilometer" %}</span>
+                        </div>
+                        {% endif %}
                         <div class="stat">
                             <span class="stat-value" data-stat="groups">{{ event_item.group_count }}</span>
                             <span class="stat-label">{% trans "Gruppen" %}</span>
@@ -942,12 +967,15 @@
                             {% endif %}
                         </div>
                         <div class="podium-group-name">{{ group.name }}</div>
-                        <div class="podium-group-distance">{{ group.current_velos }} Velos</div>
+                        <div class="podium-group-distance">{% format_velos_de_tag group.current_velos %} {% trans "Velos" %}</div>
+                        {% if show_km_in_eventboard %}
+                        <div class="podium-group-km">{% format_km_de_tag group.current_event_km 1 %} {% trans "km" %}</div>
+                        {% endif %}
                         {% if group.best_leaf_group %}
                         <div class="podium-leaf-group">
                             <span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span>
                             <span class="podium-leaf-name">{{ group.best_leaf_group.name }}</span>
-                            <span class="podium-leaf-distance">({{ group.best_leaf_group.contribution_velos }} Velos)</span>
+                            <span class="podium-leaf-distance">({% format_velos_de_tag group.best_leaf_group.contribution_velos %} {% trans "Velos" %}{% if show_km_in_eventboard and group.best_leaf_group.contribution_km %}, {% format_km_de_tag group.best_leaf_group.contribution_km 1 %} km{% endif %})</span>
                             {% if group.best_leaf_group.goal_reached_at %}
                             <div class="podium-leaf-time">
                                 {% trans "Ziel erreicht" %}: <span data-utc-datetime="{{ group.best_leaf_group.goal_reached_at }}" data-datetime-format="d.m.Y H:i">{{ group.best_leaf_group.goal_reached_at|date:"d.m.Y H:i" }}</span>
@@ -982,11 +1010,14 @@
                         </div>
                     </div>
                     <div class="group-card-distance">
-                        {{ group.current_velos }} Velos
+                        {% format_velos_de_tag group.current_velos %} {% trans "Velos" %}
                         {% if event.target_velos %}
-                        <span class="group-card-target">/ {{ event.target_velos }} Velos</span>
+                        <span class="group-card-target">/ {% format_velos_de_tag event.target_velos %} {% trans "Velos" %}</span>
                         {% endif %}
                     </div>
+                    {% if show_km_in_eventboard %}
+                    <div class="group-card-km">{% format_km_de_tag group.current_event_km 1 %} {% trans "km" %}</div>
+                    {% endif %}
                     {% if event.target_velos %}
                     <div class="group-card-progress">
                         {% if group.progress_percentage > 100.0 %}
@@ -1015,18 +1046,30 @@
             <footer class="eventboard-stats">
                 <h2>{% trans "Statistiken" %}</h2>
                 <div class="stats-grid">
-                    <div class="stat-item">
+                    <div class="stat-item" data-stat="total_velos">
                         <div class="stat-item-label">{% trans "Velos gesamt" %}</div>
-                        <div class="stat-item-value">{{ statistics.total_velos }} Velos</div>
+                        <div class="stat-item-value">{% format_velos_de_tag statistics.total_velos %} {% trans "Velos" %}</div>
                     </div>
-                    <div class="stat-item">
+                    {% if show_km_in_eventboard %}
+                    <div class="stat-item" data-stat="total_km">
+                        <div class="stat-item-label">{% trans "Kilometer gesamt" %}</div>
+                        <div class="stat-item-value">{% format_km_de_tag statistics.total_km 1 %} km</div>
+                    </div>
+                    {% endif %}
+                    <div class="stat-item" data-stat="group_count">
                         <div class="stat-item-label">{% trans "Teilnehmende Gruppen" %}</div>
                         <div class="stat-item-value">{{ statistics.group_count }}</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-item-label">{% trans "Durchschnitt" %}</div>
-                        <div class="stat-item-value">{{ statistics.average_velos }} Velos</div>
+                    <div class="stat-item" data-stat="average_velos">
+                        <div class="stat-item-label">{% trans "Ø Velos" %}</div>
+                        <div class="stat-item-value">{% format_velos_de_tag statistics.average_velos %} {% trans "Velos" %}</div>
                     </div>
+                    {% if show_km_in_eventboard %}
+                    <div class="stat-item" data-stat="average_km">
+                        <div class="stat-item-label">{% trans "Ø Kilometer" %}</div>
+                        <div class="stat-item-value">{% format_km_de_tag statistics.average_km 1 %} km</div>
+                    </div>
+                    {% endif %}
                 </div>
             </footer>
         {% else %}
@@ -1217,6 +1260,14 @@
         // Initiales Intervall aus Event-Objekt, falls verfügbar, sonst Standard: 30 Sekunden
         var updateIntervalMs = {% if event and event.update_interval_seconds %}{{ event.update_interval_seconds }}000{% else %}30000{% endif %};
         var updateIntervalId = null;
+        var showKmInEventboard = {% if show_km_in_eventboard %}true{% else %}false{% endif %};
+        
+        function updateEventboardStat(statName, value) {
+            var statEl = document.querySelector('.stat-item[data-stat="' + statName + '"] .stat-item-value');
+            if (statEl) {
+                statEl.textContent = value;
+            }
+        }
         
         function updateEventboard() {
             var apiUrl = '{% url "eventboard:eventboard_api" %}?event_id={{ event_id }}{% if group_filter_id %}&group_filter_id={{ group_filter_id }}{% endif %}';
@@ -1359,8 +1410,11 @@
                                     distanceHtml += '<span class="group-card-target"> / ' + formatVelosDE(targetDistance) + ' Velos</span>';
                                 }
                                 distanceHtml += '</div>';
+                                if (showKmInEventboard) {
+                                    distanceHtml += '<div class="group-card-km">' + formatKmDE(group.current_event_km) + ' km</div>';
+                                }
                                 
-                                groupCard.innerHTML = 
+                                groupCard.innerHTML =
                                     '<div class="group-card-header">' +
                                     logoHtml +
                                     '<div class="group-card-info">' +
@@ -1376,11 +1430,14 @@
                         
                         // Update statistics
                         if (data.statistics) {
-                            var statItems = document.querySelectorAll('.stat-item-value');
-                            if (statItems.length >= 3) {
-                                statItems[0].textContent = formatVelosDE(data.statistics.total_velos) + ' Velos';
-                                statItems[1].textContent = data.statistics.group_count;
-                                statItems[2].textContent = formatVelosDE(data.statistics.average_velos) + ' Velos';
+                            updateEventboardStat('total_velos', formatVelosDE(data.statistics.total_velos) + ' Velos');
+                            if (showKmInEventboard) {
+                                updateEventboardStat('total_km', formatKmDE(data.statistics.total_km) + ' km');
+                            }
+                            updateEventboardStat('group_count', data.statistics.group_count);
+                            updateEventboardStat('average_velos', formatVelosDE(data.statistics.average_velos) + ' Velos');
+                            if (showKmInEventboard) {
+                                updateEventboardStat('average_km', formatKmDE(data.statistics.average_km) + ' km');
                             }
                         }
                         
@@ -1447,7 +1504,11 @@
                                         leafGroupHtml = '<div class="podium-leaf-group">' +
                                             '<span class="podium-leaf-label">{% trans "Beste Klasse" %}:</span> ' +
                                             '<span class="podium-leaf-name">' + leafGroup.name + '</span> ' +
-                                            '<span class="podium-leaf-distance">(' + formatVelosDE(leafGroup.contribution_velos) + ' Velos)</span>';
+                                            '<span class="podium-leaf-distance">(' + formatVelosDE(leafGroup.contribution_velos) + ' Velos';
+                                        if (showKmInEventboard && leafGroup.contribution_km) {
+                                            leafGroupHtml += ', ' + formatKmDE(leafGroup.contribution_km) + ' km';
+                                        }
+                                        leafGroupHtml += ')</span>';
                                         if (leafGroup.goal_reached_at) {
                                             var leafGoalTime = new Date(leafGroup.goal_reached_at);
                                             var leafGoalTimeStr = leafGoalTime.toLocaleString('de-DE', {
@@ -1470,6 +1531,7 @@
                                         '<div class="podium-group-logo">' + logoHtml + '</div>' +
                                         '<div class="podium-group-name">' + group.name + '</div>' +
                                         '<div class="podium-group-distance">' + formatVelosDE(group.current_velos) + ' Velos</div>' +
+                                        (showKmInEventboard ? '<div class="podium-group-km">' + formatKmDE(group.current_event_km) + ' km</div>' : '') +
                                         leafGroupHtml +
                                         '<div class="podium-rank">{% trans "Platz" %} ' + group.rank + '</div>' +
                                         '</div>';
@@ -1589,6 +1651,13 @@
             } else {
                 console.warn('Eventboard: distance stat not found for event', event.id);
             }
+
+            if (showKmInEventboard) {
+                var kmStat = card.querySelector('[data-stat="distance_km"]');
+                if (kmStat) {
+                    kmStat.textContent = formatKmDE(event.total_km) + ' km';
+                }
+            }
             
             // Aktualisiere Gruppen-Anzahl
             var groupsStat = card.querySelector('[data-stat="groups"]');
@@ -1672,6 +1741,15 @@
                 }
             }
             
+            var kmStatHtml = '';
+            if (showKmInEventboard) {
+                kmStatHtml =
+                    '<div class="stat">' +
+                    '<span class="stat-value event-card-km-stat" data-stat="distance_km">' + formatKmDE(event.total_km) + ' km</span>' +
+                    '<span class="stat-label">{% trans "Kilometer" %}</span>' +
+                    '</div>';
+            }
+
             card.innerHTML = 
                 '<div class="event-card-header">' +
                 '<span class="event-type-badge">' + event.event_type + '</span>' +
@@ -1685,6 +1763,7 @@
                 '<span class="stat-value" data-stat="distance">' + formatVelosDE(event.total_velos) + ' Velos</span>' +
                 '<span class="stat-label">{% trans "Gesamt" %}</span>' +
                 '</div>' +
+                kmStatHtml +
                 '<div class="stat">' +
                 '<span class="stat-value" data-stat="groups">' + event.group_count + '</span>' +
                 '<span class="stat-label">{% trans "Gruppen" %}</span>' +
@@ -1820,6 +1899,11 @@
         function formatVelosDE(value) {
             var n = Math.round(Number(value) || 0);
             return n.toLocaleString('de-DE');
+        }
+
+        function formatKmDE(value, decimals) {
+            var n = Number(value) || 0;
+            return n.toFixed(typeof decimals === 'number' ? decimals : 1).replace('.', ',');
         }
         
         // Debug: Prüfe, ob updateEventSelection definiert ist und rufe sie auf

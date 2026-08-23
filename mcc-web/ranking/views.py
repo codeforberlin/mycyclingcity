@@ -14,11 +14,21 @@ Views for ranking app - handles ranking tables and statistical lists.
 """
 
 from urllib.parse import unquote
-from typing import Any, Optional
+from typing import Any, Optional, List
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
 from api.models import Group
-from api.helpers import build_group_hierarchy, build_events_data, get_external_display_settings_context
+from api.helpers import (
+    build_group_hierarchy,
+    build_group_hierarchy_from_snapshot,
+    build_events_data,
+    get_external_display_settings_context,
+    get_ranking_period_options,
+    get_ranking_snapshot_for_view,
+    snapshot_matches_group_filter,
+    format_ranking_snapshot_label,
+)
 
 
 def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
@@ -35,6 +45,15 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
     target_group_id = request.GET.get('group_id')
     target_group_name = request.GET.get('group_name')
     show_cyclists = request.GET.get('show_cyclists', 'false' if kiosk else 'true').lower() == 'true'
+
+    snapshot_id_raw = request.GET.get('snapshot_id')
+    selected_snapshot_id: Optional[int] = None
+    ranking_snapshot = None
+    if snapshot_id_raw and str(snapshot_id_raw).strip().isdigit():
+        selected_snapshot_id = int(snapshot_id_raw)
+        ranking_snapshot = get_ranking_snapshot_for_view(selected_snapshot_id)
+        if ranking_snapshot is None:
+            selected_snapshot_id = None
     
     # Store original target_group_id for final check
     original_target_group_id = target_group_id
@@ -114,13 +133,22 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
         # If multiple groups selected, load all top groups (target_group = None) and filter
         # If single group selected, load only that group (target_group = target_groups[0])
         target_group = None if len(target_groups) != 1 else target_groups[0]
-        
-        # Build hierarchy using shared helper
-        hierarchy = build_group_hierarchy(
-            target_group=target_group,
-            kiosk=kiosk,
-            show_cyclists=show_cyclists
-        )
+
+        if ranking_snapshot and not snapshot_matches_group_filter(ranking_snapshot, target_groups):
+            hierarchy = []
+        elif ranking_snapshot:
+            hierarchy = build_group_hierarchy_from_snapshot(
+                ranking_snapshot,
+                target_group=target_group,
+                kiosk=kiosk,
+                show_cyclists=show_cyclists,
+            )
+        else:
+            hierarchy = build_group_hierarchy(
+                target_group=target_group,
+                kiosk=kiosk,
+                show_cyclists=show_cyclists,
+            )
         
         # Filter hierarchy to only show selected groups and their descendants
         if len(target_groups) > 1:
@@ -148,15 +176,23 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
         # No groups selected and show_all_groups is True - show all groups
         # Only execute this if is_none_requested is False
         target_group = None
-        hierarchy = build_group_hierarchy(
-            target_group=target_group,
-            kiosk=kiosk,
-            show_cyclists=show_cyclists
-        )
+        if ranking_snapshot:
+            hierarchy = build_group_hierarchy_from_snapshot(
+                ranking_snapshot,
+                target_group=None,
+                kiosk=kiosk,
+                show_cyclists=show_cyclists,
+            )
+        else:
+            hierarchy = build_group_hierarchy(
+                target_group=target_group,
+                kiosk=kiosk,
+                show_cyclists=show_cyclists,
+            )
     
-    # Build events data - but don't show events if group_id='none' is requested
-    if is_none_requested:
-        events_data = []  # Don't show events when no groups are selected
+    # Build events data - archive and empty selection hide events
+    if is_none_requested or ranking_snapshot:
+        events_data = []
     else:
         events_data = build_events_data(kiosk=kiosk)
     
@@ -175,6 +211,29 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
         context_group_id = 'none'  # Preserve 'none' for HTMX requests
     elif selected_group_ids:
         context_group_id = ','.join(selected_group_ids)  # Comma-separated IDs
+
+    top_group_ids_for_periods: Optional[List[int]] = None
+    if target_groups:
+        top_group_ids_for_periods = []
+        for group in target_groups:
+            top = group
+            visited = set()
+            while top.parent and top.id not in visited:
+                visited.add(top.id)
+                top = top.parent
+            top_group_ids_for_periods.append(top.id)
+    ranking_periods = get_ranking_period_options(top_group_ids_for_periods)
+
+    ranking_archive = None
+    if ranking_snapshot:
+        ranking_archive = {
+            'id': ranking_snapshot.id,
+            'label': format_ranking_snapshot_label(ranking_snapshot),
+            'top_group_name': ranking_snapshot.group.name,
+            'period_start': ranking_snapshot.period_start_date,
+            'period_end': ranking_snapshot.period_end_date,
+            'period_type': ranking_snapshot.period_type,
+        }
     
     context = {
         'hierarchy': hierarchy,
@@ -188,6 +247,11 @@ def ranking_page(request: HttpRequest, kiosk: bool = False) -> HttpResponse:
         'refresh_interval': refresh_interval,
         'show_cyclists': show_cyclists,
         'events_data': events_data,
+        'ranking_periods': ranking_periods,
+        'selected_snapshot_id': selected_snapshot_id,
+        'ranking_is_archive': ranking_snapshot is not None,
+        'ranking_archive': ranking_archive,
+        'ranking_base_url': reverse('ranking:ranking_page'),
     }
     context.update(get_external_display_settings_context())
     

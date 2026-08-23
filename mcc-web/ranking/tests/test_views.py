@@ -94,3 +94,37 @@ class TestRankingViews:
         response = client.get('/de/ranking/?group_id=none')
         
         assert response.status_code == 200
+
+    def test_ranking_page_with_snapshot_id(self):
+        """Test ranking page shows archived hierarchy from year-end snapshot."""
+        from datetime import timedelta
+        from decimal import Decimal
+        from django.utils import timezone
+        from api.models import YearEndSnapshot, YearEndSnapshotDetail
+
+        top = GroupFactory(name='Hist School', parent=None)
+        leaf = GroupFactory(name='Hist Class', parent=top)
+        now = timezone.now()
+        snapshot = YearEndSnapshot.objects.create(
+            group=top,
+            snapshot_date=now,
+            period_start_date=now - timedelta(days=180),
+            period_end_date=now,
+            period_type='school_year',
+            is_undone=False,
+        )
+        YearEndSnapshotDetail.objects.create(
+            snapshot=snapshot,
+            group=leaf,
+            distance_total=Decimal('10.00000'),
+            velos_total=50,
+        )
+
+        client = Client()
+        response = client.get(f'/de/ranking/?snapshot_id={snapshot.id}&refresh_table=true')
+
+        assert response.status_code == 200
+        assert response.context['ranking_is_archive'] is True
+        content = response.content.decode()
+        assert 'Hist Class' in content
+        assert 'Archiv' in content

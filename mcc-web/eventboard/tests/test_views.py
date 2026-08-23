@@ -70,6 +70,82 @@ class TestEventboardViews:
         assert response.status_code == 200
         assert 'event' in response.context
         assert response.context['event'].id == event.id
+
+    def test_eventboard_page_hides_km_by_default(self):
+        """Eventboard km lines are hidden unless admin enables them."""
+        from api.models import ExternalDisplaySettings
+
+        event = EventFactory()
+        group = GroupFactory()
+        GroupEventStatusFactory(
+            event=event,
+            group=group,
+            current_velos=100,
+            current_event_km=Decimal('12.50000'),
+        )
+
+        settings_obj = ExternalDisplaySettings.get_settings()
+        settings_obj.show_km_in_eventboard = False
+        settings_obj.save()
+
+        client = Client()
+        response = client.get(f'/de/eventboard/?event_id={event.id}')
+
+        assert response.status_code == 200
+        assert response.context['show_km_in_eventboard'] is False
+        content = response.content.decode()
+        assert 'data-stat="total_km"' not in content
+        assert '12,5 km' not in content
+        assert 'Kilometer gesamt' not in content
+
+    def test_eventboard_page_shows_km_when_enabled(self):
+        from api.models import ExternalDisplaySettings
+
+        event = EventFactory()
+        group = GroupFactory()
+        GroupEventStatusFactory(
+            event=event,
+            group=group,
+            current_velos=100,
+            current_event_km=Decimal('12.50000'),
+        )
+
+        settings_obj = ExternalDisplaySettings.get_settings()
+        settings_obj.show_km_in_eventboard = True
+        settings_obj.save()
+
+        client = Client()
+        response = client.get(f'/de/eventboard/?event_id={event.id}')
+
+        assert response.status_code == 200
+        assert response.context['show_km_in_eventboard'] is True
+        content = response.content.decode()
+        assert 'data-stat="total_km"' in content
+        assert 'Kilometer gesamt' in content
+
+    def test_eventboard_selection_shows_km_when_enabled(self):
+        from api.models import ExternalDisplaySettings
+
+        event = EventFactory()
+        group = GroupFactory()
+        GroupEventStatusFactory(
+            event=event,
+            group=group,
+            current_velos=100,
+            current_event_km=Decimal('12.50000'),
+        )
+
+        settings_obj = ExternalDisplaySettings.get_settings()
+        settings_obj.show_km_in_eventboard = True
+        settings_obj.save()
+
+        client = Client()
+        response = client.get('/de/eventboard/')
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert 'data-stat="distance_km"' in content
+        assert '12,5 km' in content or '12.5 km' in content
     
     def test_eventboard_ticker_no_active_cyclists(self):
         """Test eventboard ticker with no active cyclists."""
@@ -435,8 +511,9 @@ class TestEventboardUtils:
         # Refresh from database
         event_status.refresh_from_db()
         
-        # Check that kilometers were added
+        # Check that Velos and real km were added
         assert event_status.current_velos == 1500
+        assert float(event_status.current_event_km) == pytest.approx(5.0)
     
     def test_update_group_hierarchy_progress_skips_inactive_event(self):
         """Test that update_group_hierarchy_progress skips inactive events."""

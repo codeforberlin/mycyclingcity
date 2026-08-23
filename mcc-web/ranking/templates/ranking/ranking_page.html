@@ -410,8 +410,8 @@
     <div class="rk-main-container">
         <div class="rk-table-scroller">
             <div id="rk-dynamic-table-content" class="rk-dynamic-table-content"
-                 hx-get="{% url 'ranking:ranking_page' %}{% if group_id %}?group_id={{ group_id|urlencode }}&refresh_table=true{% elif group_name %}?group_name={{ group_name|urlencode }}&refresh_table=true{% else %}?refresh_table=true{% endif %}"
-                 hx-trigger="{% if is_kiosk %}updateTable{% else %}load, every 10s{% endif %}"
+                 hx-get="{% url 'ranking:ranking_page' %}?refresh_table=true{% if group_id %}&group_id={{ group_id|urlencode }}{% elif group_name %}&group_name={{ group_name|urlencode }}{% endif %}{% if selected_snapshot_id %}&snapshot_id={{ selected_snapshot_id }}{% endif %}"
+                 hx-trigger="{% if ranking_is_archive %}load{% elif is_kiosk %}updateTable{% else %}load, every 10s{% endif %}"
                  hx-swap="innerHTML"
                  data-base-url="{% url 'ranking:ranking_page' %}"
                  data-group-id="{% if group_id %}{{ group_id|urlencode }}{% endif %}"

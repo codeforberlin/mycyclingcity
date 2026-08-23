@@ -213,6 +213,42 @@ class AdminReportTest(RegressionTestBase):
         )
         self.client.force_login(self.admin_user)
     
+    def test_admin_report_group_km_from_ledger(self):
+        """Verify Admin Report group km uses Group.distance_total (ranking source)."""
+        today = timezone.now().date()
+        start_date = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+
+        url = reverse('admin:api_analytics_data_api')
+        response = self.client.get(url, {
+            'start_date': start_date,
+            'end_date': end_date,
+            'report_type': 'aggregated',
+            'metric_mode': 'km',
+            'use_group_filter': 'false',
+            'use_cyclist_filter': 'false',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        aggregated = response.json().get('aggregated', {})
+        total_distance = aggregated.get('total_distance', 0)
+
+        from api.helpers import group_km_for_ranking_row
+
+        top_level_groups = Group.objects.filter(is_visible=True, parent__isnull=True)
+        expected_total = sum(group_km_for_ranking_row(group) for group in top_level_groups)
+
+        self.assertAlmostEqual(
+            float(total_distance),
+            float(expected_total),
+            places=1,
+            msg=(
+                f"Admin Report group km ({total_distance}) should match ledger sum "
+                f"({expected_total})"
+            ),
+        )
+        self.assertEqual(aggregated.get('group_km_source'), 'ledger')
+
     def test_admin_report_total_distance(self):
         """Verify Admin Report total_distance is calculated correctly from HourlyMetric."""
         from datetime import datetime
