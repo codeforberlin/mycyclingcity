@@ -82,6 +82,11 @@ LOG_FILES = {
         'display_name': _('Paper Server Logs'),
         'description': _('Stdout/stderr from the Paper (mc-srv) process'),
     },
+    'luanti_server': {
+        'name': 'luanti-server.log',
+        'display_name': _('Luanti Server Logs'),
+        'description': _('Stdout/stderr from the Luanti dedicated server process'),
+    },
     'django': {
         'name': 'django.log',
         'display_name': _('Django Framework Logs'),

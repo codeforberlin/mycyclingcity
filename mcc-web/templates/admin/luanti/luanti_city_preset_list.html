@@ -1,0 +1,161 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+<style>
+  .preset-admin { max-width: 1100px; margin: 0 auto; padding: 12px; }
+  .preset-toolbar { margin-bottom: 15px; }
+  .preset-toolbar a, .preset-toolbar button { margin-right: 8px; }
+  table.preset-table { width: 100%; border-collapse: collapse; background: white; }
+  table.preset-table th, table.preset-table td {
+    padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; font-size: 13px;
+  }
+  .badge-system { background: #6c757d; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+  .status-ok { color: #28a745; }
+  .status-fail { color: #dc3545; }
+  .filter-form { background: white; padding: 12px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ddd; }
+  .filter-form label { font-weight: bold; margin-right: 6px; }
+  .filter-form select, .filter-form input { margin-right: 12px; }
+  .preset-desc { color: #666; font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:luanti_city' %}">{% trans 'Luanti Stadtsteuerung' %}</a>
+  &rsaquo; {% trans 'Stadt-Presets' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="preset-admin luanti-admin">
+  <h1>{{ title }}</h1>
+  <p class="muted">{% trans "Bridge-Schritte (Zeit, Wetter, Chat) — in der DB gespeichert und hier editierbar, nicht im Code verdrahtet." %}</p>
+
+  <div class="preset-toolbar btn-row">
+    {% if can_add %}
+    <a class="button primary" href="{% url 'admin:luanti_preset_add' %}">{% trans "+ Neues Preset" %}</a>
+    {% endif %}
+    <a class="button" href="{% url 'admin:luanti_city' %}">{% trans "Zurück zur Stadtsteuerung" %}</a>
+    {% if can_export %}
+    <a class="button" href="{% url 'admin:luanti_preset_export' %}">{% trans "JSON exportieren" %}</a>
+    <form method="post" action="{% url 'admin:luanti_preset_import' %}" enctype="multipart/form-data" style="display:inline;">
+      {% csrf_token %}
+      <input type="file" name="import_file" accept=".json,application/json" required>
+      <button type="submit">{% trans "JSON importieren" %}</button>
+    </form>
+    <form method="post" action="{% url 'admin:luanti_preset_ensure_seeds' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">{% trans "Fehlende Seeds anlegen" %}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <form method="get" class="filter-form">
+    <label for="filter_category">{% trans "Kategorie" %}</label>
+    <select id="filter_category" name="category">
+      <option value="">{% trans "Alle" %}</option>
+      {% for value, label in category_choices %}
+      <option value="{{ value }}" {% if filter_category == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="filter_enabled">{% trans "Status" %}</label>
+    <select id="filter_enabled" name="enabled">
+      <option value="">{% trans "Alle" %}</option>
+      <option value="1" {% if filter_enabled == '1' %}selected{% endif %}>{% trans "Aktiv" %}</option>
+      <option value="0" {% if filter_enabled == '0' %}selected{% endif %}>{% trans "Inaktiv" %}</option>
+    </select>
+    <label for="filter_q">{% trans "Suche" %}</label>
+    <input type="search" id="filter_q" name="q" value="{{ filter_query }}" size="30">
+    <button type="submit">{% trans "Filtern" %}</button>
+  </form>
+
+  <table class="preset-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Kategorie" %}</th>
+        <th>{% trans "Schritte" %}</th>
+        <th>{% trans "Zuletzt" %}</th>
+        <th>{% trans "Aktionen" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for preset in presets %}
+      <tr>
+        <td>
+          <strong>{{ preset.name }}</strong>
+          {% if preset.is_system %}<span class="badge-system" title="{% trans 'System-Preset' %}">🔒</span>{% endif %}
+          <div class="preset-desc"><code>{{ preset.slug }}</code>
+            {% if preset.description %} — {{ preset.description|truncatechars:80 }}{% endif %}
+          </div>
+        </td>
+        <td>{{ preset.get_category_display }}</td>
+        <td>{{ preset.step_count }}</td>
+        <td>
+          {% if preset.last_run_at %}
+            {{ preset.last_run_at|date:"d.m.Y H:i" }}
+            {% if preset.last_run_success %}<span class="status-ok">✓</span>{% else %}<span class="status-fail">✗</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="btn-row">
+          {% if preset.enabled %}
+          <button type="button" class="primary small preset-run-btn"
+                  data-preset-id="{{ preset.id }}"
+                  data-preset-name="{{ preset.name|escapejs }}"
+                  data-requires-confirm="{{ preset.requires_confirmation|yesno:'1,0' }}">
+            {% trans "Ausführen" %}
+          </button>
+          {% endif %}
+          <a class="button" href="{% url 'admin:luanti_preset_edit' preset.id %}">{% trans "Bearbeiten" %}</a>
+          {% if can_add %}
+          <form method="post" action="{% url 'admin:luanti_preset_duplicate' preset.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit">{% trans "Duplizieren" %}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5"><em>{% trans "Keine Presets gefunden." %}</em></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="preset-output" style="display:none; background:#1e1e1e; color:#d4d4d4; padding:15px; margin-top:15px; font-family:monospace; font-size:12px; white-space:pre-wrap;"></div>
+</div>
+
+<script>
+document.querySelectorAll('.preset-run-btn').forEach(function(button) {
+  button.addEventListener('click', function() {
+    var presetId = button.dataset.presetId;
+    var presetName = button.dataset.presetName;
+    if (button.dataset.requiresConfirm === '1' && !confirm('{% trans "Preset ausführen" %}: „' + presetName + '“?')) {
+      return;
+    }
+    var outputBox = document.getElementById('preset-output');
+    button.disabled = true;
+    fetch('{% url "admin:luanti_run_preset" 0 %}'.replace('/0/', '/' + presetId + '/'), {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+    .then(function(result) {
+      button.disabled = false;
+      if (outputBox) {
+        outputBox.style.display = 'block';
+        outputBox.textContent = result.data.output || result.data.message || result.data.error || '';
+        outputBox.style.color = result.ok ? '#4ec9b0' : '#f48771';
+      }
+      if (!result.ok) alert(result.data.error || '{% trans "Fehler" %}');
+    })
+    .catch(function(err) { button.disabled = false; alert(err.message); });
+  });
+});
+</script>
+{% endblock %}

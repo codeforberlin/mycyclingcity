@@ -138,6 +138,7 @@ INSTALLED_APPS = [
     'eventboard',  # Must be before mgmt so Event models are available when mgmt/admin.py imports them
     'mgmt',
     'minecraft',
+    'luanti',
     'game',
     'map',
     'ranking',
@@ -637,6 +638,40 @@ MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS = config('MCC_MINECRAFT_WS_ALLOWED_SERVER_ID
 MCC_MINECRAFT_WS_BIND_HOST = config('MCC_MINECRAFT_WS_BIND_HOST', default='0.0.0.0')
 MCC_MINECRAFT_WS_PORT = config('MCC_MINECRAFT_WS_PORT', default=8002, cast=int)
 MCC_MINECRAFT_WS_PUBLIC_HOST = config('MCC_MINECRAFT_WS_PUBLIC_HOST', default='')
+
+# Luanti bridge (HTTP + optional WebSocket)
+MCC_LUANTI_WS_ENABLED = config('MCC_LUANTI_WS_ENABLED', default=False, cast=bool)
+MCC_LUANTI_HTTP_SHARED_SECRET = config('MCC_LUANTI_HTTP_SHARED_SECRET', default='SECRET')
+MCC_LUANTI_ALLOWED_SERVER_IDS = config('MCC_LUANTI_ALLOWED_SERVER_IDS', default='', cast=Csv())
+MCC_LUANTI_DEFAULT_SESSION_MINUTES = config('MCC_LUANTI_DEFAULT_SESSION_MINUTES', default=45, cast=int)
+MCC_LUANTI_CLIENT_ADDRESS = config('MCC_LUANTI_CLIENT_ADDRESS', default='127.0.0.1')
+MCC_LUANTI_CLIENT_PORT = config('MCC_LUANTI_CLIENT_PORT', default=30000, cast=int)
+MCC_LUANTI_SERVER_DIR = config(
+    'MCC_LUANTI_SERVER_DIR',
+    default='/data/games/mcc/luanti',
+)
+MCC_LUANTI_SERVER_PIDFILE = config(
+    'MCC_LUANTI_SERVER_PIDFILE',
+    default=str(DATA_DIR / 'tmp' / 'luanti-server.pid'),
+)
+MCC_LUANTI_SERVER_LOG = config(
+    'MCC_LUANTI_SERVER_LOG',
+    default=str(DATA_DIR / 'logs' / 'luanti-server.log'),
+)
+MCC_LUANTI_WORLD = config('MCC_LUANTI_WORLD', default='world')
+MCC_LUANTI_CONFIG = config(
+    'MCC_LUANTI_CONFIG',
+    default=str(Path(MCC_LUANTI_SERVER_DIR) / 'minetest.conf'),
+)
+MCC_LUANTI_BIN_NAME = config('MCC_LUANTI_BIN_NAME', default='luantiserver')
+MCC_LUANTI_STOP_WAIT = config('MCC_LUANTI_STOP_WAIT', default=30, cast=int)
+# On session start, push this city preset (DB-editable; default Tag/daytime world state).
+MCC_LUANTI_SESSION_BOOTSTRAP_ENABLED = config(
+    'MCC_LUANTI_SESSION_BOOTSTRAP_ENABLED', default=True, cast=bool
+)
+MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG = config(
+    'MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG', default='session-bootstrap'
+)
 MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')
 MCC_MINECRAFT_ESGUI_SHOPS_DIR = config('MCC_MINECRAFT_ESGUI_SHOPS_DIR', default='')
@@ -767,6 +802,14 @@ LOGGING = {
             'formatter': 'verbose',
             'level': 'DEBUG',
         },
+        'luanti_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'luanti.log'),
+            'maxBytes': 50 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
         'game_file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'game.log'),
@@ -846,6 +889,11 @@ LOGGING = {
         },
         'minecraft': {
             'handlers': ['minecraft_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'luanti': {
+            'handlers': ['luanti_file'],
             'level': 'INFO',
             'propagate': False,
         },

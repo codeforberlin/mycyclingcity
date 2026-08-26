@@ -63,6 +63,20 @@ def _get_top_parent_group(group):
         current = current.parent
     return current
 
+
+def _managed_top_groups_for_user(user):
+    """
+    Unique TOP groups assigned to a user via Group.managers / managed_groups.
+    Non-TOP assignments are resolved to their root.
+    """
+    tops = {}
+    for group in user.managed_groups.all():
+        top = _get_top_parent_group(group)
+        if top is not None:
+            tops[top.pk] = top
+    return sorted(tops.values(), key=lambda g: (g.name or "").lower())
+
+
 def get_operator_managed_group_ids(user):
     """
     Gibt alle Gruppen-IDs zurück, die der Operator verwaltet (inkl. aller Untergruppen).
@@ -1884,6 +1898,67 @@ class DeviceConfigurationReportInline(admin.TabularInline):
     can_delete = True
 
 
+# --- AUTH USER ADMIN (TOP-Gruppen display) ---
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+if admin.site.is_registered(User):
+    admin.site.unregister(User)
+
+
+@admin.register(User)
+class MCCUserAdmin(BaseUserAdmin):
+    """User admin with assigned TOP groups (via api.Group.managers)."""
+
+    list_display = BaseUserAdmin.list_display + ("managed_top_groups_display",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related("managed_groups")
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj is not None and "managed_top_groups_display" not in readonly:
+            readonly.append("managed_top_groups_display")
+        return readonly
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = list(super().get_fieldsets(request, obj))
+        if obj is not None:
+            fieldsets.append(
+                (
+                    _("TOP-Gruppen"),
+                    {
+                        "fields": ("managed_top_groups_display",),
+                        "description": _(
+                            "TOP-Gruppen, denen dieser Benutzer als Manager zugeordnet ist "
+                            "(Zuweisung unter Gruppen → Manager)."
+                        ),
+                    },
+                )
+            )
+        return fieldsets
+
+    @admin.display(description=_("TOP-Gruppen"))
+    def managed_top_groups_display(self, obj):
+        if not obj or not obj.pk:
+            return "—"
+        tops = _managed_top_groups_for_user(obj)
+        if not tops:
+            return "—"
+        if len(tops) == 1:
+            top = tops[0]
+            url = reverse("admin:api_group_change", args=[top.pk])
+            return format_html('<a href="{}">{}</a>', url, top.name)
+        return format_html_join(
+            ", ",
+            '<a href="{}">{}</a>',
+            (
+                (reverse("admin:api_group_change", args=[top.pk]), top.name)
+                for top in tops
+            ),
+        )
+
+
 # --- MCC CORE API & MODELS ADMIN REGISTRATIONS ---
 # Order: 1. GroupType, 2. Group, 3. Cyclist, 4. TravelTrack, 5. Milestone, 6. Event, 7. CyclistDeviceCurrentMileage, 8. GroupTravelStatus, 9. TravelHistory, 10. EventHistory, 11. HourlyMetric
 
@@ -1947,7 +2022,7 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
                            'um den Hex-Code zu ermitteln.'))
         }),
         (_('Statistiken'), {
-            'fields': ('distance_total', 'velos_total', 'velos_spendable', 'mc_username')
+            'fields': ('distance_total', 'velos_total', 'velos_spendable', 'mc_username', 'luanti_username')
         }),
         (_('Verwaltung'), {
             'fields': ('managers', 'comments')
@@ -7191,6 +7266,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
     app_dict = self._build_app_dict(request, app_label)
 
     from mgmt.velos_redeem_views import user_can_redeem_velos
+    from api.velo_consolidate_views import user_can_transfer_group_velos
 
     velos_redeem_menu = None
     if user_can_redeem_velos(request.user):
@@ -7210,6 +7286,25 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
             'add_url': None,
             'view_only': True,
         }
+
+    velos_consolidate_menu = None
+    if user_can_transfer_group_velos(request.user):
+        if 'api' not in app_dict:
+            app_dict['api'] = {
+                'name': _('Gruppen & Radler'),
+                'app_label': 'api',
+                'app_url': reverse('admin:api_group_velo_consolidate'),
+                'has_module_perms': True,
+                'models': [],
+            }
+        velos_consolidate_menu = {
+            'name': _('Velo-Konsolidierung'),
+            'object_name': 'Group Velo Consolidate',
+            'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+            'admin_url': reverse('admin:api_group_velo_consolidate'),
+            'add_url': None,
+            'view_only': True,
+        }
     
     # Extract Travel-related models from api app to create separate "Reisen" menu
     travel_models = []
@@ -7222,7 +7317,11 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         app_dict['api']['models'] = [m for m in api_models if m.get('object_name') not in travel_model_names]
 
     if 'api' in app_dict:
-        trailing = [velos_redeem_menu] if velos_redeem_menu else []
+        trailing = []
+        if velos_redeem_menu:
+            trailing.append(velos_redeem_menu)
+        if velos_consolidate_menu:
+            trailing.append(velos_consolidate_menu)
         app_dict['api']['models'] = _order_models_after_cyclist(
             app_dict['api']['models'],
             trailing_custom=trailing,
@@ -7284,6 +7383,16 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_manage_player_sessions,
         user_can_run_arena_sim,
     )
+    from luanti.services.permissions import (
+        user_can_access_luanti_arena,
+        user_can_access_luanti_city,
+        user_can_access_luanti_control,
+        user_can_access_luanti_shop,
+        user_can_manage_luanti_accounts,
+        user_can_manage_luanti_sessions,
+        user_can_manage_luanti_stations,
+    )
+    from luanti.services.city_preset_permissions import user_can_manage_city_presets
 
     # Custom perms (e.g. manage_player_sessions) do not put 'minecraft' into
     # Django's default app_dict — inject an empty app so operator tiles appear.
@@ -7667,6 +7776,118 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
 
         if minecraft_management_models or remaining_models:
             app_dict['minecraft']['models'] = minecraft_management_models + remaining_models
+
+    needs_luanti_menu = (
+        user_can_access_luanti_control(request.user)
+        or user_can_access_luanti_city(request.user)
+        or user_can_access_luanti_shop(request.user)
+        or user_can_access_luanti_arena(request.user)
+        or user_can_manage_luanti_accounts(request.user)
+        or user_can_manage_luanti_sessions(request.user)
+        or user_can_manage_luanti_stations(request.user)
+        or user_can_manage_city_presets(request.user)
+        or request.user.has_perm('luanti.view_luantiaccount')
+    )
+    if 'luanti' not in app_dict and needs_luanti_menu:
+        app_dict['luanti'] = {
+            'name': _('Luanti'),
+            'app_label': 'luanti',
+            'app_url': '/admin/luanti/',
+            'has_module_perms': True,
+            'models': [],
+        }
+    if 'luanti' in app_dict:
+        luanti_tiles = []
+        if user_can_access_luanti_control(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Control'),
+                    'object_name': 'Luanti Control',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_control'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_luanti_accounts(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Accounts'),
+                    'object_name': 'Luanti Accounts',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_accounts'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_luanti_sessions(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Sessions'),
+                    'object_name': 'Luanti Sessions',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_sessions'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_access_luanti_shop(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Shop'),
+                    'object_name': 'Luanti Shop Ops',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_shop_ops'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_access_luanti_city(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Stadtsteuerung'),
+                    'object_name': 'Luanti City',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_city'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_city_presets(request.user) or user_can_access_luanti_city(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Stadt-Presets'),
+                    'object_name': 'Luanti City Presets',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_preset_list'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_access_luanti_arena(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Arena / Loren'),
+                    'object_name': 'Luanti Arena',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_arena'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_luanti_stations(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Stationen'),
+                    'object_name': 'Luanti Stations',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_stations'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        default_luanti = list(app_dict['luanti'].get('models') or [])
+        app_dict['luanti']['models'] = luanti_tiles + default_luanti
     
     app_list = list(app_dict.values())
     
@@ -7782,6 +8003,8 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         'Ranking': 11,
         # Minecraft Verwaltung and Mgmt at the end
         'Minecraft Verwaltung': 98,  # German
+        'Minecraft': 97,
+        'Luanti': 96,
         'Mgmt': 99,
         # Authentication and Authorization at the very end (under Mgmt)
         'Authentication and Authorization': 100,  # English
@@ -8221,7 +8444,29 @@ from minecraft.waitlist_views import (
     minecraft_waitlist_display,
     minecraft_waitlist_manage,
 )
+from luanti.admin_views import (
+    luanti_accounts,
+    luanti_action,
+    luanti_arena,
+    luanti_city,
+    luanti_control,
+    luanti_sessions,
+    luanti_shop_ops,
+    luanti_stations,
+)
+from luanti.preset_views import (
+    luanti_preset_add,
+    luanti_preset_delete,
+    luanti_preset_duplicate,
+    luanti_preset_edit,
+    luanti_preset_ensure_seeds,
+    luanti_preset_export,
+    luanti_preset_import,
+    luanti_preset_list,
+    luanti_run_preset,
+)
 from mgmt.velos_redeem_views import velos_redeem_lookup_api, velos_redeem_view
+from api.velo_consolidate_views import group_velo_consolidate_view
 
 _original_get_urls = admin.site.get_urls
 def get_urls_with_custom_views():
@@ -8233,6 +8478,11 @@ def get_urls_with_custom_views():
             'api/velos-redeem/lookup.json',
             admin.site.admin_view(velos_redeem_lookup_api),
             name='api_velos_redeem_lookup',
+        ),
+        path(
+            'api/velo-consolidate/',
+            admin.site.admin_view(group_velo_consolidate_view),
+            name='api_group_velo_consolidate',
         ),
         # Analytics URLs
         path('analytics/', admin.site.admin_view(analytics_dashboard), name='api_analytics_dashboard'),
@@ -8258,6 +8508,56 @@ def get_urls_with_custom_views():
         path('maintenance/action/<str:action>/', admin.site.admin_view(maintenance_action), name='mgmt_maintenance_action'),
         # Minecraft control URLs
         path('minecraft/', admin.site.admin_view(minecraft_control), name='minecraft_control'),
+        # Luanti control URLs
+        path('luanti/', admin.site.admin_view(luanti_control), name='luanti_control'),
+        path(
+            'luanti/action/<str:action>/',
+            admin.site.admin_view(luanti_action),
+            name='luanti_action',
+        ),
+        path('luanti/accounts/', admin.site.admin_view(luanti_accounts), name='luanti_accounts'),
+        path('luanti/sessions/', admin.site.admin_view(luanti_sessions), name='luanti_sessions'),
+        path('luanti/shop-ops/', admin.site.admin_view(luanti_shop_ops), name='luanti_shop_ops'),
+        path('luanti/city/', admin.site.admin_view(luanti_city), name='luanti_city'),
+        path('luanti/presets/', admin.site.admin_view(luanti_preset_list), name='luanti_preset_list'),
+        path('luanti/presets/add/', admin.site.admin_view(luanti_preset_add), name='luanti_preset_add'),
+        path(
+            'luanti/presets/<int:preset_id>/edit/',
+            admin.site.admin_view(luanti_preset_edit),
+            name='luanti_preset_edit',
+        ),
+        path(
+            'luanti/presets/<int:preset_id>/duplicate/',
+            admin.site.admin_view(luanti_preset_duplicate),
+            name='luanti_preset_duplicate',
+        ),
+        path(
+            'luanti/presets/<int:preset_id>/delete/',
+            admin.site.admin_view(luanti_preset_delete),
+            name='luanti_preset_delete',
+        ),
+        path(
+            'luanti/presets/export/',
+            admin.site.admin_view(luanti_preset_export),
+            name='luanti_preset_export',
+        ),
+        path(
+            'luanti/presets/import/',
+            admin.site.admin_view(luanti_preset_import),
+            name='luanti_preset_import',
+        ),
+        path(
+            'luanti/presets/ensure-seeds/',
+            admin.site.admin_view(luanti_preset_ensure_seeds),
+            name='luanti_preset_ensure_seeds',
+        ),
+        path(
+            'luanti/preset/<int:preset_id>/run/',
+            admin.site.admin_view(luanti_run_preset),
+            name='luanti_run_preset',
+        ),
+        path('luanti/arena/', admin.site.admin_view(luanti_arena), name='luanti_arena'),
+        path('luanti/stations/', admin.site.admin_view(luanti_stations), name='luanti_stations'),
         path(
             'minecraft/auth-failover/',
             admin.site.admin_view(minecraft_auth_failover),

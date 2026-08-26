@@ -1,0 +1,130 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <div class="status-box {% if server_status.running %}online{% else %}offline{% endif %}">
+    {% if server_status.running %}
+      <strong>✓ {% trans "Luanti-Server läuft" %}</strong>
+    {% else %}
+      <strong>✗ {% trans "Luanti-Server gestoppt" %}</strong>
+    {% endif %}
+    {% if server_status.output %}
+      <br><small>{{ server_status.output|linebreaksbr }}</small>
+    {% endif %}
+    {% if server_status.error and not server_status.running %}
+      <br><small>{% trans "Hinweis" %}: {{ server_status.error }}</small>
+    {% endif %}
+    <br><small>
+      {% trans "Welt" %}: <code>{{ server_status.world }}</code>
+      · <a href="{% url 'admin:mgmt_log_file_viewer' luanti_log_key %}?tail=true">{% trans "Log anzeigen" %}</a>
+    </small>
+  </div>
+
+  <div class="btn-row" style="margin-bottom:16px;">
+    <button type="button" class="primary" onclick="performLuantiAction('server-start', this)">{% trans "Server starten" %}</button>
+    <button type="button" class="danger" onclick="performLuantiAction('server-stop', this)">{% trans "Server stoppen" %}</button>
+    <button type="button" class="info" onclick="performLuantiAction('server-restart', this)">{% trans "Server neu starten" %}</button>
+    <button type="button" onclick="performLuantiAction('server-status', this)">{% trans "Status aktualisieren" %}</button>
+  </div>
+  <p class="muted" style="margin-top:-8px; margin-bottom:16px;">
+    {% trans "Stop/Neustart sichert zuerst Inventare und beendet offene Sessions (kann bis ca. 30 s dauern)." %}
+  </p>
+  <div id="luanti-output" class="card" style="display:none; margin-bottom:16px;"></div>
+
+  <div class="status-box {% if bridge_online %}online{% else %}offline{% endif %}">
+    {% if bridge_online %}
+      {% trans "Bridge online" %}: {{ connected_ids|join:", " }}
+    {% else %}
+      {% trans "Bridge offline – kein Heartbeat/WebSocket." %}
+    {% endif %}
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>{% trans "Konfiguration" %}</h3>
+      <p class="muted">
+        {% trans "Standard-Sessiondauer" %}: {{ config.default_session_minutes }} {% trans "Min." %}
+      </p>
+      <p class="muted">
+        {% trans "Zeit hinzufügen" %}: {{ config.session_add_minutes }} {% trans "Min." %}
+      </p>
+      <p class="muted">
+        {% trans "Server-Verzeichnis" %}: <code>{{ server_status.dir }}</code>
+      </p>
+    </div>
+    <div class="card">
+      <h3>{% trans "Verbindungen" %}</h3>
+      {% if bridges %}
+        <ul>
+          {% for b in bridges %}
+            <li>
+              {{ b.server_id }} —
+              {% if b.is_connected %}{% trans "verbunden" %}{% else %}{% trans "getrennt" %}{% endif %}
+              {% if b.last_seen_at %}<span class="muted">({{ b.last_seen_at }})</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">{% trans "Noch keine Bridge gemeldet." %}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+
+async function performLuantiAction(action, btn) {
+  if (action === 'server-stop' || action === 'server-restart') {
+    const msg = action === 'server-stop'
+      ? '{% trans "Server stoppen? Offene Sessions werden beendet und Inventare gesichert." %}'
+      : '{% trans "Server neu starten? Offene Sessions werden beendet und Inventare gesichert." %}';
+    if (!window.confirm(msg)) {
+      return;
+    }
+  }
+  const out = document.getElementById('luanti-output');
+  const original = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+  }
+  out.style.display = 'block';
+  out.textContent = '{% trans "Bitte warten…" %}';
+  try {
+    const resp = await fetch(`{% url 'admin:luanti_action' 'ACTION_PLACEHOLDER' %}`.replace('ACTION_PLACEHOLDER', action), {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Accept': 'application/json',
+      },
+    });
+    const data = await resp.json();
+    if (data.success) {
+      out.textContent = data.message || 'OK';
+      window.setTimeout(() => window.location.reload(), 800);
+    } else {
+      out.textContent = data.error || 'Error';
+    }
+  } catch (err) {
+    out.textContent = String(err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+}
+</script>
+{% endblock %}

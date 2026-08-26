@@ -1,0 +1,143 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+<style>
+  .preset-form { max-width: 960px; margin: 0 auto; padding: 12px; }
+  .preset-form-panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
+  .preset-form label { display: inline-block; min-width: 200px; font-weight: bold; vertical-align: top; }
+  .preset-form .field-row { margin-bottom: 12px; }
+  .preset-form textarea { width: 100%; max-width: 640px; font-family: Consolas, Monaco, monospace; font-size: 13px; }
+  .preset-form input[type=text], .preset-form input[type=number], .preset-form select { min-width: 280px; }
+  .warning-box { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 10px 0; border-radius: 4px; }
+  .help { color: #666; font-size: 12px; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:luanti_city' %}">{% trans 'Luanti Stadtsteuerung' %}</a>
+  &rsaquo; <a href="{% url 'admin:luanti_preset_list' %}">{% trans 'Stadt-Presets' %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="preset-form luanti-admin">
+  <h1>
+    {{ title }}
+    {% if preset and preset.is_system %}
+    <span style="font-size:14px; color:#666;">🔒 {% trans "System-Preset" %}</span>
+    {% endif %}
+  </h1>
+
+  {% if command_warnings %}
+  <div class="warning-box">
+    <strong>{% trans "Hinweise" %}:</strong>
+    <ul>{% for warning in command_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" class="preset-form-panel">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+
+    <div class="field-row">
+      <label for="name">{% trans "Name" %} *</label>
+      <input type="text" id="name" name="name" maxlength="64" required
+             value="{% if form_data %}{{ form_data.name }}{% elif preset %}{{ preset.name }}{% endif %}">
+    </div>
+    <div class="field-row">
+      <label for="slug">{% trans "Slug" %}</label>
+      {% if can_edit_slug %}
+      <input type="text" id="slug" name="slug" maxlength="64"
+             value="{% if form_data %}{{ form_data.slug }}{% elif preset %}{{ preset.slug }}{% endif %}">
+      {% else %}
+      <code>{{ preset.slug }}</code>
+      <input type="hidden" name="slug" value="{{ preset.slug }}">
+      {% endif %}
+    </div>
+    <div class="field-row">
+      <label for="category">{% trans "Kategorie" %}</label>
+      <select id="category" name="category">
+        {% for value, label in category_choices %}
+        <option value="{{ value }}"
+          {% if form_data and form_data.category == value %}selected
+          {% elif preset and preset.category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field-row">
+      <label for="sort_order">{% trans "Sortierung" %}</label>
+      <input type="number" id="sort_order" name="sort_order" min="0"
+             value="{% if form_data %}{{ form_data.sort_order }}{% elif preset %}{{ preset.sort_order }}{% else %}0{% endif %}">
+    </div>
+    <div class="field-row">
+      <label for="enabled">{% trans "Aktiv" %}</label>
+      <input type="checkbox" id="enabled" name="enabled"
+             {% if form_data and form_data.enabled == 'on' %}checked
+             {% elif not form_data and preset and preset.enabled %}checked
+             {% elif not form_data and not preset %}checked{% endif %}>
+    </div>
+    <div class="field-row">
+      <label for="description">{% trans "Beschreibung" %}</label>
+      <textarea id="description" name="description" rows="3">{% if form_data %}{{ form_data.description }}{% elif preset %}{{ preset.description }}{% endif %}</textarea>
+    </div>
+
+    <div class="field-row">
+      <label for="steps">{% trans "Bridge-Schritte" %} *</label>
+      <textarea id="steps" name="steps" rows="16" required>{{ steps_text }}</textarea>
+      <div class="help">
+        {% trans "Ein Schritt pro Zeile. Beispiele:" %}<br>
+        <code>set_weather clear</code> · <code>set_time 6000</code> · <code>chat Es ist Tag.</code><br>
+        {% trans "Oder JSON:" %} <code>{"op":"set_time","value":6000}</code>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>{% trans "Optionen" %}</label>
+      <div style="display:inline-block;">
+        <label><input type="checkbox" name="moderator_can_run"
+          {% if form_data and form_data.moderator_can_run == 'on' %}checked
+          {% elif preset and preset.moderator_can_run %}checked{% endif %}>
+          {% trans "Moderator darf ausführen" %}</label><br>
+        <label><input type="checkbox" name="requires_confirmation"
+          {% if form_data and form_data.requires_confirmation == 'on' %}checked
+          {% elif not form_data and preset and preset.requires_confirmation %}checked
+          {% elif not form_data and not preset %}checked{% endif %}>
+          {% trans "Bestätigung vor Ausführung" %}</label><br>
+        {% if can_edit_system_fields %}
+        <label><input type="checkbox" name="is_system"
+          {% if form_data and form_data.is_system == 'on' %}checked
+          {% elif preset and preset.is_system %}checked{% endif %}
+          {% if preset and preset.is_system %}disabled{% endif %}>
+          {% trans "System-Preset" %}</label>
+        {% if preset and preset.is_system %}<input type="hidden" name="is_system" value="on">{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="btn-row card-actions">
+      <button type="submit" name="action" value="save" class="primary">{% trans "Speichern" %}</button>
+      {% if can_run or not preset %}
+      <button type="submit" name="action" value="save_and_run">{% trans "Speichern & Ausführen" %}</button>
+      {% endif %}
+      <a class="button" href="{{ next_url }}">{% trans "Abbrechen" %}</a>
+    </div>
+  </form>
+
+  {% if can_delete %}
+  <form method="post" action="{% url 'admin:luanti_preset_delete' preset.id %}" style="margin-top:20px;"
+        onsubmit="return confirm('{% trans "Preset wirklich löschen?" %}');">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <button type="submit" style="background:#dc3545;color:#fff;border-color:#dc3545;">{% trans "Preset löschen" %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

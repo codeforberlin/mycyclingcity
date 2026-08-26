@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <p class="muted">{% trans "Katalog wird vom Luanti-Server per HTTP geladen. Verwaltung auch unter Shop-Kategorien im Admin." %}</p>
+  <div class="card-grid">
+    {% for cat in categories %}
+      <div class="card">
+        <h3>{{ cat.name }}</h3>
+        <ul>
+          {% for item in cat.items.all %}
+            <li>
+              {{ item.display_name|default:item.item_name }}
+              — {{ item.buy_price_velos }} {% trans "Velos" %}
+              {% if not item.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
+            </li>
+          {% empty %}
+            <li class="muted">{% trans "Keine Artikel" %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% empty %}
+      <p class="muted">{% trans "Noch keine Kategorien." %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,223 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_session_dashboard_assets.html" %}
+<meta http-equiv="refresh" content="8">
+{% endblock %}
+
+{% block content %}
+<div class="lt-session-dash">
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.25rem;">{{ title }}</h1>
+  {% if hint %}
+  <div class="lt-hint">{{ hint }}</div>
+  {% endif %}
+  <p class="muted">
+    {% trans "Zeit ± je Account (Schrittgröße unter Luanti-Accounts). Min/Max-Dauer gelten." %}
+  </p>
+
+  <h2>{% trans "Wartet auf Freigabe" %}</h2>
+  <p class="muted">{% trans "Online im Luanti-Server, noch ohne aktive Session." %}</p>
+  <div class="lt-session-grid">
+    {% for row in waiting_players %}
+      {% with w=row.waiting d=row.duration %}
+      <div class="lt-session-card is-waiting">
+        <span class="lt-wait-badge">{% trans "Wartet" %}</span>
+        <div class="lt-label">{{ w.account.label }}</div>
+        <div class="lt-sub">
+          {{ w.login_name }}
+          {% if w.server_id %}· {{ w.server_id }}{% endif %}
+        </div>
+        <div class="lt-sub">
+          {% trans "Wallet" %}:
+          {% if row.resolved.wallet_group_name %}{{ row.resolved.wallet_group_name }}{% else %}—{% endif %}
+          · {{ row.resolved.velos_spendable }} Velos
+        </div>
+        <div class="lt-session-times">
+          {% if d.unlimited %}
+            {% trans "Dauer unbegrenzt" %}
+          {% else %}
+            {% blocktrans with duration=d.default_minutes lo=d.min_minutes hi=d.max_minutes %}
+            Dauer {{ duration }} Min. ({{ lo }}–{{ hi }})
+            {% endblocktrans %}
+          {% endif %}
+        </div>
+        <div class="lt-status-idle is-waiting">{% trans "Bereit zum Start" %}</div>
+
+        <div class="lt-actions">
+          <form method="post" class="lt-start-form" id="lt-wait-{{ w.pk }}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="start">
+            <input type="hidden" name="account_id" value="{{ w.account_id }}">
+            <input type="hidden" id="wait-mode-{{ w.pk }}" name="mode" value="{{ w.account.default_mode|default:'play' }}">
+            <span class="lt-mode-label">{% trans "Modus" %}</span>
+            <div class="lt-mode-row">
+              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'play' or not w.account.default_mode %} is-current{% endif %}"
+                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'play');">{% trans "Spielen" %}</button>
+              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'build' %} is-current{% endif %}"
+                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'build');">{% trans "Bauen" %}</button>
+              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'watch' %} is-current{% endif %}"
+                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'watch');">{% trans "Zuschauen" %}</button>
+            </div>
+
+            <div class="lt-duration-stepper">
+              <span>{% trans "Dauer" %}</span>
+              <div class="lt-duration-controls">
+                <button type="button" class="lt-duration-btn"
+                        onclick="return ltStepDuration('wait-dur-{{ w.pk }}', -1);"
+                        {% if d.unlimited %}disabled{% endif %}
+                        aria-label="{% trans 'Weniger Minuten' %}">−</button>
+                <input id="wait-dur-{{ w.pk }}" class="lt-duration-input" name="duration_minutes" type="number"
+                       data-step="{{ d.step }}" data-default="{{ d.default_minutes }}"
+                       min="{% if d.min_minutes %}{{ d.min_minutes }}{% else %}1{% endif %}"
+                       {% if d.max_minutes %}max="{{ d.max_minutes }}"{% endif %}
+                       value="{% if d.unlimited %}{% else %}{{ d.default_minutes }}{% endif %}"
+                       {% if d.unlimited %}disabled{% endif %}>
+                <button type="button" class="lt-duration-btn"
+                        onclick="return ltStepDuration('wait-dur-{{ w.pk }}', 1);"
+                        {% if d.unlimited %}disabled{% endif %}
+                        aria-label="{% trans 'Mehr Minuten' %}">+</button>
+              </div>
+              <span class="lt-sub" style="margin:0;">±{{ d.step }}</span>
+            </div>
+            <label class="lt-check">
+              <input type="checkbox" name="session_unlimited" value="1"
+                     {% if d.unlimited %}checked{% endif %}
+                     onchange="ltToggleUnlimited(this, 'wait-dur-{{ w.pk }}');">
+              {% trans "Unbegrenzt" %}
+            </label>
+
+            <label for="wait-wallet-{{ w.pk }}">{% trans "Session-Wallet" %}</label>
+            <select id="wait-wallet-{{ w.pk }}" name="wallet_group" class="lt-start-select">
+              <option value="">— {% trans "Account-Standard" %}</option>
+              {% for g in row.wallet_choices %}
+              <option value="{{ g.pk }}">{{ g.name }} ({{ g.velos_spendable }})</option>
+              {% endfor %}
+            </select>
+          </form>
+          <button type="submit" class="lt-btn lt-btn-start" form="lt-wait-{{ w.pk }}">
+            {% trans "Start" %}
+          </button>
+        </div>
+      </div>
+      {% endwith %}
+    {% empty %}
+      <div class="lt-empty-wait">{% trans "Niemand wartet — Sessions starten nur nach Login im Luanti-Server." %}</div>
+    {% endfor %}
+  </div>
+
+  <h2>{% trans "Aktive Sessions" %}</h2>
+  <div class="lt-session-grid">
+    {% for row in active_sessions %}
+      {% with s=row.session %}
+      <div class="lt-session-card{% if s.status == "PAUSED" %} is-paused{% else %} is-active{% endif %}"
+           data-remaining="{% if row.remaining_seconds != None %}{{ row.remaining_seconds }}{% else %}0{% endif %}"
+           data-unlimited="{% if not s.ends_at and s.status != "PAUSED" %}1{% else %}0{% endif %}">
+        {% if s.status == "PAUSED" %}
+        <span class="lt-paused-badge">{% trans "Pausiert" %}</span>
+        {% endif %}
+        <div class="lt-label">{{ s.login_name }}</div>
+        <div class="lt-sub">
+          {% trans "Modus" %}: {{ s.mode }}
+          · {% trans "Wallet" %}:
+          {% if row.resolved.wallet_group_name %}{{ row.resolved.wallet_group_name }}{% else %}—{% endif %}
+          · {{ row.resolved.velos_spendable }} Velos
+        </div>
+        <div class="lt-session-times">
+          {% if s.duration_minutes %}
+            {% blocktrans with duration=s.duration_minutes %}Dauer {{ duration }} Min.{% endblocktrans %}
+          {% else %}
+            {% trans "Dauer unbegrenzt" %}
+          {% endif %}
+          {% if s.ends_at and s.status != "PAUSED" %}
+            · {% trans "Ende" %} {{ s.ends_at|date:"H:i" }}
+          {% endif %}
+        </div>
+
+        <div class="lt-countdown" data-countdown>
+          {% if row.remaining_label %}{{ row.remaining_label }}{% elif not s.ends_at %}∞{% else %}--:--{% endif %}
+        </div>
+
+        <div class="lt-actions">
+          {% if s.status == "PAUSED" %}
+          <div class="lt-actions-row">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="session_id" value="{{ s.session_id }}">
+              <button type="submit" name="action" value="resume" class="lt-btn lt-btn-resume">
+                {% trans "Fortsetzen" %}
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <div class="lt-actions-row">
+            {% if s.ends_at %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="session_id" value="{{ s.session_id }}">
+              <input type="hidden" name="adjust_minutes" value="{{ row.adjust_step }}">
+              <button type="submit" name="action" value="extend" class="lt-btn lt-btn-add">
+                +{{ row.adjust_step }} {% trans "Min." %}
+              </button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="session_id" value="{{ s.session_id }}">
+              <input type="hidden" name="adjust_minutes" value="{{ row.adjust_step }}">
+              <button type="submit" name="action" value="reduce" class="lt-btn lt-btn-reduce">
+                −{{ row.adjust_step }} {% trans "Min." %}
+              </button>
+            </form>
+            {% endif %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="session_id" value="{{ s.session_id }}">
+              <button type="submit" name="action" value="pause" class="lt-btn lt-btn-pause">
+                {% trans "Pause" %}
+              </button>
+            </form>
+          </div>
+          <div class="lt-start-form">
+            <span class="lt-mode-label">{% trans "Modus" %}</span>
+            <div class="lt-mode-row">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="session_id" value="{{ s.session_id }}">
+                <input type="hidden" name="action" value="set_mode">
+                <input type="hidden" name="mode" value="play">
+                <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'play' %} is-current{% endif %}">{% trans "Spielen" %}</button>
+              </form>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="session_id" value="{{ s.session_id }}">
+                <input type="hidden" name="action" value="set_mode">
+                <input type="hidden" name="mode" value="build">
+                <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'build' %} is-current{% endif %}">{% trans "Bauen" %}</button>
+              </form>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="session_id" value="{{ s.session_id }}">
+                <input type="hidden" name="action" value="set_mode">
+                <input type="hidden" name="mode" value="watch">
+                <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'watch' %} is-current{% endif %}">{% trans "Zuschauen" %}</button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="session_id" value="{{ s.session_id }}">
+            <button type="submit" name="action" value="kick" class="lt-btn lt-btn-kick">
+              {% trans "Kick" %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endwith %}
+    {% empty %}
+      <p class="muted">{% trans "Keine aktiven Sessions." %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

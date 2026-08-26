@@ -1,0 +1,50 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Station anlegen" %}</h3>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <label for="name">{% trans "Name" %}</label>
+      <input id="name" name="name" type="text" required>
+      <div class="btn-row">
+        <button type="submit" class="primary">{% trans "Anlegen" %}</button>
+      </div>
+    </form>
+  </div>
+  <div class="card-grid">
+    {% for s in stations %}
+      <div class="card">
+        <h3>{{ s.name }}</h3>
+        <p class="muted">{{ s.hostname|default:"—" }} · {{ s.location }}</p>
+        <p class="muted">{% trans "API-Key" %}: <code>{{ s.api_key }}</code></p>
+        <p class="muted">
+          {% trans "Zuletzt" %}:
+          {% if s.last_seen_at %}{{ s.last_seen_at }}{% else %}—{% endif %}
+        </p>
+        {% if s.default_account %}
+          <p>{% trans "Account" %}: {{ s.default_account.login_name }}</p>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reload">
+          <input type="hidden" name="station_id" value="{{ s.pk }}">
+          <div class="btn-row">
+            <button type="submit" class="info">{% trans "Config neu laden" %}</button>
+          </div>
+        </form>
+      </div>
+    {% empty %}
+      <p class="muted">{% trans "Keine Stationen." %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -9,6 +9,23 @@
 from django.urls import path
 from minecraft.api_views import mcc_counter_scan
 from minecraft.waitlist_views import minecraft_waitlist_public_display
+from luanti.api_views import (
+    luanti_arena_state,
+    luanti_auth_check,
+    luanti_counter_scan,
+    luanti_heartbeat,
+    luanti_inventory_sync,
+    luanti_regions,
+    luanti_session_join,
+    luanti_session_leave,
+    luanti_session_set_mode,
+    luanti_shop_buy,
+    luanti_shop_catalog,
+    luanti_shop_sell,
+    luanti_wallet_balance,
+    luanti_wallet_withdraw,
+    luanti_station_config,
+)
 
 from . import views
 
@@ -23,6 +40,23 @@ urlpatterns = [
         minecraft_waitlist_public_display,
         name='minecraft_waitlist_public_display',
     ),
+
+    # Luanti bridge
+    path('luanti/heartbeat/', luanti_heartbeat, name='luanti_heartbeat'),
+    path('luanti/auth/check/', luanti_auth_check, name='luanti_auth_check'),
+    path('luanti/session/join/', luanti_session_join, name='luanti_session_join'),
+    path('luanti/session/leave/', luanti_session_leave, name='luanti_session_leave'),
+    path('luanti/session/set-mode/', luanti_session_set_mode, name='luanti_session_set_mode'),
+    path('luanti/inventory/sync/', luanti_inventory_sync, name='luanti_inventory_sync'),
+    path('luanti/shop/catalog/', luanti_shop_catalog, name='luanti_shop_catalog'),
+    path('luanti/shop/buy/', luanti_shop_buy, name='luanti_shop_buy'),
+    path('luanti/shop/sell/', luanti_shop_sell, name='luanti_shop_sell'),
+    path('luanti/wallet/withdraw/', luanti_wallet_withdraw, name='luanti_wallet_withdraw'),
+    path('luanti/wallet/balance/', luanti_wallet_balance, name='luanti_wallet_balance'),
+    path('luanti/regions/', luanti_regions, name='luanti_regions'),
+    path('luanti/arena/state/', luanti_arena_state, name='luanti_arena_state'),
+    path('luanti/counter/scan/', luanti_counter_scan, name='luanti_counter_scan'),
+    path('luanti/station/config/', luanti_station_config, name='luanti_station_config'),
 
     # New endpoints for the map system
     path('get-travel-locations', views.get_travel_locations, name='get_travel_locations'),

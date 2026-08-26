@@ -21,7 +21,8 @@ from django.contrib.auth.models import Group as AuthGroup, Permission
 from django.contrib.contenttypes.models import ContentType
 from api.models import (
     Group as ApiGroup, Cyclist, TravelTrack, Milestone, GroupTravelStatus,
-    TravelHistory, GroupMilestoneAchievement, CyclistVelosRedemption
+    TravelHistory, GroupMilestoneAchievement, CyclistVelosRedemption,
+    GroupVeloTransfer,
 )
 from eventboard.models import Event, EventHistory, GroupEventStatus
 from kiosk.models import KioskDevice, KioskPlaylistEntry
@@ -75,6 +76,14 @@ class Command(BaseCommand):
             Permission.objects.get(
                 codename='view_cyclistvelosredemption',
                 content_type=ContentType.objects.get_for_model(CyclistVelosRedemption),
+            ),
+        ])
+
+        # Group spendable Velo consolidation / transfer
+        permissions_to_assign.extend([
+            Permission.objects.get(
+                codename='transfer_group_velos',
+                content_type=ContentType.objects.get_for_model(GroupVeloTransfer),
             ),
         ])
         

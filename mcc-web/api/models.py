@@ -192,6 +192,13 @@ class Group(models.Model):
         verbose_name=_("Minecraft-Name (Gruppe)"),
         help_text=_("Nur für Leaf-Gruppen. Überschreibt Radler-Minecraft-Namen für die Synchronisation."),
     )
+    luanti_username = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name=_("Luanti-Name (Gruppe)"),
+        help_text=_("Team-Key für Luanti-Shop/Velos (Leaf-Gruppen)."),
+    )
 
     logo = models.ImageField(
         upload_to='group_logos/',
@@ -560,6 +567,66 @@ class CyclistVelosRedemption(models.Model):
 
     def __str__(self):
         return f"{self.cyclist.user_id}: {self.velos_redeemed} Velos"
+
+
+class GroupVeloTransfer(models.Model):
+    """Audit row for spendable-Velo consolidation / transfer between groups."""
+
+    ACTION_CONSOLIDATE = "consolidate"
+    ACTION_ZERO = "zero"
+    ACTION_CHOICES = [
+        (ACTION_CONSOLIDATE, _("Konsolidierung (Umbuchung)")),
+        (ACTION_ZERO, _("Spendable nullen")),
+    ]
+
+    batch_id = models.UUIDField(db_index=True, verbose_name=_("Batch-ID"))
+    action = models.CharField(
+        max_length=16,
+        choices=ACTION_CHOICES,
+        default=ACTION_CONSOLIDATE,
+        verbose_name=_("Aktion"),
+    )
+    source_group = models.ForeignKey(
+        Group,
+        on_delete=models.PROTECT,
+        related_name="velo_transfers_out",
+        verbose_name=_("Quelle"),
+    )
+    target_group = models.ForeignKey(
+        Group,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="velo_transfers_in",
+        verbose_name=_("Ziel"),
+    )
+    amount = models.PositiveIntegerField(verbose_name=_("Betrag (Spendable)"))
+    reason = models.CharField(max_length=255, verbose_name=_("Grund / Event"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Zeitpunkt"))
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("Ausgeführt von"),
+    )
+
+    class Meta:
+        verbose_name = _("Gruppen-Velo-Transfer")
+        verbose_name_plural = _("Gruppen-Velo-Transfers")
+        ordering = ["-created_at", "-id"]
+        permissions = [
+            ("transfer_group_velos", _("Ausgebbare Gruppen-Velos konsolidieren/umbuchen")),
+        ]
+        indexes = [
+            models.Index(fields=["batch_id"], name="api_gvt_batch_id_idx"),
+            models.Index(fields=["created_at"], name="api_gvt_created_at_idx"),
+        ]
+
+    def __str__(self):
+        tgt = self.target_group.name if self.target_group_id else "—"
+        return f"{self.source_group.name} → {tgt}: {self.amount}"
 
 
 class CyclistDeviceCurrentMileage(models.Model):

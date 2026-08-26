@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <div class="status-box {% if settings.enabled %}online{% else %}offline{% endif %}">
+    {% if settings.enabled %}{% trans "Arena aktiv" %}{% else %}{% trans "Arena inaktiv" %}{% endif %}
+    · {% trans "Speed" %} {{ settings.default_speed }}
+  </div>
+  <form method="post" class="btn-row" style="margin-bottom:16px;">
+    {% csrf_token %}
+    <button name="action" value="toggle" type="submit" class="info">{% trans "Aktiv umschalten" %}</button>
+    <button name="action" value="clear_carts" type="submit" class="danger">{% trans "Alle Loren löschen" %}</button>
+  </form>
+  <div class="card-grid">
+    {% for lane in lanes %}
+      <div class="card">
+        <h3>{{ lane.name }}</h3>
+        <p class="muted">
+          {{ lane.start_x }}, {{ lane.start_y }}, {{ lane.start_z }}
+        </p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="spawn_lane">
+          <input type="hidden" name="lane_id" value="{{ lane.pk }}">
+          <div class="btn-row">
+            <button type="submit" class="primary">{% trans "Lore spawnen" %}</button>
+          </div>
+        </form>
+      </div>
+    {% empty %}
+      <p class="muted">{% trans "Keine Spuren konfiguriert." %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

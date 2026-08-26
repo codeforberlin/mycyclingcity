@@ -7325,3 +7325,66 @@ msgstr ""
 
 #~ msgid "Keine Minecraft Player gefunden."
 #~ msgstr "No Minecraft players found."
+
+msgid "Luanti"
+msgstr "Luanti"
+
+msgid "Luanti Control"
+msgstr "Luanti Control"
+
+msgid "Bridge online"
+msgstr "Bridge online"
+
+msgid "Bridge offline – kein Heartbeat/WebSocket."
+msgstr "Bridge offline – no heartbeat/WebSocket."
+
+msgid "Luanti-Accounts"
+msgstr "Luanti accounts"
+
+msgid "Luanti-Sessions"
+msgstr "Luanti sessions"
+
+msgid "Luanti Shop"
+msgstr "Luanti shop"
+
+msgid "Luanti Stadtsteuerung"
+msgstr "Luanti city control"
+
+msgid "Luanti Arena / Loren"
+msgstr "Luanti arena / carts"
+
+msgid "Luanti-Stationen"
+msgstr "Luanti stations"
+
+msgid "Account anlegen"
+msgstr "Create account"
+
+msgid "Session starten"
+msgstr "Start session"
+
+msgid "Modus wechseln"
+msgstr "Change mode"
+
+msgid "Spielen"
+msgstr "Play"
+
+msgid "Bauen"
+msgstr "Build"
+
+msgid "Zuschauen"
+msgstr "Watch"
+
+msgid "Stadtsteuerung"
+msgstr "City control"
+
+msgid "Arena / Loren"
+msgstr "Arena / carts"
+
+msgid "Stationen"
+msgstr "Stations"
+
+msgid "Sessions"
+msgstr "Sessions"
+
+msgid "Accounts"
+msgstr "Accounts"

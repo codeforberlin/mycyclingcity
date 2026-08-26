@@ -1,0 +1,14 @@
+[Unit]
+Description=MCC Luanti station agent
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=MCC_STATION_URL=http://127.0.0.1:8000/api/luanti/station/config/
+Environment=MCC_STATION_KEY=CHANGE_ME
+ExecStart=/usr/bin/python3 %h/mcc/scripts/luanti_station/agent.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

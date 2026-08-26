@@ -1,0 +1,214 @@
+{% load i18n %}
+<style>
+  .luanti-admin {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+  .luanti-admin .status-box {
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .luanti-admin .status-box.online {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+  .luanti-admin .status-box.offline {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  .luanti-admin .card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 768px) {
+    .luanti-admin .card-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 1024px) {
+    .luanti-admin .card-grid.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+  .luanti-admin .card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .luanti-admin .card h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+  }
+  .luanti-admin .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .luanti-admin .card-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+  .luanti-admin .btn-row button,
+  .luanti-admin .btn-row .button,
+  .luanti-admin .card-actions button,
+  .luanti-admin .card-actions input[type="submit"] {
+    display: inline-block;
+    visibility: visible;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #f8f8f8;
+    color: #222;
+    line-height: 1.2;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .luanti-admin .btn-row button.primary,
+  .luanti-admin .card-actions button.primary,
+  .luanti-admin .card-actions input.primary[type="submit"] {
+    background: #28a745;
+    color: #fff;
+    border-color: #28a745;
+  }
+  .luanti-admin .btn-row button.danger,
+  .luanti-admin .card-actions button.danger {
+    background: #dc3545;
+    color: #fff;
+    border-color: #dc3545;
+  }
+  .luanti-admin .btn-row button.info,
+  .luanti-admin .card-actions button.info,
+  .luanti-admin .card-actions input.info[type="submit"] {
+    background: #17a2b8;
+    color: #fff;
+    border-color: #17a2b8;
+  }
+  .luanti-admin label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .luanti-admin input[type="text"],
+  .luanti-admin input[type="number"],
+  .luanti-admin select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  .luanti-admin .muted {
+    color: #666;
+    font-size: 0.9rem;
+  }
+  .luanti-admin .hint {
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .luanti-admin .remaining-box {
+    margin: 10px 0 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #eef6ff;
+    border: 1px solid #b6d4fe;
+    text-align: center;
+  }
+  .luanti-admin .remaining-box.paused {
+    background: #e7f5ff;
+    border-color: #74c0fc;
+  }
+  .luanti-admin .remaining-box .remaining-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #495057;
+    margin-bottom: 4px;
+  }
+  .luanti-admin .remaining-box .remaining-value {
+    display: block;
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: #0b5ed7;
+    line-height: 1.1;
+  }
+  .luanti-admin .duration-stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .luanti-admin .duration-stepper input[type="number"] {
+    width: 5.5rem;
+    min-width: 5.5rem;
+    text-align: center;
+    margin-bottom: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .luanti-admin .duration-stepper button {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    padding: 0;
+  }
+  .luanti-admin .action-primary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .luanti-admin .action-primary-row button {
+    flex: 1 1 auto;
+    min-height: 48px;
+  }
+</style>
+<script>
+(function () {
+  function clamp(n, min, max) {
+    if (min != null && !isNaN(min)) n = Math.max(min, n);
+    if (max != null && !isNaN(max)) n = Math.min(max, n);
+    return n;
+  }
+  window.mccStepDuration = function (inputId, delta) {
+    var input = document.getElementById(inputId);
+    if (!input || input.disabled) return false;
+    var step = parseInt(input.getAttribute('data-step') || '5', 10) || 5;
+    var min = input.min !== '' ? parseInt(input.min, 10) : null;
+    var max = input.max !== '' ? parseInt(input.max, 10) : null;
+    var cur = parseInt(input.value || '0', 10);
+    if (isNaN(cur)) cur = min != null ? min : 0;
+    input.value = String(clamp(cur + (delta * step), min, max));
+    return false;
+  };
+  window.mccToggleUnlimited = function (checkbox, inputId) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+      input.value = '';
+    } else if (!input.value) {
+      input.value = input.getAttribute('data-default') || input.min || '15';
+    }
+  };
+})();
+</script>

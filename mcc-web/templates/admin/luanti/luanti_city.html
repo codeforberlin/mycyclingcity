@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <div class="btn-row" style="margin-bottom:16px;">
+    <a class="button primary" href="{% url 'admin:luanti_preset_list' %}">{% trans "Preset-Editor öffnen" %}</a>
+  </div>
+  <div class="card-grid">
+    {% for p in presets %}
+      <div class="card">
+        <h3>{{ p.name }}</h3>
+        {% if p.description %}<p class="muted">{{ p.description }}</p>{% endif %}
+        <p class="muted">{{ p.steps|length }} {% trans "Schritte" %} · <code>{{ p.slug }}</code></p>
+        {% if p.last_run_at %}
+          <p class="muted">{% trans "Zuletzt" %}: {{ p.last_run_at }}
+            {% if p.last_run_success %}✓{% elif p.last_run_success == False %}✗{% endif %}
+          </p>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="slug" value="{{ p.slug }}">
+          <div class="btn-row">
+            <button type="submit" class="primary"
+              {% if p.requires_confirmation %}onclick="return confirm('{% trans "Preset wirklich ausführen?" %}')"{% endif %}>
+              {% trans "Ausführen" %}
+            </button>
+            <a class="button" href="{% url 'admin:luanti_preset_edit' p.id %}?next={% url 'admin:luanti_city' %}">{% trans "Bearbeiten" %}</a>
+          </div>
+        </form>
+      </div>
+    {% empty %}
+      <p class="muted">{% trans "Keine Presets. Bitte im Preset-Editor anlegen." %}
+        <a href="{% url 'admin:luanti_preset_list' %}">{% trans "Zum Editor" %}</a>
+      </p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

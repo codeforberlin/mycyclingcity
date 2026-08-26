@@ -1,0 +1,187 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  .velo-cons { max-width: 960px; margin: 0 auto; padding: 12px; }
+  .velo-cons .card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 14px; margin-bottom: 16px;
+  }
+  .velo-cons label { display: block; font-weight: bold; margin-top: 10px; }
+  .velo-cons select[multiple] { min-height: 180px; width: 100%; max-width: 520px; }
+  .velo-cons .btn-row { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .velo-cons table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .velo-cons th, .velo-cons td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
+  .preview-box { background: #fff8e1; border: 1px solid #ffe082; padding: 12px; border-radius: 6px; }
+  .muted { color: #666; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="velo-cons">
+  <h1>{{ title }}</h1>
+  <p class="muted">
+    {% trans "Überträgt nur velos_spendable. velos_total / KM bleiben unverändert — Historie bleibt erhalten." %}
+  </p>
+
+  {% if preview %}
+  <div class="card preview-box">
+    <h2>{% trans "Vorschau — bitte bestätigen" %}</h2>
+    <p>
+      {% trans "Ziel" %}:
+      <strong>{% if preview.target %}{{ preview.target.name }}{% else %}—{% endif %}</strong>
+      · {% trans "Summe" %}: <strong>{{ preview.total }}</strong> Velos
+    </p>
+    <table>
+      <thead><tr><th>{% trans "Quelle" %}</th><th>{% trans "Spendable" %}</th></tr></thead>
+      <tbody>
+        {% for s in preview.sources %}
+        <tr><td>{{ s.name }}</td><td>{{ s.amount }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="consolidate">
+      <input type="hidden" name="confirm" value="1">
+      <input type="hidden" name="target_id" value="{{ form.target_id }}">
+      <input type="hidden" name="reason" value="{{ form.reason }}">
+      {% for sid in form.source_ids %}
+      <input type="hidden" name="source_ids" value="{{ sid }}">
+      {% endfor %}
+      <div class="btn-row">
+        <button type="submit" class="default" style="background:#2e7d32;color:#fff;">
+          {% trans "Umbuchung ausführen" %}
+        </button>
+        <a class="button" href="{% url 'admin:api_group_velo_consolidate' %}">{% trans "Abbrechen" %}</a>
+      </div>
+    </form>
+  </div>
+  {% else %}
+
+  <div class="card">
+    <h2>{% trans "Quellen → Ziel umbuchen" %}</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="consolidate">
+      <label for="source_ids">{% trans "Quellen (Mehrfachauswahl)" %}</label>
+      <select id="source_ids" name="source_ids" multiple required>
+        {% for row in leaf_groups %}
+        <option value="{{ row.leaf.pk }}">
+          {{ row.top.name }} / {{ row.leaf.name }} ({{ row.leaf.velos_spendable }})
+        </option>
+        {% endfor %}
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
+        {% endfor %}
+      </select>
+      <p class="muted">{% trans "Strg/Cmd + Klick für mehrere Gruppen." %}</p>
+
+      <label for="target_id">{% trans "Zielgruppe" %}</label>
+      <select id="target_id" name="target_id" required>
+        <option value="">—</option>
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
+        {% endfor %}
+        {% for row in leaf_groups %}
+        <option value="{{ row.leaf.pk }}">{{ row.top.name }} / {{ row.leaf.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="reason">{% trans "Grund / Event" %} *</label>
+      <input id="reason" name="reason" type="text" required maxlength="255"
+             placeholder="{% trans 'z. B. FEZitty 2026 Abschluss' %}" style="width:100%;max-width:520px;">
+
+      <div class="btn-row">
+        <button type="submit" class="default">{% trans "Vorschau" %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>{% trans "Schnell: alle Leaves eines TOP → dieses TOP" %}</h2>
+    <form method="post"
+          onsubmit="return confirm('{% trans "Alle Leaf-Spendable dieses TOP in den TOP-Pool buchen?" %}');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="top_leaves_to_top">
+      <label for="top_id">{% trans "TOP-Gruppe" %}</label>
+      <select id="top_id" name="top_id" required>
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <label for="reason_top">{% trans "Grund / Event" %} *</label>
+      <input id="reason_top" name="reason" type="text" required maxlength="255" style="width:100%;max-width:520px;">
+      <div class="btn-row">
+        <button type="submit" class="default">{% trans "Leaves → TOP ausführen" %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>{% trans "Nur Spendable nullen (ohne Umbuchung)" %}</h2>
+    <p class="muted">{% trans "Verfall / Reset ohne Ziel. Beträge werden auditiert." %}</p>
+    <form method="post"
+          onsubmit="return confirm('{% trans "Spendable der gewählten Gruppen wirklich auf 0 setzen?" %}');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="zero">
+      <label for="zero_sources">{% trans "Quellen" %}</label>
+      <select id="zero_sources" name="source_ids" multiple required>
+        {% for g in spendable_groups %}
+        <option value="{{ g.pk }}">{{ g.name }} ({{ g.velos_spendable }})</option>
+        {% empty %}
+        <option value="" disabled>{% trans "Keine Gruppen mit Spendable > 0" %}</option>
+        {% endfor %}
+      </select>
+      <label for="reason_zero">{% trans "Grund" %} *</label>
+      <input id="reason_zero" name="reason" type="text" required maxlength="255" style="width:100%;max-width:520px;">
+      <div class="btn-row">
+        <button type="submit" style="background:#c62828;color:#fff;">{% trans "Nullen" %}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>{% trans "Letzte Transfers" %}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>{% trans "Zeit" %}</th>
+          <th>{% trans "Aktion" %}</th>
+          <th>{% trans "Quelle" %}</th>
+          <th>{% trans "Ziel" %}</th>
+          <th>{% trans "Betrag" %}</th>
+          <th>{% trans "Grund" %}</th>
+          <th>{% trans "Von" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in recent %}
+        <tr>
+          <td>{{ t.created_at|date:"d.m.Y H:i" }}</td>
+          <td>{{ t.get_action_display }}</td>
+          <td>{{ t.source_group.name }}</td>
+          <td>{% if t.target_group %}{{ t.target_group.name }}{% else %}—{% endif %}</td>
+          <td>{{ t.amount }}</td>
+          <td>{{ t.reason }}</td>
+          <td>{% if t.created_by %}{{ t.created_by }}{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><em>{% trans "Noch keine Transfers." %}</em></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

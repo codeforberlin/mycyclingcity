@@ -1,0 +1,219 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{{ leaves_by_home|json_script:"leaves-by-home-data" }}
+<script>
+(function () {
+  function leavesMap() {
+    var el = document.getElementById('leaves-by-home-data');
+    if (!el) return {};
+    try { return JSON.parse(el.textContent); } catch (e) { return {}; }
+  }
+  function fillWalletSelect(select, homeId, selectedId) {
+    if (!select) return;
+    var map = leavesMap();
+    var leaves = (homeId && map[String(homeId)]) ? map[String(homeId)] : [];
+    var keep = selectedId ? String(selectedId) : '';
+    select.innerHTML = '';
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = leaves.length ? '—' : '— keine Leaf-Gruppen';
+    select.appendChild(empty);
+    leaves.forEach(function (g) {
+      var opt = document.createElement('option');
+      opt.value = String(g.id);
+      opt.textContent = g.name + ' (' + g.velos_spendable + ')';
+      if (keep && keep === String(g.id)) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+  function bindPair(homeSel, walletSel) {
+    if (!homeSel || !walletSel) return;
+    homeSel.addEventListener('change', function () {
+      fillWalletSelect(walletSel, homeSel.value, '');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    bindPair(document.getElementById('create-home'), document.getElementById('create-wallet'));
+    fillWalletSelect(
+      document.getElementById('create-wallet'),
+      (document.getElementById('create-home') || {}).value || '',
+      ''
+    );
+    document.querySelectorAll('select[id^="home-"]').forEach(function (homeSel) {
+      var id = homeSel.id.replace('home-', '');
+      var walletSel = document.getElementById('wallet-' + id);
+      bindPair(homeSel, walletSel);
+    });
+  });
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Account anlegen" %}</h3>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <label for="login_name">{% trans "Login-Name" %}</label>
+      <input id="login_name" name="login_name" type="text" required autocomplete="off">
+      <label for="id_tag">{% trans "RFID-UID" %}</label>
+      <input id="id_tag" name="id_tag" type="text" autocomplete="off">
+      <label for="login_password">{% trans "Passwort (leer = automatisch)" %}</label>
+      <input id="login_password" name="login_password" type="text" autocomplete="off">
+      <label for="create-home">{% trans "Heimat-Gruppe" %}</label>
+      <select id="create-home" name="assigned_to_group">
+        <option value="">—</option>
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <label for="create-wallet">{% trans "Aktives Wallet (Leaf)" %}</label>
+      <select id="create-wallet" name="active_wallet">
+        <option value="">— {% trans "Zuerst Heimat-Gruppe wählen" %}</option>
+      </select>
+      <label for="create-mode">{% trans "Wallet-Modus" %}</label>
+      <select id="create-mode" name="wallet_mode">
+        {% for value, label in wallet_mode_choices %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="btn-row">
+        <button type="submit" class="primary">{% trans "Anlegen" %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-grid">
+    {% for row in account_rows %}
+      {% with a=row.account %}
+      <div class="card">
+        <h3>{{ a.label }}</h3>
+        <p class="muted">{{ a.login_name }} · RFID {{ a.id_tag }}</p>
+        <p>
+          {% if a.is_active %}{% trans "Aktiv" %}{% else %}{% trans "Inaktiv" %}{% endif %}
+          · {% trans "Modus" %} {{ a.default_mode }}
+        </p>
+        <p>
+          {% trans "Passwort" %}:
+          <strong style="user-select:all;">{% if a.login_password %}{{ a.login_password }}{% else %}—{% endif %}</strong>
+        </p>
+        <p class="muted">
+          {% if a.password_provisioned %}{% trans "Auf Server gesetzt" %}{% else %}{% trans "Noch nicht auf Server" %}{% endif %}
+          {% if a.password_last_set_at %}· {{ a.password_last_set_at }}{% endif %}
+        </p>
+        <p>
+          {% trans "Wallet" %}:
+          <strong>{% if row.wallet.wallet_group_name %}{{ row.wallet.wallet_group_name }}{% else %}—{% endif %}</strong>
+          · {{ row.wallet.velos_spendable }} Velos
+        </p>
+        <p class="muted">
+          {% if a.session_unlimited %}
+            {% trans "Dauer" %}: {% trans "unbegrenzt" %}
+          {% else %}
+            {% trans "Dauer" %}:
+            {% if a.session_duration_minutes %}{{ a.session_duration_minutes }}{% else %}—{% endif %}
+            {% trans "Min." %}
+            · {% trans "Min" %}
+            {% if a.session_duration_min_minutes %}{{ a.session_duration_min_minutes }}{% else %}—{% endif %}
+            · {% trans "Max" %}
+            {% if a.session_duration_max_minutes %}{{ a.session_duration_max_minutes }}{% else %}—{% endif %}
+          {% endif %}
+          · {% trans "Schritt ±" %}
+          {% if a.session_add_minutes %}{{ a.session_add_minutes }}{% else %}—{% endif %}
+        </p>
+
+        <div class="card-actions">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_session_limits">
+            <input type="hidden" name="account_id" value="{{ a.pk }}">
+            <label for="dur-{{ a.pk }}">{% trans "Session-Dauer (Min., leer = Standard)" %}</label>
+            <input id="dur-{{ a.pk }}" name="session_duration_minutes" type="number" min="0"
+                   value="{% if a.session_duration_minutes %}{{ a.session_duration_minutes }}{% endif %}">
+            <label for="dmin-{{ a.pk }}">{% trans "Minimum (Min.)" %}</label>
+            <input id="dmin-{{ a.pk }}" name="session_duration_min_minutes" type="number" min="1"
+                   value="{% if a.session_duration_min_minutes %}{{ a.session_duration_min_minutes }}{% endif %}">
+            <label for="dmax-{{ a.pk }}">{% trans "Maximum (Min.)" %}</label>
+            <input id="dmax-{{ a.pk }}" name="session_duration_max_minutes" type="number" min="1"
+                   value="{% if a.session_duration_max_minutes %}{{ a.session_duration_max_minutes }}{% endif %}">
+            <label for="dstep-{{ a.pk }}">{% trans "Zeit-Schrittgröße ± (Min., leer = Standard)" %}</label>
+            <input id="dstep-{{ a.pk }}" name="session_add_minutes" type="number" min="1"
+                   value="{% if a.session_add_minutes %}{{ a.session_add_minutes }}{% endif %}">
+            <label>
+              <input type="checkbox" name="session_unlimited" value="1"{% if a.session_unlimited %} checked{% endif %}>
+              {% trans "Unbegrenzte Session" %}
+            </label>
+            <div class="btn-row">
+              <button type="submit" class="primary">{% trans "Dauer speichern" %}</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card-actions">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_wallet">
+            <input type="hidden" name="account_id" value="{{ a.pk }}">
+            <label for="home-{{ a.pk }}">{% trans "Heimat-Gruppe" %}</label>
+            <select id="home-{{ a.pk }}" name="assigned_to_group" class="home-select">
+              <option value="">—</option>
+              {% for g in top_groups %}
+              <option value="{{ g.pk }}"{% if a.assigned_to_group_id == g.pk %} selected{% endif %}>{{ g.name }}</option>
+              {% endfor %}
+            </select>
+            <label for="wallet-{{ a.pk }}">{% trans "Aktives Wallet (Leaf)" %}</label>
+            <select id="wallet-{{ a.pk }}" name="active_wallet">
+              <option value="">—</option>
+              {% for g in row.wallet_choices %}
+              <option value="{{ g.pk }}"{% if a.active_wallet_id == g.pk %} selected{% endif %}>{{ g.name }} ({{ g.velos_spendable }})</option>
+              {% endfor %}
+            </select>
+            <label for="wmode-{{ a.pk }}">{% trans "Wallet-Modus" %}</label>
+            <select id="wmode-{{ a.pk }}" name="wallet_mode">
+              {% for value, label in wallet_mode_choices %}
+              <option value="{{ value }}"{% if a.wallet_mode == value %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <div class="btn-row">
+              <button type="submit" class="primary">{% trans "Wallet speichern" %}</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card-actions">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reset_password">
+            <input type="hidden" name="account_id" value="{{ a.pk }}">
+            <label for="reset-pw-{{ a.pk }}">{% trans "Neues Passwort (leer = auto)" %}</label>
+            <input id="reset-pw-{{ a.pk }}" name="login_password" type="text" autocomplete="off">
+            <div class="btn-row">
+              <input type="submit" class="info" value="{% trans 'Passwort neu setzen' %}">
+            </div>
+          </form>
+        </div>
+
+        <div class="card-actions">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle">
+            <input type="hidden" name="account_id" value="{{ a.pk }}">
+            <div class="btn-row">
+              <button type="submit">{% if a.is_active %}{% trans "Deaktivieren" %}{% else %}{% trans "Aktivieren" %}{% endif %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endwith %}
+    {% empty %}
+      <p class="muted">{% trans "Keine Accounts." %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
