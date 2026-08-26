@@ -150,7 +150,12 @@ class LuantiCityPresetAdmin(admin.ModelAdmin):
 
 @admin.register(LuantiProtectedRegion)
 class LuantiProtectedRegionAdmin(admin.ModelAdmin):
+    """Hidden from app index — use custom Geschützte Regionen GUI instead."""
+
     list_display = ("region_id", "display_name", "world", "protect_build", "enabled")
+
+    def has_module_permission(self, request):
+        return False
 
 
 @admin.register(LuantiArenaMotionSettings)

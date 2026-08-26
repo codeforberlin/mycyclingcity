@@ -18,16 +18,18 @@ User = get_user_model()
 
 
 def test_parse_steps_text_roundtrip():
-    text = "set_weather clear\nset_time 6000\nchat Es ist Tag.\n"
+    text = "set_weather clear\nset_time 6000\nset_time_speed 0\nchat Es ist Tag.\n"
     steps = parse_steps_text(text)
     assert steps == [
         {"op": "set_weather", "value": "clear"},
         {"op": "set_time", "value": 6000},
+        {"op": "set_time_speed", "value": 0},
         {"op": "chat", "message": "Es ist Tag."},
     ]
     errors, _ = validate_steps(steps)
     assert errors == []
     assert "set_time 6000" in steps_to_text(steps)
+    assert "set_time_speed 0" in steps_to_text(steps)
 
 
 def test_parse_steps_json_line():

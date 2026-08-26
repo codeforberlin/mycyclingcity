@@ -7389,6 +7389,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         user_can_access_luanti_control,
         user_can_access_luanti_shop,
         user_can_manage_luanti_accounts,
+        user_can_manage_luanti_regions,
         user_can_manage_luanti_sessions,
         user_can_manage_luanti_stations,
     )
@@ -7785,6 +7786,7 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
         or user_can_manage_luanti_accounts(request.user)
         or user_can_manage_luanti_sessions(request.user)
         or user_can_manage_luanti_stations(request.user)
+        or user_can_manage_luanti_regions(request.user)
         or user_can_manage_city_presets(request.user)
         or request.user.has_perm('luanti.view_luantiaccount')
     )
@@ -7849,6 +7851,17 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'object_name': 'Luanti City',
                     'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
                     'admin_url': reverse('admin:luanti_city'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        if user_can_manage_luanti_regions(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Geschützte Regionen'),
+                    'object_name': 'Luanti Protected Regions',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_regions'),
                     'add_url': None,
                     'view_only': True,
                 }
@@ -8454,6 +8467,7 @@ from luanti.admin_views import (
     luanti_shop_ops,
     luanti_stations,
 )
+from luanti.region_views import luanti_regions_admin
 from luanti.preset_views import (
     luanti_preset_add,
     luanti_preset_delete,
@@ -8519,6 +8533,11 @@ def get_urls_with_custom_views():
         path('luanti/sessions/', admin.site.admin_view(luanti_sessions), name='luanti_sessions'),
         path('luanti/shop-ops/', admin.site.admin_view(luanti_shop_ops), name='luanti_shop_ops'),
         path('luanti/city/', admin.site.admin_view(luanti_city), name='luanti_city'),
+        path(
+            'luanti/regions/',
+            admin.site.admin_view(luanti_regions_admin),
+            name='luanti_regions',
+        ),
         path('luanti/presets/', admin.site.admin_view(luanti_preset_list), name='luanti_preset_list'),
         path('luanti/presets/add/', admin.site.admin_view(luanti_preset_add), name='luanti_preset_add'),
         path(

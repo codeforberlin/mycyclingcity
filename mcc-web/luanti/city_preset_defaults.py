@@ -6,15 +6,27 @@
 
 from __future__ import annotations
 
+# Minecraft-style ticks: 0=midnight, 6000=noon, 18000=night. time_speed 0 freezes cycle.
+
 DAYTIME_STEPS: list[dict] = [
     {"op": "set_weather", "value": "clear"},
     {"op": "set_time", "value": 6000},
+    {"op": "set_time_speed", "value": 72},
     {"op": "chat", "message": "Es ist Tag."},
+]
+
+# Noon locked: stays bright (no day→night progression).
+NOON_LOCKED_STEPS: list[dict] = [
+    {"op": "set_weather", "value": "clear"},
+    {"op": "set_time", "value": 6000},
+    {"op": "set_time_speed", "value": 0},
+    {"op": "chat", "message": "Mittag — Zeit eingefroren, bleibt hell."},
 ]
 
 NIGHTTIME_STEPS: list[dict] = [
     {"op": "set_weather", "value": "clear"},
     {"op": "set_time", "value": 0},
+    {"op": "set_time_speed", "value": 72},
     {"op": "chat", "message": "Es ist Nacht."},
 ]
 
@@ -26,9 +38,21 @@ CITY_PRESET_SEEDS: tuple[dict, ...] = (
         "slug": "daytime",
         "name": "Tag",
         "category": "world",
-        "description": "Helle Tageszeit, klares Wetter",
+        "description": "Helle Tageszeit, klares Wetter, Tageszyklus läuft weiter",
         "steps": DAYTIME_STEPS,
         "sort_order": 10,
+        "enabled": True,
+        "is_system": True,
+        "moderator_can_run": True,
+        "requires_confirmation": False,
+    },
+    {
+        "slug": "daytime-noon",
+        "name": "Tag (Mittag)",
+        "category": "world",
+        "description": "Mittagshelligkeit ohne Zeitwechsel — bleibt dauerhaft hell",
+        "steps": NOON_LOCKED_STEPS,
+        "sort_order": 15,
         "enabled": True,
         "is_system": True,
         "moderator_can_run": True,

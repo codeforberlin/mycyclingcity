@@ -10,7 +10,12 @@
 <div class="luanti-admin">
   <div class="btn-row" style="margin-bottom:16px;">
     <a class="button primary" href="{% url 'admin:luanti_preset_list' %}">{% trans "Preset-Editor öffnen" %}</a>
+    <a class="button" href="{% url 'admin:luanti_regions' %}">{% trans "Geschützte Regionen" %}</a>
   </div>
+  <p class="muted" style="margin-bottom:1rem;">
+    {% trans "Regionen mit Positionsübernahme (Min/Max/Spawn vom Spieler) und Build-Zonen-Schutz:" %}
+    <a href="{% url 'admin:luanti_regions' %}">{% trans "Geschützte Regionen öffnen" %}</a>
+  </p>
   <div class="card-grid">
     {% for p in presets %}
       <div class="card">

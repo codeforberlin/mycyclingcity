@@ -71,6 +71,19 @@ MATERIAL_OVERRIDES: dict[str, str] = {
     "COMPASS": "mcl_compass:compass",
     "CLOCK": "mcl_clock:clock",
     "SHEARS": "mcl_tools:shears",
+    # Rails / minecarts live in mcl_minecarts (not mcl_core / mcl_redstone).
+    "RAIL": "mcl_minecarts:rail",
+    "POWERED_RAIL": "mcl_minecarts:golden_rail",
+    "ACTIVATOR_RAIL": "mcl_minecarts:activator_rail",
+    "DETECTOR_RAIL": "mcl_minecarts:detector_rail",
+    "MINECART": "mcl_minecarts:minecart",
+    "CHEST_MINECART": "mcl_minecarts:chest_minecart",
+    "FURNACE_MINECART": "mcl_minecarts:furnace_minecart",
+    "HOPPER_MINECART": "mcl_minecarts:hopper_minecart",
+    "TNT_MINECART": "mcl_minecarts:tnt_minecart",
+    # Redstone torch is mesecons_torch (creative item = "on" state).
+    "REDSTONE_TORCH": "mesecons_torch:mesecon_torch_on",
+    "REDSTONE_BLOCK": "mesecons_torch:redstoneblock",
 }
 
 _TOOL_SUFFIX = {
@@ -196,6 +209,7 @@ def candidates_for_material(material: str) -> list[str]:
         "mcl_chests",
         "mcl_furnaces",
         "mcl_hoppers",
+        "mcl_minecarts",
         "mcl_mobitems",
         "mcl_raw_ores",
         "mcl_redstone",

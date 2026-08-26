@@ -12,10 +12,10 @@ from typing import Any
 MAX_STEPS = 50
 MAX_LINE_LEN = 256
 
-ALLOWED_OPS = frozenset({"set_time", "set_weather", "chat"})
+ALLOWED_OPS = frozenset({"set_time", "set_time_speed", "set_weather", "chat"})
 
 _OP_LINE = re.compile(
-    r"^(?P<op>set_time|set_weather|chat)\s+(?P<rest>.+)$",
+    r"^(?P<op>set_time_speed|set_time|set_weather|chat)\s+(?P<rest>.+)$",
     re.IGNORECASE,
 )
 
@@ -29,6 +29,8 @@ def steps_to_text(steps: list | None) -> str:
         op = str(step.get("op") or "").strip().lower()
         if op == "set_time":
             lines.append(f"set_time {step.get('value', 6000)}")
+        elif op == "set_time_speed":
+            lines.append(f"set_time_speed {step.get('value', 72)}")
         elif op == "set_weather":
             lines.append(f"set_weather {step.get('value') or step.get('weather') or 'clear'}")
         elif op == "chat":
@@ -44,6 +46,7 @@ def parse_steps_text(text: str) -> list[dict[str, Any]]:
 
     Supported lines:
       set_time 6000
+      set_time_speed 0
       set_weather clear
       chat Es ist Tag.
       {"op":"set_time","value":6000}
@@ -66,7 +69,8 @@ def parse_steps_text(text: str) -> list[dict[str, Any]]:
         match = _OP_LINE.match(line)
         if not match:
             raise ValueError(
-                f"Unbekannte Zeile (erlaubt: set_time / set_weather / chat / JSON): {line[:60]}"
+                "Unbekannte Zeile (erlaubt: set_time / set_time_speed / "
+                f"set_weather / chat / JSON): {line[:60]}"
             )
         op = match.group("op").lower()
         rest = match.group("rest").strip()
@@ -76,6 +80,12 @@ def parse_steps_text(text: str) -> list[dict[str, Any]]:
             except (ValueError, IndexError) as exc:
                 raise ValueError(f"set_time braucht eine Zahl: {line[:60]}") from exc
             steps.append({"op": "set_time", "value": value})
+        elif op == "set_time_speed":
+            try:
+                value = int(rest.split()[0])
+            except (ValueError, IndexError) as exc:
+                raise ValueError(f"set_time_speed braucht eine Zahl: {line[:60]}") from exc
+            steps.append({"op": "set_time_speed", "value": max(0, value)})
         elif op == "set_weather":
             weather = rest.split()[0].lower() if rest else "clear"
             steps.append({"op": "set_weather", "value": weather})
@@ -106,6 +116,8 @@ def validate_steps(steps: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
             warnings.append(f"Schritt {i}: sehr lang — Bridge könnte kürzen.")
         if op == "set_time" and step.get("value") is None:
             errors.append(f"Schritt {i}: set_time braucht value.")
+        if op == "set_time_speed" and step.get("value") is None:
+            errors.append(f"Schritt {i}: set_time_speed braucht value.")
         if op == "set_weather" and not (step.get("value") or step.get("weather")):
             errors.append(f"Schritt {i}: set_weather braucht value.")
         if op == "chat" and not str(step.get("message") or "").strip():

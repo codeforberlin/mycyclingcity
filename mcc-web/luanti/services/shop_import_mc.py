@@ -134,3 +134,64 @@ def add_registry_item_to_shop(
         },
     )
     return obj
+
+
+@dataclass
+class BulkAddResult:
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    invalid: list[str] = field(default_factory=list)
+
+
+def add_registry_items_bulk_to_shop(
+    *,
+    item_names: list[str],
+    category_slug: str,
+    buy_price_velos: int,
+    stack_size: int = 1,
+    require_in_registry: bool = True,
+) -> BulkAddResult:
+    """Add many registry itemstrings to one shop category (shared price)."""
+    result = BulkAddResult()
+    registry = registry_name_set() if require_in_registry else None
+    price = max(1, int(buy_price_velos))
+    stack = max(1, int(stack_size))
+    cat_slug = (category_slug or "misc").strip() or "misc"
+    seen: set[str] = set()
+
+    for raw in item_names:
+        name = (raw or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        if ":" not in name:
+            result.invalid.append(name)
+            result.skipped += 1
+            continue
+        if registry is not None and name not in registry:
+            result.invalid.append(name)
+            result.skipped += 1
+            continue
+        cat = LuantiShopCategory.objects.filter(slug=cat_slug).first()
+        if cat is None:
+            cat = LuantiShopCategory.objects.create(
+                slug=cat_slug,
+                name=cat_slug,
+                sort_order=999,
+                enabled=True,
+            )
+        _obj, created = LuantiShopItem.objects.update_or_create(
+            category=cat,
+            item_name=name,
+            defaults={
+                "buy_price_velos": price,
+                "stack_size": stack,
+                "enabled": True,
+            },
+        )
+        if created:
+            result.created += 1
+        else:
+            result.updated += 1
+    return result

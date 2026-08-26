@@ -79,11 +79,21 @@ rawset(_G, "mcc_bridge", mcc_bridge)
 dofile(modpath .. "/shop_gui.lua")
 mcc_bridge.init_shop_gui(api_post)
 
+local region_outline = dofile(modpath .. "/region_outline.lua")
+
 mcc_bridge.apply_city_steps = function(steps)
     for _, step in ipairs(steps or {}) do
         local op = step.op
         if op == "set_time" and step.value ~= nil then
             core.set_timeofday((tonumber(step.value) or 0) / 24000)
+        elseif op == "set_time_speed" and step.value ~= nil then
+            -- 0 = freeze day/night (always bright after set_time noon); ~72 = default.
+            local speed = tonumber(step.value) or 72
+            if speed < 0 then
+                speed = 0
+            end
+            core.settings:set("time_speed", tostring(speed))
+            core.log("action", "[mcc_bridge] time_speed=" .. tostring(speed))
         elseif op == "set_weather" then
             local w = tostring(step.value or step.weather or "clear")
             if w == "clear" then
@@ -137,6 +147,82 @@ end
 
 local function is_player_paused(name)
     return storage:get_string("paused_" .. name) == "1"
+end
+
+-- Region catalog (used by command dispatch + is_protected). Declared early so
+-- apply_bridge_commands closures can see these locals.
+local protected_regions = {}
+local has_protect_build_region = false
+
+local function floor_block(n)
+    n = tonumber(n) or 0
+    if n >= 0 then
+        return math.floor(n)
+    end
+    return math.ceil(n) - 1
+end
+
+local function apply_regions_catalog(payload_or_rows)
+    local payload = payload_or_rows
+    local rows = payload_or_rows
+    if type(payload_or_rows) == "table" and payload_or_rows.regions then
+        payload = payload_or_rows
+        rows = payload_or_rows.regions
+    end
+    protected_regions = {}
+    has_protect_build_region = false
+    for _, r in ipairs(rows or {}) do
+        if type(r) == "table" and r.min and r.max then
+            local min = r.min
+            local max = r.max
+            local members = {}
+            for _, m in ipairs(r.members or {}) do
+                members[string.lower(tostring(m))] = true
+            end
+            local protect = r.protect_build ~= false
+            if protect then
+                has_protect_build_region = true
+            end
+            protected_regions[#protected_regions + 1] = {
+                region_id = tostring(r.region_id or ""),
+                protect_build = protect,
+                members = members,
+                min_x = math.min(tonumber(min[1]) or 0, tonumber(max[1]) or 0),
+                min_y = math.min(tonumber(min[2]) or 0, tonumber(max[2]) or 0),
+                min_z = math.min(tonumber(min[3]) or 0, tonumber(max[3]) or 0),
+                max_x = math.max(tonumber(min[1]) or 0, tonumber(max[1]) or 0),
+                max_y = math.max(tonumber(min[2]) or 0, tonumber(max[2]) or 0),
+                max_z = math.max(tonumber(min[3]) or 0, tonumber(max[3]) or 0),
+            }
+        end
+    end
+    if region_outline and region_outline.apply_catalog then
+        region_outline.apply_catalog(payload, rows)
+    end
+    core.log(
+        "action",
+        "[mcc_bridge] regions loaded count="
+            .. tostring(#protected_regions)
+            .. " protect_build="
+            .. tostring(has_protect_build_region)
+    )
+end
+
+local regions_fetch_seq = 0
+
+local function refresh_regions_from_api()
+    -- Ignore out-of-order HTTP replies so an older in-flight fetch cannot
+    -- restore a stale outline after REGIONS_UPDATE already applied newer bounds.
+    regions_fetch_seq = regions_fetch_seq + 1
+    local seq = regions_fetch_seq
+    api_post("/api/luanti/regions/", {}, function(ok, data)
+        if seq ~= regions_fetch_seq then
+            return
+        end
+        if ok and data then
+            apply_regions_catalog(data)
+        end
+    end)
 end
 
 local apply_join_result -- forward decl (defined below)
@@ -354,6 +440,55 @@ local function apply_bridge_commands(commands)
                     "action",
                     "[mcc_bridge] DUMP_ITEM_REGISTRY items=" .. tostring(total)
                 )
+            elseif t == "GET_PLAYER_POS" and cmd.player then
+                local pname = tostring(cmd.player)
+                local request_id = tostring(cmd.request_id or "")
+                local player = core.get_player_by_name(pname)
+                if not player then
+                    -- Case-insensitive fallback among connected players.
+                    local want = string.lower(pname)
+                    for _, p in ipairs(core.get_connected_players()) do
+                        if string.lower(p:get_player_name()) == want then
+                            player = p
+                            pname = p:get_player_name()
+                            break
+                        end
+                    end
+                end
+                if player and request_id ~= "" then
+                    local pos = player:get_pos()
+                    if pos then
+                        api_post("/api/luanti/player/pos/", {
+                            request_id = request_id,
+                            player = pname,
+                            x = floor_block(pos.x),
+                            y = floor_block(pos.y),
+                            z = floor_block(pos.z),
+                        })
+                        core.log(
+                            "action",
+                            "[mcc_bridge] GET_PLAYER_POS player="
+                                .. pname
+                                .. " req="
+                                .. request_id
+                        )
+                    end
+                else
+                    core.log(
+                        "warning",
+                        "[mcc_bridge] GET_PLAYER_POS miss player="
+                            .. pname
+                            .. " req="
+                            .. request_id
+                    )
+                end
+            elseif t == "REGIONS_UPDATE" then
+                -- Apply push immediately (outline spawners are deleted+rebuilt inside
+                -- apply_catalog). Bump fetch seq so any older in-flight HTTP refresh
+                -- cannot overwrite with stale bounds; then re-pull for full members.
+                regions_fetch_seq = regions_fetch_seq + 1
+                apply_regions_catalog(cmd)
+                refresh_regions_from_api()
             elseif t == "SAVE_LEAVE_ALL" then
                 -- Safe server stop: kick everyone so on_leaveplayer saves inventory.
                 local reason = tostring(cmd.reason or "server_shutdown")
@@ -453,8 +588,44 @@ local function heartbeat()
 end
 
 -- Play/watch: city must stay intact (no dig/place), even with shop tools.
--- Build mode keeps full interact. Region cuboids (LuantiProtectedRegion) can
--- refine this later; until then the whole world is protected in play mode.
+-- Build mode: dig/place only inside protect_build regions where the player is a member
+-- (once at least one such region exists). Otherwise unrestricted (legacy).
+local function pos_in_region(pos, region)
+    local x = floor_block(pos.x)
+    local y = floor_block(pos.y)
+    local z = floor_block(pos.z)
+    return x >= region.min_x
+        and x <= region.max_x
+        and y >= region.min_y
+        and y <= region.max_y
+        and z >= region.min_z
+        and z <= region.max_z
+end
+
+local function build_mode_is_protected(pos, name)
+    if not has_protect_build_region then
+        return false
+    end
+    if core.check_player_privs(name, { protection_bypass = true }) then
+        return false
+    end
+    local key = string.lower(tostring(name))
+    local member_here = false
+    for _, region in ipairs(protected_regions) do
+        if region.protect_build and pos_in_region(pos, region) then
+            if region.members[key] then
+                member_here = true
+                break
+            end
+        end
+    end
+    if member_here then
+        return false
+    end
+    -- Outside all protect_build regions, or inside without membership.
+    return true
+end
+
 local function get_stored_mode(name)
     local mode = storage:get_string("mode_" .. name)
     if mode == nil or mode == "" then
@@ -477,17 +648,31 @@ local function install_play_mode_world_protection()
         if name and mode_protects_world(name) then
             return true
         end
+        if name and pos and get_stored_mode(name) == "build" then
+            if build_mode_is_protected(pos, name) then
+                return true
+            end
+        end
         return old_is_protected(pos, name)
     end
 
     core.register_on_protection_violation(function(pos, name)
-        if not mode_protects_world(name) then
+        if not name then
             return
         end
-        core.chat_send_player(
-            name,
-            "Im Spielmodus kannst du die Stadt nicht verändern. / Play mode: city is protected."
-        )
+        if mode_protects_world(name) then
+            core.chat_send_player(
+                name,
+                "Im Spielmodus kannst du die Stadt nicht verändern. / Play mode: city is protected."
+            )
+            return
+        end
+        if get_stored_mode(name) == "build" and build_mode_is_protected(pos, name) then
+            core.chat_send_player(
+                name,
+                "Hier darfst du nicht bauen (keine Bauzone / kein Member). / Build zone required."
+            )
+        end
     end)
 end
 
@@ -698,12 +883,16 @@ core.register_on_mods_loaded(function()
     core.after(1, ensure_spawn_platform)
 
     -- Re-apply freeze: other mods may reset physics_override.
-    core.register_globalstep(function(_dtime)
+    -- Also tick region outline particles / enter hints.
+    core.register_globalstep(function(dtime)
         for _, player in ipairs(core.get_connected_players()) do
             local name = player:get_player_name()
             if is_player_paused(name) then
                 set_player_frozen(player, true)
             end
+        end
+        if region_outline and region_outline.tick then
+            region_outline.tick(dtime)
         end
     end)
 
@@ -715,11 +904,18 @@ core.register_on_mods_loaded(function()
     local interval = math.max(5, CFG.heartbeat_seconds)
     core.after(1, function()
         heartbeat()
+        refresh_regions_from_api()
         local function loop()
             heartbeat()
             core.after(interval, loop)
         end
         core.after(interval, loop)
+        -- Periodic catalog refresh so Admin edits never leave ghost outlines.
+        local function regions_loop()
+            refresh_regions_from_api()
+            core.after(20, regions_loop)
+        end
+        core.after(20, regions_loop)
     end)
     core.after(5, poll_waiting_sessions)
     core.log("action", "[mcc_bridge] loaded server_id=" .. CFG.server_id)
@@ -762,6 +958,9 @@ end)
 core.register_on_leaveplayer(function(player)
     local name = player:get_player_name()
     waiting_poll[name] = nil
+    if region_outline and region_outline.clear_player then
+        region_outline.clear_player(name)
+    end
     if mcc_bridge.shop_gui_on_leave then
         mcc_bridge.shop_gui_on_leave(name)
     end

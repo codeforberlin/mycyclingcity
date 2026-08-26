@@ -4,6 +4,131 @@
 {% block extrahead %}
 {{ block.super }}
 {% include "admin/luanti/_luanti_admin_assets.html" %}
+<style>
+  .reg-bulk-toolbar {
+    display: flex; flex-wrap: wrap; gap: 0.65rem 1rem; align-items: flex-end;
+    margin: 0.75rem 0 0.5rem;
+  }
+  .reg-bulk-toolbar > div { min-width: 12rem; flex: 1 1 14rem; max-width: 28rem; }
+  .reg-bulk-toolbar label { display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 0.2rem; }
+  .reg-bulk-toolbar input[type=search],
+  .reg-bulk-toolbar input[type=number],
+  .reg-bulk-actions select,
+  .reg-bulk-actions input[type=number] {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 16px;
+    background: #fff;
+    color: #111;
+  }
+  .reg-bulk-toolbar .reg-filter-check {
+    min-width: auto;
+    flex: 0 1 auto;
+    max-width: none;
+    padding-bottom: 0.55rem;
+  }
+  .reg-bulk-toolbar .reg-filter-check label {
+    font-weight: 600;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .reg-mod-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-height: 9.5rem;
+    overflow: auto;
+    margin: 0.5rem 0 0.75rem;
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+  .reg-mod-chips a {
+    display: inline-block;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b !important;
+    text-decoration: none !important;
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+  .reg-mod-chips a:hover { background: #eef2ff; border-color: #93c5fd; }
+  .reg-mod-chips a.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff !important;
+    font-weight: 700;
+  }
+  .reg-active-mod {
+    margin: 0.25rem 0 0.5rem;
+    font-size: 0.9rem;
+  }
+  .reg-bulk-list {
+    max-height: 28rem; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px;
+    background: #f8fafc; padding: 0.35rem 0.5rem; margin: 0.75rem 0;
+  }
+  .reg-bulk-list label {
+    display: flex; gap: 0.5rem; align-items: flex-start; font-weight: 500; font-size: 0.88rem;
+    margin: 0.2rem 0; padding: 0.2rem 0.15rem; border-radius: 4px;
+  }
+  .reg-bulk-list label:hover { background: #eef2ff; }
+  .reg-bulk-list code { font-size: 0.82rem; }
+  .reg-bulk-list .desc { color: #64748b; font-size: 0.78rem; }
+  .reg-bulk-list .in-shop { color: #64748b; font-size: 0.75rem; margin-left: 0.25rem; }
+  .reg-bulk-actions {
+    display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; margin-top: 0.5rem;
+  }
+  .reg-bulk-actions label { display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 0.2rem; }
+  .reg-select-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.35rem 0; }
+</style>
+<script>
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    var filterForm = document.getElementById('reg-filter-form');
+    var onlyMissing = document.getElementById('reg-only-missing');
+    if (filterForm && onlyMissing) {
+      onlyMissing.addEventListener('change', function () { filterForm.submit(); });
+    }
+
+    var list = document.getElementById('reg-bulk-list');
+    var master = document.getElementById('reg-select-all');
+    var countEl = document.getElementById('reg-selected-count');
+    if (!list) return;
+    function boxes() {
+      return list.querySelectorAll('input[type=checkbox][name=item_names]');
+    }
+    function refreshCount() {
+      var n = 0;
+      boxes().forEach(function (cb) { if (cb.checked) n++; });
+      if (countEl) countEl.textContent = String(n);
+      if (master) {
+        var all = boxes();
+        master.checked = all.length > 0 && n === all.length;
+        master.indeterminate = n > 0 && n < all.length;
+      }
+    }
+    if (master) {
+      master.addEventListener('change', function () {
+        boxes().forEach(function (cb) { cb.checked = master.checked; });
+        refreshCount();
+      });
+    }
+    list.addEventListener('change', function (ev) {
+      if (ev.target && ev.target.name === 'item_names') refreshCount();
+    });
+    refreshCount();
+  });
+})();
+</script>
 {% endblock %}
 
 {% block content %}
@@ -27,48 +152,117 @@
   </div>
 
   <div class="card" style="margin-bottom:16px;">
-    <h3>{% trans "Mineclonia-Registry (fehlende Items)" %}</h3>
+    <h3>{% trans "Registry → Shop (Bulk)" %}</h3>
     <p class="muted">
-      {% trans "Luanti-Server sendet alle registrierten Itemstrings. Danach suchen und manuell zum Shop hinzufügen." %}
+      {% trans "Mod anklicken oder suchen, Items per Checkbox wählen, dann in den Shop übernehmen." %}
     </p>
     <form method="post" style="margin-bottom:12px;">
       {% csrf_token %}
       <input type="hidden" name="action" value="refresh_registry">
+      <input type="hidden" name="q" value="{{ registry_query }}">
+      <input type="hidden" name="mod" value="{{ registry_mod }}">
+      <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
       <button type="submit">{% trans "Registry vom Server aktualisieren" %}</button>
     </form>
-    <form method="get" style="margin-bottom:12px;">
-      <label for="reg-q">{% trans "Suche Itemstring" %}</label>
-      <input id="reg-q" name="q" type="search" value="{{ registry_query }}" placeholder="mcl_core:stone">
-      <button type="submit">{% trans "Suchen" %}</button>
+
+    <form method="get" class="reg-bulk-toolbar" id="reg-filter-form">
+      <input type="hidden" name="mod" value="{{ registry_mod }}">
+      <div>
+        <label for="reg-q">{% trans "Suche" %}</label>
+        <input id="reg-q" name="q" type="search" value="{{ registry_query }}" placeholder="piston / rail / hopper" autocomplete="off">
+      </div>
+      <div class="reg-filter-check">
+        <label for="reg-only-missing">
+          <input type="hidden" name="only_missing" value="0">
+          <input id="reg-only-missing" type="checkbox" name="only_missing" value="1"{% if registry_only_missing %} checked{% endif %}>
+          {% trans "Nur fehlende (noch nicht im Shop)" %}
+        </label>
+      </div>
+      <div style="flex:0 0 auto; min-width:auto;">
+        <button type="submit">{% trans "Suchen" %}</button>
+      </div>
     </form>
-    {% if registry_hits %}
-    <ul>
-      {% for name in registry_hits %}
-      <li style="margin-bottom:8px;">
-        <code>{{ name }}</code>
-        <form method="post" style="display:inline-block;margin-left:8px;">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="add_from_registry">
-          <input type="hidden" name="item_name" value="{{ name }}">
-          <select name="category_slug" required>
-            {% if category_slugs %}
-              {% for slug in category_slugs %}
-              <option value="{{ slug }}">{{ slug }}</option>
+
+    <p class="muted" style="margin-bottom:0.25rem;">{% trans "Mod wählen (Klick filtert sofort):" %}</p>
+    <div class="reg-mod-chips" id="reg-mod-chips">
+      <a href="?q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}"
+         class="{% if not registry_mod %}active{% endif %}">{% trans "Alle Mods" %}</a>
+      {% for mod in registry_mods %}
+      <a href="?mod={{ mod|urlencode }}&amp;q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}"
+         class="{% if registry_mod == mod %}active{% endif %}">{{ mod }}</a>
+      {% endfor %}
+    </div>
+
+    {% if registry_mod %}
+    <p class="reg-active-mod">
+      {% trans "Aktiver Mod-Filter:" %} <strong><code>{{ registry_mod }}</code></strong>
+      · <a href="?q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}">{% trans "Filter löschen" %}</a>
+    </p>
+    {% endif %}
+
+    {% if registry_count == 0 %}
+    <p class="muted">{% trans "Registry leer — zuerst aktualisieren (Luanti muss laufen)." %}</p>
+    {% else %}
+    <p class="muted">
+      {% blocktrans with shown=registry_hits|length total=registry_matching_total limit=registry_limit %}
+      {{ shown }} von {{ total }} Treffern angezeigt (Limit {{ limit }}). Filter enger setzen bei Bedarf.
+      {% endblocktrans %}
+    </p>
+
+    <form method="post" id="reg-bulk-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="bulk_add_from_registry">
+      <input type="hidden" name="q" value="{{ registry_query }}">
+      <input type="hidden" name="mod" value="{{ registry_mod }}">
+      <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
+
+      <div class="reg-select-row">
+        <label for="reg-select-all">
+          <input type="checkbox" id="reg-select-all">
+          {% trans "Alle sichtbaren auswählen" %}
+        </label>
+        <span class="muted">{% trans "Ausgewählt:" %} <strong id="reg-selected-count">0</strong></span>
+      </div>
+
+      <div class="reg-bulk-list" id="reg-bulk-list">
+        {% for row in registry_hits %}
+        <label>
+          <input type="checkbox" name="item_names" value="{{ row.item_name }}">
+          <span>
+            <code>{{ row.item_name }}</code>
+            {% if row.in_shop %}<span class="in-shop">({% trans "schon im Shop" %})</span>{% endif %}
+            {% if row.description %}<div class="desc">{{ row.description }}</div>{% endif %}
+          </span>
+        </label>
+        {% empty %}
+        <p class="muted">{% trans "Keine Treffer für diesen Filter." %}</p>
+        {% endfor %}
+      </div>
+
+      {% if registry_hits %}
+      <div class="reg-bulk-actions">
+        <div>
+          <label for="bulk-cat">{% trans "Ziel-Kategorie" %}</label>
+          <select id="bulk-cat" name="category_slug" required>
+            {% if category_choices %}
+              {% for slug, name in category_choices %}
+              <option value="{{ slug }}"{% if slug == "redstone" %} selected{% endif %}>{{ name }} ({{ slug }})</option>
               {% endfor %}
             {% else %}
               <option value="misc">misc</option>
             {% endif %}
           </select>
-          <input name="buy_price_velos" type="number" min="1" value="1" style="width:5rem;" title="{% trans 'Velos' %}">
-          <button type="submit">{% trans "Hinzufügen" %}</button>
-        </form>
-      </li>
-      {% endfor %}
-    </ul>
-    {% elif registry_query %}
-    <p class="muted">{% trans "Keine Treffer." %}</p>
-    {% elif registry_count == 0 %}
-    <p class="muted">{% trans "Registry leer — zuerst aktualisieren (Luanti muss laufen)." %}</p>
+        </div>
+        <div>
+          <label for="bulk-price">{% trans "Kaufpreis (Velos)" %}</label>
+          <input id="bulk-price" name="buy_price_velos" type="number" min="1" value="5" style="width:6rem;">
+        </div>
+        <div>
+          <button type="submit" class="primary">{% trans "Auswahl in Shop übernehmen" %}</button>
+        </div>
+      </div>
+      {% endif %}
+    </form>
     {% endif %}
   </div>
 

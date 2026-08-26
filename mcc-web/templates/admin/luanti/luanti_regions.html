@@ -1,0 +1,365 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+<style>
+  .rg-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; }
+  .rg-table th, .rg-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid #cbd5e1; text-align: left; vertical-align: top; font-size: 0.9rem; }
+  .rg-table th { font-size: 0.78rem; text-transform: uppercase; color: #64748b; }
+  .rg-sub { padding-left: 1.25rem; }
+  .wb-hint { color: #64748b; font-size: 0.85rem; }
+  .wb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.65rem 0.75rem; margin: 0.75rem 0; }
+  .wb-grid label { display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 0.2rem; }
+  .wb-grid input[type=text], .wb-grid input[type=number], .wb-grid select {
+    width: 100%; padding: 0.35rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;
+  }
+  .wb-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.75rem; }
+  .wb-members { max-height: 10rem; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem 0.55rem; background: #f8fafc; }
+  .wb-members label { display: block; font-weight: 500; font-size: 0.85rem; margin: 0.15rem 0; }
+  #rg-draft-form { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+</style>
+<script>
+(function () {
+  var KEY = 'lt-region-draft';
+  function collect(form) {
+    var data = {};
+    new FormData(form).forEach(function (v, k) {
+      if (k === 'csrfmiddlewaretoken' || k === 'action' || k === 'rg_corner') return;
+      if (k === 'rg_members') {
+        if (!data[k]) data[k] = [];
+        data[k].push(v);
+      } else {
+        data[k] = v;
+      }
+    });
+    data.rg_protect_build = form.querySelector('[name=rg_protect_build]')?.checked ? 'on' : '';
+    data.rg_enabled = form.querySelector('[name=rg_enabled]')?.checked ? 'on' : '';
+    return data;
+  }
+  function apply(form, data) {
+    if (!data) return;
+    Object.keys(data).forEach(function (k) {
+      if (k === 'rg_members') return;
+      var el = form.querySelector('[name="' + k + '"]');
+      if (!el) return;
+      if (el.type === 'checkbox') {
+        el.checked = data[k] === 'on';
+      } else {
+        el.value = data[k] == null ? '' : data[k];
+      }
+    });
+    var members = data.rg_members || [];
+    form.querySelectorAll('[name=rg_members]').forEach(function (cb) {
+      cb.checked = members.indexOf(cb.value) >= 0;
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('rg-draft-form');
+    if (!form) return;
+    try {
+      var raw = sessionStorage.getItem(KEY);
+      if (raw && !(form.querySelector('[name=rg_pk]') || {}).value) {
+        /* keep server draft when loading a region; restore only empty/new drafts after refresh */
+      }
+      var saved = raw ? JSON.parse(raw) : null;
+      if (saved && form.getAttribute('data-has-server-draft') !== '1') {
+        apply(form, saved);
+      }
+    } catch (e) {}
+    function persist() {
+      try { sessionStorage.setItem(KEY, JSON.stringify(collect(form))); } catch (e) {}
+    }
+    form.addEventListener('change', persist);
+    form.addEventListener('input', persist);
+    form.addEventListener('submit', function () {
+      try { sessionStorage.setItem(KEY, JSON.stringify(collect(form))); } catch (e) {}
+    });
+  });
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.35rem;">{{ title }}</h1>
+  <p class="wb-hint">
+    {% trans "Cuboid-Regionen für den Build-Modus. Play/Watch sperren weiter die ganze Welt. Members dürfen in geschützten Cuboids bauen; außerhalb ist Bauen gesperrt, sobald mindestens eine Schutz-Region aktiv ist." %}
+  </p>
+
+  <form method="post" style="margin-bottom:1.25rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:1rem;">
+    {% csrf_token %}
+    <h3 style="margin:0 0 0.5rem; font-size:1.05rem;">{% trans "Sichtbare Markierung (Partikel)" %}</h3>
+    <p class="wb-hint">
+      {% trans "Farbige Umrandungen in Spieler-Nähe und kurzer Hinweis mit Regionsnamen beim Betreten." %}
+    </p>
+    <div class="wb-grid">
+      <label>
+        <input type="checkbox" name="region_outline_enabled"
+               {% if integration_config.region_outline_enabled %}checked{% endif %}>
+        {% trans "Partikel-Markierung aktiv" %}
+      </label>
+      <label>
+        <input type="checkbox" name="region_outline_enter_hint"
+               {% if integration_config.region_outline_enter_hint %}checked{% endif %}>
+        {% trans "Hinweis beim Betreten" %}
+      </label>
+      <div>
+        <label for="id_region_outline_view_distance">{% trans "Sichtweite (Blöcke)" %}</label>
+        <input id="id_region_outline_view_distance" type="number" min="8" step="1"
+               name="region_outline_view_distance"
+               value="{{ integration_config.region_outline_view_distance }}">
+      </div>
+    </div>
+    <div class="wb-actions">
+      <button type="submit" class="button default" name="action" value="outline_settings">
+        {% trans "Markierung speichern & sync" %}
+      </button>
+      <button type="submit" class="button" name="action" value="push">
+        {% trans "Nur an Bridge syncen" %}
+      </button>
+    </div>
+  </form>
+
+  <div class="wb-actions" style="margin-bottom:0.75rem;">
+    <form method="post" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="button" name="action" value="new">{% trans "Neue Master-Region" %}</button>
+    </form>
+  </div>
+
+  {% if protected_regions %}
+  <table class="rg-table">
+    <thead>
+      <tr>
+        <th>{% trans "ID" %}</th>
+        <th>{% trans "Typ / TOP" %}</th>
+        <th>{% trans "Bereich" %}</th>
+        <th>{% trans "Members" %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for region in protected_regions %}
+      <tr{% if region.parent_id %} class="rg-sub"{% endif %}>
+        <td>
+          <strong>{{ region.region_id }}</strong>
+          {% if region.display_name %}<br><span class="wb-hint">{{ region.display_name }}</span>{% endif %}
+          {% if not region.enabled %}<br><span class="wb-hint">{% trans "deaktiviert" %}</span>{% endif %}
+        </td>
+        <td>
+          {% if region.parent_id %}
+            {% trans "Sub" %} → {{ region.parent.region_id }}
+          {% else %}
+            {% trans "Master" %}
+            {% if region.assigned_to_group %}
+              <br><span class="wb-hint">{{ region.assigned_to_group.name }}</span>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td>
+          {{ region.min_x }},{{ region.min_y }},{{ region.min_z }}
+          → {{ region.max_x }},{{ region.max_y }},{{ region.max_z }}
+          <br><span class="wb-hint">{{ region.world }}</span>
+        </td>
+        <td>
+          {% for a in region.members.all %}
+            {{ a.login_name }}{% if not forloop.last %}, {% endif %}
+          {% empty %}
+            <span class="wb-hint">—</span>
+          {% endfor %}
+        </td>
+        <td>
+          <form method="post" style="display:inline-flex; gap:0.25rem; flex-wrap:wrap; align-items:center;">
+            {% csrf_token %}
+            <input type="hidden" name="rg_pk" value="{{ region.pk }}">
+            <button type="submit" class="button small" name="action" value="move_up"
+                    {% if not region.can_move_up %}disabled{% endif %}
+                    title="{% trans 'Nach oben' %}">↑</button>
+            <button type="submit" class="button small" name="action" value="move_down"
+                    {% if not region.can_move_down %}disabled{% endif %}
+                    title="{% trans 'Nach unten' %}">↓</button>
+            <button type="submit" class="button small" name="action" value="load">{% trans "Laden" %}</button>
+            {% if not region.parent_id %}
+            <button type="submit" class="button small" name="action" value="new_under"
+                    formaction="" onclick="this.form.rg_parent && (this.form.rg_parent.value='{{ region.pk }}');">
+              {% trans "+ Sub" %}
+            </button>
+            <input type="hidden" name="rg_parent" value="{{ region.pk }}">
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="wb-hint">{% trans "Noch keine Regionen in der Datenbank." %}</p>
+  {% endif %}
+
+  <form method="post" id="rg-draft-form" data-has-server-draft="{% if rg_draft.pk or rg_draft.min_x != '' %}1{% else %}0{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+    <h2 style="margin:0 0 0.5rem;font-size:1.15rem;">{% if rg_draft.pk %}{% trans "Region bearbeiten" %}{% else %}{% trans "Region anlegen" %}{% endif %}</h2>
+
+    <div class="wb-grid">
+      <div>
+        <label for="id_rg_region_id">{% trans "Region-ID" %}</label>
+        <input id="id_rg_region_id" type="text" name="rg_region_id" maxlength="64"
+               value="{{ rg_draft.region_id }}" {% if rg_draft.pk %}readonly{% endif %}
+               pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,62}">
+      </div>
+      <div>
+        <label for="id_rg_display_name">{% trans "Anzeigename" %}</label>
+        <input id="id_rg_display_name" type="text" name="rg_display_name" maxlength="120"
+               value="{{ rg_draft.display_name }}">
+      </div>
+      <div>
+        <label for="id_rg_world">{% trans "Welt" %}</label>
+        <input id="id_rg_world" type="text" name="rg_world" maxlength="64" value="{{ rg_draft.world }}">
+      </div>
+      <div>
+        <label for="id_rg_parent">{% trans "Master-Region (für Sub)" %}</label>
+        <select id="id_rg_parent" name="rg_parent" {% if rg_draft.pk and not rg_draft.parent_id %}disabled{% endif %}>
+          <option value="">— {% trans "Master (keine)" %}</option>
+          {% for m in rg_masters %}
+          <option value="{{ m.pk }}"{% if rg_draft.parent_id == m.pk|stringformat:"s" %} selected{% endif %}>
+            {{ m.region_id }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="id_rg_sub_slug">{% trans "Sub-Slug (neu)" %}</label>
+        <input id="id_rg_sub_slug" type="text" name="rg_sub_slug" maxlength="40"
+               value="{{ rg_draft.sub_slug }}" placeholder="zone_a">
+      </div>
+      <div>
+        <label for="id_rg_assigned_to_group">{% trans "TOP-Gruppe (Master)" %}</label>
+        <select id="id_rg_assigned_to_group" name="rg_assigned_to_group">
+          <option value="">—</option>
+          {% for g in rg_top_groups %}
+          <option value="{{ g.pk }}"{% if rg_draft.assigned_to_group_id == g.pk|stringformat:"s" %} selected{% endif %}>
+            {{ g.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="wb-grid">
+      <div>
+        <label for="id_rg_min_x">{% trans "Min X" %}</label>
+        <input id="id_rg_min_x" type="number" step="1" name="rg_min_x" required value="{{ rg_draft.min_x }}">
+      </div>
+      <div>
+        <label for="id_rg_min_y">{% trans "Min Y" %}</label>
+        <input id="id_rg_min_y" type="number" step="1" name="rg_min_y" required value="{{ rg_draft.min_y }}">
+      </div>
+      <div>
+        <label for="id_rg_min_z">{% trans "Min Z" %}</label>
+        <input id="id_rg_min_z" type="number" step="1" name="rg_min_z" required value="{{ rg_draft.min_z }}">
+      </div>
+      <div>
+        <label for="id_rg_max_x">{% trans "Max X" %}</label>
+        <input id="id_rg_max_x" type="number" step="1" name="rg_max_x" required value="{{ rg_draft.max_x }}">
+      </div>
+      <div>
+        <label for="id_rg_max_y">{% trans "Max Y" %}</label>
+        <input id="id_rg_max_y" type="number" step="1" name="rg_max_y" required value="{{ rg_draft.max_y }}">
+      </div>
+      <div>
+        <label for="id_rg_max_z">{% trans "Max Z" %}</label>
+        <input id="id_rg_max_z" type="number" step="1" name="rg_max_z" required value="{{ rg_draft.max_z }}">
+      </div>
+      <div>
+        <label for="id_rg_spawn_x">{% trans "Spawn X" %}</label>
+        <input id="id_rg_spawn_x" type="number" step="1" name="rg_spawn_x" value="{{ rg_draft.spawn_x }}">
+      </div>
+      <div>
+        <label for="id_rg_spawn_y">{% trans "Spawn Y" %}</label>
+        <input id="id_rg_spawn_y" type="number" step="1" name="rg_spawn_y" value="{{ rg_draft.spawn_y }}">
+      </div>
+      <div>
+        <label for="id_rg_spawn_z">{% trans "Spawn Z" %}</label>
+        <input id="id_rg_spawn_z" type="number" step="1" name="rg_spawn_z" value="{{ rg_draft.spawn_z }}">
+      </div>
+    </div>
+
+    <div class="wb-grid">
+      <label>
+        <input type="checkbox" name="rg_protect_build" {% if rg_draft.protect_build %}checked{% endif %}>
+        {% trans "Bauen schützen" %}
+      </label>
+      <label>
+        <input type="checkbox" name="rg_enabled" {% if rg_draft.enabled %}checked{% endif %}>
+        {% trans "Aktiv" %}
+      </label>
+      <label>
+        <input type="checkbox" name="rg_clear_spawn">
+        {% trans "Spawn löschen" %}
+      </label>
+    </div>
+
+    <div>
+      <label style="font-size:0.78rem;font-weight:700;">{% trans "Mitglieder" %}</label>
+      <div class="wb-members">
+        {% for a in rg_member_choices %}
+        <label>
+          <input type="checkbox" name="rg_members" value="{{ a.pk }}"
+                 {% if a.pk in rg_draft.member_ids %}checked{% endif %}>
+          {{ a.login_name }}{% if a.display_name %} — {{ a.display_name }}{% endif %}
+        </label>
+        {% empty %}
+        <span class="wb-hint">{% trans "Keine aktiven Accounts." %}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="wb-grid" style="margin-top:0.75rem;">
+      <div>
+        <label for="id_rg_player">{% trans "Spieler für Position" %}</label>
+        <input id="id_rg_player" type="text" name="rg_player" list="rg_player_list"
+               maxlength="32" value="{{ rg_draft.player }}" placeholder="Player1">
+        <datalist id="rg_player_list">
+          {% for name in rg_online_players %}
+          <option value="{{ name }}"></option>
+          {% endfor %}
+          {% for a in rg_member_choices %}
+          <option value="{{ a.login_name }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label for="id_rg_notes">{% trans "Notiz" %}</label>
+        <input id="id_rg_notes" type="text" name="rg_notes" maxlength="255" value="{{ rg_draft.notes }}">
+      </div>
+    </div>
+
+    <div class="wb-actions">
+      <input type="hidden" name="rg_corner" value="min">
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='min';">
+        {% trans "Min = Spieler-Pos" %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='max';">
+        {% trans "Max = Spieler-Pos" %}
+      </button>
+      <button type="submit" class="button" name="action" value="capture_pos" formnovalidate
+              onclick="this.form.rg_corner.value='spawn';">
+        {% trans "Spawn = Spieler-Pos" %}
+      </button>
+      <button type="submit" class="button default" name="action" value="save">{% trans "Speichern" %}</button>
+      <button type="submit" class="button" name="action" value="cancel" formnovalidate>{% trans "Abbrechen" %}</button>
+      {% if rg_draft.pk %}
+      <button type="submit" class="button" name="action" value="delete" formnovalidate
+              onclick="return confirm('{% trans "Region wirklich löschen?" %}');">
+        {% trans "Löschen" %}
+      </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

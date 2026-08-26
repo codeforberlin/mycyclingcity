@@ -385,6 +385,29 @@ def luanti_regions(request):
 
 @csrf_exempt
 @require_POST
+def luanti_player_pos(request):
+    """Bridge reports a player block position for Admin capture_pos."""
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    request_id = str(data.get("request_id") or "").strip()
+    if not request_id:
+        return JsonResponse({"ok": False, "error": "missing_request_id"}, status=400)
+    try:
+        x = int(data.get("x"))
+        y = int(data.get("y"))
+        z = int(data.get("z"))
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_coords"}, status=400)
+    from luanti.services.player_pos import store_player_pos
+
+    store_player_pos(request_id, x, y, z)
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+@require_POST
 def luanti_arena_state(request):
     data = _parse_json(request)
     data, err = _auth_or_error(data)

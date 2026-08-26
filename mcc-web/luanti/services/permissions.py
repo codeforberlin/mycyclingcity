@@ -77,6 +77,16 @@ def user_can_manage_luanti_stations(user: UserLike) -> bool:
     return user.has_perm("luanti.manage_luanti_stations")
 
 
+def user_can_manage_luanti_regions(user: UserLike) -> bool:
+    if not _ok(user):
+        return False
+    if user.is_superuser:
+        return True
+    return user.has_perm("luanti.manage_luanti_regions") or user.has_perm(
+        "luanti.access_luanti_city"
+    )
+
+
 def can_access_luanti_control(user) -> bool:
     if isinstance(user, AnonymousUser) or user is None:
         return False

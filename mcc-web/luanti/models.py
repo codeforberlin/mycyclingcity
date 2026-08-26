@@ -51,6 +51,22 @@ class LuantiIntegrationConfig(models.Model):
             "0 = keine Warnung."
         ),
     )
+    region_outline_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Regionen-Markierung aktiv"),
+        help_text=_("Cuboid-Grenzen als Partikel in der Nähe von Spielern zeichnen."),
+    )
+    region_outline_enter_hint = models.BooleanField(
+        default=True,
+        verbose_name=_("Hinweis beim Betreten"),
+        help_text=_("Region-Namen kurz anzeigen, wenn ein Spieler eine Zone betritt."),
+    )
+    region_outline_view_distance = models.PositiveIntegerField(
+        default=48,
+        validators=[MinValueValidator(8)],
+        verbose_name=_("Sichtweite Regionen (Blöcke)"),
+        help_text=_("Horizontale Distanz, ab der Outline-Partikel gezeichnet werden."),
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         django_settings.AUTH_USER_MODEL,
@@ -622,16 +638,25 @@ class LuantiCityPreset(models.Model):
 
 
 class LuantiProtectedRegion(models.Model):
+    """Cuboid build-protection zone managed from Admin, enforced by mcc_bridge.
+
+    Master regions may be assigned to a TOP group. Subregions reference a master
+    via ``parent`` and must lie inside the master cuboid. Members (LuantiAccounts)
+    may dig/place inside protect_build regions while in build mode.
+    """
+
     region_id = models.SlugField(max_length=64, unique=True, verbose_name=_("Region-ID"))
     display_name = models.CharField(max_length=120, blank=True, verbose_name=_("Anzeigename"))
     world = models.CharField(max_length=64, default="world", verbose_name=_("Welt"))
-    min_x = models.IntegerField()
-    min_y = models.IntegerField(default=-64)
-    min_z = models.IntegerField()
-    max_x = models.IntegerField()
-    max_y = models.IntegerField(default=320)
-    max_z = models.IntegerField()
-    protect_build = models.BooleanField(default=True, verbose_name=_("Bauen schützen"))
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="subregions",
+        verbose_name=_("Master-Region"),
+        help_text=_("Leer = Master-Region. Gesetzt = Subregion innerhalb der Master-Bounds."),
+    )
     assigned_to_group = models.ForeignKey(
         "api.Group",
         on_delete=models.SET_NULL,
@@ -639,17 +664,226 @@ class LuantiProtectedRegion(models.Model):
         blank=True,
         related_name="luanti_regions",
         verbose_name=_("TOP-Gruppe"),
+        help_text=_(
+            "Nur bei Master-Regionen: permanente Zuordnung zur TOP-Gruppe. "
+            "Subregionen erben über die Master-Region."
+        ),
     )
-    sort_order = models.PositiveIntegerField(default=0)
-    enabled = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Sortierung"),
+        help_text=_("Reihenfolge in der Liste (Master untereinander, Subs je Master)."),
+    )
+    min_x = models.IntegerField(verbose_name=_("Min X"))
+    min_y = models.IntegerField(default=-64, verbose_name=_("Min Y"))
+    min_z = models.IntegerField(verbose_name=_("Min Z"))
+    max_x = models.IntegerField(verbose_name=_("Max X"))
+    max_y = models.IntegerField(default=320, verbose_name=_("Max Y"))
+    max_z = models.IntegerField(verbose_name=_("Max Z"))
+    spawn_x = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Spawn X"),
+        help_text=_("Optionaler Session-Spawn. Leer = Cuboid-Mitte."),
+    )
+    spawn_y = models.IntegerField(null=True, blank=True, verbose_name=_("Spawn Y"))
+    spawn_z = models.IntegerField(null=True, blank=True, verbose_name=_("Spawn Z"))
+    protect_build = models.BooleanField(
+        default=True,
+        verbose_name=_("Bauen schützen"),
+        help_text=_(
+            "Wenn aktiv: im Build-Modus dürfen nur Members in diesem Cuboid bauen. "
+            "Aus = Passthrough (kein eigener Bau-Schutz)."
+        ),
+    )
+    members = models.ManyToManyField(
+        "LuantiAccount",
+        blank=True,
+        related_name="protected_regions",
+        verbose_name=_("Mitglieder (Accounts)"),
+        help_text=_("Accounts, die im Build-Modus in dieser Region bauen dürfen."),
+    )
+    notes = models.CharField(max_length=255, blank=True, verbose_name=_("Notiz"))
+    enabled = models.BooleanField(default=True, verbose_name=_("Aktiv"))
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("Geändert von"),
+    )
 
     class Meta:
         ordering = ["sort_order", "region_id"]
         verbose_name = _("Geschützte Region")
         verbose_name_plural = _("Geschützte Regionen")
+        permissions = [
+            ("manage_luanti_regions", _("Geschützte Regionen verwalten")),
+        ]
 
     def __str__(self):
-        return self.display_name or self.region_id
+        label = (self.display_name or "").strip() or self.region_id
+        return f"{label} ({self.region_id})"
+
+    @property
+    def is_master(self) -> bool:
+        return self.parent_id is None
+
+    def effective_top_group(self):
+        if self.parent_id:
+            return self.parent.assigned_to_group
+        return self.assigned_to_group
+
+    def normalized_bounds(self) -> tuple[int, int, int, int, int, int]:
+        return (
+            min(self.min_x, self.max_x),
+            min(self.min_y, self.max_y),
+            min(self.min_z, self.max_z),
+            max(self.min_x, self.max_x),
+            max(self.min_y, self.max_y),
+            max(self.min_z, self.max_z),
+        )
+
+    @property
+    def has_custom_spawn(self) -> bool:
+        return (
+            self.spawn_x is not None
+            and self.spawn_y is not None
+            and self.spawn_z is not None
+        )
+
+    def contains_point(self, x: int, y: int, z: int) -> bool:
+        return self.contains_bounds(x, y, z, x, y, z)
+
+    def overlaps_bounds(
+        self,
+        min_x: int,
+        min_y: int,
+        min_z: int,
+        max_x: int,
+        max_y: int,
+        max_z: int,
+    ) -> bool:
+        a_min_x, a_min_y, a_min_z, a_max_x, a_max_y, a_max_z = self.normalized_bounds()
+        b_min_x, b_min_y, b_min_z = min(min_x, max_x), min(min_y, max_y), min(min_z, max_z)
+        b_max_x, b_max_y, b_max_z = max(min_x, max_x), max(min_y, max_y), max(min_z, max_z)
+        return (
+            a_min_x < b_max_x
+            and a_max_x > b_min_x
+            and a_min_y < b_max_y
+            and a_max_y > b_min_y
+            and a_min_z < b_max_z
+            and a_max_z > b_min_z
+        )
+
+    def find_overlapping_peer(self):
+        qs = (
+            type(self)
+            .objects.filter(world=self.world, parent_id=self.parent_id)
+            .only("region_id", "min_x", "min_y", "min_z", "max_x", "max_y", "max_z")
+        )
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        bounds = self.normalized_bounds()
+        for other in qs:
+            if other.overlaps_bounds(*bounds):
+                return other
+        return None
+
+    def contains_bounds(
+        self,
+        min_x: int,
+        min_y: int,
+        min_z: int,
+        max_x: int,
+        max_y: int,
+        max_z: int,
+    ) -> bool:
+        a_min_x, a_min_y, a_min_z, a_max_x, a_max_y, a_max_z = self.normalized_bounds()
+        b_min_x, b_min_y, b_min_z = min(min_x, max_x), min(min_y, max_y), min(min_z, max_z)
+        b_max_x, b_max_y, b_max_z = max(min_x, max_x), max(min_y, max_y), max(min_z, max_z)
+        return (
+            b_min_x >= a_min_x
+            and b_min_y >= a_min_y
+            and b_min_z >= a_min_z
+            and b_max_x <= a_max_x
+            and b_max_y <= a_max_y
+            and b_max_z <= a_max_z
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        errors: dict[str, str] = {}
+
+        if self.parent_id:
+            parent = self.parent
+            if parent is None:
+                errors["parent"] = _("Master-Region nicht gefunden.")
+            else:
+                if parent.parent_id is not None:
+                    errors["parent"] = _(
+                        "Subregionen dürfen nur einer Master-Region (ohne Parent) "
+                        "untergeordnet sein."
+                    )
+                if self.pk and parent.pk == self.pk:
+                    errors["parent"] = _("Eine Region kann nicht ihr eigener Parent sein.")
+                if self.assigned_to_group_id:
+                    errors["assigned_to_group"] = _(
+                        "TOP-Zuordnung nur bei Master-Regionen; "
+                        "Subregionen erben über den Parent."
+                    )
+                if parent.world and self.world and parent.world != self.world:
+                    errors["world"] = _(
+                        "Subregion muss in derselben Welt wie die Master-Region liegen."
+                    )
+                if not parent.contains_bounds(*self.normalized_bounds()):
+                    errors["min_x"] = _(
+                        "Subregion muss vollständig innerhalb der Master-Region liegen."
+                    )
+        elif self.assigned_to_group_id:
+            group = self.assigned_to_group
+            if group is not None and group.parent_id is not None:
+                errors["assigned_to_group"] = _(
+                    "Nur TOP-Gruppen (ohne übergeordnete Gruppe) dürfen zugewiesen werden."
+                )
+
+        if self.pk and not self.parent_id:
+            for sub in type(self).objects.filter(parent_id=self.pk).only(
+                "min_x", "min_y", "min_z", "max_x", "max_y", "max_z", "region_id"
+            ):
+                if not self.contains_bounds(*sub.normalized_bounds()):
+                    errors["min_x"] = _(
+                        "Master-Bounds würden Subregion „%(id)s“ ausschließen."
+                    ) % {"id": sub.region_id}
+                    break
+
+        spawn_vals = (self.spawn_x, self.spawn_y, self.spawn_z)
+        if any(v is not None for v in spawn_vals) and any(v is None for v in spawn_vals):
+            errors["spawn_x"] = _(
+                "Spawn-Punkt: X, Y und Z müssen zusammen gesetzt werden (oder alle leer)."
+            )
+        elif self.has_custom_spawn:
+            if not self.contains_point(self.spawn_x, self.spawn_y, self.spawn_z):
+                errors["spawn_x"] = _(
+                    "Spawn-Punkt muss innerhalb der Regions-Bounds liegen."
+                )
+
+        peer = self.find_overlapping_peer()
+        if peer is not None:
+            if self.parent_id:
+                errors["min_x"] = _(
+                    "Subregion überlappt mit Geschwister-Region „%(id)s“."
+                ) % {"id": peer.region_id}
+            else:
+                errors["min_x"] = _(
+                    "Master-Region überlappt mit anderer Master-Region „%(id)s“."
+                ) % {"id": peer.region_id}
+
+        if errors:
+            raise ValidationError(errors)
 
 
 class LuantiArenaMotionSettings(models.Model):
@@ -779,3 +1013,20 @@ class LuantiStation(models.Model):
     def save(self, *args, **kwargs):
         self.ensure_api_key()
         super().save(*args, **kwargs)
+
+
+class LuantiPlayerPosReply(models.Model):
+    """Short-lived bridge reply for Admin capture_pos (shared across Gunicorn workers)."""
+
+    request_id = models.CharField(max_length=64, primary_key=True)
+    x = models.IntegerField()
+    y = models.IntegerField()
+    z = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Spielerpositions-Antwort")
+        verbose_name_plural = _("Spielerpositions-Antworten")
+
+    def __str__(self):
+        return f"{self.request_id} ({self.x},{self.y},{self.z})"
