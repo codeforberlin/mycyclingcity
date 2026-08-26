@@ -103,6 +103,51 @@ def get_or_create_inventory(account: LuantiAccount, mode: str) -> LuantiPlayerIn
     return inv
 
 
+def coerce_inventory_list(value, *, inventory_count=None) -> list | None:
+    """Normalize inventory from bridge JSON.
+
+    Luanti ``core.write_json`` encodes an empty Lua table as ``{}`` (object), not
+    ``[]``. Treat that (and ``inventory_count=0``) as an explicit empty list so
+    leave/sync can persist a cleared inventory.
+    """
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict) and len(value) == 0:
+        return []
+    if value is None and inventory_count == 0:
+        return []
+    try:
+        if inventory_count is not None and int(inventory_count) == 0 and value in (None, {}):
+            return []
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def clear_account_inventory(inv: LuantiPlayerInventory, *, push_live: bool = True) -> LuantiPlayerInventory:
+    """Empty stored inventory and bump revision.
+
+    If the account has an open session in the same mode, also push CLEAR_INVENTORY
+    so a live player is emptied immediately (leave would otherwise overwrite []).
+    """
+    inv.payload = []
+    inv.revision = int(inv.revision or 0) + 1
+    inv.save(update_fields=["payload", "revision", "updated_at"])
+    if push_live:
+        session = get_active_session(inv.account.login_name)
+        if session and session.mode == inv.mode:
+            from luanti.consumers import LuantiEventConsumer
+
+            LuantiEventConsumer.push_to_all_sync(
+                {
+                    "type": "CLEAR_INVENTORY",
+                    "player": inv.account.login_name,
+                    "mode": inv.mode,
+                }
+            )
+    return inv
+
+
 @transaction.atomic
 def start_session(
     *,
@@ -220,7 +265,8 @@ def extend_session(session: LuantiSession, minutes: int | None = None) -> Luanti
     session.ends_at = new_end
     remaining = max(0, int((new_end - session.timestamp_start).total_seconds() // 60))
     session.duration_minutes = remaining
-    session.save(update_fields=["ends_at", "duration_minutes"])
+    session.end_warning_sent_at = None
+    session.save(update_fields=["ends_at", "duration_minutes", "end_warning_sent_at"])
     return session
 
 
@@ -253,7 +299,8 @@ def reduce_session(session: LuantiSession, minutes: int | None = None) -> Luanti
     session.ends_at = new_end
     remaining = max(0, int((new_end - session.timestamp_start).total_seconds() // 60))
     session.duration_minutes = remaining
-    session.save(update_fields=["ends_at", "duration_minutes"])
+    session.end_warning_sent_at = None
+    session.save(update_fields=["ends_at", "duration_minutes", "end_warning_sent_at"])
     return session
 
 
@@ -289,10 +336,63 @@ def resume_session(session: LuantiSession) -> LuantiSession:
     session.ends_at = ends_at
     session.paused_at = None
     session.remaining_seconds = None
+    session.end_warning_sent_at = None
     session.save(
-        update_fields=["status", "ends_at", "paused_at", "remaining_seconds"]
+        update_fields=[
+            "status",
+            "ends_at",
+            "paused_at",
+            "remaining_seconds",
+            "end_warning_sent_at",
+        ]
     )
     return session
+
+
+def warn_expiring_sessions() -> list[LuantiSession]:
+    """
+    Notify players whose ACTIVE session ends within the configured warning window.
+    Each session is warned at most once until ends_at changes (extend/reduce/resume).
+    """
+    cfg = LuantiIntegrationConfig.get_config()
+    warn_sec = int(cfg.session_end_warning_seconds or 0)
+    if warn_sec <= 0:
+        return []
+    now = timezone.now()
+    horizon = now + timedelta(seconds=warn_sec)
+    due = list(
+        LuantiSession.objects.filter(
+            status=LuantiSession.STATUS_ACTIVE,
+            ends_at__isnull=False,
+            ends_at__gt=now,
+            ends_at__lte=horizon,
+            end_warning_sent_at__isnull=True,
+        ).select_related("account")
+    )
+    if not due:
+        return []
+    try:
+        from luanti.consumers import LuantiEventConsumer
+    except Exception:
+        return []
+    warned: list[LuantiSession] = []
+    for session in due:
+        remaining = max(0, int((session.ends_at - now).total_seconds()))
+        minutes = max(1, (remaining + 59) // 60)
+        try:
+            LuantiEventConsumer.push_to_all_sync(
+                {
+                    "type": "SESSION_END_WARNING",
+                    "player": session.login_name,
+                    "minutes": minutes,
+                }
+            )
+            session.end_warning_sent_at = now
+            session.save(update_fields=["end_warning_sent_at"])
+            warned.append(session)
+        except Exception:
+            continue
+    return warned
 
 
 def expire_due_sessions() -> list[LuantiSession]:

@@ -18,6 +18,7 @@ from luanti.services.http_security import verify_request_auth
 from luanti.services.session_control import (
     SessionError,
     auth_check_payload,
+    coerce_inventory_list,
     end_session,
     find_account_by_token,
     get_active_session,
@@ -27,6 +28,7 @@ from luanti.services.session_control import (
     start_session,
 )
 from luanti.services.shop import ShopError, build_catalog_payload, shop_buy, shop_sell
+from luanti.services.shop_registry import replace_registry_items
 from luanti.services.wallet import WalletError, withdraw_velos, wallet_payload
 from luanti.services.city import build_regions_payload
 from luanti.services.arena import build_arena_state
@@ -74,8 +76,10 @@ def luanti_heartbeat(request):
     from luanti.services.session_control import (
         expire_due_sessions,
         reconcile_sessions_with_online_players,
+        warn_expiring_sessions,
     )
 
+    warn_expiring_sessions()
     expire_due_sessions()
     # New bridge sends player_count (Lua empty arrays become JSON {}).
     # Legacy heartbeats omit player_count → skip reconcile.
@@ -142,9 +146,10 @@ def luanti_session_leave(request):
     if err:
         return err
     login = str(data.get("player") or data.get("login_name") or "").strip()
-    inventory = data.get("inventory")
-    if not isinstance(inventory, list):
-        inventory = None
+    inventory = coerce_inventory_list(
+        data.get("inventory"),
+        inventory_count=data.get("inventory_count"),
+    )
     from luanti.services.presence import clear_waiting
 
     if login:
@@ -165,7 +170,10 @@ def luanti_session_set_mode(request):
         return err
     login = str(data.get("player") or "").strip()
     mode = str(data.get("mode") or "").strip()
-    inventory = data.get("inventory") if isinstance(data.get("inventory"), list) else None
+    inventory = coerce_inventory_list(
+        data.get("inventory"),
+        inventory_count=data.get("inventory_count"),
+    )
     session = get_active_session(login)
     if not session:
         return JsonResponse({"ok": False, "error": "no_session"}, status=404)
@@ -185,8 +193,11 @@ def luanti_inventory_sync(request):
         return err
     login = str(data.get("player") or "").strip()
     mode = str(data.get("mode") or "").strip()
-    inventory = data.get("inventory")
-    if not login or not isinstance(inventory, list):
+    inventory = coerce_inventory_list(
+        data.get("inventory"),
+        inventory_count=data.get("inventory_count"),
+    )
+    if not login or inventory is None:
         return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
     session = get_active_session(login)
     if not session:
@@ -198,6 +209,22 @@ def luanti_inventory_sync(request):
     inv.last_server_id = str(data.get("server_id") or "")
     inv.save(update_fields=["payload", "revision", "last_server_id", "updated_at"])
     return JsonResponse({"ok": True, "revision": inv.revision})
+
+
+@csrf_exempt
+@require_POST
+def luanti_shop_registry(request):
+    """Receive Mineclonia item registry dump from mcc_bridge."""
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    items = data.get("items")
+    if not isinstance(items, list):
+        return JsonResponse({"ok": False, "error": "invalid_items"}, status=400)
+    clear = bool(data.get("clear"))
+    saved = replace_registry_items(items, clear=clear)
+    return JsonResponse({"ok": True, "saved": saved, "cleared": clear})
 
 
 @csrf_exempt
@@ -282,10 +309,18 @@ def luanti_shop_sell(request):
     tx_id = str(data.get("client_tx_id") or "")
     if not tx_id:
         return JsonResponse({"ok": False, "error": "missing_client_tx_id"}, status=400)
+    raw_id = data.get("item_id")
+    item_id = None
+    if raw_id is not None and str(raw_id).strip() != "":
+        try:
+            item_id = int(raw_id)
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
     try:
         result = shop_sell(
             login_name=str(data.get("player") or ""),
             item_name=str(data.get("item_name") or ""),
+            item_id=item_id,
             quantity=int(data.get("quantity") or 1),
             client_tx_id=tx_id,
         )

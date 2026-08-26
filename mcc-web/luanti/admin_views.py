@@ -441,6 +441,14 @@ def luanti_sessions(request):
                     }
                 )
                 messages.success(request, _("Session gestartet."))
+            elif action == "set_default_mode" and account_id:
+                account = get_object_or_404(LuantiAccount, pk=account_id)
+                mode = (request.POST.get("mode") or "").strip()
+                allowed = account.resolved_allowed_modes()
+                if mode not in allowed:
+                    raise SessionError("mode_not_allowed")
+                account.default_mode = mode
+                account.save(update_fields=["default_mode", "updated_at"])
             elif action == "kick" and session_id:
                 # Do not end_session here — bridge kicks, on_leaveplayer posts
                 # inventory to /session/leave/ which ends the session with payload.
@@ -610,11 +618,100 @@ def luanti_sessions(request):
 @user_passes_test(user_can_access_luanti_shop)
 @staff_member_required
 def luanti_shop_ops(request):
+    from luanti.models import LuantiRegisteredItem, LuantiShopItem
+    from luanti.services.material_map import registry_search
+    from luanti.services.shop_import_mc import (
+        add_registry_item_to_shop,
+        import_minecraft_shop_catalog,
+    )
+    from luanti.services.shop_registry import registry_count, request_registry_dump
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "import_minecraft":
+            result = import_minecraft_shop_catalog(only_enabled=True)
+            messages.success(
+                request,
+                _(
+                    "Minecraft-Import: %(cc)s/%(cu)s Kategorien neu/aktualisiert, "
+                    "%(ic)s/%(iu)s Artikel neu/aktualisiert, %(sk)s übersprungen."
+                )
+                % {
+                    "cc": result.categories_created,
+                    "cu": result.categories_updated,
+                    "ic": result.items_created,
+                    "iu": result.items_updated,
+                    "sk": result.items_skipped,
+                },
+            )
+            if result.unmapped:
+                preview = ", ".join(result.unmapped[:25])
+                more = len(result.unmapped) - 25
+                suffix = _(" … (+%(n)s)") % {"n": more} if more > 0 else ""
+                messages.warning(
+                    request,
+                    _("Ohne Mapping (Auszug): %(list)s%(more)s")
+                    % {"list": preview, "more": suffix},
+                )
+            return redirect("admin:luanti_shop_ops")
+        if action == "refresh_registry":
+            if request_registry_dump():
+                messages.success(
+                    request,
+                    _(
+                        "Registry-Dump an Bridge gesendet — in wenigen Sekunden "
+                        "aktualisiert (Heartbeat)."
+                    ),
+                )
+            else:
+                messages.warning(request, _("Bridge nicht erreichbar / kein Dump eingeordnet."))
+            return redirect("admin:luanti_shop_ops")
+        if action == "add_from_registry":
+            item_name = (request.POST.get("item_name") or "").strip()
+            category_slug = (request.POST.get("category_slug") or "misc").strip() or "misc"
+            display_name = (request.POST.get("display_name") or "").strip()
+            try:
+                price = int(request.POST.get("buy_price_velos") or "1")
+            except ValueError:
+                price = 1
+            try:
+                add_registry_item_to_shop(
+                    item_name=item_name,
+                    category_slug=category_slug,
+                    buy_price_velos=price,
+                    display_name=display_name,
+                )
+                messages.success(
+                    request,
+                    _("Artikel %(item)s zur Kategorie %(cat)s hinzugefügt.")
+                    % {"item": item_name, "cat": category_slug},
+                )
+            except ValueError:
+                messages.error(request, _("Ungültiger Itemstring."))
+            return redirect("admin:luanti_shop_ops")
+
     categories = LuantiShopCategory.objects.prefetch_related("items").order_by("sort_order")
+    q = (request.GET.get("q") or "").strip()
+    registry_names = list(
+        LuantiRegisteredItem.objects.order_by("item_name").values_list("item_name", flat=True)
+    )
+    search_hits = registry_search(q, registry_names, limit=80) if q else []
     return render(
         request,
         "admin/luanti/luanti_shop_ops.html",
-        {"title": _("Luanti Shop"), "categories": categories},
+        {
+            "title": _("Luanti Shop"),
+            "categories": categories,
+            "item_count": LuantiShopItem.objects.count(),
+            "registry_count": registry_count(),
+            "registry_query": q,
+            "registry_hits": search_hits,
+            "category_slugs": list(
+                LuantiShopCategory.objects.order_by("sort_order", "slug").values_list(
+                    "slug", flat=True
+                )
+            ),
+        },
     )
 
 

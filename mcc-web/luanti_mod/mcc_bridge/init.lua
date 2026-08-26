@@ -160,6 +160,73 @@ local function collect_main_inventory(player)
     return payload
 end
 
+-- core.write_json encodes empty Lua {} as JSON object {}; Django expects [].
+-- Always send inventory_count so empty inventories still persist.
+local function inventory_body_fields(player)
+    local items = collect_main_inventory(player)
+    return {
+        inventory = items,
+        inventory_count = #items,
+    }
+end
+
+-- Loud session-end notice for kids: colored chat banner + HUD + sound + echo.
+local function show_session_end_warning(name, minutes)
+    local mins = tonumber(minutes) or 1
+    if mins < 1 then
+        mins = 1
+    end
+    local line = "!!! SESSION ENDET IN CA. " .. tostring(mins) .. " MINUTEN !!!"
+    local line_en = "!!! SESSION ENDS IN ~" .. tostring(mins) .. " MIN !!!"
+    local bar = "################################"
+    local colorize = core.colorize or function(_, s)
+        return s
+    end
+    core.chat_send_player(name, colorize("#FF2222", bar))
+    core.chat_send_player(name, colorize("#FFEE00", line))
+    core.chat_send_player(name, colorize("#FFEE00", line_en))
+    core.chat_send_player(name, colorize("#FF2222", bar))
+
+    local player = core.get_player_by_name(name)
+    if player then
+        -- Level-up sound is loud and familiar from Mineclonia.
+        core.sound_play("level_up", { to_player = name, gain = 1.0 }, true)
+        core.after(0.35, function()
+            core.sound_play("level_up", { to_player = name, gain = 0.8 }, true)
+        end)
+
+        local hud_text = "⚠ SESSION ENDET BALD ⚠\nnoch ca. " .. tostring(mins) .. " Minuten"
+        local hid = player:hud_add({
+            type = "text",
+            position = { x = 0.5, y = 0.22 },
+            offset = { x = 0, y = 0 },
+            alignment = { x = 0, y = 0 },
+            text = hud_text,
+            number = 0xFF2200,
+            size = { x = 2.5, y = 2.5 },
+            z_index = 200,
+            style = 1,
+        })
+        if hid then
+            core.after(15, function()
+                local p = core.get_player_by_name(name)
+                if p then
+                    p:hud_remove(hid)
+                end
+            end)
+        end
+    end
+
+    -- Second chat pulse so it stays visible if they look away briefly.
+    core.after(4, function()
+        if core.get_player_by_name(name) then
+            core.chat_send_player(name, colorize("#FFEE00", line))
+            core.sound_play("experience", { to_player = name, gain = 0.9 }, true)
+        end
+    end)
+    core.log("action", "[mcc_bridge] SESSION_END_WARNING player=" .. name .. " min=" .. tostring(mins))
+end
+
 local function apply_bridge_commands(commands)
     if type(commands) ~= "table" then
         return
@@ -182,11 +249,10 @@ local function apply_bridge_commands(commands)
                         if mode_now == nil or mode_now == "" or mode_now == "paused" then
                             mode_now = "play"
                         end
-                        api_post("/api/luanti/inventory/sync/", {
-                            player = pname,
-                            mode = mode_now,
-                            inventory = collect_main_inventory(player),
-                        })
+                        local sync_body = inventory_body_fields(player)
+                        sync_body.player = pname
+                        sync_body.mode = mode_now
+                        api_post("/api/luanti/inventory/sync/", sync_body)
                     end
                     storage:set_string("paused_" .. pname, "1")
                     storage:set_string("mode_" .. pname, "paused")
@@ -207,13 +273,12 @@ local function apply_bridge_commands(commands)
                     local new_mode = tostring(cmd.mode or "")
                     if new_mode ~= "" then
                         -- Save current-mode inventory, switch mode in Django, apply join.
+                        local mode_body = inventory_body_fields(player)
+                        mode_body.player = pname
+                        mode_body.mode = new_mode
                         api_post(
                             "/api/luanti/session/set-mode/",
-                            {
-                                player = pname,
-                                mode = new_mode,
-                                inventory = collect_main_inventory(player),
-                            },
+                            mode_body,
                             function(ok, join)
                                 if ok and join and not join.wait then
                                     apply_join_result(pname, join)
@@ -232,6 +297,60 @@ local function apply_bridge_commands(commands)
                         waiting_poll[pname] = true
                     end
                 end
+            elseif t == "SESSION_END_WARNING" and cmd.player then
+                local pname = tostring(cmd.player)
+                local minutes = tonumber(cmd.minutes) or 1
+                if minutes < 1 then
+                    minutes = 1
+                end
+                show_session_end_warning(pname, minutes)
+            elseif t == "CHAT_PLAYER" and cmd.player then
+                local pname = tostring(cmd.player)
+                local msg = tostring(cmd.message or "")
+                if msg ~= "" then
+                    core.chat_send_player(pname, msg)
+                end
+            elseif t == "DUMP_ITEM_REGISTRY" then
+                -- Push registered itemstrings to Django for shop import / picker.
+                local batch = {}
+                local batch_size = 400
+                local total = 0
+                local first_chunk = true
+                local function flush()
+                    if #batch == 0 then
+                        return
+                    end
+                    api_post("/api/luanti/shop/registry/", {
+                        items = batch,
+                        clear = first_chunk,
+                    })
+                    first_chunk = false
+                    batch = {}
+                end
+                for name, def in pairs(core.registered_items or {}) do
+                    if type(name) == "string" and name:find(":", 1, true) and name:sub(1, 1) ~= ":" then
+                        local kind = "item"
+                        if core.registered_nodes[name] then
+                            kind = "node"
+                        elseif core.registered_tools and core.registered_tools[name] then
+                            kind = "tool"
+                        end
+                        local desc = ""
+                        if type(def) == "table" and def.description then
+                            desc = tostring(def.description):gsub("\n", " "):sub(1, 200)
+                        end
+                        batch[#batch + 1] = { name = name, description = desc, kind = kind }
+                        total = total + 1
+                        if #batch >= batch_size then
+                            flush()
+                        end
+                    end
+                end
+                flush()
+                core.log(
+                    "action",
+                    "[mcc_bridge] DUMP_ITEM_REGISTRY items=" .. tostring(total)
+                )
             elseif t == "SAVE_LEAVE_ALL" then
                 -- Safe server stop: kick everyone so on_leaveplayer saves inventory.
                 local reason = tostring(cmd.reason or "server_shutdown")
@@ -241,6 +360,27 @@ local function apply_bridge_commands(commands)
                     core.kick_player(pname, reason)
                 end
                 core.log("action", "[mcc_bridge] SAVE_LEAVE_ALL reason=" .. reason)
+            elseif t == "CLEAR_INVENTORY" and cmd.player then
+                local pname = tostring(cmd.player)
+                local mode = tostring(cmd.mode or "")
+                local player = core.get_player_by_name(pname)
+                if player then
+                    clear_player_inventories(player)
+                    if mode == "" then
+                        mode = storage:get_string("mode_" .. pname) or "play"
+                        if mode == "paused" then
+                            mode = "play"
+                        end
+                    end
+                    api_post("/api/luanti/inventory/sync/", {
+                        player = pname,
+                        mode = mode,
+                        inventory = {},
+                        inventory_count = 0,
+                    })
+                    core.chat_send_player(pname, "Inventar geleert. / Inventory cleared.")
+                    core.log("action", "[mcc_bridge] CLEAR_INVENTORY player=" .. pname)
+                end
             elseif t == "KICK_PLAYER" and cmd.player then
                 -- Keep Django session active until leave (with inventory) or
                 -- offline leave below. Admin must not end_session before kick.
@@ -282,7 +422,8 @@ local function connected_player_names()
 end
 
 local function post_session_leave(player, name)
-    local leave_body = { player = name, inventory = collect_main_inventory(player) }
+    local leave_body = inventory_body_fields(player)
+    leave_body.player = name
     storage:set_string("paused_" .. name, "")
     if player then
         set_player_frozen(player, false)
@@ -355,11 +496,57 @@ clear_player_inventories = function(player)
     if not inv then
         return
     end
+    -- Mineclonia survival inventories need a usable main list; older clears via
+    -- set_list({}, {}) could shrink size to 0 and block dig/shop inserts.
+    if inv:get_size("main") < 36 then
+        inv:set_size("main", 36)
+    end
+    if inv:get_size("craft") < 4 then
+        inv:set_size("craft", 4)
+    end
     for _, listname in ipairs({ "main", "craft", "offhand", "armor" }) do
-        if inv:get_size(listname) > 0 then
-            inv:set_list(listname, {})
+        local size = inv:get_size(listname)
+        if size > 0 then
+            for i = 1, size do
+                inv:set_stack(listname, i, ItemStack(""))
+            end
         end
     end
+end
+
+-- Singlenode/void: MCL dig drops spawn as entities and fall off the world before
+-- the item-magnet can collect them. Put drops into the digger inventory first.
+local function install_direct_dig_to_inventory()
+    local orig = core.handle_node_drops
+    if type(orig) ~= "function" then
+        return
+    end
+    function core.handle_node_drops(pos, drops, digger)
+        orig(pos, drops, digger)
+        if not digger or not digger:is_player() or not pos then
+            return
+        end
+        local inv = digger:get_inventory()
+        if not inv then
+            return
+        end
+        if inv:get_size("main") < 36 then
+            inv:set_size("main", 36)
+        end
+        for _, obj in ipairs(core.get_objects_inside_radius(pos, 2.5) or {}) do
+            local ent = obj:get_luaentity()
+            if ent and ent.name == "__builtin:item" and ent.itemstring and ent.itemstring ~= "" and not ent._removed then
+                local leftover = inv:add_item("main", ItemStack(ent.itemstring))
+                if leftover:is_empty() then
+                    ent._removed = true
+                    obj:remove()
+                else
+                    ent.itemstring = leftover:to_string()
+                end
+            end
+        end
+    end
+    core.log("action", "[mcc_bridge] dig drops → inventory (void-safe)")
 end
 
 apply_join_result = function(name, join)
@@ -400,6 +587,7 @@ apply_join_result = function(name, join)
     local inv = player:get_inventory()
     if inv then
         clear_player_inventories(player)
+        -- Apply Django inventory only (empty for new players — shop buys fill it).
         if type(join.inventory) == "table" then
             for i, stack in ipairs(join.inventory) do
                 if type(stack) == "table" and stack.name then
@@ -410,16 +598,6 @@ apply_join_result = function(name, join)
                     inv:set_stack("main", i, item)
                 end
             end
-        end
-        -- Build mode starter kit (Mineclonia has no per-player creative inventory
-        -- unless world creative_mode is enabled).
-        if join.mode == "build" then
-            inv:add_item("main", ItemStack("mcl_tools:pick_diamond"))
-            inv:add_item("main", ItemStack("mcl_tools:axe_diamond"))
-            inv:add_item("main", ItemStack("mcl_tools:shovel_diamond"))
-            inv:add_item("main", ItemStack("mcl_core:stone 64"))
-            inv:add_item("main", ItemStack("mcl_core:dirt 64"))
-            inv:add_item("main", ItemStack("mcl_core:glass 64"))
         end
     end
     if join.mode then
@@ -512,6 +690,7 @@ end
 
 core.register_on_mods_loaded(function()
     install_play_mode_world_protection()
+    install_direct_dig_to_inventory()
     -- Always ensure void worlds have a landing pad (independent of HTTP).
     core.after(1, ensure_spawn_platform)
 
@@ -615,7 +794,7 @@ core.register_chatcommand("mccshop", {
                     )
                 end
             end
-            core.chat_send_player(name, "Kauf: /mccbuy <id> [qty]")
+            core.chat_send_player(name, "Kauf: /mccbuy <id> [qty]  |  Verkauf: /mccsell <id> [qty]")
         end)
     end,
 })
@@ -649,6 +828,119 @@ core.register_chatcommand("mccbuy", {
                 end
             end
             core.chat_send_player(name, "Velos: " .. tostring(data.velos_spendable or "?"))
+        end)
+        return true
+    end,
+})
+
+local function count_item_in_main(inv, item_name)
+    local total = 0
+    if not inv or not item_name or item_name == "" then
+        return 0
+    end
+    for i = 1, inv:get_size("main") do
+        local stack = inv:get_stack("main", i)
+        if stack:get_name() == item_name then
+            total = total + stack:get_count()
+        end
+    end
+    return total
+end
+
+local function take_item_from_main(inv, item_name, count)
+    local left = tonumber(count) or 0
+    if left <= 0 then
+        return true
+    end
+    for i = 1, inv:get_size("main") do
+        if left <= 0 then
+            break
+        end
+        local stack = inv:get_stack("main", i)
+        if stack:get_name() == item_name then
+            local n = stack:get_count()
+            local remove = math.min(n, left)
+            stack:take_item(remove)
+            inv:set_stack("main", i, stack)
+            left = left - remove
+        end
+    end
+    return left <= 0
+end
+
+core.register_chatcommand("mccsell", {
+    params = "<item_id> [qty]",
+    description = "Sell shop item back for Velos (only previously bought)",
+    func = function(name, param)
+        local id, qty = param:match("^(%d+)%s*(%d*)$")
+        id = tonumber(id)
+        qty = tonumber(qty) or 1
+        if not id then
+            return false, "Usage: /mccsell <id> [qty]"
+        end
+        local player = core.get_player_by_name(name)
+        if not player then
+            return false, "Player offline"
+        end
+        local inv = player:get_inventory()
+        if not inv then
+            return false, "No inventory"
+        end
+        -- Resolve item_name from catalog, then take from inv before API credit.
+        api_post("/api/luanti/shop/catalog/", {}, function(ok, cat)
+            if not ok or not cat then
+                core.chat_send_player(name, "Shop offline")
+                return
+            end
+            local item_name = nil
+            local stack_size = 1
+            for _, c in ipairs(cat.categories or {}) do
+                for _, item in ipairs(c.items or {}) do
+                    if tonumber(item.id) == id then
+                        item_name = item.item_name
+                        stack_size = tonumber(item.stack_size) or 1
+                        break
+                    end
+                end
+                if item_name then
+                    break
+                end
+            end
+            if not item_name then
+                core.chat_send_player(name, "Unbekannte ID / unknown id")
+                return
+            end
+            local need = qty * math.max(1, stack_size)
+            if count_item_in_main(inv, item_name) < need then
+                core.chat_send_player(name, "Nicht genug Items im Inventar / not enough items")
+                return
+            end
+            if not take_item_from_main(inv, item_name, need) then
+                core.chat_send_player(name, "Entfernen fehlgeschlagen / remove failed")
+                return
+            end
+            local tx = name .. "-sell-" .. tostring(os.time()) .. "-" .. tostring(id)
+            api_post("/api/luanti/shop/sell/", {
+                player = name,
+                item_id = id,
+                quantity = qty,
+                client_tx_id = tx,
+            }, function(ok2, data)
+                if not ok2 or not data or not data.ok then
+                    -- Restore items if sell rejected (e.g. no purchase credit).
+                    inv:add_item("main", ItemStack(item_name .. " " .. tostring(need)))
+                    local err = (data and data.error) or "sell_failed"
+                    core.chat_send_player(name, "Verkauf fehlgeschlagen / sell failed: " .. tostring(err))
+                    return
+                end
+                core.chat_send_player(
+                    name,
+                    "Verkauf +"
+                        .. tostring(data.refunded or "?")
+                        .. " Velos, Stand: "
+                        .. tostring(data.velos_spendable or "?")
+                )
+            end)
         end)
         return true
     end,

@@ -220,6 +220,61 @@ def test_reconcile_skipped_without_player_list(account):
 
 
 @pytest.mark.django_db
+def test_warn_expiring_sessions_once(account, monkeypatch):
+    from luanti.services import session_control as sc
+
+    cfg = LuantiIntegrationConfig.get_config()
+    cfg.session_end_warning_seconds = 90
+    cfg.save(update_fields=["session_end_warning_seconds"])
+    session = start_session(account=account, duration=20)
+    session.ends_at = timezone.now() + timedelta(seconds=45)
+    session.save(update_fields=["ends_at"])
+    pushed = []
+
+    def _push(msg):
+        pushed.append(msg)
+        return 1
+
+    monkeypatch.setattr("luanti.consumers.LuantiEventConsumer.push_to_all_sync", _push)
+    warned = sc.warn_expiring_sessions()
+    assert len(warned) == 1
+    assert pushed[0]["type"] == "SESSION_END_WARNING"
+    assert pushed[0]["player"] == account.login_name
+    assert pushed[0]["minutes"] >= 1
+    session.refresh_from_db()
+    assert session.end_warning_sent_at is not None
+    # Second call must not spam.
+    assert sc.warn_expiring_sessions() == []
+
+
+@pytest.mark.django_db
+def test_warn_disabled_when_zero(account, monkeypatch):
+    from luanti.services import session_control as sc
+
+    cfg = LuantiIntegrationConfig.get_config()
+    cfg.session_end_warning_seconds = 0
+    cfg.save(update_fields=["session_end_warning_seconds"])
+    session = start_session(account=account, duration=20)
+    session.ends_at = timezone.now() + timedelta(seconds=10)
+    session.save(update_fields=["ends_at"])
+    monkeypatch.setattr(
+        "luanti.consumers.LuantiEventConsumer.push_to_all_sync",
+        lambda msg: 1,
+    )
+    assert sc.warn_expiring_sessions() == []
+
+
+@pytest.mark.django_db
+def test_extend_clears_end_warning(account):
+    session = start_session(account=account, duration=20)
+    session.end_warning_sent_at = timezone.now()
+    session.save(update_fields=["end_warning_sent_at"])
+    extend_session(session, minutes=5)
+    session.refresh_from_db()
+    assert session.end_warning_sent_at is None
+
+
+@pytest.mark.django_db
 def test_config_fallback_bounds(db):
     cfg = LuantiIntegrationConfig.get_config()
     cfg.session_min_minutes = 7
@@ -227,3 +282,29 @@ def test_config_fallback_bounds(db):
     cfg.save()
     acc = LuantiAccount.objects.create(login_name="Kid2", id_tag="Kid2")
     assert resolve_duration_minutes(acc) == 40  # default 45 clamped to max 40
+
+
+@pytest.mark.django_db
+def test_clear_account_inventory_bumps_revision_and_pushes(account, monkeypatch):
+    from luanti.models import LuantiPlayerInventory
+    from luanti.services.session_control import clear_account_inventory, get_or_create_inventory
+
+    session = start_session(account=account, duration=20)
+    inv = get_or_create_inventory(account, "play")
+    inv.payload = [{"name": "mcl_core:dirt", "count": 5}]
+    inv.revision = 3
+    inv.save(update_fields=["payload", "revision"])
+    pushed = []
+    monkeypatch.setattr(
+        "luanti.consumers.LuantiEventConsumer.push_to_all_sync",
+        lambda msg: pushed.append(msg) or 1,
+    )
+    clear_account_inventory(inv)
+    inv.refresh_from_db()
+    assert inv.payload == []
+    assert inv.revision == 4
+    assert any(m.get("type") == "CLEAR_INVENTORY" for m in pushed)
+    payload = join_payload(account.login_name)
+    assert payload["inventory"] == []
+    assert payload["inventory_revision"] == 4
+    assert session.pk  # session still open

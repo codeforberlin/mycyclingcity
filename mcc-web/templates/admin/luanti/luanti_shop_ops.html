@@ -8,15 +8,80 @@
 
 {% block content %}
 <div class="luanti-admin">
-  <p class="muted">{% trans "Katalog wird vom Luanti-Server per HTTP geladen. Verwaltung auch unter Shop-Kategorien im Admin." %}</p>
+  <p class="muted">
+    {% blocktrans with items=item_count reg=registry_count %}
+    Katalog: {{ items }} Artikel · Mineclonia-Registry: {{ reg }} Einträge.
+    {% endblocktrans %}
+  </p>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Import aus Minecraft-Shop" %}</h3>
+    <p class="muted">
+      {% trans "Übernimmt Kategorien/Preise aus dem Minecraft-Shop und mappt Materialien auf Mineclonia-Itemstrings. Mit Registry werden nur existierende Items übernommen." %}
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="import_minecraft">
+      <button type="submit" class="primary">{% trans "Minecraft-Shop importieren" %}</button>
+    </form>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Mineclonia-Registry (fehlende Items)" %}</h3>
+    <p class="muted">
+      {% trans "Luanti-Server sendet alle registrierten Itemstrings. Danach suchen und manuell zum Shop hinzufügen." %}
+    </p>
+    <form method="post" style="margin-bottom:12px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="refresh_registry">
+      <button type="submit">{% trans "Registry vom Server aktualisieren" %}</button>
+    </form>
+    <form method="get" style="margin-bottom:12px;">
+      <label for="reg-q">{% trans "Suche Itemstring" %}</label>
+      <input id="reg-q" name="q" type="search" value="{{ registry_query }}" placeholder="mcl_core:stone">
+      <button type="submit">{% trans "Suchen" %}</button>
+    </form>
+    {% if registry_hits %}
+    <ul>
+      {% for name in registry_hits %}
+      <li style="margin-bottom:8px;">
+        <code>{{ name }}</code>
+        <form method="post" style="display:inline-block;margin-left:8px;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_from_registry">
+          <input type="hidden" name="item_name" value="{{ name }}">
+          <select name="category_slug" required>
+            {% if category_slugs %}
+              {% for slug in category_slugs %}
+              <option value="{{ slug }}">{{ slug }}</option>
+              {% endfor %}
+            {% else %}
+              <option value="misc">misc</option>
+            {% endif %}
+          </select>
+          <input name="buy_price_velos" type="number" min="1" value="1" style="width:5rem;" title="{% trans 'Velos' %}">
+          <button type="submit">{% trans "Hinzufügen" %}</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif registry_query %}
+    <p class="muted">{% trans "Keine Treffer." %}</p>
+    {% elif registry_count == 0 %}
+    <p class="muted">{% trans "Registry leer — zuerst aktualisieren (Luanti muss laufen)." %}</p>
+    {% endif %}
+  </div>
+
+  <p class="muted">{% trans "Verwaltung auch unter Shop-Kategorien / Shop-Artikel im Admin." %}</p>
   <div class="card-grid">
     {% for cat in categories %}
       <div class="card">
-        <h3>{{ cat.name }}</h3>
+        <h3>{{ cat.name }} <span class="muted">({{ cat.slug }})</span></h3>
         <ul>
           {% for item in cat.items.all %}
             <li>
               {{ item.display_name|default:item.item_name }}
+              — <code>{{ item.item_name }}</code>
               — {{ item.buy_price_velos }} {% trans "Velos" %}
               {% if not item.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
             </li>
@@ -26,7 +91,7 @@
         </ul>
       </div>
     {% empty %}
-      <p class="muted">{% trans "Noch keine Kategorien." %}</p>
+      <p class="muted">{% trans "Noch keine Kategorien — Minecraft-Shop importieren." %}</p>
     {% endfor %}
   </div>
 </div>

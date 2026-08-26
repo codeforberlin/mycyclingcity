@@ -43,6 +43,14 @@ class LuantiIntegrationConfig(models.Model):
         verbose_name=_("Standard-Maximum Dauer (Min.)"),
         help_text=_("Fallback, wenn am Account kein Maximum gesetzt ist."),
     )
+    session_end_warning_seconds = models.PositiveIntegerField(
+        default=60,
+        verbose_name=_("Session-Ende-Warnung (Sek.)"),
+        help_text=_(
+            "Spieler erhält eine Chat-Warnung so viele Sekunden vor Session-Ende. "
+            "0 = keine Warnung."
+        ),
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         django_settings.AUTH_USER_MODEL,
@@ -324,6 +332,12 @@ class LuantiSession(models.Model):
         help_text=_("0 = unbegrenzt."),
     )
     ends_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name=_("Geplantes Ende"))
+    end_warning_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Ende-Warnung gesendet"),
+        help_text=_("Zeitpunkt der Chat-Vorwarnung vor Session-Ende."),
+    )
     paused_at = models.DateTimeField(null=True, blank=True, verbose_name=_("Pausiert seit"))
     remaining_seconds = models.PositiveIntegerField(
         null=True,
@@ -515,6 +529,27 @@ class LuantiShopTransaction(models.Model):
         ordering = ["-created_at"]
         verbose_name = _("Shop-Transaktion")
         verbose_name_plural = _("Shop-Transaktionen")
+
+
+class LuantiRegisteredItem(models.Model):
+    """Mineclonia itemstrings reported by mcc_bridge (for shop import / picker)."""
+
+    item_name = models.CharField(
+        max_length=128,
+        primary_key=True,
+        verbose_name=_("Itemstring"),
+    )
+    description = models.CharField(max_length=256, blank=True, verbose_name=_("Beschreibung"))
+    kind = models.CharField(max_length=16, default="item", verbose_name=_("Art"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert"))
+
+    class Meta:
+        ordering = ["item_name"]
+        verbose_name = _("Registriertes Luanti-Item")
+        verbose_name_plural = _("Registrierte Luanti-Items")
+
+    def __str__(self):
+        return self.item_name
 
 
 class LuantiCityPreset(models.Model):

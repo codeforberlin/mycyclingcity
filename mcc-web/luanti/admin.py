@@ -1,7 +1,8 @@
 # Copyright (c) 2026 SAI-Lab / MyCyclingCity
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.utils.translation import gettext_lazy as _
 
 from luanti.models import (
     LuantiAccount,
@@ -13,6 +14,7 @@ from luanti.models import (
     LuantiPendingCommand,
     LuantiPlayerInventory,
     LuantiProtectedRegion,
+    LuantiRegisteredItem,
     LuantiSession,
     LuantiShopCategory,
     LuantiShopItem,
@@ -21,11 +23,17 @@ from luanti.models import (
     LuantiStation,
     LuantiWaitingPlayer,
 )
+from luanti.services.session_control import clear_account_inventory
 
 
 @admin.register(LuantiIntegrationConfig)
 class LuantiIntegrationConfigAdmin(admin.ModelAdmin):
-    list_display = ("pk", "default_session_minutes", "updated_at")
+    list_display = (
+        "pk",
+        "default_session_minutes",
+        "session_end_warning_seconds",
+        "updated_at",
+    )
 
     def has_add_permission(self, request):
         return not LuantiIntegrationConfig.objects.exists()
@@ -75,6 +83,22 @@ class LuantiSessionAdmin(admin.ModelAdmin):
 class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
     list_display = ("account", "mode", "revision", "updated_at")
     list_filter = ("mode",)
+    actions = ("action_clear_inventory",)
+    search_fields = ("account__login_name",)
+
+    @admin.action(description=_("Inventar leeren (DB + online)"))
+    def action_clear_inventory(self, request, queryset):
+        n = 0
+        for inv in queryset.select_related("account"):
+            clear_account_inventory(inv)
+            n += 1
+        self.message_user(
+            request,
+            _("Inventar geleert: %(n)s Eintrag/Einträge. Revision erhöht; "
+              "bei aktiver Session gleicher Modus auch live geleert.")
+            % {"n": n},
+            messages.SUCCESS,
+        )
 
 
 class LuantiShopItemInline(admin.TabularInline):
@@ -103,6 +127,13 @@ class LuantiShopPurchaseCreditAdmin(admin.ModelAdmin):
 class LuantiShopTransactionAdmin(admin.ModelAdmin):
     list_display = ("client_tx_id", "side", "login_name", "item_name", "velos_delta", "created_at")
     list_filter = ("side",)
+
+
+@admin.register(LuantiRegisteredItem)
+class LuantiRegisteredItemAdmin(admin.ModelAdmin):
+    list_display = ("item_name", "kind", "description", "updated_at")
+    search_fields = ("item_name", "description")
+    list_filter = ("kind",)
 
 
 @admin.register(LuantiCityPreset)

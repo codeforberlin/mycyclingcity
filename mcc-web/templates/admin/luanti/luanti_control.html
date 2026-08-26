@@ -55,6 +55,10 @@
         {% trans "Zeit hinzufügen" %}: {{ config.session_add_minutes }} {% trans "Min." %}
       </p>
       <p class="muted">
+        {% trans "Session-Ende-Warnung" %}: {{ config.session_end_warning_seconds }} {% trans "Sek." %}
+        <span class="muted">({% trans "Admin → Luanti-Konfiguration" %})</span>
+      </p>
+      <p class="muted">
         {% trans "Server-Verzeichnis" %}: <code>{{ server_status.dir }}</code>
       </p>
     </div>

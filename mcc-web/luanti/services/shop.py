@@ -119,7 +119,8 @@ def shop_buy(
 def shop_sell(
     *,
     login_name: str,
-    item_name: str,
+    item_name: str = "",
+    item_id: int | None = None,
     quantity: int,
     client_tx_id: str,
 ) -> dict:
@@ -130,13 +131,32 @@ def shop_sell(
             "ok": True,
             "idempotent": True,
             "velos_spendable": int(group.velos_spendable) if group else 0,
+            "refunded": int(tx.velos_delta),
+            "take": [{"item_name": tx.item_name, "count": tx.quantity}],
         }
     quantity = max(1, int(quantity))
-    item = (
-        LuantiShopItem.objects.filter(item_name=item_name, enabled=True, category__enabled=True)
-        .order_by("id")
-        .first()
-    )
+    from luanti.services.session_control import get_active_session
+
+    session = get_active_session(login_name)
+    if session and session.is_paused:
+        raise ShopError("session_paused")
+    item = None
+    if item_id is not None:
+        item = (
+            LuantiShopItem.objects.select_related("category")
+            .filter(pk=int(item_id), enabled=True)
+            .first()
+        )
+        if item and not item.category.enabled:
+            item = None
+    elif item_name:
+        item = (
+            LuantiShopItem.objects.filter(
+                item_name=item_name, enabled=True, category__enabled=True
+            )
+            .order_by("id")
+            .first()
+        )
     if not item:
         raise ShopError("item_not_found")
     group = resolve_group_for_player(login_name)
@@ -156,6 +176,7 @@ def shop_sell(
     group.velos_spendable = F("velos_spendable") + refund
     group.save(update_fields=["velos_spendable"])
     group.refresh_from_db(fields=["velos_spendable"])
+    take_count = quantity * max(1, int(item.stack_size or 1))
     LuantiShopTransaction.objects.create(
         client_tx_id=client_tx_id,
         side=LuantiShopTransaction.SIDE_SELL,
@@ -165,4 +186,9 @@ def shop_sell(
         quantity=quantity,
         velos_delta=refund,
     )
-    return {"ok": True, "velos_spendable": int(group.velos_spendable), "refunded": refund}
+    return {
+        "ok": True,
+        "velos_spendable": int(group.velos_spendable),
+        "refunded": refund,
+        "take": [{"item_name": item.item_name, "count": take_count}],
+    }

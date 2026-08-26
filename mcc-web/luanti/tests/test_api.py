@@ -209,6 +209,81 @@ def test_session_leave_saves_inventory(api_client, settings):
     MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
+def test_session_leave_saves_empty_inventory_from_lua_object(api_client, settings):
+    """Lua write_json encodes empty table as {}; must still clear stored inventory."""
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiPlayerInventory
+    from luanti.services.session_control import get_or_create_inventory
+
+    account = LuantiAccount.objects.create(
+        login_name="Schule1",
+        id_tag="rfid-1",
+        allowed_modes=["play", "build"],
+        default_mode="play",
+    )
+    start_session(account=account, mode="play")
+    inv = get_or_create_inventory(account, "play")
+    inv.payload = [{"name": "mcl_core:dirt", "count": 2}]
+    inv.revision = 2
+    inv.save(update_fields=["payload", "revision"])
+    resp = api_client.post(
+        "/api/luanti/session/leave/",
+        data=json.dumps(
+            _signed({"player": "Schule1", "inventory": {}, "inventory_count": 0})
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ended"] is True
+    inv.refresh_from_db()
+    assert inv.payload == []
+    assert inv.revision == 3
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_inventory_sync_accepts_lua_empty_object(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiPlayerInventory
+    from luanti.services.session_control import get_or_create_inventory
+
+    account = LuantiAccount.objects.create(
+        login_name="Schule1",
+        id_tag="rfid-1",
+        allowed_modes=["play"],
+        default_mode="play",
+    )
+    start_session(account=account, mode="play")
+    inv = get_or_create_inventory(account, "play")
+    inv.payload = [{"name": "mcl_core:stone", "count": 1}]
+    inv.save(update_fields=["payload"])
+    resp = api_client.post(
+        "/api/luanti/inventory/sync/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "Schule1",
+                    "mode": "play",
+                    "inventory": {},
+                    "inventory_count": 0,
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    inv.refresh_from_db()
+    assert inv.payload == []
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
 def test_admin_kick_queues_without_ending_session(api_client, settings):
     """Admin kick must keep session active so leave can persist inventory."""
     settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"

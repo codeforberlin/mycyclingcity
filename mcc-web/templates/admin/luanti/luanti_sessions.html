@@ -46,20 +46,37 @@
         <div class="lt-status-idle is-waiting">{% trans "Bereit zum Start" %}</div>
 
         <div class="lt-actions">
+          <span class="lt-mode-label">{% trans "Modus" %}</span>
+          <div class="lt-mode-row">
+            {# POSTs persist account.default_mode (meta-refresh resets JS-only picks). #}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="set_default_mode">
+              <input type="hidden" name="account_id" value="{{ w.account_id }}">
+              <input type="hidden" name="mode" value="play">
+              <button type="submit" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'play' or not w.account.default_mode %} is-current{% endif %}">{% trans "Spielen" %}</button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="set_default_mode">
+              <input type="hidden" name="account_id" value="{{ w.account_id }}">
+              <input type="hidden" name="mode" value="build">
+              <button type="submit" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'build' %} is-current{% endif %}">{% trans "Bauen" %}</button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="set_default_mode">
+              <input type="hidden" name="account_id" value="{{ w.account_id }}">
+              <input type="hidden" name="mode" value="watch">
+              <button type="submit" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'watch' %} is-current{% endif %}">{% trans "Zuschauen" %}</button>
+            </form>
+          </div>
+
           <form method="post" class="lt-start-form" id="lt-wait-{{ w.pk }}">
             {% csrf_token %}
             <input type="hidden" name="action" value="start">
             <input type="hidden" name="account_id" value="{{ w.account_id }}">
-            <input type="hidden" id="wait-mode-{{ w.pk }}" name="mode" value="{{ w.account.default_mode|default:'play' }}">
-            <span class="lt-mode-label">{% trans "Modus" %}</span>
-            <div class="lt-mode-row">
-              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'play' or not w.account.default_mode %} is-current{% endif %}"
-                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'play');">{% trans "Spielen" %}</button>
-              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'build' %} is-current{% endif %}"
-                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'build');">{% trans "Bauen" %}</button>
-              <button type="button" class="lt-btn lt-btn-mode{% if w.account.default_mode == 'watch' %} is-current{% endif %}"
-                      onclick="return ltPickMode(this, 'wait-mode-{{ w.pk }}', 'watch');">{% trans "Zuschauen" %}</button>
-            </div>
+            <input type="hidden" name="mode" value="{{ w.account.default_mode|default:'play' }}">
 
             <div class="lt-duration-stepper">
               <span>{% trans "Dauer" %}</span>
