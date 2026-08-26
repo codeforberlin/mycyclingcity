@@ -1,0 +1,27 @@
+# textdomain: mcc_bridge
+Categories=Kategorien
+MCC Shop=MCC-Shop
+Velos=Velos
+Buy=Kaufen
+Sell=Verkaufen
+Close=Schließen
+Search=Suche
+Filter=Filter
+Page=Seite
+Selected=Auswahl
+None selected=Nichts ausgewählt
+Price=Preis
+Total=Gesamt
+Qty=Menge
+Drag items here to sell (shop purchases only)=Ziehe Items hierher zum Verkaufen (nur Shop-Käufe)
+Sell all=Alles verkaufen
+Return items=Items zurück
+Shop offline=Shop offline
+No active session=Keine aktive Session
+Session paused=Session pausiert
+Buy failed=Kauf fehlgeschlagen
+Sell failed=Verkauf fehlgeschlagen
+Inventory full=Inventar voll
+Nothing to sell=Nichts zu verkaufen
+Sold=Verkauft
+Not sellable (no purchase credit)=Nicht verkaufbar (kein Kauf-Guthaben)

@@ -373,6 +373,7 @@
     var cur = parseInt(input.value || '0', 10);
     if (isNaN(cur)) cur = min != null ? min : 0;
     input.value = String(clamp(cur + (delta * step), min, max));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     return false;
   };
   window.ltToggleUnlimited = function (checkbox, inputId) {
@@ -422,6 +423,120 @@
       if (countdown) countdown.textContent = formatMmSs(remaining);
     });
   }
+  var DRAFT_PREFIX = 'lt-wait-draft-';
+
+  function draftKey(accountId) {
+    return DRAFT_PREFIX + String(accountId);
+  }
+
+  function readDraft(accountId) {
+    try {
+      var raw = sessionStorage.getItem(draftKey(accountId));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeDraft(accountId, data) {
+    try {
+      sessionStorage.setItem(draftKey(accountId), JSON.stringify(data));
+    } catch (e) { /* private mode / quota */ }
+  }
+
+  function clearDraft(accountId) {
+    try {
+      sessionStorage.removeItem(draftKey(accountId));
+    } catch (e) { /* ignore */ }
+  }
+
+  function collectDraft(form) {
+    var wallet = form.querySelector('[name="wallet_group"]');
+    var duration = form.querySelector('[name="duration_minutes"]');
+    var unlimited = form.querySelector('[name="session_unlimited"]');
+    return {
+      wallet_group: wallet ? wallet.value : '',
+      duration_minutes: duration ? duration.value : '',
+      session_unlimited: !!(unlimited && unlimited.checked),
+    };
+  }
+
+  function applyDraft(form, draft) {
+    if (!draft) return;
+    var wallet = form.querySelector('[name="wallet_group"]');
+    var duration = form.querySelector('[name="duration_minutes"]');
+    var unlimited = form.querySelector('[name="session_unlimited"]');
+    if (wallet && draft.wallet_group != null) {
+      var opt = Array.prototype.find.call(wallet.options, function (o) {
+        return o.value === String(draft.wallet_group);
+      });
+      if (opt || draft.wallet_group === '') {
+        wallet.value = String(draft.wallet_group);
+      }
+    }
+    if (unlimited) {
+      unlimited.checked = !!draft.session_unlimited;
+      if (duration) {
+        window.ltToggleUnlimited(unlimited, duration.id);
+      }
+    }
+    if (duration && !duration.disabled && draft.duration_minutes != null && draft.duration_minutes !== '') {
+      duration.value = String(draft.duration_minutes);
+    }
+    updateWalletPreview(form);
+  }
+
+  function updateWalletPreview(form) {
+    var card = form.closest('.lt-session-card');
+    if (!card) return;
+    var preview = card.querySelector('[data-wallet-preview]');
+    if (!preview) return;
+    var wallet = form.querySelector('[name="wallet_group"]');
+    if (!wallet) return;
+    var selected = wallet.options[wallet.selectedIndex];
+    if (!selected || !selected.value) {
+      var fallback = preview.getAttribute('data-account-wallet') || '—';
+      preview.textContent = fallback;
+      return;
+    }
+    // Option text: "Name (velos)" — show as chosen session override.
+    preview.textContent = selected.textContent.trim();
+  }
+
+  function bindWaitStartForms() {
+    var seen = {};
+    document.querySelectorAll('form.lt-start-form').forEach(function (form) {
+      var accountInput = form.querySelector('[name="account_id"]');
+      if (!accountInput) return;
+      var accountId = accountInput.value;
+      seen[accountId] = true;
+      var draft = readDraft(accountId);
+      if (draft) applyDraft(form, draft);
+
+      function persist() {
+        writeDraft(accountId, collectDraft(form));
+        updateWalletPreview(form);
+      }
+
+      form.querySelectorAll('[name="wallet_group"], [name="duration_minutes"], [name="session_unlimited"]').forEach(function (el) {
+        el.addEventListener('change', persist);
+        el.addEventListener('input', persist);
+      });
+      form.addEventListener('submit', function () {
+        clearDraft(accountId);
+      });
+      updateWalletPreview(form);
+    });
+    // Drop drafts for accounts no longer waiting.
+    try {
+      Object.keys(sessionStorage).forEach(function (key) {
+        if (key.indexOf(DRAFT_PREFIX) !== 0) return;
+        var id = key.slice(DRAFT_PREFIX.length);
+        if (!seen[id]) clearDraft(id);
+      });
+    } catch (e) { /* ignore */ }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.lt-session-card[data-remaining]').forEach(function (card) {
       var countdown = card.querySelector('[data-countdown]');
@@ -432,6 +547,7 @@
         countdown.textContent = formatMmSs(parseInt(card.getAttribute('data-remaining') || '0', 10));
       }
     });
+    bindWaitStartForms();
     setInterval(tickLocal, 1000);
     // Full reload as fallback if meta-refresh is blocked; primary refresh is meta every 8s.
     setTimeout(function () { location.reload(); }, 60000);

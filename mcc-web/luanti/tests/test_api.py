@@ -413,6 +413,83 @@ def test_shop_buy_sell(api_client, settings):
 
 
 @pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_shop_sell_batch_partial_credit(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiShopPurchaseCredit
+    from luanti.services.session_control import start_session
+
+    gtype, _ = GroupType.objects.get_or_create(name="TestType")
+    group = Group.objects.create(
+        name="TeamL2",
+        group_type=gtype,
+        luanti_username="Schule2",
+        velos_spendable=50,
+    )
+    account = LuantiAccount.objects.create(
+        login_name="Schule2",
+        id_tag="rfid-2",
+        assigned_to_group=group,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="play", duration=30)
+    cat = LuantiShopCategory.objects.create(slug="misc", name="Misc")
+    LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:dirt",
+        buy_price_velos=5,
+        stack_size=1,
+    )
+    LuantiShopPurchaseCredit.objects.create(group=group, item_name="mcl_core:dirt", quantity=2)
+    resp = api_client.post(
+        "/api/luanti/shop/sell_batch/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "Schule2",
+                    "client_tx_id": "batch-1",
+                    "items": [
+                        {"item_name": "mcl_core:dirt", "quantity": 5},
+                        {"item_name": "mcl_core:stone", "quantity": 1},
+                    ],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["refunded_total"] == 10
+    assert len(data["consumed"]) == 1
+    assert data["consumed"][0]["physical_count"] == 2
+    assert any(r["item_name"] == "mcl_core:dirt" and r["quantity"] == 3 for r in data["rejected"])
+    assert any(r["item_name"] == "mcl_core:stone" for r in data["rejected"])
+    group.refresh_from_db()
+    assert group.velos_spendable == 60
+    # Idempotent replay
+    resp2 = api_client.post(
+        "/api/luanti/shop/sell_batch/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "Schule2",
+                    "client_tx_id": "batch-1",
+                    "items": [{"item_name": "mcl_core:dirt", "quantity": 5}],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp2.json()["idempotent"] is True
+    group.refresh_from_db()
+    assert group.velos_spendable == 60
+
+
+@pytest.mark.django_db
 def test_provision_password_enqueues_set_password():
     from luanti.models import LuantiPendingCommand
     from luanti.services.passwords import provision_account_password

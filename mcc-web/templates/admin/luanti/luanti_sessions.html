@@ -31,8 +31,10 @@
         </div>
         <div class="lt-sub">
           {% trans "Wallet" %}:
-          {% if row.resolved.wallet_group_name %}{{ row.resolved.wallet_group_name }}{% else %}—{% endif %}
-          · {{ row.resolved.velos_spendable }} Velos
+          <span data-wallet-preview
+                data-account-wallet="{% if row.resolved.wallet_group_name %}{{ row.resolved.wallet_group_name }} ({{ row.resolved.velos_spendable }}){% else %}—{% endif %}">
+            {% if row.resolved.wallet_group_name %}{{ row.resolved.wallet_group_name }} ({{ row.resolved.velos_spendable }}){% else %}—{% endif %}
+          </span>
         </div>
         <div class="lt-session-times">
           {% if d.unlimited %}
@@ -105,6 +107,7 @@
               {% trans "Unbegrenzt" %}
             </label>
 
+            {# Session-Wallet/Dauer: sessionStorage draft survives meta-refresh (8s). #}
             <label for="wait-wallet-{{ w.pk }}">{% trans "Session-Wallet" %}</label>
             <select id="wait-wallet-{{ w.pk }}" name="wallet_group" class="lt-start-select">
               <option value="">— {% trans "Account-Standard" %}</option>

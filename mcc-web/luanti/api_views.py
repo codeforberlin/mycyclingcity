@@ -27,7 +27,7 @@ from luanti.services.session_control import (
     set_session_mode,
     start_session,
 )
-from luanti.services.shop import ShopError, build_catalog_payload, shop_buy, shop_sell
+from luanti.services.shop import ShopError, build_catalog_payload, shop_buy, shop_sell, shop_sell_batch
 from luanti.services.shop_registry import replace_registry_items
 from luanti.services.wallet import WalletError, withdraw_velos, wallet_payload
 from luanti.services.city import build_regions_payload
@@ -235,6 +235,23 @@ def luanti_shop_catalog(request):
         data, err = _auth_or_error(data)
         if err:
             return err
+        payload = build_catalog_payload()
+        login = str(data.get("player") or "").strip()
+        if login:
+            from luanti.models import LuantiAccount
+
+            account = LuantiAccount.objects.filter(login_name__iexact=login).first()
+            session = get_active_session(login)
+            wp = wallet_payload(account, session=session)
+            payload["velos_spendable"] = wp.get("velos_spendable", 0)
+            payload["wallet_group_name"] = wp.get("wallet_group_name") or ""
+            if session:
+                payload["session_ok"] = True
+                payload["session_paused"] = bool(session.is_paused)
+            else:
+                payload["session_ok"] = False
+                payload["session_paused"] = False
+        return JsonResponse(payload)
     return JsonResponse(build_catalog_payload())
 
 
@@ -326,6 +343,31 @@ def luanti_shop_sell(request):
         )
     except (TypeError, ValueError):
         return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except ShopError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_shop_sell_batch(request):
+    """Sell multiple inventory stacks (GUI SellGUI); partial credit consumption."""
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    tx_id = str(data.get("client_tx_id") or "")
+    if not tx_id:
+        return JsonResponse({"ok": False, "error": "missing_client_tx_id"}, status=400)
+    items = data.get("items")
+    if not isinstance(items, list):
+        return JsonResponse({"ok": False, "error": "invalid_items"}, status=400)
+    try:
+        result = shop_sell_batch(
+            login_name=str(data.get("player") or ""),
+            items=items,
+            client_tx_id=tx_id,
+        )
     except ShopError as exc:
         return JsonResponse({"ok": False, "error": exc.code}, status=400)
     return JsonResponse(result)

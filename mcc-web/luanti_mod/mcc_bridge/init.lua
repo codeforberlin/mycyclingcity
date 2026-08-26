@@ -72,9 +72,12 @@ local function api_post(path, body, callback)
     end)
 end
 
--- Shared bridge API table (used by heartbeat command dispatch).
+-- Shared bridge API table (used by heartbeat command dispatch + shop GUI).
 local mcc_bridge = rawget(_G, "mcc_bridge") or {}
 rawset(_G, "mcc_bridge", mcc_bridge)
+
+dofile(modpath .. "/shop_gui.lua")
+mcc_bridge.init_shop_gui(api_post)
 
 mcc_bridge.apply_city_steps = function(steps)
     for _, step in ipairs(steps or {}) do
@@ -759,6 +762,9 @@ end)
 core.register_on_leaveplayer(function(player)
     local name = player:get_player_name()
     waiting_poll[name] = nil
+    if mcc_bridge.shop_gui_on_leave then
+        mcc_bridge.shop_gui_on_leave(name)
+    end
     post_session_leave(player, name)
 end)
 
@@ -767,15 +773,31 @@ core.register_on_shutdown(function()
     for _, player in ipairs(core.get_connected_players()) do
         local name = player:get_player_name()
         waiting_poll[name] = nil
+        if mcc_bridge.shop_gui_on_leave then
+            mcc_bridge.shop_gui_on_leave(name)
+        end
         post_session_leave(player, name)
     end
 end)
 
--- Chat command: open simple shop catalog fetch
+-- Open graphical shop (Buy / Sell formspec).
 core.register_chatcommand("mccshop", {
-    description = "MCC Shop catalog / Katalog",
+    description = "MCC Shop GUI",
     func = function(name)
-        api_post("/api/luanti/shop/catalog/", {}, function(ok, data)
+        if mcc_bridge.open_shop_gui then
+            mcc_bridge.open_shop_gui(name)
+        else
+            core.chat_send_player(name, "Shop GUI unavailable")
+        end
+        return true
+    end,
+})
+
+-- Text catalog fallback for operators / debugging.
+core.register_chatcommand("mccshop_list", {
+    description = "MCC Shop text catalog",
+    func = function(name)
+        api_post("/api/luanti/shop/catalog/", { player = name }, function(ok, data)
             if not ok or not data then
                 core.chat_send_player(name, "Shop offline")
                 return
@@ -794,8 +816,9 @@ core.register_chatcommand("mccshop", {
                     )
                 end
             end
-            core.chat_send_player(name, "Kauf: /mccbuy <id> [qty]  |  Verkauf: /mccsell <id> [qty]")
+            core.chat_send_player(name, "Buy: /mccbuy <id> [qty]  |  Sell: /mccsell <id> [qty]")
         end)
+        return true
     end,
 })
 
