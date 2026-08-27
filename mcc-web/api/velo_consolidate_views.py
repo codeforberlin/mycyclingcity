@@ -16,6 +16,7 @@ from api.services.velo_consolidate import (
     ConsolidateError,
     consolidate_spendable,
     consolidate_top_leaves_to_top,
+    leaf_ids_under_top,
     preview_transfers,
 )
 from luanti.services.wallet import candidate_wallet_groups
@@ -93,14 +94,35 @@ def _scoped_leaf_groups(top_groups):
     return leaf_groups
 
 
+def _top_pk_for_group(group: Group, cache: dict[int, int]) -> int:
+    """Resolve TOP ancestor PK (parent=None). Caches intermediate results."""
+    pk = int(group.pk)
+    if pk in cache:
+        return cache[pk]
+    if group.parent_id is None:
+        cache[pk] = pk
+        return pk
+    parent = group.parent
+    top_pk = _top_pk_for_group(parent, cache)
+    cache[pk] = top_pk
+    return top_pk
+
+
 def _scoped_spendable_groups(user):
+    """Groups with spendable > 0, each as {group, top_id} for TOP filtering in the UI."""
     allowed = allowed_group_ids_for_consolidate(user)
-    qs = Group.objects.filter(velos_spendable__gt=0).order_by("name")
+    qs = Group.objects.filter(velos_spendable__gt=0).select_related(
+        "parent", "parent__parent", "parent__parent__parent"
+    ).order_by("name")
     if allowed is not None:
         if not allowed:
             return []
         qs = qs.filter(pk__in=allowed)
-    return list(qs[:500])
+    cache: dict[int, int] = {}
+    rows = []
+    for g in qs[:500]:
+        rows.append({"group": g, "top_id": _top_pk_for_group(g, cache)})
+    return rows
 
 
 def _scoped_recent_transfers(user):
@@ -158,6 +180,32 @@ def group_velo_consolidate_view(request):
             if action == "top_leaves_to_top":
                 top_id = int(request.POST.get("top_id") or 0)
                 assert_groups_in_scope(request.user, [top_id])
+                top = Group.objects.filter(pk=top_id, parent__isnull=True).first()
+                if top is None:
+                    raise ConsolidateError("top_not_found")
+                leaf_ids = leaf_ids_under_top(top)
+                if not leaf_ids:
+                    raise ConsolidateError("no_leaves")
+                assert_groups_in_scope(request.user, leaf_ids)
+                if request.POST.get("confirm") != "1":
+                    preview = preview_transfers(leaf_ids, top.pk)
+                    preview["mode"] = "top_leaves_to_top"
+                    return render(
+                        request,
+                        "admin/api/group_velo_consolidate.html",
+                        _page_context(
+                            request.user,
+                            preview=preview,
+                            cons_form={
+                                "action": "top_leaves_to_top",
+                                "top_id": top.pk,
+                                "reason": reason,
+                                "source_ids": leaf_ids,
+                                "target_id": top.pk,
+                                "amount": "",
+                            },
+                        ),
+                    )
                 result = consolidate_top_leaves_to_top(
                     top_id=top_id, reason=reason, user=request.user
                 )

@@ -129,12 +129,12 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {player_count} cyclists"))
 
-                # 3. Reset Device totals
-                self.stdout.write("Resetting Device totals...")
+                # 3. Reset Device period totals (lifetime intentionally kept)
+                self.stdout.write("Resetting Device period totals (lifetime kept)...")
                 Device.objects.all().update(
                     distance_total=Decimal('0.00000')
                 )
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {device_count} devices"))
+                self.stdout.write(self.style.SUCCESS(f"  ✓ Reset {device_count} devices (period only)"))
 
                 # 4. Delete HourlyMetric entries
                 self.stdout.write("Deleting HourlyMetric entries...")

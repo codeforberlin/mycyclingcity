@@ -17,7 +17,25 @@ class Device(models.Model):
     name = models.CharField(max_length=20, unique=True, verbose_name=_("Gerätename"))
     display_name = models.CharField(max_length=50, blank=True, null=True, verbose_name=_("Symbolischer Name (Anzeige)"))
     group = models.ForeignKey('api.Group', on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Zugeordnete Gruppe"))
-    distance_total = models.DecimalField(max_digits=15, decimal_places=5, default=Decimal('0.00000'), verbose_name=_("Laufleistung (km)"))
+    distance_total = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Laufleistung Periode (km)"),
+        help_text=_(
+            "KM seit dem letzten Jahresabschluss/Reset. Wird bei Jahresabschluss genullt."
+        ),
+    )
+    distance_lifetime_km = models.DecimalField(
+        max_digits=15,
+        decimal_places=5,
+        default=Decimal('0.00000'),
+        verbose_name=_("Lebenslaufleistung (km)"),
+        help_text=_(
+            "Kumulative KM der Station über alle Verleihe/Events. "
+            "Wird beim Ingest mitgeführt und bei Jahresabschluss nicht genullt."
+        ),
+    )
     gps_latitude = models.DecimalField(max_digits=8, decimal_places=6, null=True, blank=True, verbose_name=_("Breitengrad"))
     gps_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name=_("Längengrad"))
     last_active = models.DateTimeField(null=True, blank=True, verbose_name=_("Zuletzt aktiv"))

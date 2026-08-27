@@ -11,40 +11,42 @@ from eventboard.models import GroupEventStatus
 from api.models import Cyclist, Group, CyclistDeviceCurrentMileage
 
 
-def get_all_subgroup_ids(top_group):
+def get_all_subgroup_ids(top_group, *, visible_only=True):
     """
-    Rekursiv alle Untergruppen-IDs einer TOP-Gruppe holen.
-    
+    Recursively collect descendant group IDs under a TOP group.
+
     Args:
-        top_group: Group-Objekt (TOP-Gruppe)
-    
+        top_group: Group instance (typically a TOP / root group)
+        visible_only: If True (default), skip groups with is_visible=False
+            (eventboard / public UI). Year-end and ledger resets must pass
+            visible_only=False so hidden event teams are included.
+
     Returns:
-        Liste von Gruppen-IDs (inkl. TOP-Gruppe selbst)
+        List of group IDs including the TOP group itself.
     """
     def get_descendant_ids(ancestor_id, visited=None):
-        """Rekursiv alle Nachfolger-IDs holen."""
         if visited is None:
             visited = set()
-        
+
         if ancestor_id in visited:
             return set()
         visited.add(ancestor_id)
-        
+
         descendant_ids = {ancestor_id}
-        
-        direct_children = Group.objects.filter(
-            parent_id=ancestor_id,
-            is_visible=True
-        ).values_list('id', flat=True)
-        
+
+        children_qs = Group.objects.filter(parent_id=ancestor_id)
+        if visible_only:
+            children_qs = children_qs.filter(is_visible=True)
+        direct_children = children_qs.values_list("id", flat=True)
+
         descendant_ids.update(direct_children)
-        
+
         for child_id in direct_children:
             if child_id not in visited:
                 descendant_ids.update(get_descendant_ids(child_id, visited))
-        
+
         return descendant_ids
-    
+
     return list(get_descendant_ids(top_group.id))
 
 

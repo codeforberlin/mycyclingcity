@@ -90,6 +90,7 @@ class DeviceFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f'device{n}')
     display_name = factory.LazyAttribute(lambda obj: f'Device {obj.name}')
     distance_total = Decimal('0.00000')
+    distance_lifetime_km = Decimal('0.00000')
     is_visible = True
     is_km_collection_enabled = True
     last_active = None

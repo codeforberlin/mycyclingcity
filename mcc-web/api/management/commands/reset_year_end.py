@@ -160,9 +160,8 @@ class Command(BaseCommand):
             except User.DoesNotExist:
                 raise CommandError(f"User with ID {user_id} not found")
 
-        # Get all subgroups (recursively)
-        all_subgroup_ids = get_all_subgroup_ids(top_group)
-        all_subgroup_ids.append(top_group.id)  # Include TOP group itself
+        # Get all subgroups (recursively, including hidden event teams)
+        all_subgroup_ids = get_all_subgroup_ids(top_group, visible_only=False)
         all_groups = Group.objects.filter(id__in=all_subgroup_ids)
 
         # Get all cyclists in these groups
@@ -195,6 +194,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE("Note: HourlyMetric entries are NOT deleted. They remain as historical data."))
         self.stdout.write(self.style.NOTICE("Note: Active sessions (CyclistDeviceCurrentMileage) are NOT affected."))
         self.stdout.write(self.style.NOTICE("Note: Group velos_spendable is snapshotted but NOT reset."))
+        self.stdout.write(self.style.NOTICE("Note: Device distance_lifetime_km is NOT reset."))
         self.stdout.write("")
 
         if not confirm and not dry_run:
@@ -373,47 +373,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE("Starting undo..."))
 
         try:
-            with transaction.atomic():
-                # 1. Restore group totals
-                self.stdout.write("Restoring group totals...")
-                group_count = 0
-                for detail in group_details.select_related('group'):
-                    # Spendable was never reset — do not overwrite live shop balances.
-                    detail.group.distance_total = detail.distance_total
-                    detail.group.velos_total = detail.velos_total
-                    detail.group.save(update_fields=['distance_total', 'velos_total'])
-                    group_count += 1
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {group_count} groups"))
+            from api.services.year_end import YearEndError, undo_year_end_snapshot
 
-                # 2. Restore cyclist totals
-                self.stdout.write("Restoring cyclist totals...")
-                cyclist_count = 0
-                for detail in cyclist_details.select_related('cyclist'):
-                    detail.cyclist.distance_total = detail.distance_total
-                    detail.cyclist.save(update_fields=['distance_total'])
-                    cyclist_count += 1
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {cyclist_count} cyclists"))
-
-                # 3. Restore device totals
-                self.stdout.write("Restoring device totals...")
-                device_count = 0
-                for detail in device_details.select_related('device'):
-                    detail.device.distance_total = detail.distance_total
-                    detail.device.save(update_fields=['distance_total'])
-                    device_count += 1
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {device_count} devices"))
-
-                # 4. Mark snapshot as undone
-                snapshot.is_undone = True
-                snapshot.undone_at = timezone.now()
-                snapshot.undone_by = user
-                snapshot.save(update_fields=['is_undone', 'undone_at', 'undone_by'])
-
-                # 5. Invalidate cache for affected groups
-                self.stdout.write("Invalidating cache...")
-                from api.helpers import invalidate_cache_for_top_group
-                invalidate_cache_for_top_group(snapshot.group)
-                self.stdout.write(self.style.SUCCESS(f"  ✓ Cache invalidated"))
+            result = undo_year_end_snapshot(snapshot=snapshot, user=user)
+            self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {result['groups']} groups"))
+            self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {result['cyclists']} cyclists"))
+            self.stdout.write(self.style.SUCCESS(f"  ✓ Restored {result['devices']} devices"))
 
             self.stdout.write("")
             self.stdout.write(self.style.SUCCESS("=" * 60))
@@ -421,6 +386,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("=" * 60))
             self.stdout.write("")
 
+        except YearEndError as e:
+            raise CommandError(str(e.code))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"ERROR during undo: {e}"))
             logger.error(f"Error during year-end undo: {e}", exc_info=True)

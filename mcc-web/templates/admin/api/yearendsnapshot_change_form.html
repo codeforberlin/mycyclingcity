@@ -1,0 +1,21 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    yearendsnapshot_change_form.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if is_superuser and undo_url and not original.is_undone %}
+    <li>
+        <a href="{{ undo_url }}" class="deletelink" style="background:#c62828;">
+            {% trans "Jahresabschluss rückgängig machen" %}
+        </a>
+    </li>
+    {% endif %}
+{% endblock %}

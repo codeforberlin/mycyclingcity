@@ -173,6 +173,7 @@ class Command(BaseCommand):
                             'is_visible': device_data.get('is_visible', True),
                             'group': group,
                             'distance_total': Decimal(str(device_data.get('distance_total', 0))),
+                            'distance_lifetime_km': Decimal(str(device_data.get('distance_total', 0))),
                         }
                     )
                     if not created:
@@ -181,6 +182,10 @@ class Command(BaseCommand):
                         device.is_visible = device_data.get('is_visible', True)
                         device.group = group
                         device.distance_total = Decimal(str(device_data.get('distance_total', 0)))
+                        # Keep lifetime at least as high as period when reloading fixtures.
+                        period = device.distance_total or Decimal('0')
+                        if (device.distance_lifetime_km or Decimal('0')) < period:
+                            device.distance_lifetime_km = period
                         device.save()
                     
                     # Create DeviceConfiguration with auto-generated API key
@@ -227,6 +232,9 @@ class Command(BaseCommand):
                     cyclist.save()
                     
                     device.distance_total += delta_km
+                    device.distance_lifetime_km = (
+                        device.distance_lifetime_km or Decimal('0')
+                    ) + delta_km
                     device.save()
                     
                     primary_group = cyclist.groups.first()

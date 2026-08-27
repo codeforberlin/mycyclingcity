@@ -388,7 +388,8 @@ def _leaderboard_implementation(request: HttpRequest) -> HttpResponse:
                 'name': device.display_name or device.name,
                 'lat': float(device.gps_latitude),
                 'lon': float(device.gps_longitude),
-                'distance_total': float(device.distance_total),
+                'distance_total': float(device.distance_total or 0),
+                'distance_lifetime_km': float(getattr(device, 'distance_lifetime_km', None) or 0),
                 'last_active': device.last_active.isoformat() if device.last_active else None
             })
     

@@ -188,6 +188,7 @@
                     <tr>
                         <th>{% trans "Name" %}</th>
                         <th>{% trans "Parent" %}</th>
+                        <th>{% trans "Sichtbar" %}</th>
                         <th class="num">{% trans "KM" %}</th>
                         <th class="num">{% trans "Velos total" %}</th>
                         <th class="num">{% trans "Spendable" %}</th>
@@ -195,15 +196,16 @@
                 </thead>
                 <tbody>
                     {% for g in preview.groups %}
-                    <tr>
+                    <tr{% if not g.is_visible %} style="opacity:0.75;"{% endif %}>
                         <td>{% if g.is_top %}<strong>{{ g.name }}</strong>{% else %}{{ g.name }}{% endif %}</td>
                         <td>{% if g.parent_name %}{{ g.parent_name }}{% else %}—{% endif %}</td>
+                        <td>{% if g.is_visible %}{% trans "ja" %}{% else %}{% trans "nein" %}{% endif %}</td>
                         <td class="num">{{ g.distance_total }}</td>
                         <td class="num">{{ g.velos_total }}</td>
                         <td class="num">{{ g.velos_spendable }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5"><em>{% trans "Keine Gruppen." %}</em></td></tr>
+                    <tr><td colspan="6"><em>{% trans "Keine Gruppen." %}</em></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -212,6 +214,7 @@
             {% trans "Summe Gruppen KM" %}: {{ preview.totals.groups_km_sum }}
             · {% trans "Velos" %}: {{ preview.totals.groups_velos_sum }}
             · {% trans "Spendable" %}: {{ preview.totals.groups_spendable_sum }}
+            · {% trans "inkl. unsichtbarer Event-Teams" %}
         </p>
 
         <h3>{% trans "Radler" %} ({{ preview.counts.cyclists }})</h3>
@@ -249,7 +252,8 @@
                     <tr>
                         <th>{% trans "Gerät" %}</th>
                         <th>{% trans "Gruppe" %}</th>
-                        <th class="num">{% trans "KM" %}</th>
+                        <th class="num">{% trans "KM Periode" %}</th>
+                        <th class="num">{% trans "KM Lebenslauf" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -258,14 +262,19 @@
                         <td>{{ d.display_name }}</td>
                         <td>{{ d.group_name }}</td>
                         <td class="num">{{ d.distance_total }}</td>
+                        <td class="num">{{ d.distance_lifetime_km }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="3"><em>{% trans "Keine Geräte." %}</em></td></tr>
+                    <tr><td colspan="4"><em>{% trans "Keine Geräte." %}</em></td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <p class="muted">{% trans "Summe Geräte KM" %}: {{ preview.totals.devices_km_sum }}</p>
+        <p class="muted">
+            {% trans "Summe Geräte KM Periode" %}: {{ preview.totals.devices_km_sum }}
+            · {% trans "Lebenslauf" %}: {{ preview.totals.devices_lifetime_sum }}
+            · {% trans "Lebenslauf wird nicht genullt." %}
+        </p>
 
         <form method="post" id="year-end-confirm-form">
             {% csrf_token %}

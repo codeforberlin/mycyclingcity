@@ -73,6 +73,7 @@ class TestUpdateDataView:
         device.refresh_from_db()
         assert cyclist.distance_total == initial_cyclist_distance + Decimal('5.50000')
         assert device.distance_total == initial_device_distance + Decimal('5.50000')
+        assert device.distance_lifetime_km >= device.distance_total
     
     def test_update_data_invalid_api_key(self, complete_test_scenario):
         """Test update_data with invalid API key."""

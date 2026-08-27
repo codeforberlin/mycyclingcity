@@ -342,3 +342,52 @@ def test_admin_partial_transfer_confirm_flow():
     leaf.refresh_from_db()
     assert top.velos_spendable == 65
     assert leaf.velos_spendable == 26
+
+
+@pytest.mark.django_db
+def test_admin_top_leaves_preview_then_confirm():
+    gtype, _ = GroupType.objects.get_or_create(name="ConsTopPrev")
+    top = Group.objects.create(name="PrevTOP", group_type=gtype, parent=None, velos_spendable=1)
+    leaf_a = Group.objects.create(
+        name="PrevLeafA", group_type=gtype, parent=top, velos_spendable=10
+    )
+    leaf_b = Group.objects.create(
+        name="PrevLeafB", group_type=gtype, parent=top, is_visible=False, velos_spendable=7
+    )
+    su = User.objects.create_superuser(username="su-topprev", password="x", email="tp@ex.com")
+    client = Client()
+    client.force_login(su)
+    url = reverse("admin:api_group_velo_consolidate")
+
+    preview = client.post(
+        url,
+        {
+            "action": "top_leaves_to_top",
+            "top_id": str(top.pk),
+            "reason": "FEZitty Pool",
+        },
+    )
+    assert preview.status_code == 200
+    body = preview.content.decode("utf-8")
+    assert "Vorschau" in body
+    assert "PrevLeafA" in body
+    assert "PrevLeafB" in body
+    leaf_a.refresh_from_db()
+    assert leaf_a.velos_spendable == 10  # not yet moved
+
+    confirm = client.post(
+        url,
+        {
+            "action": "top_leaves_to_top",
+            "confirm": "1",
+            "top_id": str(top.pk),
+            "reason": "FEZitty Pool",
+        },
+    )
+    assert confirm.status_code == 302
+    top.refresh_from_db()
+    leaf_a.refresh_from_db()
+    leaf_b.refresh_from_db()
+    assert leaf_a.velos_spendable == 0
+    assert leaf_b.velos_spendable == 0
+    assert top.velos_spendable == 18  # 1 + 10 + 7

@@ -1796,7 +1796,9 @@
                     iconAnchor: [15, 15]
                 });
                 var marker = L.marker([d.lat, d.lon], {icon: deviceIcon}).addTo(deviceMarkers);
-                var popupContent = '<strong>{% trans "Gerät" %}: ' + d.name + '</strong><br>{% trans "Gesamt" %}: ' + formatNumberDE(d.distance_total, 2) + ' km';
+                var popupContent = '<strong>{% trans "Gerät" %}: ' + d.name + '</strong><br>'
+                    + '{% trans "Lebenslauf" %}: ' + formatNumberDE(d.distance_lifetime_km != null ? d.distance_lifetime_km : d.distance_total, 2) + ' km<br>'
+                    + '{% trans "Periode" %}: ' + formatNumberDE(d.distance_total, 2) + ' km';
                 if (d.last_active) {
                     popupContent += '<br>{% trans "Zuletzt aktiv" %}: ' + new Date(d.last_active).toLocaleString('de-DE');
                 }

@@ -230,8 +230,8 @@ def _build_top_devices_from_ledger(
     use_track_filter: bool,
     track_id: str,
 ) -> List[Dict[str, Any]]:
-    """Top devices from Device.distance_total ledger (km mode)."""
-    devices_qs = Device.objects.filter(is_visible=True, distance_total__gt=0)
+    """Top devices from Device.distance_lifetime_km ledger (fleet / loan view)."""
+    devices_qs = Device.objects.filter(is_visible=True, distance_lifetime_km__gt=0)
     devices_qs = _apply_analytics_device_filters(
         devices_qs,
         use_group_filter=use_group_filter,
@@ -245,9 +245,10 @@ def _build_top_devices_from_ledger(
         {
             'device_id': d.id,
             'name': d.display_name or d.name,
-            'distance': float(d.distance_total or 0),
+            'distance': float(d.distance_lifetime_km or 0),
+            'distance_period': float(d.distance_total or 0),
         }
-        for d in devices_qs.order_by('-distance_total')[:ANALYTICS_TOP_LIST_LIMIT]
+        for d in devices_qs.order_by('-distance_lifetime_km')[:ANALYTICS_TOP_LIST_LIMIT]
     ]
 
 

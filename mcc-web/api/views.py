@@ -833,9 +833,13 @@ def _process_update_with_retry(cyclist_obj, device_obj, distance_delta, id_tag, 
         
         old_device_distance = device_obj.distance_total
         device_obj.distance_total = device_obj.distance_total + distance_delta
+        if distance_delta > 0:
+            device_obj.distance_lifetime_km = (
+                device_obj.distance_lifetime_km or Decimal("0.00000")
+            ) + distance_delta
         device_obj.last_active = now
         device_obj.save()
-        logger.debug(f"[update_data] Device '{device_obj.name}' - old_distance: {old_device_distance}, new_distance: {device_obj.distance_total}")
+        logger.debug(f"[update_data] Device '{device_obj.name}' - old_distance: {old_device_distance}, new_distance: {device_obj.distance_total}, lifetime: {device_obj.distance_lifetime_km}")
 
     logger.info(f"[update_data] Successfully processed update - id_tag: {id_tag}, device_id: {device_id}, distance: {distance_delta}")
     from api.services.device_display import build_device_display_api_payload

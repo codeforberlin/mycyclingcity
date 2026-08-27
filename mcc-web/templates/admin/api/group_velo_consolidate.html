@@ -38,6 +38,9 @@
   <div class="card preview-box">
     <h2>{% trans "Vorschau — bitte bestätigen" %}</h2>
     <p>
+      {% if cons_form.action == "top_leaves_to_top" %}
+      <em>{% trans "Schnellaktion: alle Leaves → TOP" %}</em><br>
+      {% endif %}
       {% trans "Ziel" %}:
       <strong>{% if preview.target %}{{ preview.target.name }}{% else %}—{% endif %}</strong>
       · {% trans "Summe" %}: <strong>{{ preview.total }}</strong> Velos
@@ -61,19 +64,25 @@
           <td>{{ s.available }}</td>
           <td><strong>{{ s.amount }}</strong></td>
         </tr>
+        {% empty %}
+        <tr><td colspan="3"><em>{% trans "Keine Quellen mit Spendable > 0." %}</em></td></tr>
         {% endfor %}
       </tbody>
     </table>
     <form method="post">
       {% csrf_token %}
-      <input type="hidden" name="action" value="consolidate">
+      <input type="hidden" name="action" value="{{ cons_form.action }}">
       <input type="hidden" name="confirm" value="1">
-      <input type="hidden" name="target_id" value="{{ cons_form.target_id }}">
       <input type="hidden" name="reason" value="{{ cons_form.reason }}">
+      {% if cons_form.action == "top_leaves_to_top" %}
+      <input type="hidden" name="top_id" value="{{ cons_form.top_id }}">
+      {% else %}
+      <input type="hidden" name="target_id" value="{{ cons_form.target_id }}">
       <input type="hidden" name="amount" value="{{ cons_form.amount }}">
       {% for sid in cons_form.source_ids %}
       <input type="hidden" name="source_ids" value="{{ sid }}">
       {% endfor %}
+      {% endif %}
       <div class="btn-row">
         <button type="submit" class="default" style="background:#2e7d32;color:#fff;">
           {% trans "Umbuchung ausführen" %}
@@ -86,30 +95,40 @@
 
   <div class="card">
     <h2>{% trans "Quellen → Ziel umbuchen" %}</h2>
-    <form method="post">
+    <form method="post" id="velo-transfer-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="consolidate">
+
+      <label for="source_top_filter">{% trans "TOP-Filter" %}</label>
+      <select id="source_top_filter" style="width:100%;max-width:520px;">
+        <option value="">{% trans "— alle TOP-Gruppen —" %}</option>
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <p class="muted">{% trans "Grenzt Quellen- und Zielliste auf eine TOP-Gruppe und ihre Leaves ein." %}</p>
+
       <label for="source_ids">{% trans "Quellen (Mehrfachauswahl)" %}</label>
       <select id="source_ids" name="source_ids" multiple required>
         {% for row in leaf_groups %}
-        <option value="{{ row.leaf.pk }}">
+        <option value="{{ row.leaf.pk }}" data-top-id="{{ row.top.pk }}">
           {{ row.top.name }} / {{ row.leaf.name }} ({{ row.leaf.velos_spendable }})
         </option>
         {% endfor %}
         {% for g in top_groups %}
-        <option value="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
+        <option value="{{ g.pk }}" data-top-id="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
         {% endfor %}
       </select>
       <p class="muted">{% trans "Strg/Cmd + Klick für mehrere Gruppen. Teilbetrag nur bei genau einer Quelle." %}</p>
 
       <label for="target_id">{% trans "Zielgruppe" %}</label>
       <select id="target_id" name="target_id" required>
-        <option value="">—</option>
+        <option value="" data-top-id="">—</option>
         {% for g in top_groups %}
-        <option value="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
+        <option value="{{ g.pk }}" data-top-id="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
         {% endfor %}
         {% for row in leaf_groups %}
-        <option value="{{ row.leaf.pk }}">{{ row.top.name }} / {{ row.leaf.name }}</option>
+        <option value="{{ row.leaf.pk }}" data-top-id="{{ row.top.pk }}">{{ row.top.name }} / {{ row.leaf.name }}</option>
         {% endfor %}
       </select>
 
@@ -131,8 +150,8 @@
 
   <div class="card">
     <h2>{% trans "Schnell: alle Leaves eines TOP → dieses TOP" %}</h2>
-    <form method="post"
-          onsubmit="return confirm('{% trans "Alle Leaf-Spendable dieses TOP in den TOP-Pool buchen?" %}');">
+    <p class="muted">{% trans "Zuerst Vorschau aller Leaf-Spendable, dann Bestätigung." %}</p>
+    <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="top_leaves_to_top">
       <label for="top_id">{% trans "TOP-Gruppe" %}</label>
@@ -144,7 +163,7 @@
       <label for="reason_top">{% trans "Grund / Event" %} *</label>
       <input id="reason_top" name="reason" type="text" required maxlength="255" style="width:100%;max-width:520px;">
       <div class="btn-row">
-        <button type="submit" class="default">{% trans "Leaves → TOP ausführen" %}</button>
+        <button type="submit" class="default">{% trans "Vorschau Leaves → TOP" %}</button>
       </div>
     </form>
   </div>
@@ -156,10 +175,21 @@
           onsubmit="return confirm('{% trans "Spendable der gewählten Gruppen wirklich auf 0 setzen?" %}');">
       {% csrf_token %}
       <input type="hidden" name="action" value="zero">
+
+      <label for="zero_top_filter">{% trans "TOP-Filter" %}</label>
+      <select id="zero_top_filter" style="width:100%;max-width:520px;">
+        <option value="">{% trans "— alle TOP-Gruppen —" %}</option>
+        {% for g in top_groups %}
+        <option value="{{ g.pk }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+
       <label for="zero_sources">{% trans "Quellen" %}</label>
       <select id="zero_sources" name="source_ids" multiple required>
-        {% for g in spendable_groups %}
-        <option value="{{ g.pk }}">{{ g.name }} ({{ g.velos_spendable }})</option>
+        {% for row in spendable_groups %}
+        <option value="{{ row.group.pk }}" data-top-id="{{ row.top_id }}">
+          {{ row.group.name }} ({{ row.group.velos_spendable }})
+        </option>
         {% empty %}
         <option value="" disabled>{% trans "Keine Gruppen mit Spendable > 0" %}</option>
         {% endfor %}
@@ -205,4 +235,77 @@
     </table>
   </div>
 </div>
+<script>
+(function () {
+  function snapshotOptions(selectEl) {
+    return Array.prototype.map.call(selectEl.options, function (opt) {
+      return {
+        value: opt.value,
+        text: opt.text,
+        topId: opt.getAttribute('data-top-id') || '',
+        selected: opt.selected,
+        disabled: opt.disabled
+      };
+    });
+  }
+
+  function refill(selectEl, allOpts, topFilter, keepEmptyValue) {
+    var prev = {};
+    Array.prototype.forEach.call(selectEl.selectedOptions || [], function (o) {
+      prev[o.value] = true;
+    });
+    // single-select: remember current value
+    var singleVal = selectEl.multiple ? null : selectEl.value;
+    selectEl.innerHTML = '';
+    allOpts.forEach(function (o) {
+      if (keepEmptyValue && o.value === '') {
+        // always keep placeholder
+      } else if (topFilter && o.topId && o.topId !== topFilter) {
+        return;
+      }
+      var opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.text;
+      if (o.topId) opt.setAttribute('data-top-id', o.topId);
+      if (o.disabled) opt.disabled = true;
+      if (selectEl.multiple) {
+        opt.selected = !!prev[o.value];
+      } else if (singleVal && o.value === singleVal) {
+        opt.selected = true;
+      }
+      selectEl.appendChild(opt);
+    });
+    if (!selectEl.multiple && singleVal && !Array.prototype.some.call(selectEl.options, function (o) { return o.value === singleVal; })) {
+      selectEl.value = '';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    function bindTopFilter(filterId, selectSpecs) {
+      var filterEl = document.getElementById(filterId);
+      if (!filterEl) return;
+      var specs = selectSpecs.map(function (s) {
+        var el = document.getElementById(s.id);
+        if (!el) return null;
+        return { el: el, all: snapshotOptions(el), keepEmpty: !!s.keepEmpty };
+      }).filter(Boolean);
+      if (!specs.length) return;
+      filterEl.addEventListener('change', function () {
+        var topId = filterEl.value || '';
+        specs.forEach(function (s) {
+          refill(s.el, s.all, topId, s.keepEmpty);
+        });
+      });
+    }
+
+    bindTopFilter('source_top_filter', [
+      { id: 'source_ids', keepEmpty: false },
+      { id: 'target_id', keepEmpty: true }
+    ]);
+    bindTopFilter('zero_top_filter', [
+      { id: 'zero_sources', keepEmpty: false }
+    ]);
+  });
+})();
+</script>
 {% endblock %}

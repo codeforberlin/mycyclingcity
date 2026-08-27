@@ -1,0 +1,83 @@
+<!-- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     
+     @file    undo_year_end_snapshot.html
+     @author  Roland Rutz
+     @note    This code was developed with the assistance of AI (LLMs).
+-->
+
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .ye-undo { max-width: 720px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; }
+  .ye-undo .warn {
+    background: #ffebee; border: 1px solid #ef9a9a; color: #b71c1c;
+    padding: 14px; border-radius: 6px; margin-bottom: 18px;
+  }
+  .ye-undo table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .ye-undo th, .ye-undo td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+  .ye-undo .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .ye-undo .btn {
+    padding: 10px 18px; border: none; border-radius: 4px; font-weight: 600;
+    cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .ye-undo .btn-danger { background: #c62828; color: #fff; }
+  .ye-undo .btn-secondary { background: #6c757d; color: #fff; }
+  .ye-undo .confirm-check { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; margin: 14px 0; }
+  .muted { color: #666; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:api_yearendsnapshot_changelist' %}">{% trans "Jahresabschlüsse" %}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="ye-undo">
+  <h1>{{ title }}</h1>
+
+  <div class="warn">
+    <strong>{% trans "Achtung" %}</strong>
+    <p>
+      {% trans "Aktuelle Perioden-KM und Velos-Total werden mit den Snapshot-Werten überschrieben." %}
+    </p>
+    <p class="muted">
+      {% trans "Nicht geändert: velos_spendable, Geräte-Lebenslaufleistung, Shop-Credits." %}
+    </p>
+  </div>
+
+  <table>
+    <tr><th>{% trans "Snapshot-ID" %}</th><td>#{{ preview.snapshot_id }}</td></tr>
+    <tr><th>{% trans "TOP-Gruppe" %}</th><td>{{ preview.group_name }}</td></tr>
+    <tr><th>{% trans "Abschlussdatum" %}</th><td>{{ preview.snapshot_date }}</td></tr>
+    <tr><th>{% trans "Periodentyp" %}</th><td>{{ preview.period_type }}</td></tr>
+    <tr><th>{% trans "Gruppen" %}</th><td>{{ preview.counts.groups }}</td></tr>
+    <tr><th>{% trans "Radler" %}</th><td>{{ preview.counts.cyclists }}</td></tr>
+    <tr><th>{% trans "Geräte" %}</th><td>{{ preview.counts.devices }}</td></tr>
+    <tr><th>{% trans "TOP KM (Snapshot)" %}</th><td>{{ preview.group_total_km }}</td></tr>
+    <tr><th>{% trans "TOP Velos (Snapshot)" %}</th><td>{{ preview.group_total_velos }}</td></tr>
+  </table>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="confirm" value="1">
+    <label class="confirm-check">
+      <input type="checkbox" required>
+      {% trans "Ich verstehe, dass aktuelle Periodenstände überschrieben werden." %}
+    </label>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-danger">{% trans "Jetzt rückgängig machen" %}</button>
+      <a class="btn btn-secondary" href="{% url 'admin:api_yearendsnapshot_changelist' %}">{% trans "Abbrechen" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

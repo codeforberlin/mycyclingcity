@@ -26,8 +26,8 @@ def _affected_queryset(top_group: Group) -> tuple[list[int], QuerySet, QuerySet,
     if top_group.parent_id is not None:
         raise YearEndError("not_top_group")
 
-    subgroup_ids = list(get_all_subgroup_ids(top_group))
-    subgroup_ids.append(top_group.id)
+    subgroup_ids = list(get_all_subgroup_ids(top_group, visible_only=False))
+    # get_all_subgroup_ids already includes the TOP itself.
     groups = Group.objects.filter(id__in=subgroup_ids).select_related("parent").order_by("name")
     cyclists = (
         Cyclist.objects.filter(groups__id__in=subgroup_ids)
@@ -56,6 +56,7 @@ def collect_year_end_preview(top_group: Group) -> dict:
             "name": g.name,
             "parent_name": g.parent.name if g.parent_id else None,
             "is_top": g.parent_id is None,
+            "is_visible": bool(g.is_visible),
             "distance_total": g.distance_total,
             "velos_total": int(g.velos_total or 0),
             "velos_spendable": int(g.velos_spendable or 0),
@@ -78,6 +79,7 @@ def collect_year_end_preview(top_group: Group) -> dict:
             "display_name": getattr(d, "display_name", None) or d.name,
             "group_name": d.group.name if d.group_id else "—",
             "distance_total": d.distance_total,
+            "distance_lifetime_km": getattr(d, "distance_lifetime_km", None) or Decimal("0.00000"),
         }
         for d in devices
     ]
@@ -102,6 +104,9 @@ def collect_year_end_preview(top_group: Group) -> dict:
             "cyclists_balance_sum": sum(r["velos_balance"] for r in cyclist_rows),
             "devices_km_sum": sum(
                 (r["distance_total"] or Decimal("0") for r in device_rows), Decimal("0")
+            ),
+            "devices_lifetime_sum": sum(
+                (r["distance_lifetime_km"] or Decimal("0") for r in device_rows), Decimal("0")
             ),
         },
         "groups": group_rows,
@@ -182,3 +187,83 @@ def execute_year_end_snapshot(
     )
 
     return snapshot
+
+
+def collect_year_end_undo_preview(snapshot: YearEndSnapshot) -> dict:
+    """Counts / summary for undo confirmation UI."""
+    if snapshot.is_undone:
+        raise YearEndError("already_undone")
+    return {
+        "snapshot_id": snapshot.pk,
+        "group_name": snapshot.group.name if snapshot.group_id else "—",
+        "snapshot_date": snapshot.snapshot_date,
+        "period_type": snapshot.period_type,
+        "counts": {
+            "groups": snapshot.details.filter(group__isnull=False).count(),
+            "cyclists": snapshot.details.filter(cyclist__isnull=False).count(),
+            "devices": snapshot.details.filter(device__isnull=False).count(),
+        },
+        "group_total_km": snapshot.group_total_km,
+        "group_total_velos": snapshot.group_total_velos,
+        "group_total_spendable": int(snapshot.group_total_spendable or 0),
+    }
+
+
+@transaction.atomic
+def undo_year_end_snapshot(*, snapshot: YearEndSnapshot, user=None) -> dict:
+    """
+    Restore KM / velos_total (groups) and cyclist distance + balance from snapshot.
+    Does not touch Group.velos_spendable or Device.distance_lifetime_km.
+    """
+    if snapshot.is_undone:
+        raise YearEndError("already_undone")
+
+    from django.utils import timezone
+    from api.helpers import invalidate_cache_for_top_group
+
+    group_details = snapshot.details.filter(group__isnull=False).select_related("group")
+    cyclist_details = snapshot.details.filter(cyclist__isnull=False).select_related("cyclist")
+    device_details = snapshot.details.filter(device__isnull=False).select_related("device")
+
+    group_count = 0
+    for detail in group_details:
+        if not detail.group_id:
+            continue
+        # Spendable was never reset — do not overwrite live shop balances.
+        detail.group.distance_total = detail.distance_total
+        detail.group.velos_total = int(detail.velos_total or 0)
+        detail.group.save(update_fields=["distance_total", "velos_total"])
+        group_count += 1
+
+    cyclist_count = 0
+    for detail in cyclist_details:
+        if not detail.cyclist_id:
+            continue
+        detail.cyclist.distance_total = detail.distance_total
+        # Snapshot stores cyclist velos_balance in velos_total.
+        detail.cyclist.velos_balance = int(detail.velos_total or 0)
+        detail.cyclist.save(update_fields=["distance_total", "velos_balance"])
+        cyclist_count += 1
+
+    device_count = 0
+    for detail in device_details:
+        if not detail.device_id:
+            continue
+        # Lifetime is never snapshotted/reset — only restore period ledger.
+        detail.device.distance_total = detail.distance_total
+        detail.device.save(update_fields=["distance_total"])
+        device_count += 1
+
+    snapshot.is_undone = True
+    snapshot.undone_at = timezone.now()
+    snapshot.undone_by = user if getattr(user, "is_authenticated", False) else None
+    snapshot.save(update_fields=["is_undone", "undone_at", "undone_by"])
+
+    invalidate_cache_for_top_group(snapshot.group)
+
+    return {
+        "snapshot_id": snapshot.pk,
+        "groups": group_count,
+        "cyclists": cyclist_count,
+        "devices": device_count,
+    }

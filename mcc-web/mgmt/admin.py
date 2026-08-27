@@ -5949,7 +5949,8 @@ class KioskDeviceAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
 @admin.register(Device)
 class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     list_display = (
-        'display_name', 'name', 'group', 'distance_total_display', 'config_status',
+        'display_name', 'name', 'group',
+        'distance_total_display', 'distance_lifetime_display', 'config_status',
         'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed',
     )
     list_display_links = ('name',)
@@ -5960,7 +5961,8 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     )
     fields = (
         'name', 'display_name', 'group', 'is_visible', 'is_km_collection_enabled',
-        'is_arena_sim_allowed', 'distance_total', 'gps_latitude', 'gps_longitude',
+        'is_arena_sim_allowed', 'distance_total', 'distance_lifetime_km',
+        'gps_latitude', 'gps_longitude',
         'last_active', 'comments',
     )
     formfield_overrides = {models.DecimalField: {'widget': MapInputWidget}}
@@ -5994,16 +5996,25 @@ class DeviceAdmin(RetryOnDbLockMixin, BaseAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if not request.user.is_superuser:
-            readonly = list(readonly) + ['is_operator_box']
+            readonly = list(readonly) + ['is_operator_box', 'distance_lifetime_km']
         return readonly
 
     def distance_total_display(self, obj):
-        """Display distance_total with German format (comma decimal)."""
+        """Display period distance_total with German format."""
         if obj.distance_total is None:
             return format_km_de(0)
         return format_km_de(obj.distance_total)
-    distance_total_display.short_description = _("Gesamtkilometer")
+    distance_total_display.short_description = _("Periode KM")
     distance_total_display.admin_order_field = 'distance_total'
+
+    def distance_lifetime_display(self, obj):
+        """Display lifetime km with German format."""
+        val = getattr(obj, 'distance_lifetime_km', None)
+        if val is None:
+            return format_km_de(0)
+        return format_km_de(val)
+    distance_lifetime_display.short_description = _("Lebenslauf KM")
+    distance_lifetime_display.admin_order_field = 'distance_lifetime_km'
 
     def config_status(self, obj):
         """Display configuration status with differences indicator."""
@@ -8043,15 +8054,16 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 class YearEndSnapshotAdmin(admin.ModelAdmin):
     list_display = ('group', 'period_type_display', 'snapshot_date', 'period_start_date', 'period_end_date', 
                     'group_total_km_display', 'group_total_velos', 'group_total_spendable',
-                    'is_undone', 'created_by', 'created_at')
+                    'is_undone', 'undo_action', 'created_by', 'created_at')
     list_filter = ('period_type', 'is_undone', 'snapshot_date', 'created_at')
     search_fields = ('group__name',)
     readonly_fields = ('group', 'snapshot_date', 'period_start_date', 'period_end_date', 'period_type',
                        'group_total_km', 'group_total_velos', 'group_total_spendable',
                        'created_by', 'created_at',
-                       'is_undone', 'undone_at', 'undone_by', 'details_count', 'details_link')
+                       'is_undone', 'undone_at', 'undone_by', 'details_count', 'details_link', 'undo_action')
     date_hierarchy = 'snapshot_date'
     change_list_template = 'admin/api/yearendsnapshot_change_list.html'
+    change_form_template = 'admin/api/yearendsnapshot_change_form.html'
     
     fieldsets = (
         (_("Abschluss-Informationen"), {
@@ -8067,7 +8079,7 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
             'fields': ('created_by', 'created_at')
         }),
         (_("Rückgängig gemacht"), {
-            'fields': ('is_undone', 'undone_at', 'undone_by'),
+            'fields': ('is_undone', 'undone_at', 'undone_by', 'undo_action'),
             'classes': ('collapse',)
         }),
     )
@@ -8099,6 +8111,38 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
                              url, obj.id, obj.details.count(), _("Details anzeigen"))
         return "-"
     details_link.short_description = _("Details")
+
+    def undo_action(self, obj):
+        """Superuser-only link to undo confirmation."""
+        if not obj or not obj.pk or obj.is_undone:
+            return "—"
+        request = getattr(self, "_request", None)
+        if request is not None and not request.user.is_superuser:
+            return "—"
+        url = reverse("admin:api_yearendsnapshot_undo", args=[obj.pk])
+        return format_html(
+            '<a class="button" style="background:#c62828;color:#fff;padding:4px 8px;" href="{}">{}</a>',
+            url,
+            _("Rückgängig"),
+        )
+    undo_action.short_description = _("Undo")
+
+    def changelist_view(self, request, extra_context=None):
+        """Store request for undo_action; add create URL."""
+        self._request = request
+        extra_context = extra_context or {}
+        extra_context["create_url"] = reverse("admin:api_yearendsnapshot_create")
+        return super().changelist_view(request, extra_context)
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        self._request = request
+        extra_context = extra_context or {}
+        extra_context["is_superuser"] = request.user.is_superuser
+        if object_id and request.user.is_superuser:
+            extra_context["undo_url"] = reverse(
+                "admin:api_yearendsnapshot_undo", args=[object_id]
+            )
+        return super().change_view(request, object_id, form_url, extra_context)
     
     def get_queryset(self, request):
         """Filter snapshots based on operator permissions."""
@@ -8110,21 +8154,91 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
         return qs.filter(group__id__in=managed_group_ids)
     
     def get_urls(self):
-        """Add custom URL for creating year-end snapshot."""
+        """Add custom URLs for create and undo."""
         from django.urls import path
         urls = super().get_urls()
         custom_urls = [
-            path('create/', self.admin_site.admin_view(self.create_year_end_view), name='api_yearendsnapshot_create'),
+            path(
+                "create/",
+                self.admin_site.admin_view(self.create_year_end_view),
+                name="api_yearendsnapshot_create",
+            ),
+            path(
+                "<path:object_id>/undo/",
+                self.admin_site.admin_view(self.undo_year_end_view),
+                name="api_yearendsnapshot_undo",
+            ),
         ]
         return custom_urls + urls
     
-    def changelist_view(self, request, extra_context=None):
-        """Add context for the changelist template."""
-        extra_context = extra_context or {}
-        from django.urls import reverse
-        extra_context['create_url'] = reverse('admin:api_yearendsnapshot_create')
-        return super().changelist_view(request, extra_context)
-    
+    def undo_year_end_view(self, request, object_id):
+        """Superuser-only: preview + confirm undo of a year-end snapshot."""
+        from django.shortcuts import render, redirect, get_object_or_404
+        from django.contrib import messages
+        from django.core.exceptions import PermissionDenied
+        from api.services.year_end import (
+            YearEndError,
+            collect_year_end_undo_preview,
+            undo_year_end_snapshot,
+        )
+
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        snapshot = get_object_or_404(
+            YearEndSnapshot.objects.select_related("group"),
+            pk=object_id,
+        )
+
+        if snapshot.is_undone:
+            messages.error(request, _("Dieser Jahresabschluss wurde bereits rückgängig gemacht."))
+            return redirect("admin:api_yearendsnapshot_changelist")
+
+        try:
+            preview = collect_year_end_undo_preview(snapshot)
+        except YearEndError as exc:
+            messages.error(request, _("Fehler: %(code)s") % {"code": exc.code})
+            return redirect("admin:api_yearendsnapshot_changelist")
+
+        if request.method == "POST" and request.POST.get("confirm") == "1":
+            try:
+                result = undo_year_end_snapshot(snapshot=snapshot, user=request.user)
+                messages.success(
+                    request,
+                    _(
+                        "Jahresabschluss #%(id)s rückgängig gemacht "
+                        "(%(g)s Gruppen, %(c)s Radler, %(d)s Geräte)."
+                    )
+                    % {
+                        "id": result["snapshot_id"],
+                        "g": result["groups"],
+                        "c": result["cyclists"],
+                        "d": result["devices"],
+                    },
+                )
+                return redirect("admin:api_yearendsnapshot_changelist")
+            except YearEndError as exc:
+                messages.error(request, _("Fehler: %(code)s") % {"code": exc.code})
+                return redirect("admin:api_yearendsnapshot_changelist")
+            except Exception as exc:
+                logger.error("Error undoing year-end snapshot: %s", exc, exc_info=True)
+                messages.error(
+                    request,
+                    _("Fehler beim Rückgängigmachen: {}").format(str(exc)),
+                )
+                return redirect("admin:api_yearendsnapshot_changelist")
+
+        return render(
+            request,
+            "admin/api/undo_year_end_snapshot.html",
+            {
+                "title": _("Jahresabschluss rückgängig machen"),
+                "snapshot": snapshot,
+                "preview": preview,
+                "opts": self.model._meta,
+            },
+        )
+
     def create_year_end_view(self, request):
         """Two-step year-end: form → preview of all entities → confirm create."""
         from django.shortcuts import render, redirect
