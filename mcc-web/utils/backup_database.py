@@ -199,10 +199,10 @@ def main() -> int:
     else:
         # Prüfe ob wir in Produktion sind (Pfad enthält /data/appl/mcc)
         if '/data/appl/mcc' in str(project_dir) or os.environ.get('MCC_ENV') == 'production':
-            backup_dir = Path('/data/var/mcc/backups')
+            backup_dir = Path('/data/var/mcc/backups/database')
         else:
             # Entwicklung: lokales Verzeichnis
-            backup_dir = project_dir / 'backups'
+            backup_dir = project_dir / 'data' / 'backups' / 'database'
     
     print("MCC-Web Database Backup")
     print("=" * 50)

@@ -249,7 +249,7 @@ def test_run_scheduler_force_job(interval_job):
 @pytest.mark.django_db
 def test_seeded_default_jobs_exist(db):
     # Migration seeds may already exist; ensure helper defaults can be created
-    for slug in ("mcc_worker", "backup_mcc", "backup_minecraft"):
+    for slug in ("mcc_worker", "backup_mcc", "backup_minecraft", "backup_luanti"):
         if not ScheduledJob.objects.filter(slug=slug).exists():
             ScheduledJob.objects.create(
                 name=slug,

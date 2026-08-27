@@ -85,7 +85,16 @@ mcc_bridge.apply_city_steps = function(steps)
     for _, step in ipairs(steps or {}) do
         local op = step.op
         if op == "set_time" and step.value ~= nil then
-            core.set_timeofday((tonumber(step.value) or 0) / 24000)
+            -- Preset ticks: 0 = midnight, 6000 = noon (see city_preset_defaults).
+            -- Luanti timeofday is 0..1 with 0.5 = noon; do NOT use ticks/24000
+            -- (that mapped 6000 → 0.25 ≈ dawn and looked dark).
+            local ticks = (tonumber(step.value) or 0) % 24000
+            local tod = (ticks / 12000) % 1
+            core.set_timeofday(tod)
+            core.log(
+                "action",
+                "[mcc_bridge] time ticks=" .. tostring(ticks) .. " tod=" .. string.format("%.3f", tod)
+            )
         elseif op == "set_time_speed" and step.value ~= nil then
             -- 0 = freeze day/night (always bright after set_time noon); ~72 = default.
             local speed = tonumber(step.value) or 72

@@ -53,7 +53,7 @@ class MccBackupConfig(models.Model):
     retention_days = models.PositiveIntegerField(
         default=30,
         verbose_name=_("Lokale Retention (Tage)"),
-        help_text=_("Aufbewahrung lokaler DB-Kopien unter /data/var/mcc/backups"),
+        help_text=_("Aufbewahrung lokaler DB-Kopien unter /data/var/mcc/backups/database"),
     )
     updated_at = models.DateTimeField(
         auto_now=True,

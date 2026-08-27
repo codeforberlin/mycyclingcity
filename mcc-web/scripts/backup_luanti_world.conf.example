@@ -1,0 +1,37 @@
+# MyCyclingCity Luanti World Backup Konfiguration
+# Kopieren nach backup_luanti_world.conf und Werte anpassen.
+#
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Luanti-Server-Stamm (enthält worlds/, bin/, minetest.conf)
+LUANTI_SERVER_DIR="/data/games/mcc/luanti"
+
+# Weltname unter worlds/ (Produktion: mycyclingcity)
+LUANTI_WORLD_NAME="mycyclingcity"
+
+# Lokales Backup-Ziel (unter /data/var/mcc — nicht unter /data/games oder /data/appl)
+BACKUP_LOCAL_DIR="/data/var/mcc/backups/luanti"
+LOG_DIR="/data/var/mcc/logs"
+
+# Aufbewahrung: Anzahl Stunden-Backups (stündlich → 48 = 2 Tage)
+BACKUP_RETENTION_COUNT=48
+
+# live = sqlite3 ".backup" im laufenden Betrieb (kein Kick)
+# stop = Sessions speichern, Server stoppen, tar, wieder starten
+QUIESCE_MODE="live"
+
+# Script zum Stop/Start (nur bei QUIESCE_MODE=stop)
+# LUANTI_SERVER_SCRIPT="/data/appl/mcc/mcc-web/scripts/luanti_server.sh"
+
+# Zusätzliche Dateien relativ zu LUANTI_SERVER_DIR (im Archiv unter _server/)
+LUANTI_EXTRA_PATHS="minetest.conf"
+
+# Empfohlen: Paket sqlite3 installieren für konsistente Live-Backups
+#   sudo apt-get install -y sqlite3
+# Ohne sqlite3 werden *.sqlite roh kopiert (Warnung im Log).
+
+# Rechte analog Minecraft:
+#   mkdir -p /data/var/mcc/backups/luanti
+#   setfacl -m u:mcc:rwx /data/var/mcc/backups/luanti /data/var/mcc/logs
+#   setfacl -d -m u:mcc:rwx /data/var/mcc/backups/luanti /data/var/mcc/logs

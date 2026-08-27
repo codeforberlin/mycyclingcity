@@ -104,6 +104,30 @@ chmod +x scripts/backup_minecraft_world.sh
 - **Retention**: letzte 48 Stunden-Backups (konfigurierbar)
 - **Logs**: `/data/var/mcc/logs/minecraft_backup_YYYYMMDD.log`
 
+## backup_luanti_world.sh
+
+Stündliches Backup der Luanti-Welt. Standard: `QUIESCE_MODE=live` mit `sqlite3 ".backup"` für `map.sqlite` / `players.sqlite` / … (ohne Kick). Optional `stop` (Sessions speichern, Server kurz stoppen).
+
+### Installation / Scheduling
+
+```bash
+cp scripts/backup_luanti_world.conf.example scripts/backup_luanti_world.conf
+chmod +x scripts/backup_luanti_world.sh
+mkdir -p /data/var/mcc/backups/luanti
+
+# Django Scheduler: Job slug backup_luanti (Default cron 15 * * * *)
+# Manuell:
+./scripts/backup_luanti_world.sh --dry-run
+./scripts/backup_luanti_world.sh
+# oder: python manage.py run_scheduler --job backup_luanti --force
+```
+
+- **Welt**: `/data/games/mcc/luanti/worlds/mycyclingcity` (+ optional `minetest.conf` unter `_server/`)
+- **Archive**: `/data/var/mcc/backups/luanti/luanti_world_YYYYMMDD_HHMMSS.tar.gz`
+- **Retention**: letzte 48 Stunden-Backups
+- **Logs**: `/data/var/mcc/logs/luanti_backup_YYYYMMDD.log`
+- **Hinweis**: Für konsistente Live-Backups `sqlite3` installieren (`apt install sqlite3`). Ohne Paket: Rohkopie der SQLite-Dateien mit Log-Warnung.
+
 ## backup_mcc.sh
 
 Backup-Script für MyCyclingCity Datenbank und wichtige Daten (ohne Logfiles) via rsync über SSH.

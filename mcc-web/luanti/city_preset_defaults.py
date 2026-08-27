@@ -6,12 +6,15 @@
 
 from __future__ import annotations
 
-# Minecraft-style ticks: 0=midnight, 6000=noon, 18000=night. time_speed 0 freezes cycle.
+# Minecraft-style ticks: 0=midnight, 6000=noon, 18000=night.
+# Bridge maps ticks → Luanti timeofday via ticks/12000 (6000 → 0.5 noon).
+# time_speed 0 freezes the clock (always day after set_time noon).
 
+# time_speed 0 = always day (frozen at noon); 72 would let night return.
 DAYTIME_STEPS: list[dict] = [
     {"op": "set_weather", "value": "clear"},
     {"op": "set_time", "value": 6000},
-    {"op": "set_time_speed", "value": 72},
+    {"op": "set_time_speed", "value": 0},
     {"op": "chat", "message": "Es ist Tag."},
 ]
 
@@ -38,7 +41,7 @@ CITY_PRESET_SEEDS: tuple[dict, ...] = (
         "slug": "daytime",
         "name": "Tag",
         "category": "world",
-        "description": "Helle Tageszeit, klares Wetter, Tageszyklus läuft weiter",
+        "description": "Immer Tag: Mittag, klares Wetter, Zeit eingefroren",
         "steps": DAYTIME_STEPS,
         "sort_order": 10,
         "enabled": True,

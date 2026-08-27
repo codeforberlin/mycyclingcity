@@ -8516,7 +8516,7 @@ class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
 # Register analytics, log file viewer, server control, and deployment URLs with the admin site
 from mgmt.log_file_viewer import log_file_list, log_file_viewer, log_file_api
 from mgmt.server_control import server_control, server_action, server_metrics_api, server_health_api
-from mgmt.views_deployment import backup_control, create_backup, download_backup
+from mgmt.views_deployment import backup_control, create_backup, download_backup, delete_backup
 from mgmt.maintenance_control import maintenance_control, maintenance_action
 from minecraft.admin_views import (
     minecraft_action,
@@ -8622,7 +8622,18 @@ def get_urls_with_custom_views():
         # Backup URLs
         path('backup/', admin.site.admin_view(backup_control), name='mgmt_backup_control'),
         path('backup/create/', admin.site.admin_view(create_backup), name='mgmt_backup_create'),
-        path('backup/download/<str:filename>/', admin.site.admin_view(download_backup), name='mgmt_backup_download'),
+        path('backup/delete/', admin.site.admin_view(delete_backup), name='mgmt_backup_delete'),
+        path(
+            'backup/download/<str:kind>/<str:filename>/',
+            admin.site.admin_view(download_backup),
+            name='mgmt_backup_download',
+        ),
+        # Legacy DB download URL (kind defaults to database)
+        path(
+            'backup/download/<str:filename>/',
+            admin.site.admin_view(download_backup),
+            name='mgmt_backup_download_legacy',
+        ),
         # Maintenance control URLs
         path('maintenance/', admin.site.admin_view(maintenance_control), name='mgmt_maintenance_control'),
         path('maintenance/action/<str:action>/', admin.site.admin_view(maintenance_action), name='mgmt_maintenance_action'),

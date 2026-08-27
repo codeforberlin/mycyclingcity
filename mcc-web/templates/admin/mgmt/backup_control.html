@@ -11,6 +11,70 @@
 
 {% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
 
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .bk-wrap { max-width: 920px; }
+  .bk-meta { color: #64748b; margin: 0 0 1rem; font-size: 0.92rem; }
+  .bk-tabs {
+    display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 1rem;
+  }
+  .bk-tab {
+    border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a;
+    border-radius: 8px; padding: 0.45rem 0.85rem; cursor: pointer;
+    font-weight: 600; font-size: 0.92rem;
+  }
+  .bk-tab.is-active {
+    background: #0f766e; border-color: #0f766e; color: #fff;
+  }
+  .bk-tab .bk-count {
+    display: inline-block; min-width: 1.4rem; margin-left: 0.35rem;
+    padding: 0.05rem 0.35rem; border-radius: 999px; font-size: 0.78rem;
+    background: rgba(15, 23, 42, 0.08);
+  }
+  .bk-tab.is-active .bk-count { background: rgba(255,255,255,0.22); }
+  .bk-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.65rem;
+    margin: 0 0 0.85rem;
+    align-items: end;
+  }
+  .bk-filters label {
+    display: block; font-size: 0.78rem; font-weight: 700;
+    color: #475569; margin-bottom: 0.2rem;
+  }
+  .bk-filters select,
+  .bk-filters input[type="search"] {
+    width: 100%; box-sizing: border-box; padding: 0.4rem 0.5rem;
+    border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;
+  }
+  .bk-create {
+    margin: 0 0 1rem; padding: 0.75rem 0.9rem;
+    border: 1px solid #a7f3d0; background: #ecfdf5; border-radius: 8px;
+  }
+  .bk-create[hidden] { display: none !important; }
+  .bk-list-wrap { margin: 0 0 0.75rem; }
+  .bk-list {
+    width: 100%; min-height: 14rem; max-height: 22rem;
+    box-sizing: border-box; padding: 0.25rem;
+    border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.86rem;
+  }
+  .bk-actions {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    margin: 0 0 0.5rem;
+  }
+  .bk-detail {
+    margin: 0; color: #64748b; font-size: 0.82rem; word-break: break-all;
+    min-height: 1.2rem;
+  }
+  .bk-empty { color: #94a3b8; font-style: italic; padding: 0.5rem 0; }
+  #backup-result { margin-top: 0.5rem; }
+</style>
+{% endblock %}
+
 {% block breadcrumbs %}
 <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
@@ -19,95 +83,331 @@
 {% endblock %}
 
 {% block content %}
-<div id="content-main">
-    <div class="module">
-        <h2>{% trans "Create Backup" %}</h2>
-        <p>{% trans "Create a new database backup." %}</p>
-        <button type="button" class="button" onclick="createBackup()" id="create-backup-btn">
-            {% trans "Create Backup" %}
-        </button>
-        <div id="backup-result" style="margin-top: 10px; display: none;">
-            <p id="backup-message"></p>
-        </div>
-    </div>
+{{ backup_catalog|json_script:"backup-catalog-data" }}
+{{ download_urls|json_script:"backup-download-urls" }}
 
-    <div class="module">
-        <h2>{% trans "Existing Backups" %}</h2>
-        {% if backups %}
-        <table>
-            <thead>
-                <tr>
-                    <th>{% trans "Filename" %}</th>
-                    <th>{% trans "Size" %}</th>
-                    <th>{% trans "Created" %}</th>
-                    <th>{% trans "Actions" %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for backup in backups %}
-                <tr>
-                    <td>{{ backup.filename }}</td>
-                    <td>{{ backup.size_mb|floatformat:2 }} MB</td>
-                    <td>{{ backup.created|date:"Y-m-d H:i:s" }}</td>
-                    <td>
-                        <a href="{% url 'admin:mgmt_backup_download' backup.filename %}" class="button" download="{{ backup.filename }}">
-                            {% trans "Download" %}
-                        </a>
-                        <br>
-                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">{{ backup.path }}</small>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>{% trans "No backups found." %}</p>
-        {% endif %}
+<div id="content-main" class="bk-wrap"
+     data-initial-kind="database"
+     data-label-db="{% trans 'Datenbank' %}"
+     data-label-mc="{% trans 'Minecraft' %}"
+     data-label-lt="{% trans 'Luanti' %}"
+     data-label-none="{% trans 'Keine Backups für diese Filter.' %}"
+     data-label-pick="{% trans 'Bitte ein Backup auswählen.' %}"
+     data-label-confirm="{% trans 'Backup unwiderruflich löschen?' %}"
+     data-delete-url="{% url 'admin:mgmt_backup_delete' %}">
+
+  <p class="bk-meta">
+    {% blocktrans with dir=backups_dir %}Root: {{ dir }}{% endblocktrans %}
+    · DB {{ database_count }} · MC {{ minecraft_count }} · Luanti {{ luanti_count }}
+  </p>
+
+  <div class="bk-tabs" role="tablist" aria-label="{% trans 'Backup-Typ' %}">
+    <button type="button" class="bk-tab is-active" data-kind="database" role="tab" aria-selected="true">
+      {% trans "Datenbank" %}<span class="bk-count">{{ database_count }}</span>
+    </button>
+    <button type="button" class="bk-tab" data-kind="minecraft" role="tab" aria-selected="false">
+      {% trans "Minecraft" %}<span class="bk-count">{{ minecraft_count }}</span>
+    </button>
+    <button type="button" class="bk-tab" data-kind="luanti" role="tab" aria-selected="false">
+      {% trans "Luanti" %}<span class="bk-count">{{ luanti_count }}</span>
+    </button>
+  </div>
+
+  <div class="bk-create" id="bk-create-panel">
+    <strong>{% trans "Datenbank-Backup erstellen" %}</strong>
+    <p style="margin:0.35rem 0 0.6rem;">{% trans "Neues SQLite-Archiv unter backups/database/." %}</p>
+    <button type="button" class="button default" onclick="createBackup()" id="create-backup-btn">
+      {% trans "Backup erstellen" %}
+    </button>
+    <div id="backup-result" style="display:none;"><p id="backup-message"></p></div>
+  </div>
+
+  <div class="bk-filters">
+    <div>
+      <label for="bk-range">{% trans "Zeitraum" %}</label>
+      <select id="bk-range">
+        <option value="1">{% trans "Heute" %}</option>
+        <option value="7" selected>{% trans "7 Tage" %}</option>
+        <option value="30">{% trans "30 Tage" %}</option>
+        <option value="0">{% trans "Alle" %}</option>
+      </select>
     </div>
+    <div>
+      <label for="bk-sort">{% trans "Sortierung" %}</label>
+      <select id="bk-sort">
+        <option value="newest" selected>{% trans "Neueste zuerst" %}</option>
+        <option value="oldest">{% trans "Älteste zuerst" %}</option>
+        <option value="size_desc">{% trans "Größe ↓" %}</option>
+        <option value="size_asc">{% trans "Größe ↑" %}</option>
+        <option value="name">{% trans "Name A–Z" %}</option>
+      </select>
+    </div>
+    <div style="grid-column: span 1 / span 2;">
+      <label for="bk-search">{% trans "Suche (Dateiname)" %}</label>
+      <input id="bk-search" type="search" placeholder="{% trans 'z. B. 20260827' %}" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="bk-list-wrap">
+    <label for="bk-list" style="font-weight:700;display:block;margin-bottom:0.35rem;">
+      {% trans "Auswahl" %}
+      <span id="bk-filtered-count" style="font-weight:500;color:#64748b;"></span>
+    </label>
+    <select id="bk-list" class="bk-list" size="12"></select>
+    <p class="bk-empty" id="bk-empty" hidden></p>
+  </div>
+
+  <div class="bk-actions">
+    <button type="button" class="button default" id="bk-download" disabled>{% trans "Download" %}</button>
+    <button type="button" class="button" id="bk-delete" disabled style="background:#b91c1c;border-color:#991b1b;color:#fff;">
+      {% trans "Löschen" %}
+    </button>
+  </div>
+  <p class="bk-detail" id="bk-detail"></p>
+  <p class="bk-meta" id="bk-dir-hint"></p>
+  <p id="bk-delete-msg" style="display:none;margin-top:0.5rem;"></p>
 </div>
 
 <script>
-function createBackup() {
-    const btn = document.getElementById('create-backup-btn');
-    const resultDiv = document.getElementById('backup-result');
-    const messageP = document.getElementById('backup-message');
-    
-    // Show loading
-    btn.disabled = true;
-    btn.textContent = '{% trans "Creating..." %}';
-    resultDiv.style.display = 'block';
-    messageP.textContent = '{% trans "Creating backup..." %}';
-    messageP.style.color = 'blue';
-    
-    fetch('{% url "admin:mgmt_backup_create" %}', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            messageP.textContent = '{% trans "Backup created successfully" %}: ' + data.backup_path;
-            messageP.style.color = 'green';
-            // Reload page after 2 seconds to show new backup
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            messageP.textContent = '{% trans "Error" %}: ' + (data.error || '{% trans "Unknown error" %}');
-            messageP.style.color = 'red';
-        }
-    })
-    .catch(error => {
-        messageP.textContent = '{% trans "Error" %}: ' + error.message;
-        messageP.style.color = 'red';
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.textContent = '{% trans "Create Backup" %}';
+(function () {
+  const root = document.getElementById('content-main');
+  const catalog = JSON.parse(document.getElementById('backup-catalog-data').textContent);
+  const downloadUrls = JSON.parse(document.getElementById('backup-download-urls').textContent);
+  const dirs = {
+    database: '{{ database_dir|escapejs }}',
+    minecraft: '{{ minecraft_dir|escapejs }}',
+    luanti: '{{ luanti_dir|escapejs }}',
+  };
+
+  const tabs = Array.from(root.querySelectorAll('.bk-tab'));
+  const listEl = document.getElementById('bk-list');
+  const emptyEl = document.getElementById('bk-empty');
+  const rangeEl = document.getElementById('bk-range');
+  const sortEl = document.getElementById('bk-sort');
+  const searchEl = document.getElementById('bk-search');
+  const downloadBtn = document.getElementById('bk-download');
+  const deleteBtn = document.getElementById('bk-delete');
+  const deleteMsg = document.getElementById('bk-delete-msg');
+  const detailEl = document.getElementById('bk-detail');
+  const countEl = document.getElementById('bk-filtered-count');
+  const createPanel = document.getElementById('bk-create-panel');
+  const dirHint = document.getElementById('bk-dir-hint');
+  const labelNone = root.dataset.labelNone || '';
+  const labelPick = root.dataset.labelPick || '';
+  const labelConfirm = root.dataset.labelConfirm || '';
+  const deleteUrl = root.dataset.deleteUrl || '';
+
+  let kind = 'database';
+  let filtered = [];
+
+  function fmtSize(mb) {
+    if (mb >= 1024) return (mb / 1024).toFixed(2) + ' GB';
+    if (mb >= 1) return mb.toFixed(2) + ' MB';
+    return (mb * 1024).toFixed(0) + ' KB';
+  }
+
+  function fmtDate(ts) {
+    const d = new Date(ts * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function applyFilters() {
+    const days = parseInt(rangeEl.value, 10) || 0;
+    const q = (searchEl.value || '').trim().toLowerCase();
+    const sort = sortEl.value;
+    const now = Date.now() / 1000;
+    let rows = (catalog[kind] || []).slice();
+
+    if (days > 0) {
+      const cutoff = now - days * 86400;
+      rows = rows.filter((r) => r.created_ts >= cutoff);
+    }
+    if (q) {
+      rows = rows.filter((r) => r.filename.toLowerCase().indexOf(q) !== -1);
+    }
+
+    rows.sort((a, b) => {
+      if (sort === 'oldest') return a.created_ts - b.created_ts;
+      if (sort === 'size_desc') return b.size_bytes - a.size_bytes;
+      if (sort === 'size_asc') return a.size_bytes - b.size_bytes;
+      if (sort === 'name') return a.filename.localeCompare(b.filename);
+      return b.created_ts - a.created_ts;
     });
+
+    filtered = rows;
+    renderList();
+  }
+
+  function renderList() {
+    listEl.innerHTML = '';
+    countEl.textContent = filtered.length
+      ? ' (' + filtered.length + ')'
+      : '';
+
+    if (!filtered.length) {
+      listEl.hidden = true;
+      emptyEl.hidden = false;
+      emptyEl.textContent = labelNone;
+      downloadBtn.disabled = true;
+      deleteBtn.disabled = true;
+      detailEl.textContent = '';
+      return;
+    }
+
+    listEl.hidden = false;
+    emptyEl.hidden = true;
+    filtered.forEach((r, idx) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = fmtDate(r.created_ts) + '  ·  ' + fmtSize(r.size_mb) + '  ·  ' + r.filename;
+      listEl.appendChild(opt);
+    });
+    listEl.selectedIndex = 0;
+    updateSelection();
+  }
+
+  function selectedRow() {
+    const idx = listEl.selectedIndex;
+    if (idx < 0 || idx >= filtered.length) return null;
+    return filtered[idx];
+  }
+
+  function updateSelection() {
+    const row = selectedRow();
+    if (!row) {
+      downloadBtn.disabled = true;
+      deleteBtn.disabled = true;
+      detailEl.textContent = labelPick;
+      return;
+    }
+    downloadBtn.disabled = false;
+    deleteBtn.disabled = false;
+    detailEl.textContent = row.path;
+  }
+
+  function setKind(next) {
+    kind = next;
+    tabs.forEach((tab) => {
+      const active = tab.dataset.kind === kind;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    createPanel.hidden = kind !== 'database';
+    dirHint.textContent = dirs[kind] || '';
+    applyFilters();
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => setKind(tab.dataset.kind));
+  });
+  rangeEl.addEventListener('change', applyFilters);
+  sortEl.addEventListener('change', applyFilters);
+  searchEl.addEventListener('input', applyFilters);
+  listEl.addEventListener('change', updateSelection);
+  listEl.addEventListener('dblclick', () => {
+    if (!downloadBtn.disabled) downloadBtn.click();
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const row = selectedRow();
+    if (!row) return;
+    const tmpl = downloadUrls[kind] || '';
+    const url = tmpl.replace('__FILE__', encodeURIComponent(row.filename));
+    window.location.href = url;
+  });
+
+  deleteBtn.addEventListener('click', () => {
+    const row = selectedRow();
+    if (!row || !deleteUrl) return;
+    const lines = [
+      labelConfirm,
+      '',
+      row.filename,
+      fmtSize(row.size_mb) + ' · ' + fmtDate(row.created_ts),
+      row.path,
+    ];
+    if (!window.confirm(lines.join('\n'))) return;
+
+    deleteBtn.disabled = true;
+    downloadBtn.disabled = true;
+    deleteMsg.style.display = 'block';
+    deleteMsg.style.color = 'blue';
+    deleteMsg.textContent = '…';
+
+    fetch(deleteUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ kind: kind, filename: row.filename }),
+    })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.success) {
+          // Remove from in-memory catalog and refresh list
+          const arr = catalog[kind] || [];
+          catalog[kind] = arr.filter((x) => x.filename !== row.filename);
+          const tab = root.querySelector('.bk-tab[data-kind="' + kind + '"] .bk-count');
+          if (tab) tab.textContent = String(catalog[kind].length);
+          deleteMsg.style.color = 'green';
+          deleteMsg.textContent = data.message || 'OK';
+          applyFilters();
+        } else {
+          deleteMsg.style.color = 'red';
+          deleteMsg.textContent = (data && data.error) ? data.error : 'Error';
+          updateSelection();
+        }
+      })
+      .catch((err) => {
+        deleteMsg.style.color = 'red';
+        deleteMsg.textContent = String(err.message || err);
+        updateSelection();
+      });
+  });
+
+  setKind('database');
+})();
+
+function createBackup() {
+  const btn = document.getElementById('create-backup-btn');
+  const resultDiv = document.getElementById('backup-result');
+  const messageP = document.getElementById('backup-message');
+
+  btn.disabled = true;
+  btn.textContent = '{% trans "Wird erstellt…" %}';
+  resultDiv.style.display = 'block';
+  messageP.textContent = '{% trans "Backup wird erstellt…" %}';
+  messageP.style.color = 'blue';
+
+  fetch('{% url "admin:mgmt_backup_create" %}', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}',
+      'Content-Type': 'application/json',
+    },
+  })
+  .then((response) => response.json())
+  .then((data) => {
+    if (data.success) {
+      messageP.textContent = '{% trans "Backup erfolgreich erstellt" %}: ' + data.backup_path;
+      messageP.style.color = 'green';
+      setTimeout(() => { window.location.reload(); }, 1500);
+    } else {
+      messageP.textContent = '{% trans "Fehler" %}: ' + (data.error || '{% trans "Unbekannter Fehler" %}');
+      messageP.style.color = 'red';
+    }
+  })
+  .catch((error) => {
+    messageP.textContent = '{% trans "Fehler" %}: ' + error.message;
+    messageP.style.color = 'red';
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = '{% trans "Backup erstellen" %}';
+  });
 }
 </script>
 {% endblock %}
