@@ -117,6 +117,8 @@ end
 
 -- Players waiting for Admin session freigabe (poll join until granted).
 local waiting_poll = {} -- name -> true
+-- True from join until first apply_join_result (HTTP auth/join in flight).
+local pending_auth = {} -- name -> true
 local clear_player_inventories -- forward decl (defined below)
 
 local function set_player_frozen(player, frozen)
@@ -142,6 +144,29 @@ local function set_player_frozen(player, frozen)
             sneak_glitch = false,
             new_move = true,
         })
+    end
+end
+
+local function should_freeze_movement(name)
+    if not name or name == "" then
+        return false
+    end
+    if storage:get_string("paused_" .. name) == "1" then
+        return true
+    end
+    if waiting_poll[name] or pending_auth[name] then
+        return true
+    end
+    return false
+end
+
+local function lock_waiting_player(player, name)
+    if name then
+        waiting_poll[name] = true
+        pending_auth[name] = nil
+    end
+    if player then
+        set_player_frozen(player, true)
     end
 end
 
@@ -530,7 +555,9 @@ local function apply_bridge_commands(commands)
                 mcc_bridge.apply_city_steps(cmd.steps)
                 core.log("action", "[mcc_bridge] city preset " .. tostring(cmd.slug or "?"))
             elseif t == "SESSION_STARTED" and cmd.player then
-                waiting_poll[tostring(cmd.player)] = true
+                local pname = tostring(cmd.player)
+                -- Poll will apply session; keep locked until join returns wait=false.
+                lock_waiting_player(core.get_player_by_name(pname), pname)
             elseif t == "SET_MODE" and cmd.player then
                 local pname = tostring(cmd.player)
                 local player = core.get_player_by_name(pname)
@@ -548,6 +575,8 @@ local function apply_bridge_commands(commands)
                     end
                     storage:set_string("paused_" .. pname, "1")
                     storage:set_string("mode_" .. pname, "paused")
+                    waiting_poll[pname] = nil
+                    pending_auth[pname] = nil
                     if player then
                         core.set_player_privs(pname, { shout = true })
                         set_player_frozen(player, true)
@@ -556,7 +585,6 @@ local function apply_bridge_commands(commands)
                             "Session pausiert — keine Bewegung. / Session paused — no movement."
                         )
                     end
-                    waiting_poll[pname] = nil
                 else
                     storage:set_string("paused_" .. pname, "")
                     if player then
@@ -575,18 +603,18 @@ local function apply_bridge_commands(commands)
                                 if ok and join and not join.wait then
                                     apply_join_result(pname, join)
                                 elseif ok and join and join.wait then
-                                    waiting_poll[pname] = true
+                                    lock_waiting_player(core.get_player_by_name(pname), pname)
                                 else
                                     core.log(
                                         "warning",
                                         "[mcc_bridge] SET_MODE failed player=" .. pname
                                     )
-                                    waiting_poll[pname] = true
+                                    lock_waiting_player(core.get_player_by_name(pname), pname)
                                 end
                             end
                         )
                     else
-                        waiting_poll[pname] = true
+                        lock_waiting_player(player, pname)
                     end
                 end
             elseif t == "SESSION_END_WARNING" and cmd.player then
@@ -946,16 +974,19 @@ apply_join_result = function(name, join)
         return
     end
     if join.wait then
-        waiting_poll[name] = true
+        lock_waiting_player(player, name)
         storage:set_string("paused_" .. name, "")
         clear_player_inventories(player)
-        set_player_frozen(player, false)
-        core.chat_send_player(name, "Warte auf Session-Freigabe… / Waiting for session…")
+        core.chat_send_player(
+            name,
+            "Warte auf Session-Freigabe — Bewegung gesperrt. / Waiting for session — movement locked."
+        )
         core.set_player_privs(name, { shout = true })
         storage:set_string("mode_" .. name, "play")
         return
     end
     waiting_poll[name] = nil
+    pending_auth[name] = nil
     local paused = join.paused == true or join.mode == "paused"
     if paused then
         storage:set_string("paused_" .. name, "1")
@@ -1020,13 +1051,14 @@ local function poll_waiting_sessions()
     for name, _ in pairs(waiting_poll) do
         if not core.get_player_by_name(name) then
             waiting_poll[name] = nil
+            pending_auth[name] = nil
         else
             api_post("/api/luanti/session/join/", { player = name }, function(ok, join)
                 if ok and join and not join.wait then
                     apply_join_result(name, join)
                     core.chat_send_player(name, "Session freigegeben! / Session granted!")
                 elseif ok and join and join.wait then
-                    waiting_poll[name] = true
+                    lock_waiting_player(core.get_player_by_name(name), name)
                 end
             end)
         end
@@ -1109,7 +1141,7 @@ core.register_on_mods_loaded(function()
     core.register_globalstep(function(dtime)
         for _, player in ipairs(core.get_connected_players()) do
             local name = player:get_player_name()
-            if is_player_paused(name) then
+            if should_freeze_movement(name) then
                 set_player_frozen(player, true)
             end
         end
@@ -1157,6 +1189,9 @@ core.register_on_joinplayer(function(player)
     clear_player_inventories(player)
     core.set_player_privs(name, { shout = true })
     storage:set_string("mode_" .. name, "play")
+    -- Freeze until session freigabe (same feel as pause) — no running ahead.
+    pending_auth[name] = true
+    set_player_frozen(player, true)
     -- Rescue players stuck in singlenode void from a previous fall.
     local pos = player:get_pos()
     if pos and pos.y < -32 then
@@ -1165,11 +1200,14 @@ core.register_on_joinplayer(function(player)
     end
     api_post("/api/luanti/auth/check/", { player = name }, function(ok, data)
         if not ok or not data or not data.allowed then
+            pending_auth[name] = nil
             core.kick_player(name, "Nicht freigegeben / Not authorized")
             return
         end
         api_post("/api/luanti/session/join/", { player = name }, function(ok2, join)
             if not ok2 or not join then
+                -- Stay frozen; keep polling via waiting_poll.
+                lock_waiting_player(core.get_player_by_name(name), name)
                 return
             end
             apply_join_result(name, join)
@@ -1180,6 +1218,7 @@ end)
 core.register_on_leaveplayer(function(player)
     local name = player:get_player_name()
     waiting_poll[name] = nil
+    pending_auth[name] = nil
     if region_outline and region_outline.clear_player then
         region_outline.clear_player(name)
     end
@@ -1194,6 +1233,7 @@ core.register_on_shutdown(function()
     for _, player in ipairs(core.get_connected_players()) do
         local name = player:get_player_name()
         waiting_poll[name] = nil
+        pending_auth[name] = nil
         if mcc_bridge.shop_gui_on_leave then
             mcc_bridge.shop_gui_on_leave(name)
         end
