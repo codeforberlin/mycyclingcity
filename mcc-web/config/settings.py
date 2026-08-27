@@ -397,10 +397,11 @@ MCC_SCHEDULER_SHELL_ROOTS = [
     Path('/data/games/mcc'),
 ]
 
-# MCC remote backup (Admin → MccBackupConfig writes this conf for backup_mcc.sh)
+# MCC remote backup (Admin → MccBackupConfig writes this conf for backup_mcc.sh).
+# Default under DATA_DIR so the app user (e.g. mccweb) can write without owning /data/appl/mcc.
 MCC_BACKUP_CONF_PATH = config(
     'MCC_BACKUP_CONF_PATH',
-    default=str(APP_DIR / 'backup_mcc.conf'),
+    default=str(DATA_DIR / 'backup_mcc.conf'),
 )
 
 # Version handling - read from version.txt or fallback to git describe

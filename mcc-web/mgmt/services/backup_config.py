@@ -21,7 +21,7 @@ def get_backup_conf_path() -> Path:
         getattr(
             settings,
             "MCC_BACKUP_CONF_PATH",
-            str(Path(getattr(settings, "APP_DIR", settings.BASE_DIR)) / "backup_mcc.conf"),
+            str(Path(getattr(settings, "DATA_DIR", settings.BASE_DIR)) / "backup_mcc.conf"),
         )
     )
 

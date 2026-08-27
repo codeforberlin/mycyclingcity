@@ -47,7 +47,9 @@ class MccBackupConfigAdmin(admin.ModelAdmin):
     def conf_path_display(self, obj):
         return str(get_backup_conf_path())
 
-    conf_path_display.short_description = _("Conf-Datei (geschrieben bei Speichern)")
+    conf_path_display.short_description = _(
+        "Conf-Datei (geschrieben bei Speichern; Standard: Datenverzeichnis)"
+    )
 
     def changelist_view(self, request, extra_context=None):
         config_obj = MccBackupConfig.get_config()

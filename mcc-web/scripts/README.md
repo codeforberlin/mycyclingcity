@@ -74,7 +74,8 @@ Argumente, Intervall/Cron, Aktiv). Die einzelnen `install_*_cron.sh` für Backup
 sind optional/Legacy – bevorzugt den Scheduler verwenden.
 
 **MCC DB/Media-Backup:** SSH-Ziel im Admin unter „MCC Backup-Konfiguration“ pflegen
-(Job `backup_mcc` ruft `manage.py run_backup_mcc` auf und schreibt die Conf-Datei).
+(Job `backup_mcc` ruft `manage.py run_backup_mcc` auf und schreibt die Conf nach
+`/data/var/mcc/backup_mcc.conf`, damit der App-User schreiben darf).
 
 ## backup_minecraft_world.sh
 
