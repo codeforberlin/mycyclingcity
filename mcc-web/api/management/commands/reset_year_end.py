@@ -10,10 +10,11 @@
 Management command to perform year-end reset for a TOP group (school or institution).
 
 This command will:
-1. Create a YearEndSnapshot with all current kilometer and Velos totals
+1. Create a YearEndSnapshot with all current kilometer, Velos totals, and spendable
 2. Save detailed snapshot data for all subgroups, cyclists, and devices
 3. Reset distance_total and velos_total to 0 for all affected entities
-4. Support undo functionality to restore previous state
+   (Group.velos_spendable is recorded but NOT reset)
+4. Support undo functionality to restore previous state (KM/velos_total only)
 
 Usage:
     python manage.py reset_year_end --group-id 1 --snapshot-date "2024-07-31 23:59:59" --period-type school_year
@@ -186,13 +187,14 @@ class Command(BaseCommand):
         self.stdout.write(f"Period: {period_start_date} to {period_end_date}")
         self.stdout.write("")
         self.stdout.write("This will:")
-        self.stdout.write(f"  1. Create a snapshot with current totals")
-        self.stdout.write(f"  2. Reset {group_count} Groups (distance_total, velos_total → 0)")
-        self.stdout.write(f"  3. Reset {cyclist_count} Cyclists (distance_total, velos_total → 0)")
+        self.stdout.write(f"  1. Create a snapshot with current totals (incl. velos_spendable)")
+        self.stdout.write(f"  2. Reset {group_count} Groups (distance_total, velos_total → 0; spendable kept)")
+        self.stdout.write(f"  3. Reset {cyclist_count} Cyclists (distance_total, velos_balance → 0)")
         self.stdout.write(f"  4. Reset {device_count} Devices (distance_total → 0)")
         self.stdout.write("")
         self.stdout.write(self.style.NOTICE("Note: HourlyMetric entries are NOT deleted. They remain as historical data."))
         self.stdout.write(self.style.NOTICE("Note: Active sessions (CyclistDeviceCurrentMileage) are NOT affected."))
+        self.stdout.write(self.style.NOTICE("Note: Group velos_spendable is snapshotted but NOT reset."))
         self.stdout.write("")
 
         if not confirm and not dry_run:
@@ -221,11 +223,12 @@ class Command(BaseCommand):
                     period_type=period_type,
                     group_total_km=top_group.distance_total,
                     group_total_velos=top_group.velos_total,
+                    group_total_spendable=int(top_group.velos_spendable or 0),
                     created_by=user
                 )
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Created snapshot ID: {snapshot.id}"))
 
-                # 2. Save group details
+                # 2. Save group details (spendable recorded, not reset)
                 self.stdout.write("Saving group details...")
                 group_details_count = 0
                 for group in all_groups:
@@ -233,7 +236,8 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         group=group,
                         distance_total=group.distance_total,
-                        velos_total=group.velos_total
+                        velos_total=group.velos_total,
+                        velos_spendable=int(group.velos_spendable or 0),
                     )
                     group_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {group_details_count} group details"))
@@ -246,7 +250,8 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         cyclist=cyclist,
                         distance_total=cyclist.distance_total,
-                        velos_total=cyclist.velos_balance
+                        velos_total=cyclist.velos_balance,
+                        velos_spendable=0,
                     )
                     cyclist_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {cyclist_details_count} cyclist details"))
@@ -259,12 +264,13 @@ class Command(BaseCommand):
                         snapshot=snapshot,
                         device=device,
                         distance_total=device.distance_total,
-                        velos_total=0  # Devices have no Velos ledger
+                        velos_total=0,  # Devices have no Velos ledger
+                        velos_spendable=0,
                     )
                     device_details_count += 1
                 self.stdout.write(self.style.SUCCESS(f"  ✓ Saved {device_details_count} device details"))
 
-                # 5. Reset group totals
+                # 5. Reset group totals (spendable intentionally kept)
                 self.stdout.write("Resetting group totals...")
                 all_groups.update(
                     distance_total=Decimal('0.00000'),
@@ -372,6 +378,7 @@ class Command(BaseCommand):
                 self.stdout.write("Restoring group totals...")
                 group_count = 0
                 for detail in group_details.select_related('group'):
+                    # Spendable was never reset — do not overwrite live shop balances.
                     detail.group.distance_total = detail.distance_total
                     detail.group.velos_total = detail.velos_total
                     detail.group.save(update_fields=['distance_total', 'velos_total'])

@@ -41,12 +41,26 @@
       {% trans "Ziel" %}:
       <strong>{% if preview.target %}{{ preview.target.name }}{% else %}—{% endif %}</strong>
       · {% trans "Summe" %}: <strong>{{ preview.total }}</strong> Velos
+      {% if preview.partial %}
+      · <em>{% trans "Teilumbuchung" %}: {{ preview.total }} {% trans "von" %}
+        {% for s in preview.sources %}{{ s.available }}{% endfor %}</em>
+      {% endif %}
     </p>
     <table>
-      <thead><tr><th>{% trans "Quelle" %}</th><th>{% trans "Spendable" %}</th></tr></thead>
+      <thead>
+        <tr>
+          <th>{% trans "Quelle" %}</th>
+          <th>{% trans "Verfügbar" %}</th>
+          <th>{% trans "Umbuchung" %}</th>
+        </tr>
+      </thead>
       <tbody>
         {% for s in preview.sources %}
-        <tr><td>{{ s.name }}</td><td>{{ s.amount }}</td></tr>
+        <tr>
+          <td>{{ s.name }}</td>
+          <td>{{ s.available }}</td>
+          <td><strong>{{ s.amount }}</strong></td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -54,9 +68,10 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="consolidate">
       <input type="hidden" name="confirm" value="1">
-      <input type="hidden" name="target_id" value="{{ form.target_id }}">
-      <input type="hidden" name="reason" value="{{ form.reason }}">
-      {% for sid in form.source_ids %}
+      <input type="hidden" name="target_id" value="{{ cons_form.target_id }}">
+      <input type="hidden" name="reason" value="{{ cons_form.reason }}">
+      <input type="hidden" name="amount" value="{{ cons_form.amount }}">
+      {% for sid in cons_form.source_ids %}
       <input type="hidden" name="source_ids" value="{{ sid }}">
       {% endfor %}
       <div class="btn-row">
@@ -85,7 +100,7 @@
         <option value="{{ g.pk }}">TOP: {{ g.name }} ({{ g.velos_spendable }})</option>
         {% endfor %}
       </select>
-      <p class="muted">{% trans "Strg/Cmd + Klick für mehrere Gruppen." %}</p>
+      <p class="muted">{% trans "Strg/Cmd + Klick für mehrere Gruppen. Teilbetrag nur bei genau einer Quelle." %}</p>
 
       <label for="target_id">{% trans "Zielgruppe" %}</label>
       <select id="target_id" name="target_id" required>
@@ -97,6 +112,12 @@
         <option value="{{ row.leaf.pk }}">{{ row.top.name }} / {{ row.leaf.name }}</option>
         {% endfor %}
       </select>
+
+      <label for="amount">{% trans "Betrag (optional, Teilumbuchung)" %}</label>
+      <input id="amount" name="amount" type="number" min="1" step="1"
+             placeholder="{% trans 'leer = gesamtes Spendable der Quelle(n)' %}"
+             style="width:100%;max-width:520px;">
+      <p class="muted">{% trans "z. B. TOP → Klasse 2b: eine Quelle wählen und Teilbetrag eingeben." %}</p>
 
       <label for="reason">{% trans "Grund / Event" %} *</label>
       <input id="reason" name="reason" type="text" required maxlength="255"

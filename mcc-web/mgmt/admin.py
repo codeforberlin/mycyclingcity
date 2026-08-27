@@ -8042,11 +8042,13 @@ from mgmt.admin_performance import RequestLogAdmin, PerformanceMetricAdmin, Aler
 @admin.register(YearEndSnapshot)
 class YearEndSnapshotAdmin(admin.ModelAdmin):
     list_display = ('group', 'period_type_display', 'snapshot_date', 'period_start_date', 'period_end_date', 
-                    'group_total_km_display', 'group_total_velos', 'is_undone', 'created_by', 'created_at')
+                    'group_total_km_display', 'group_total_velos', 'group_total_spendable',
+                    'is_undone', 'created_by', 'created_at')
     list_filter = ('period_type', 'is_undone', 'snapshot_date', 'created_at')
     search_fields = ('group__name',)
     readonly_fields = ('group', 'snapshot_date', 'period_start_date', 'period_end_date', 'period_type',
-                       'group_total_km', 'group_total_velos', 'created_by', 'created_at',
+                       'group_total_km', 'group_total_velos', 'group_total_spendable',
+                       'created_by', 'created_at',
                        'is_undone', 'undone_at', 'undone_by', 'details_count', 'details_link')
     date_hierarchy = 'snapshot_date'
     change_list_template = 'admin/api/yearendsnapshot_change_list.html'
@@ -8056,7 +8058,10 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
             'fields': ('group', 'period_type', 'snapshot_date', 'period_start_date', 'period_end_date')
         }),
         (_("Gespeicherte Werte"), {
-            'fields': ('group_total_km', 'group_total_velos', 'details_count', 'details_link')
+            'fields': (
+                'group_total_km', 'group_total_velos', 'group_total_spendable',
+                'details_count', 'details_link',
+            )
         }),
         (_("Erstellt"), {
             'fields': ('created_by', 'created_at')
@@ -8121,158 +8126,137 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context)
     
     def create_year_end_view(self, request):
-        """View to create a year-end snapshot."""
+        """Two-step year-end: form → preview of all entities → confirm create."""
         from django.shortcuts import render, redirect
         from django.contrib import messages
-        from django.db import transaction
-        from django.utils import timezone
-        from datetime import datetime
-        from decimal import Decimal
-        from eventboard.utils import get_all_subgroup_ids
-        from iot.models import Device
-        
-        if request.method == 'GET':
-            # Get available TOP groups
-            if request.user.is_superuser:
-                top_groups = Group.objects.filter(parent__isnull=True).order_by('name')
-            else:
-                managed_group_ids = get_operator_managed_group_ids(request.user)
-                # Find TOP groups from managed groups
-                top_groups = Group.objects.filter(
-                    id__in=managed_group_ids,
-                    parent__isnull=True
-                ).order_by('name')
-            
-            return render(request, 'admin/api/create_year_end_snapshot.html', {
-                'title': _('Jahresabschluss erstellen'),
-                'top_groups': top_groups,
-                'period_types': YearEndSnapshot.PERIOD_TYPE_CHOICES,
-            })
-        
-        # POST: Process form data
+        from api.services.year_end import (
+            YearEndError,
+            collect_year_end_preview,
+            execute_year_end_snapshot,
+        )
+        from api.helpers import invalidate_cache_for_top_group
+
+        def _top_groups_for(user):
+            if user.is_superuser:
+                return Group.objects.filter(parent__isnull=True).order_by("name")
+            managed_group_ids = get_operator_managed_group_ids(user)
+            return Group.objects.filter(
+                id__in=managed_group_ids,
+                parent__isnull=True,
+            ).order_by("name")
+
+        def _form_context(**extra):
+            ctx = {
+                "title": _("Jahresabschluss erstellen"),
+                "top_groups": _top_groups_for(request.user),
+                "period_types": YearEndSnapshot.PERIOD_TYPE_CHOICES,
+            }
+            ctx.update(extra)
+            return ctx
+
+        if request.method == "GET":
+            return render(
+                request,
+                "admin/api/create_year_end_snapshot.html",
+                _form_context(),
+            )
+
+        # POST: preview or confirm
+        group_id = request.POST.get("group_id")
+        snapshot_date_str = request.POST.get("snapshot_date")
+        period_start_date_str = request.POST.get("period_start_date")
+        period_end_date_str = request.POST.get("period_end_date")
+        period_type = request.POST.get("period_type")
+        step = (request.POST.get("step") or "preview").strip()
+        form_values = {
+            "group_id": group_id or "",
+            "period_type": period_type or "",
+            "snapshot_date": snapshot_date_str or "",
+            "period_start_date": period_start_date_str or "",
+            "period_end_date": period_end_date_str or "",
+        }
+
+        if not all([group_id, snapshot_date_str, period_type]):
+            messages.error(request, _("Bitte füllen Sie alle erforderlichen Felder aus."))
+            return render(
+                request,
+                "admin/api/create_year_end_snapshot.html",
+                _form_context(form=form_values),
+            )
+
         try:
-            group_id = request.POST.get('group_id')
-            snapshot_date_str = request.POST.get('snapshot_date')
-            period_start_date_str = request.POST.get('period_start_date')
-            period_end_date_str = request.POST.get('period_end_date')
-            period_type = request.POST.get('period_type')
-            
-            if not all([group_id, snapshot_date_str, period_type]):
-                messages.error(request, _('Bitte füllen Sie alle erforderlichen Felder aus.'))
-                return redirect('admin:api_yearendsnapshot_create')
-            
-            # Parse dates
-            try:
-                snapshot_date = self._parse_date(snapshot_date_str)
-                period_start_date = self._parse_date(period_start_date_str) if period_start_date_str else snapshot_date
-                period_end_date = self._parse_date(period_end_date_str) if period_end_date_str else snapshot_date
-            except ValueError as e:
-                messages.error(request, _('Ungültiges Datumsformat: {}').format(str(e)))
-                return redirect('admin:api_yearendsnapshot_create')
-            
-            # Get TOP group
-            try:
-                top_group = Group.objects.get(id=group_id)
-            except Group.DoesNotExist:
-                messages.error(request, _('Gruppe nicht gefunden.'))
-                return redirect('admin:api_yearendsnapshot_create')
-            
-            # Verify it's a TOP group
-            if top_group.parent is not None:
-                messages.error(request, _('Die ausgewählte Gruppe ist keine TOP-Gruppe.'))
-                return redirect('admin:api_yearendsnapshot_create')
-            
-            # Check permissions
-            if not request.user.is_superuser:
-                managed_group_ids = get_operator_managed_group_ids(request.user)
-                if top_group.id not in managed_group_ids:
-                    messages.error(request, _('Sie haben keine Berechtigung für diese Gruppe.'))
-                    return redirect('admin:api_yearendsnapshot_create')
-            
-            # Get all subgroups (recursively)
-            all_subgroup_ids = get_all_subgroup_ids(top_group)
-            all_subgroup_ids.append(top_group.id)
-            all_groups = Group.objects.filter(id__in=all_subgroup_ids)
-            
-            # Get all cyclists in these groups
-            all_cyclists = Cyclist.objects.filter(groups__id__in=all_subgroup_ids).distinct()
-            
-            # Get all devices assigned to these groups
-            all_devices = Device.objects.filter(group__id__in=all_subgroup_ids)
-            
-            # Perform reset in transaction
-            with transaction.atomic():
-                # Create snapshot
-                snapshot = YearEndSnapshot.objects.create(
-                    group=top_group,
-                    snapshot_date=snapshot_date,
-                    period_start_date=period_start_date,
-                    period_end_date=period_end_date,
-                    period_type=period_type,
-                    group_total_km=top_group.distance_total,
-                    group_total_velos=top_group.velos_total,
-                    created_by=request.user
-                )
-                
-                # Save group details
-                for group in all_groups:
-                    YearEndSnapshotDetail.objects.create(
-                        snapshot=snapshot,
-                        group=group,
-                        distance_total=group.distance_total,
-                        velos_total=group.velos_total
-                    )
-                
-                # Save cyclist details
-                for cyclist in all_cyclists:
-                    YearEndSnapshotDetail.objects.create(
-                        snapshot=snapshot,
-                        cyclist=cyclist,
-                        distance_total=cyclist.distance_total,
-                        velos_total=cyclist.velos_balance
-                    )
-                
-                # Save device details
-                for device in all_devices:
-                    YearEndSnapshotDetail.objects.create(
-                        snapshot=snapshot,
-                        device=device,
-                        distance_total=device.distance_total,
-                        velos_total=0
-                    )
-                
-                # Reset group totals
-                all_groups.update(
-                    distance_total=Decimal('0.00000'),
-                    velos_total=0
-                )
-                
-                # Reset cyclist totals
-                all_cyclists.update(
-                    distance_total=Decimal('0.00000'),
-                    velos_total=0,
-                    velos_balance=0
-                )
-                
-                # Reset device totals
-                all_devices.update(
-                    distance_total=Decimal('0.00000')
-                )
-            
-            # Invalidate cache for affected groups
-            from api.helpers import invalidate_cache_for_top_group
+            snapshot_date = self._parse_date(snapshot_date_str)
+            period_start_date = (
+                self._parse_date(period_start_date_str) if period_start_date_str else snapshot_date
+            )
+            period_end_date = (
+                self._parse_date(period_end_date_str) if period_end_date_str else snapshot_date
+            )
+        except ValueError as e:
+            messages.error(request, _("Ungültiges Datumsformat: {}").format(str(e)))
+            return render(
+                request,
+                "admin/api/create_year_end_snapshot.html",
+                _form_context(form=form_values),
+            )
+
+        try:
+            top_group = Group.objects.get(id=group_id)
+        except Group.DoesNotExist:
+            messages.error(request, _("Gruppe nicht gefunden."))
+            return redirect("admin:api_yearendsnapshot_create")
+
+        if top_group.parent is not None:
+            messages.error(request, _("Die ausgewählte Gruppe ist keine TOP-Gruppe."))
+            return redirect("admin:api_yearendsnapshot_create")
+
+        if not request.user.is_superuser:
+            managed_group_ids = get_operator_managed_group_ids(request.user)
+            if top_group.id not in managed_group_ids:
+                messages.error(request, _("Sie haben keine Berechtigung für diese Gruppe."))
+                return redirect("admin:api_yearendsnapshot_create")
+
+        try:
+            preview = collect_year_end_preview(top_group)
+        except YearEndError as exc:
+            messages.error(request, _("Fehler: %(code)s") % {"code": exc.code})
+            return redirect("admin:api_yearendsnapshot_create")
+
+        # Step 1: show full preview for manual review (no DB writes)
+        if step != "confirm" or request.POST.get("confirm") != "1":
+            return render(
+                request,
+                "admin/api/create_year_end_snapshot.html",
+                _form_context(
+                    form=form_values,
+                    preview=preview,
+                    title=_("Jahresabschluss — Vorschau prüfen"),
+                ),
+            )
+
+        # Step 2: confirmed — create snapshot and reset
+        try:
+            snapshot = execute_year_end_snapshot(
+                top_group=top_group,
+                snapshot_date=snapshot_date,
+                period_start_date=period_start_date,
+                period_end_date=period_end_date,
+                period_type=period_type,
+                user=request.user,
+            )
             invalidate_cache_for_top_group(top_group)
-            
             messages.success(
                 request,
-                _('Jahresabschluss erfolgreich erstellt! Snapshot ID: {}').format(snapshot.id)
+                _("Jahresabschluss erfolgreich erstellt! Snapshot ID: {}").format(snapshot.id),
             )
-            return redirect('admin:api_yearendsnapshot_changelist')
-            
+            return redirect("admin:api_yearendsnapshot_changelist")
         except Exception as e:
             logger.error(f"Error creating year-end snapshot: {e}", exc_info=True)
-            messages.error(request, _('Fehler beim Erstellen des Jahresabschlusses: {}').format(str(e)))
-            return redirect('admin:api_yearendsnapshot_create')
+            messages.error(
+                request,
+                _("Fehler beim Erstellen des Jahresabschlusses: {}").format(str(e)),
+            )
+            return redirect("admin:api_yearendsnapshot_create")
     
     def _parse_date(self, date_str):
         """Parse date string in various formats."""
@@ -8326,14 +8310,20 @@ class YearEndSnapshotAdmin(admin.ModelAdmin):
 
 @admin.register(YearEndSnapshotDetail)
 class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
-    list_display = ('snapshot', 'entity_display', 'distance_total_display', 'velos_total', 'entity_type')
+    list_display = (
+        'snapshot', 'entity_display', 'distance_total_display',
+        'velos_total', 'velos_spendable', 'entity_type',
+    )
     list_filter = (
         'snapshot',
         ('snapshot__group', OperatorManagedGroupFieldListFilter),
         'snapshot__snapshot_date',
     )
     search_fields = ('snapshot__group__name', 'group__name', 'cyclist__user_id', 'device__name')
-    readonly_fields = ('snapshot', 'group', 'cyclist', 'device', 'distance_total', 'velos_total', 'entity_type')
+    readonly_fields = (
+        'snapshot', 'group', 'cyclist', 'device',
+        'distance_total', 'velos_total', 'velos_spendable', 'entity_type',
+    )
     date_hierarchy = 'snapshot__snapshot_date'
     
     fieldsets = (
@@ -8344,7 +8334,7 @@ class YearEndSnapshotDetailAdmin(admin.ModelAdmin):
             'fields': ('group', 'cyclist', 'device', 'entity_type')
         }),
         (_("Gespeicherte Werte"), {
-            'fields': ('distance_total', 'velos_total')
+            'fields': ('distance_total', 'velos_total', 'velos_spendable')
         }),
     )
     

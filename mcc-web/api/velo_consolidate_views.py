@@ -117,7 +117,21 @@ def _scoped_recent_transfers(user):
     return list(qs[:30])
 
 
-def _page_context(user, *, preview=None, form=None):
+def _parse_amount(raw) -> int | None:
+    """Parse optional transfer amount from POST; empty → None (full spendable)."""
+    text = (raw or "").strip().replace(" ", "")
+    if not text:
+        return None
+    # HTML number inputs send "25"; some locales may send "25,0".
+    if "," in text and "." not in text:
+        text = text.replace(",", ".")
+    value = int(float(text))
+    if value <= 0:
+        raise ConsolidateError("invalid_amount")
+    return value
+
+
+def _page_context(user, *, preview=None, cons_form=None):
     top_groups = _scoped_top_groups(user)
     return {
         "title": _("Velo-Konsolidierung"),
@@ -126,7 +140,7 @@ def _page_context(user, *, preview=None, form=None):
         "spendable_groups": _scoped_spendable_groups(user),
         "recent": _scoped_recent_transfers(user),
         "preview": preview,
-        "form": form,
+        "cons_form": cons_form,
         "is_full_admin": user.is_superuser,
     }
 
@@ -176,20 +190,23 @@ def group_velo_consolidate_view(request):
             else:
                 source_ids = [int(x) for x in request.POST.getlist("source_ids") if x]
                 target_id = int(request.POST.get("target_id") or 0)
+                amount_raw = (request.POST.get("amount") or "").strip()
+                amount = _parse_amount(amount_raw)
                 assert_groups_in_scope(request.user, [*source_ids, target_id])
                 # Preview confirm step
                 if request.POST.get("confirm") != "1":
-                    preview = preview_transfers(source_ids, target_id)
+                    preview = preview_transfers(source_ids, target_id, amount=amount)
                     return render(
                         request,
                         "admin/api/group_velo_consolidate.html",
                         _page_context(
                             request.user,
                             preview=preview,
-                            form={
+                            cons_form={
                                 "source_ids": source_ids,
                                 "target_id": target_id,
                                 "reason": reason,
+                                "amount": "" if amount is None else str(amount),
                                 "action": "consolidate",
                             },
                         ),
@@ -200,6 +217,7 @@ def group_velo_consolidate_view(request):
                     reason=reason,
                     user=request.user,
                     action=GroupVeloTransfer.ACTION_CONSOLIDATE,
+                    amount=amount,
                 )
                 messages.success(
                     request,

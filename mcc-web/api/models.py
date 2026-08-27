@@ -1549,6 +1549,11 @@ class YearEndSnapshot(models.Model):
         default=0,
         verbose_name=_("Gruppen-Velos gesamt")
     )
+    group_total_spendable = models.IntegerField(
+        default=0,
+        verbose_name=_("Gruppen-Velos ausgebbar (TOP)"),
+        help_text=_("velos_spendable der TOP-Gruppe zum Abschlusszeitpunkt (wird nicht genullt)"),
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -1636,7 +1641,15 @@ class YearEndSnapshotDetail(models.Model):
         default=0,
         verbose_name=_("Velos zum Abschlusszeitpunkt")
     )
-    
+    velos_spendable = models.IntegerField(
+        default=0,
+        verbose_name=_("Ausgebbare Velos zum Abschlusszeitpunkt"),
+        help_text=_(
+            "Nur für Gruppen relevant. Radler/Geräte: 0. "
+            "Spendable wird beim Abschluss nicht genullt — nur historisch gespeichert."
+        ),
+    )
+
     class Meta:
         verbose_name = _("Jahresabschluss-Detail")
         verbose_name_plural = _("Jahresabschluss-Details")

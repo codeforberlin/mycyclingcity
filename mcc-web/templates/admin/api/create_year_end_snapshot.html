@@ -15,58 +15,50 @@
 {{ block.super }}
 <style>
     .year-end-form {
-        max-width: 800px;
+        max-width: 1100px;
         margin: 20px auto;
         padding: 20px;
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    
     .form-section {
-        margin-bottom: 30px;
-        padding: 20px;
+        margin-bottom: 24px;
+        padding: 16px 20px;
         background: #f9f9f9;
         border-radius: 6px;
         border-left: 4px solid #417690;
     }
-    
     .form-section h2 {
         margin-top: 0;
         color: #417690;
         font-size: 18px;
         font-weight: 600;
     }
-    
-    .form-group {
-        margin-bottom: 15px;
-    }
-    
+    .form-group { margin-bottom: 15px; }
     .form-group label {
         display: block;
         margin-bottom: 5px;
         font-weight: 600;
         color: #333;
     }
-    
     .form-group input[type="text"],
     .form-group input[type="datetime-local"],
     .form-group select {
         width: 100%;
+        max-width: 520px;
         padding: 8px 12px;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 14px;
         box-sizing: border-box;
     }
-    
     .form-group small {
         display: block;
         margin-top: 5px;
         color: #666;
         font-size: 12px;
     }
-    
     .warning-box {
         padding: 15px;
         background: #fff3cd;
@@ -75,12 +67,45 @@
         margin-bottom: 20px;
         color: #856404;
     }
-    
-    .warning-box strong {
-        display: block;
-        margin-bottom: 5px;
+    .preview-box {
+        padding: 16px;
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 6px;
+        margin-bottom: 24px;
     }
-    
+    .preview-box h2 { margin-top: 0; color: #5d4037; }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+        margin: 12px 0 18px;
+    }
+    .summary-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 10px 12px;
+    }
+    .summary-card .lbl { font-size: 12px; color: #666; }
+    .summary-card .val { font-size: 18px; font-weight: 700; color: #333; }
+    .ye-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-bottom: 18px;
+        background: #fff;
+    }
+    .ye-table th, .ye-table td {
+        border-bottom: 1px solid #eee;
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+    }
+    .ye-table th { background: #f3f3f3; position: sticky; top: 0; }
+    .ye-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ye-scroll { max-height: 360px; overflow: auto; border: 1px solid #eee; border-radius: 4px; margin-bottom: 8px; }
+    .muted { color: #666; font-size: 13px; }
     .btn {
         padding: 10px 20px;
         border: none;
@@ -91,29 +116,25 @@
         text-decoration: none;
         display: inline-block;
     }
-    
-    .btn-primary {
-        background: #417690;
-        color: #fff;
-    }
-    
-    .btn-primary:hover {
-        background: #205067;
-    }
-    
-    .btn-secondary {
-        background: #6c757d;
-        color: #fff;
-    }
-    
-    .btn-secondary:hover {
-        background: #5a6268;
-    }
-    
+    .btn-primary { background: #417690; color: #fff; }
+    .btn-primary:hover { background: #205067; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-danger:hover { background: #8e0000; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .btn-secondary:hover { background: #5a6268; }
     .button-group {
-        margin-top: 30px;
+        margin-top: 24px;
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .confirm-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 12px 0 4px;
+        font-weight: 600;
     }
 </style>
 {% endblock %}
@@ -121,31 +142,186 @@
 {% block content %}
 <div class="year-end-form">
     <h1>{{ title }}</h1>
-    
+
+    {% if preview %}
+    <div class="preview-box">
+        <h2>{% trans "Vorschau — bitte alle Daten prüfen" %}</h2>
+        <p>
+            {% trans "TOP-Gruppe" %}: <strong>{{ preview.top_group.name }}</strong>
+            · {% trans "Es wird noch nichts geschrieben." %}
+        </p>
+        <p class="muted">
+            {% trans "Nach Bestätigung: KM und velos_total / Radler-Guthaben → 0. velos_spendable bleibt unverändert (nur im Snapshot gespeichert)." %}
+        </p>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="lbl">{% trans "Gruppen" %}</div>
+                <div class="val">{{ preview.counts.groups }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="lbl">{% trans "Radler" %}</div>
+                <div class="val">{{ preview.counts.cyclists }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="lbl">{% trans "Geräte" %}</div>
+                <div class="val">{{ preview.counts.devices }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="lbl">{% trans "TOP KM" %}</div>
+                <div class="val">{{ preview.totals.group_km }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="lbl">{% trans "TOP Velos" %}</div>
+                <div class="val">{{ preview.totals.group_velos }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="lbl">{% trans "TOP Spendable" %}</div>
+                <div class="val">{{ preview.totals.group_spendable }}</div>
+            </div>
+        </div>
+
+        <h3>{% trans "Gruppen" %} ({{ preview.counts.groups }})</h3>
+        <div class="ye-scroll">
+            <table class="ye-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Name" %}</th>
+                        <th>{% trans "Parent" %}</th>
+                        <th class="num">{% trans "KM" %}</th>
+                        <th class="num">{% trans "Velos total" %}</th>
+                        <th class="num">{% trans "Spendable" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in preview.groups %}
+                    <tr>
+                        <td>{% if g.is_top %}<strong>{{ g.name }}</strong>{% else %}{{ g.name }}{% endif %}</td>
+                        <td>{% if g.parent_name %}{{ g.parent_name }}{% else %}—{% endif %}</td>
+                        <td class="num">{{ g.distance_total }}</td>
+                        <td class="num">{{ g.velos_total }}</td>
+                        <td class="num">{{ g.velos_spendable }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5"><em>{% trans "Keine Gruppen." %}</em></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">
+            {% trans "Summe Gruppen KM" %}: {{ preview.totals.groups_km_sum }}
+            · {% trans "Velos" %}: {{ preview.totals.groups_velos_sum }}
+            · {% trans "Spendable" %}: {{ preview.totals.groups_spendable_sum }}
+        </p>
+
+        <h3>{% trans "Radler" %} ({{ preview.counts.cyclists }})</h3>
+        <div class="ye-scroll">
+            <table class="ye-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "User-ID / ID-Tag" %}</th>
+                        <th class="num">{% trans "KM" %}</th>
+                        <th class="num">{% trans "Velos-Guthaben" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in preview.cyclists %}
+                    <tr>
+                        <td>{{ c.user_id }}</td>
+                        <td class="num">{{ c.distance_total }}</td>
+                        <td class="num">{{ c.velos_balance }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3"><em>{% trans "Keine Radler." %}</em></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">
+            {% trans "Summe Radler KM" %}: {{ preview.totals.cyclists_km_sum }}
+            · {% trans "Guthaben" %}: {{ preview.totals.cyclists_balance_sum }}
+        </p>
+
+        <h3>{% trans "Geräte" %} ({{ preview.counts.devices }})</h3>
+        <div class="ye-scroll">
+            <table class="ye-table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Gerät" %}</th>
+                        <th>{% trans "Gruppe" %}</th>
+                        <th class="num">{% trans "KM" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in preview.devices %}
+                    <tr>
+                        <td>{{ d.display_name }}</td>
+                        <td>{{ d.group_name }}</td>
+                        <td class="num">{{ d.distance_total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3"><em>{% trans "Keine Geräte." %}</em></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">{% trans "Summe Geräte KM" %}: {{ preview.totals.devices_km_sum }}</p>
+
+        <form method="post" id="year-end-confirm-form">
+            {% csrf_token %}
+            <input type="hidden" name="step" value="confirm">
+            <input type="hidden" name="confirm" value="1">
+            <input type="hidden" name="group_id" value="{{ form.group_id }}">
+            <input type="hidden" name="period_type" value="{{ form.period_type }}">
+            <input type="hidden" name="snapshot_date" value="{{ form.snapshot_date }}">
+            <input type="hidden" name="period_start_date" value="{{ form.period_start_date }}">
+            <input type="hidden" name="period_end_date" value="{{ form.period_end_date }}">
+
+            <label class="confirm-check">
+                <input type="checkbox" id="reviewed" required>
+                {% trans "Ich habe Gruppen, Radler und Geräte geprüft. Abschluss jetzt durchführen." %}
+            </label>
+
+            <div class="button-group">
+                <button type="submit" class="btn btn-danger">
+                    {% trans "Jahresabschluss jetzt erstellen" %}
+                </button>
+                <a class="btn btn-secondary" href="{% url 'admin:api_yearendsnapshot_create' %}">
+                    {% trans "Zurück / Abbrechen" %}
+                </a>
+            </div>
+        </form>
+    </div>
+
+    {% else %}
+
     <div class="warning-box">
         <strong>{% trans "Wichtiger Hinweis" %}</strong>
-        <p>{% trans "Diese Aktion erstellt einen Jahresabschluss für die ausgewählte TOP-Gruppe und setzt alle Kilometerstände auf Null. Die historischen Daten werden in einem Snapshot gespeichert und können jederzeit eingesehen werden." %}</p>
+        <p>{% trans "Zuerst erscheint eine Vorschau aller betroffenen Gruppen, Radler und Geräte. Erst nach manueller Prüfung wird der Abschluss geschrieben." %}</p>
         <p><strong>{% trans "Betroffen sind:" %}</strong></p>
         <ul style="margin: 10px 0 0 20px;">
             <li>{% trans "Die TOP-Gruppe und alle Subgruppen (rekursiv)" %}</li>
             <li>{% trans "Alle Radler dieser Gruppen" %}</li>
             <li>{% trans "Alle Geräte, die diesen Gruppen zugeordnet sind" %}</li>
         </ul>
-        <p style="margin-top: 10px;"><strong>{% trans "Hinweis:" %}</strong> {% trans "Aktive Sessions werden nicht zurückgesetzt. Die stündlichen Metriken (HourlyMetric) bleiben als historische Daten erhalten." %}</p>
+        <p style="margin-top: 10px;">
+            <strong>{% trans "Hinweis:" %}</strong>
+            {% trans "Aktive Sessions werden nicht zurückgesetzt. HourlyMetric bleibt erhalten. velos_spendable wird nur archiviert, nicht genullt." %}
+        </p>
     </div>
-    
+
     <form method="post" id="year-end-form">
         {% csrf_token %}
-        
+        <input type="hidden" name="step" value="preview">
+
         <div class="form-section">
             <h2>{% trans "Gruppe auswählen" %}</h2>
-            
             <div class="form-group">
                 <label for="group_id">{% trans "TOP-Gruppe *" %}</label>
                 <select id="group_id" name="group_id" required>
                     <option value="">{% trans "-- Bitte wählen --" %}</option>
                     {% for group in top_groups %}
-                        <option value="{{ group.id }}">{{ group.name }}</option>
+                        <option value="{{ group.id }}"{% if form.group_id == group.id|stringformat:"s" %} selected{% endif %}>{{ group.name }}</option>
                     {% empty %}
                         <option value="">{% trans "Keine TOP-Gruppen verfügbar" %}</option>
                     {% endfor %}
@@ -153,86 +329,60 @@
                 <small>{% trans "Nur Gruppen ohne übergeordnete Gruppe (TOP-Gruppen) können ausgewählt werden." %}</small>
             </div>
         </div>
-        
+
         <div class="form-section">
             <h2>{% trans "Perioden-Informationen" %}</h2>
-            
             <div class="form-group">
                 <label for="period_type">{% trans "Periodentyp *" %}</label>
                 <select id="period_type" name="period_type" required>
                     {% for value, label in period_types %}
-                        <option value="{{ value }}">{{ label }}</option>
+                        <option value="{{ value }}"{% if form.period_type == value %} selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            
             <div class="form-group">
                 <label for="snapshot_date">{% trans "Abschlussdatum *" %}</label>
-                <input type="datetime-local" id="snapshot_date" name="snapshot_date" required>
-                <small>{% trans "Datum und Uhrzeit, zu dem der Abschluss durchgeführt wird (Format: YYYY-MM-DD HH:MM)" %}</small>
+                <input type="datetime-local" id="snapshot_date" name="snapshot_date" required
+                       value="{{ form.snapshot_date }}">
+                <small>{% trans "Datum und Uhrzeit des Abschlusses" %}</small>
             </div>
-            
             <div class="form-group">
                 <label for="period_start_date">{% trans "Perioden-Startdatum" %}</label>
-                <input type="datetime-local" id="period_start_date" name="period_start_date">
-                <small>{% trans "Optional: Startdatum der abgeschlossenen Periode (z.B. Schuljahresbeginn). Falls nicht angegeben, wird das Abschlussdatum verwendet." %}</small>
+                <input type="datetime-local" id="period_start_date" name="period_start_date"
+                       value="{{ form.period_start_date }}">
             </div>
-            
             <div class="form-group">
                 <label for="period_end_date">{% trans "Perioden-Enddatum" %}</label>
-                <input type="datetime-local" id="period_end_date" name="period_end_date">
-                <small>{% trans "Optional: Enddatum der abgeschlossenen Periode (z.B. Schuljahresende). Falls nicht angegeben, wird das Abschlussdatum verwendet." %}</small>
+                <input type="datetime-local" id="period_end_date" name="period_end_date"
+                       value="{{ form.period_end_date }}">
             </div>
         </div>
-        
+
         <div class="button-group">
-            <button type="submit" class="btn btn-primary">{% trans "Jahresabschluss erstellen" %}</button>
+            <button type="submit" class="btn btn-primary">{% trans "Vorschau anzeigen" %}</button>
             <a href="{% url 'admin:api_yearendsnapshot_changelist' %}" class="btn btn-secondary">{% trans "Abbrechen" %}</a>
         </div>
     </form>
+    {% endif %}
 </div>
 
 <script>
 (function() {
     'use strict';
-    
     document.addEventListener('DOMContentLoaded', function() {
-        // Set default snapshot date to now
-        var now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         var snapshotDateField = document.getElementById('snapshot_date');
-        if (snapshotDateField) {
+        if (snapshotDateField && !snapshotDateField.value) {
+            var now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             snapshotDateField.value = now.toISOString().slice(0, 16);
         }
-        
-        // Copy snapshot_date to period dates if they are empty
         var snapshotDateInput = document.getElementById('snapshot_date');
         var periodStartInput = document.getElementById('period_start_date');
         var periodEndInput = document.getElementById('period_end_date');
-        
         if (snapshotDateInput && periodStartInput && periodEndInput) {
             snapshotDateInput.addEventListener('change', function() {
-                if (!periodStartInput.value) {
-                    periodStartInput.value = this.value;
-                }
-                if (!periodEndInput.value) {
-                    periodEndInput.value = this.value;
-                }
-            });
-        }
-        
-        // Confirmation before submit
-        var form = document.getElementById('year-end-form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                var groupSelect = document.getElementById('group_id');
-                if (groupSelect && groupSelect.selectedIndex > 0) {
-                    var groupName = groupSelect.options[groupSelect.selectedIndex].text;
-                    if (!confirm('{% trans "Möchten Sie wirklich einen Jahresabschluss für" %} "' + groupName + '" {% trans "durchführen? Diese Aktion kann rückgängig gemacht werden, aber bitte vergewissern Sie sich, dass alle Daten korrekt sind." %}')) {
-                        e.preventDefault();
-                        return false;
-                    }
-                }
+                if (!periodStartInput.value) periodStartInput.value = this.value;
+                if (!periodEndInput.value) periodEndInput.value = this.value;
             });
         }
     });

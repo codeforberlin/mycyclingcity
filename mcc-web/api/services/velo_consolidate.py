@@ -20,24 +20,43 @@ class ConsolidateError(Exception):
         super().__init__(message or code)
 
 
-def preview_transfers(source_ids: list[int], target_id: int | None) -> dict:
+def preview_transfers(
+    source_ids: list[int],
+    target_id: int | None,
+    *,
+    amount: int | None = None,
+) -> dict:
     sources = list(Group.objects.filter(pk__in=source_ids).order_by("name"))
     target = Group.objects.filter(pk=target_id).first() if target_id else None
     lines = []
     total = 0
+    partial = amount is not None
+    if partial and len(sources) != 1:
+        raise ConsolidateError("partial_requires_single_source")
     for g in sources:
-        amount = max(0, int(g.velos_spendable or 0))
+        available = max(0, int(g.velos_spendable or 0))
+        if partial:
+            req = int(amount)
+            if req <= 0:
+                raise ConsolidateError("invalid_amount")
+            if req > available:
+                raise ConsolidateError("amount_exceeds_spendable")
+            move = req
+        else:
+            move = available
         lines.append(
             {
                 "id": g.pk,
                 "name": g.name,
-                "amount": amount,
+                "available": available,
+                "amount": move,
             }
         )
-        total += amount
+        total += move
     return {
         "sources": lines,
         "total": total,
+        "partial": partial,
         "target": {"id": target.pk, "name": target.name} if target else None,
     }
 
@@ -54,12 +73,14 @@ def consolidate_spendable(
     reason: str,
     user=None,
     action: str = GroupVeloTransfer.ACTION_CONSOLIDATE,
+    amount: int | None = None,
 ) -> dict:
     """
     Move or zero velos_spendable on source groups.
 
     - consolidate: require target; each source spendable → target; source → 0
-    - zero: no target; each source spendable → 0 (amount audited)
+      (or amount on a single source for partial transfer)
+    - zero: no target; each source spendable → 0 (amount audited; no partial)
     velos_total is never modified.
     """
     reason = (reason or "").strip()
@@ -71,6 +92,15 @@ def consolidate_spendable(
     action = action or GroupVeloTransfer.ACTION_CONSOLIDATE
     if action not in dict(GroupVeloTransfer.ACTION_CHOICES):
         raise ConsolidateError("invalid_action")
+
+    partial = amount is not None
+    if partial:
+        if action != GroupVeloTransfer.ACTION_CONSOLIDATE:
+            raise ConsolidateError("partial_only_for_consolidate")
+        if len({int(x) for x in source_ids}) != 1:
+            raise ConsolidateError("partial_requires_single_source")
+        if int(amount) <= 0:
+            raise ConsolidateError("invalid_amount")
 
     # Lock in stable PK order to avoid deadlocks.
     ids = sorted({int(x) for x in source_ids})
@@ -93,13 +123,19 @@ def consolidate_spendable(
     rows: list[GroupVeloTransfer] = []
 
     for src in sources:
-        amount = max(0, int(src.velos_spendable or 0))
-        if amount == 0:
+        available = max(0, int(src.velos_spendable or 0))
+        if partial:
+            move = int(amount)
+            if move > available:
+                raise ConsolidateError("amount_exceeds_spendable")
+        else:
+            move = available
+        if move == 0:
             continue
-        src.velos_spendable = F("velos_spendable") - amount
+        src.velos_spendable = F("velos_spendable") - move
         src.save(update_fields=["velos_spendable"])
         if target is not None:
-            target.velos_spendable = F("velos_spendable") + amount
+            target.velos_spendable = F("velos_spendable") + move
             target.save(update_fields=["velos_spendable"])
         rows.append(
             GroupVeloTransfer(
@@ -107,12 +143,12 @@ def consolidate_spendable(
                 action=action,
                 source_group=src,
                 target_group=target,
-                amount=amount,
+                amount=move,
                 reason=reason[:255],
                 created_by=user if getattr(user, "is_authenticated", False) else None,
             )
         )
-        transferred += amount
+        transferred += move
 
     if rows:
         GroupVeloTransfer.objects.bulk_create(rows)
@@ -127,6 +163,7 @@ def consolidate_spendable(
         "action": action,
         "transferred": transferred,
         "lines": len(rows),
+        "partial": partial,
         "target_spendable": int(target.velos_spendable) if target else None,
     }
 
