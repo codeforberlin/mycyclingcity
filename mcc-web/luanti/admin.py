@@ -109,13 +109,33 @@ class LuantiShopItemInline(admin.TabularInline):
 @admin.register(LuantiShopCategory)
 class LuantiShopCategoryAdmin(admin.ModelAdmin):
     list_display = ("slug", "name", "enabled", "sort_order")
+    search_fields = ("name", "slug")
     inlines = [LuantiShopItemInline]
 
 
 @admin.register(LuantiShopItem)
 class LuantiShopItemAdmin(admin.ModelAdmin):
-    list_display = ("item_name", "category", "buy_price_velos", "enabled", "sort_order")
+    list_display = (
+        "item_name",
+        "display_name",
+        "category",
+        "buy_price_velos",
+        "enabled",
+        "sort_order",
+    )
     list_filter = ("enabled", "category")
+    search_fields = (
+        "item_name",
+        "display_name",
+        "category__name",
+        "category__slug",
+    )
+    search_help_text = _(
+        "Suche in allen Shop-Artikeln: Itemstring, Anzeigename oder Kategoriename."
+    )
+    list_per_page = 50
+    show_full_result_count = True
+    ordering = ("category__sort_order", "category__name", "sort_order", "item_name")
 
 
 @admin.register(LuantiShopPurchaseCredit)
