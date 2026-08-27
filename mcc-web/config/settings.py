@@ -369,6 +369,40 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Timeout for inactivity in minutes (devices go to sleep mode after 5 min)
 MCC_SESSION_TIMEOUT_MINUTES = 5
 
+# Scheduled jobs (manage.py run_scheduler — single OS cron tick)
+MCC_SCHEDULER_LOCK_PATH = config(
+    'MCC_SCHEDULER_LOCK_PATH',
+    default=str(DATA_DIR / 'tmp' / 'mcc_scheduler.lock'),
+)
+MCC_SCHEDULER_CRON_GRACE_SECONDS = config(
+    'MCC_SCHEDULER_CRON_GRACE_SECONDS', default=90, cast=int
+)
+MCC_SCHEDULER_STALE_GRACE_SECONDS = config(
+    'MCC_SCHEDULER_STALE_GRACE_SECONDS', default=60, cast=int
+)
+# History retention: successful scheduler ticks are not stored by default.
+MCC_SCHEDULER_RUN_RETENTION_DAYS = config(
+    'MCC_SCHEDULER_RUN_RETENTION_DAYS', default=30, cast=int
+)
+MCC_SCHEDULER_RUN_MAX_PER_JOB = config(
+    'MCC_SCHEDULER_RUN_MAX_PER_JOB', default=50, cast=int
+)
+# Shell job executables must resolve under one of these roots (defense in depth).
+MCC_SCHEDULER_SHELL_ROOTS = [
+    BASE_DIR,
+    APP_DIR,
+    DATA_DIR,
+    Path('/data/appl/mcc'),
+    Path('/data/var/mcc'),
+    Path('/data/games/mcc'),
+]
+
+# MCC remote backup (Admin → MccBackupConfig writes this conf for backup_mcc.sh)
+MCC_BACKUP_CONF_PATH = config(
+    'MCC_BACKUP_CONF_PATH',
+    default=str(APP_DIR / 'backup_mcc.conf'),
+)
+
 # Version handling - read from version.txt or fallback to git describe
 def get_project_version() -> str:
     """

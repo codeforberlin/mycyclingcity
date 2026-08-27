@@ -55,19 +55,43 @@ Environment-Variablen:
 /data/games/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
+## Scheduled Jobs (Django Admin)
+
+Periodische Aufgaben laufen über **einen** OS-Cron-Tick und Datenbank-Jobs
+(`ScheduledJob` im Admin unter „Geplante Jobs“):
+
+```bash
+chmod +x scripts/install_scheduler_cron.sh
+/data/appl/mcc/mcc-web/scripts/install_scheduler_cron.sh
+```
+
+```cron
+* * * * * cd /data/appl/mcc/mcc-web && /data/appl/mcc/venv/bin/python manage.py run_scheduler >> /data/var/mcc/logs/mcc_scheduler.log 2>&1
+```
+
+Neue Shell-Skripte oder Management-Commands als Job im Admin anlegen (Typ, Pfad,
+Argumente, Intervall/Cron, Aktiv). Die einzelnen `install_*_cron.sh` für Backups
+sind optional/Legacy – bevorzugt den Scheduler verwenden.
+
+**MCC DB/Media-Backup:** SSH-Ziel im Admin unter „MCC Backup-Konfiguration“ pflegen
+(Job `backup_mcc` ruft `manage.py run_backup_mcc` auf und schreibt die Conf-Datei).
+
 ## backup_minecraft_world.sh
 
 Stündliches Backup der Minecraft-Welten im laufenden Betrieb (RCON `save-off` → `save-all flush` → `tar.gz` → `save-on`).
 
-### Installation / Cron
+### Installation / Scheduling
 
 ```bash
 cp scripts/backup_minecraft_world.conf.example scripts/backup_minecraft_world.conf
 # optional: RCON_PASSWORD setzen, sonst aus MCC-.env oder server.properties
-chmod +x scripts/backup_minecraft_world.sh scripts/install_minecraft_backup_cron.sh
+chmod +x scripts/backup_minecraft_world.sh
 
-# Cron: jede Stunde zur Minute :05
-/data/appl/mcc/mcc-web/scripts/install_minecraft_backup_cron.sh
+# Empfohlen: Django Scheduler (Job slug backup_minecraft, Default cron 5 * * * *)
+/data/appl/mcc/mcc-web/scripts/install_scheduler_cron.sh
+
+# Legacy (direkter OS-Cron, nur falls Scheduler nicht genutzt wird):
+# /data/appl/mcc/mcc-web/scripts/install_minecraft_backup_cron.sh
 
 # Manuell testen
 /data/appl/mcc/mcc-web/scripts/backup_minecraft_world.sh --dry-run
@@ -137,19 +161,25 @@ cd /data/appl/mcc/mcc-web
   - Logs werden durch eine systemweite Log-Rotation (logrotate) verwaltet
   - Siehe Abschnitt "Log-Rotation" weiter unten
 
-### Automatische tägliche Ausführung (Cron)
+### Automatische Ausführung
 
-Erstellen Sie einen Cron-Job für tägliche Backups:
+Empfohlen über den Django-Scheduler (Admin-Job `backup_mcc`, Default `0 22 * * *`):
+
+```bash
+/data/appl/mcc/mcc-web/scripts/install_scheduler_cron.sh
+```
+
+Legacy-Direkt-Cron (nur ohne Scheduler):
 
 ```bash
 # Crontab bearbeiten
 crontab -e
 
-# Täglich um 2:00 Uhr morgens (Produktion)
-0 2 * * * /data/appl/mcc/mcc-web/scripts/backup_mcc.sh >> /data/var/mcc/logs/backup_cron.log 2>&1
+# Täglich um 22:00 Uhr (Produktion)
+0 22 * * * /data/appl/mcc/mcc-web/scripts/backup_mcc.sh >> /data/var/mcc/logs/backup_cron.log 2>&1
 ```
 
-Oder verwenden Sie das bereitgestellte Cron-Script:
+Oder Legacy-Installer:
 ```bash
 # Cron-Job installieren (täglich um 22:00 Uhr) - Produktion
 /data/appl/mcc/mcc-web/scripts/install_backup_cron.sh

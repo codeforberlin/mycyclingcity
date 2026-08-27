@@ -186,15 +186,25 @@ First, adjust the port in `mcc_api_test.cfg` to 8000 (runserver) or 8001 (gunico
 python3 test/mcc_api_test.py --id_tag "rfid001" --device "mcc-test-01" --distance "0.1" --interval 5 --loop
 ```
 
-## Cron Job for Active Sessions
+## Scheduled Jobs (Cron)
 
-If no kilometer data is sent from a device, the current session is not automatically ended and written to history.
+Periodic work (hourly metrics via `mcc_worker`, DB/media backup, Minecraft world backup, …)
+is managed as **Django `ScheduledJob` rows** (Admin → Geplante Jobs).
 
-### MCC Worker - Saves Active Sessions to History Every 5 Minutes
+Install a **single** OS cron tick:
+
+```bash
+/data/appl/mcc/mcc-web/scripts/install_scheduler_cron.sh
+```
+
+Equivalent crontab entry:
 
 ```cron
-*/5 * * * * cd /data/games/mcc/mcc-web && /data/games/mcc/mcc-web/venv/bin/python manage.py mcc_worker >> /data/games/mcc/mcc-web/logs/mcc_worker.log 2>&1
+* * * * * cd /data/appl/mcc/mcc-web && /data/appl/mcc/venv/bin/python manage.py run_scheduler >> /data/var/mcc/logs/mcc_scheduler.log 2>&1
 ```
+
+Jobs (enable/disable, schedule, shell path, arguments) are edited in the Admin UI without code changes.
+Default seeds: `mcc_worker` (every 60s), `backup_mcc` (`0 22 * * *`), `backup_minecraft` (`5 * * * *`).
 
 ## Apache Configuration
 

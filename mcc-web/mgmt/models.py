@@ -344,3 +344,9 @@ class GameConfiguration(models.Model):
 # Import performance models
 from mgmt.models_performance import RequestLog, PerformanceMetric, AlertRule
 
+# Import scheduler models
+from mgmt.models_scheduler import ScheduledJob, ScheduledJobRun  # noqa: E402,F401
+
+# Import backup config
+from mgmt.models_backup import MccBackupConfig  # noqa: E402,F401
+

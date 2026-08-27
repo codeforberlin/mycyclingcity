@@ -6923,6 +6923,8 @@ def get_client_ip(request):
 
 # --- APPLICATION LOGS ---
 from mgmt.models import LoggingConfig, GunicornConfig, MaintenanceConfig, GameConfiguration, RequestLog, PerformanceMetric, AlertRule
+from mgmt import admin_scheduler  # noqa: F401  # registers ScheduledJob / ScheduledJobRun
+from mgmt import admin_backup  # noqa: F401  # registers MccBackupConfig
 
 
 @admin.register(LoggingConfig)
