@@ -77,6 +77,34 @@ def user_can_manage_luanti_stations(user: UserLike) -> bool:
     return user.has_perm("luanti.manage_luanti_stations")
 
 
+def operator_session_top_ids(user: UserLike) -> set[int] | None:
+    """
+    TOP group PKs the staff user may see on Luanti session tiles.
+
+    None = unrestricted (superuser). Empty set = no managed TOPs.
+    Non-superusers are limited to their managed_groups that are TOP roots.
+    """
+    if not _ok(user):
+        return set()
+    if user.is_superuser:
+        return None
+    managed = getattr(user, "managed_groups", None)
+    if managed is None:
+        return set()
+    return set(managed.filter(parent__isnull=True).values_list("id", flat=True))
+
+
+def account_in_operator_session_scope(user: UserLike, account) -> bool:
+    """Whether this Luanti account is visible/startable for the operator."""
+    allowed = operator_session_top_ids(user)
+    if allowed is None:
+        return True
+    home_id = getattr(account, "assigned_to_group_id", None)
+    if home_id is None:
+        return False
+    return int(home_id) in allowed
+
+
 def user_can_manage_luanti_regions(user: UserLike) -> bool:
     if not _ok(user):
         return False

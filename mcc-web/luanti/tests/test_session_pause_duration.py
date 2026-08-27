@@ -36,6 +36,54 @@ def account(db):
 
 
 @pytest.mark.django_db
+def test_join_payload_teleport_to_spawn_is_one_shot(account):
+    session = start_session(account=account, duration=20, teleport_to_spawn=True)
+    assert session.teleport_to_spawn is True
+    first = join_payload(account.login_name)
+    assert first["ok"] is True
+    assert first["teleport_to_spawn"] is True
+    assert first.get("spawn") is None
+    session.refresh_from_db()
+    assert session.teleport_to_spawn is False
+    second = join_payload(account.login_name)
+    assert second["teleport_to_spawn"] is False
+
+
+@pytest.mark.django_db
+def test_join_payload_region_spawn_one_shot(account):
+    from luanti.models import LuantiProtectedRegion
+
+    region = LuantiProtectedRegion.objects.create(
+        region_id="markt",
+        display_name="Marktplatz",
+        min_x=-5,
+        min_y=1,
+        min_z=-5,
+        max_x=5,
+        max_y=20,
+        max_z=5,
+        spawn_x=0,
+        spawn_y=4,
+        spawn_z=0,
+        enabled=True,
+    )
+    session = start_session(
+        account=account, duration=20, spawn_region_id=region.pk
+    )
+    assert session.spawn_region_id == region.pk
+    assert session.teleport_to_spawn is True
+    first = join_payload(account.login_name)
+    assert first["teleport_to_spawn"] is False
+    assert first["spawn"]["x"] == 0.5
+    assert first["spawn"]["y"] == 4
+    assert first["spawn"]["z"] == 0.5
+    assert first["spawn"]["region_id"] == "markt"
+    second = join_payload(account.login_name)
+    assert second.get("spawn") is None
+    assert second["teleport_to_spawn"] is False
+
+
+@pytest.mark.django_db
 def test_resolve_duration_clamps_to_account_bounds(account):
     account.session_duration_minutes = 5
     account.save(update_fields=["session_duration_minutes"])

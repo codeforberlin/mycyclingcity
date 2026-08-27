@@ -169,6 +169,17 @@ class LuantiAccount(models.Model):
     )
     display_name = models.CharField(max_length=64, blank=True, verbose_name=_("Anzeigename"))
     is_active = models.BooleanField(default=True, db_index=True, verbose_name=_("Aktiv"))
+    server_op = models.BooleanField(
+        default=False,
+        db_default=False,
+        db_index=True,
+        verbose_name=_("Server-Operator"),
+        help_text=_(
+            "Wenn aktiv: bei Session-Freigabe erweiterte Luanti-Privilegien "
+            "(u. a. server, privs, ban, kick, protection_bypass, give, teleport) — "
+            "vergleichbar mit Minecraft /op."
+        ),
+    )
     allowed_modes = models.JSONField(
         default=list,
         verbose_name=_("Erlaubte Modi"),
@@ -385,6 +396,27 @@ class LuantiSession(models.Model):
         related_name="luanti_session_wallets",
         verbose_name=_("Session-Wallet"),
         help_text=_("Optional: überschreibt Account-Wallet nur für diese Session."),
+    )
+    teleport_to_spawn = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name=_("Zum Welt-Spawn beim Start"),
+        help_text=_(
+            "Wenn gesetzt: nach Freigabe einmal zum static_spawnpoint teleportieren. "
+            "Sonst letzte Spielerposition behalten."
+        ),
+    )
+    spawn_region = models.ForeignKey(
+        "LuantiProtectedRegion",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions_spawned_here",
+        verbose_name=_("Spawn-Region"),
+        help_text=_(
+            "Wenn gesetzt: Session startete mit Teleport in diese Region "
+            "(statt Welt-Spawn)."
+        ),
     )
     note = models.CharField(max_length=255, blank=True)
 
@@ -684,7 +716,11 @@ class LuantiProtectedRegion(models.Model):
         null=True,
         blank=True,
         verbose_name=_("Spawn X"),
-        help_text=_("Optionaler Session-Spawn. Leer = Cuboid-Mitte."),
+        help_text=_(
+            "Optionaler Session-Spawn (Blockkoordinaten). "
+            "Y = Block, auf dem gestanden wird (z. B. Gras); "
+            "Teleport stellt die Füße darauf. Leer = Cuboid-Mitte."
+        ),
     )
     spawn_y = models.IntegerField(null=True, blank=True, verbose_name=_("Spawn Y"))
     spawn_z = models.IntegerField(null=True, blank=True, verbose_name=_("Spawn Z"))

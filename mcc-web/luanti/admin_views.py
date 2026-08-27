@@ -36,7 +36,9 @@ from luanti.services.arena import cart_command
 from luanti.services.bridge_connection import get_connected_server_ids
 from luanti.services.city import mark_preset_run, preset_event_payload
 from luanti.services.permissions import (
+    account_in_operator_session_scope,
     can_access_luanti_control,
+    operator_session_top_ids,
     user_can_access_luanti_arena,
     user_can_access_luanti_city,
     user_can_access_luanti_shop,
@@ -55,6 +57,7 @@ from luanti.services.session_control import (
     resolve_duration_minutes,
     resume_session,
     set_session_mode,
+    spawn_region_choices,
     start_session,
 )
 from luanti.services.presence import list_waiting, purge_stale_waiting
@@ -255,6 +258,8 @@ def luanti_accounts(request):
                     "id_tag": id_tag or login_name,
                     "allowed_modes": ["play", "build", "watch"],
                     "default_mode": "play",
+                    "is_active": request.POST.get("is_active") == "1",
+                    "server_op": request.POST.get("server_op") == "1",
                     "wallet_mode": wallet_mode
                     if wallet_mode in dict(LuantiAccount.WALLET_MODE_CHOICES)
                     else LuantiAccount.WALLET_FIXED,
@@ -277,7 +282,15 @@ def luanti_accounts(request):
                 else:
                     messages.info(request, _("Account existiert bereits."))
             return redirect("admin:luanti_accounts")
+        if action == "set_flags":
+            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
+            account.is_active = bool(request.POST.get("is_active"))
+            account.server_op = bool(request.POST.get("server_op"))
+            account.save(update_fields=["is_active", "server_op", "updated_at"])
+            messages.success(request, _("Account-Flags gespeichert."))
+            return redirect("admin:luanti_accounts")
         if action == "toggle":
+            # Legacy toggle (kept for bookmarks); prefer set_flags checkboxes.
             account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
             account.is_active = not account.is_active
             account.save(update_fields=["is_active", "updated_at"])
@@ -366,7 +379,12 @@ def luanti_accounts(request):
     accounts = LuantiAccount.objects.select_related(
         "assigned_to_group", "active_wallet"
     ).order_by("sort_order", "login_name")
-    top_groups = list(Group.objects.filter(parent__isnull=True).order_by("name"))
+    allowed_tops = operator_session_top_ids(request.user)
+    top_qs = Group.objects.filter(parent__isnull=True).order_by("name")
+    if allowed_tops is not None:
+        top_qs = top_qs.filter(pk__in=allowed_tops) if allowed_tops else top_qs.none()
+        accounts = accounts.filter(assigned_to_group_id__in=allowed_tops)
+    top_groups = list(top_qs)
     account_rows = []
     for a in accounts:
         wp = wallet_payload(a)
@@ -393,6 +411,15 @@ def luanti_accounts(request):
 @user_passes_test(user_can_manage_luanti_sessions)
 @staff_member_required
 def luanti_sessions(request):
+    def _sessions_redirect():
+        from django.urls import reverse
+
+        url = reverse("admin:luanti_sessions")
+        top = (request.POST.get("top") or request.GET.get("top") or "").strip()
+        if top:
+            return redirect(f"{url}?top={top}")
+        return redirect(url)
+
     if request.method == "POST":
         action = request.POST.get("action")
         account_id = request.POST.get("account_id")
@@ -400,6 +427,10 @@ def luanti_sessions(request):
         try:
             if action == "start" and account_id:
                 account = get_object_or_404(LuantiAccount, pk=account_id)
+                if not account_in_operator_session_scope(request.user, account):
+                    raise SessionError("group_out_of_scope")
+                if not account.is_active:
+                    raise SessionError("account_inactive")
                 # Only start sessions for players currently waiting in-game
                 # (same policy as Minecraft lobby freigabe).
                 waiting_now = {
@@ -431,6 +462,9 @@ def luanti_sessions(request):
                     duration=duration_override,
                     started_by=request.user,
                     wallet_group=wallet_group,
+                    teleport_to_spawn=bool(request.POST.get("teleport_to_spawn")),
+                    spawn_region_id=(request.POST.get("spawn_region_id") or "").strip()
+                    or None,
                 )
                 # Notify bridge so waiting client can apply session without re-login.
                 LuantiEventConsumer.push_to_all_sync(
@@ -443,6 +477,8 @@ def luanti_sessions(request):
                 messages.success(request, _("Session gestartet."))
             elif action == "set_default_mode" and account_id:
                 account = get_object_or_404(LuantiAccount, pk=account_id)
+                if not account_in_operator_session_scope(request.user, account):
+                    raise SessionError("group_out_of_scope")
                 mode = (request.POST.get("mode") or "").strip()
                 allowed = account.resolved_allowed_modes()
                 if mode not in allowed:
@@ -454,6 +490,8 @@ def luanti_sessions(request):
                 # inventory to /session/leave/ which ends the session with payload.
                 # If the player is offline, the bridge ends without inventory.
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 LuantiEventConsumer.push_to_all_sync(
                     {
                         "type": "KICK_PLAYER",
@@ -467,6 +505,8 @@ def luanti_sessions(request):
                 )
             elif action == "extend" and session_id:
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 raw_add = (request.POST.get("adjust_minutes") or "").strip()
                 try:
                     add = int(raw_add) if raw_add else None
@@ -476,6 +516,8 @@ def luanti_sessions(request):
                 messages.success(request, _("Zeit verlängert."))
             elif action == "reduce" and session_id:
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 raw_sub = (request.POST.get("adjust_minutes") or "").strip()
                 try:
                     sub = int(raw_sub) if raw_sub else None
@@ -485,6 +527,8 @@ def luanti_sessions(request):
                 messages.success(request, _("Zeit gekürzt."))
             elif action == "pause" and session_id:
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 pause_session(session)
                 # Freeze in-game: shout-only + Lua physics_override (no walk/fly).
                 LuantiEventConsumer.push_to_all_sync(
@@ -498,6 +542,8 @@ def luanti_sessions(request):
                 messages.success(request, _("Session pausiert."))
             elif action == "resume" and session_id:
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 resume_session(session)
                 LuantiEventConsumer.push_to_all_sync(
                     {
@@ -510,6 +556,8 @@ def luanti_sessions(request):
                 messages.success(request, _("Session fortgesetzt."))
             elif action == "set_mode" and session_id:
                 session = get_object_or_404(LuantiSession, pk=session_id)
+                if not account_in_operator_session_scope(request.user, session.account):
+                    raise SessionError("group_out_of_scope")
                 mode = request.POST.get("mode") or ""
                 # Do not switch mode in DB here — bridge posts /session/set-mode/
                 # with the live inventory first (saves old mode, then switches).
@@ -541,76 +589,94 @@ def luanti_sessions(request):
                     )
         except SessionError as exc:
             messages.error(request, _("Fehler: %(code)s") % {"code": exc.code})
-        return redirect("admin:luanti_sessions")
+        return _sessions_redirect()
 
     purge_stale_waiting()
     waiting = list_waiting()
-    waiting_account_ids = {w.account_id for w in waiting}
+    waiting_by_account = {w.account_id: w for w in waiting}
+    from api.models import Group
+    from luanti.services.wallet import candidate_wallet_groups, wallet_payload
+
+    allowed_tops = operator_session_top_ids(request.user)
+    top_qs = Group.objects.filter(parent__isnull=True).order_by("name")
+    if allowed_tops is not None:
+        top_qs = top_qs.filter(pk__in=allowed_tops) if allowed_tops else top_qs.none()
+    top_groups = list(top_qs)
+
+    selected_top_raw = (request.GET.get("top") or "").strip()
+    selected_top_id = None
+    if selected_top_raw:
+        try:
+            selected_top_id = int(selected_top_raw)
+        except ValueError:
+            selected_top_id = None
+        if selected_top_id is not None and allowed_tops is not None:
+            if selected_top_id not in allowed_tops:
+                selected_top_id = None
+
     accounts = (
         LuantiAccount.objects.filter(is_active=True)
         .select_related("assigned_to_group", "active_wallet")
         .order_by("sort_order", "login_name")
     )
+    if allowed_tops is not None:
+        accounts = accounts.filter(assigned_to_group_id__in=allowed_tops)
+    if selected_top_id is not None:
+        accounts = accounts.filter(assigned_to_group_id=selected_top_id)
+
     active = (
         LuantiSession.objects.filter(status__in=LuantiSession.OPEN_STATUSES)
         .select_related("account", "wallet_group")
         .order_by("-timestamp_start")
     )
-    active_names = {s.login_name.lower() for s in active}
-    from luanti.services.wallet import candidate_wallet_groups, wallet_payload
-
-    idle_accounts = []
-    for a in accounts:
-        if a.pk not in waiting_account_ids and a.login_name.lower() not in active_names:
-            idle_accounts.append(
-                {
-                    "account": a,
-                    "wallet_choices": candidate_wallet_groups(a.assigned_to_group),
-                    "resolved": wallet_payload(a),
-                    "duration": _account_duration_meta(a),
-                }
-            )
-    waiting_rows = []
-    for w in waiting:
-        waiting_rows.append(
-            {
-                "waiting": w,
-                "wallet_choices": candidate_wallet_groups(w.account.assigned_to_group),
-                "resolved": wallet_payload(w.account),
-                "duration": _account_duration_meta(w.account),
-            }
-        )
-    active_rows = []
+    active_by_login = {s.login_name.lower(): s for s in active}
     cfg = LuantiIntegrationConfig.get_config()
     now = timezone.now()
-    for s in active:
+    session_cards = []
+    for account in accounts:
+        session = active_by_login.get(account.login_name.lower())
+        waiting_entry = waiting_by_account.get(account.pk)
         remaining_sec = None
-        if s.status == LuantiSession.STATUS_PAUSED and s.remaining_seconds is not None:
-            remaining_sec = max(0, int(s.remaining_seconds))
-        elif s.ends_at:
-            remaining_sec = max(0, int((s.ends_at - now).total_seconds()))
-        active_rows.append(
+        remaining_label = None
+        if session:
+            if session.status == LuantiSession.STATUS_PAUSED and session.remaining_seconds is not None:
+                remaining_sec = max(0, int(session.remaining_seconds))
+            elif session.ends_at:
+                remaining_sec = max(0, int((session.ends_at - now).total_seconds()))
+            remaining_label = _format_remaining_seconds(remaining_sec)
+        session_cards.append(
             {
-                "session": s,
-                "resolved": wallet_payload(s.account, session=s),
+                "account": account,
+                "session": session,
+                "waiting": waiting_entry,
+                "is_waiting": bool(waiting_entry) and session is None,
+                "is_active": bool(session),
+                "is_paused": bool(session and session.status == LuantiSession.STATUS_PAUSED),
+                "wallet_choices": candidate_wallet_groups(account.assigned_to_group),
+                "resolved": wallet_payload(account, session=session),
+                "duration": _account_duration_meta(account),
                 "remaining_seconds": remaining_sec,
-                "remaining_label": _format_remaining_seconds(remaining_sec),
-                "remaining_minutes": (
-                    remaining_sec // 60 if remaining_sec is not None else None
-                ),
-                "adjust_step": account_time_step_minutes(s.account),
+                "remaining_label": remaining_label,
+                "adjust_step": account_time_step_minutes(account),
             }
         )
+
+    refresh_url = ""
+    if selected_top_id is not None:
+        refresh_url = f"?top={selected_top_id}"
+
     return render(
         request,
         "admin/luanti/luanti_sessions.html",
         {
             "title": _("Luanti-Sessions"),
-            "accounts": idle_accounts,
-            "waiting_players": waiting_rows,
-            "active_sessions": active_rows,
+            "session_cards": session_cards,
+            "top_groups": top_groups,
+            "selected_top_id": selected_top_id,
+            "spawn_regions": spawn_region_choices(),
             "hint": cfg.session_active_hint,
             "adjust_step_default": cfg.session_add_minutes,
+            "refresh_url": refresh_url,
         },
     )
 

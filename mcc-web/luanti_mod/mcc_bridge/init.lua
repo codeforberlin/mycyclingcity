@@ -145,6 +145,70 @@ local function set_player_frozen(player, frozen)
     end
 end
 
+--- Force the client out of fly / free_move (build & watch grant "fly").
+--- Important: do NOT grant fly and revoke it in the same server step — the client
+--- may only see the final privs and keep free_move on. Strip fly/noclip for at
+--- least one network tick, then optionally restore the privilege (K to enable).
+local function force_exit_fly_mode(player, restore_fly)
+    if not player then
+        return
+    end
+    local name = player:get_player_name()
+
+    local function strip_fly_privs()
+        local p = core.get_player_by_name(name)
+        if not p then
+            return
+        end
+        local privs = core.get_player_privs(name) or {}
+        privs.fly = nil
+        privs.noclip = nil
+        core.set_player_privs(name, privs)
+        -- Gravity on; free_move cannot stick without fly/noclip.
+        p:set_physics_override({
+            speed = 1,
+            jump = 1,
+            gravity = 1,
+            sneak = true,
+            sneak_glitch = false,
+            new_move = true,
+        })
+    end
+
+    strip_fly_privs()
+    -- Repeat next ticks so the client must observe fly=false before any restore.
+    core.after(0.1, strip_fly_privs)
+    core.after(0.35, strip_fly_privs)
+
+    if restore_fly then
+        core.after(0.9, function()
+            local p = core.get_player_by_name(name)
+            if not p then
+                return
+            end
+            if storage:get_string("paused_" .. name) == "1" then
+                return
+            end
+            local mode_now = storage:get_string("mode_" .. name)
+            -- Only restore when the session still wants fly (build/watch).
+            if mode_now ~= "build" and mode_now ~= "watch" then
+                return
+            end
+            local pr = core.get_player_privs(name) or {}
+            pr.fly = true
+            if mode_now == "watch" then
+                pr.noclip = true
+            end
+            core.set_player_privs(name, pr)
+            -- Privilege alone must not re-enable free_move; player uses K.
+            core.chat_send_player(
+                name,
+                "Flugmodus aus — mit K einschalten / Fly off — press K to enable"
+            )
+        end)
+    end
+end
+
 local function is_player_paused(name)
     return storage:get_string("paused_" .. name) == "1"
 end
@@ -226,6 +290,145 @@ local function refresh_regions_from_api()
 end
 
 local apply_join_result -- forward decl (defined below)
+
+local function parse_static_spawnpoint()
+    local sp = core.settings:get("static_spawnpoint") or ""
+    local x, y, z = sp:match("^%s*([-%d%.]+)%s*,%s*([-%d%.]+)%s*,%s*([-%d%.]+)")
+    if x then
+        return { x = tonumber(x), y = tonumber(y), z = tonumber(z) }
+    end
+    return { x = 0, y = 10, z = 0 }
+end
+
+local function node_is_walkable(name)
+    if not name or name == "ignore" then
+        return false
+    end
+    local def = core.registered_nodes[name]
+    return def and def.walkable == true
+end
+
+local function node_is_standable_space(name)
+    -- Air / fluids / plants: player feet or head can occupy this node.
+    if not name or name == "air" then
+        return true
+    end
+    if name == "ignore" then
+        return false
+    end
+    local def = core.registered_nodes[name]
+    if not def then
+        return true
+    end
+    return def.walkable ~= true
+end
+
+--- If spawn marks a solid block (Gras Y=8), feet go on top (Y=9).
+--- If spawn already marks air (player-capture feet cell), keep that Y.
+local function resolve_spawn_feet_pos(pos)
+    local bx = math.floor(tonumber(pos.x) or 0)
+    local by = math.floor(tonumber(pos.y) or 0)
+    local bz = math.floor(tonumber(pos.z) or 0)
+    local marked = core.get_node({ x = bx, y = by, z = bz })
+    local feet_y = by
+    if node_is_walkable(marked.name) then
+        feet_y = by + 1
+    end
+    return { x = bx + 0.5, y = feet_y, z = bz + 0.5 }, bx, feet_y, bz
+end
+
+--- Find feet position: free feet+head, solid below. Prefer requested feet Y.
+local function find_safe_standing_pos(pos)
+    local preferred, bx, by, bz = resolve_spawn_feet_pos(pos)
+
+    local function try_feet_y(fy)
+        local feet = core.get_node({ x = bx, y = fy, z = bz })
+        local head = core.get_node({ x = bx, y = fy + 1, z = bz })
+        local below = core.get_node({ x = bx, y = fy - 1, z = bz })
+        if feet.name == "ignore" or head.name == "ignore" or below.name == "ignore" then
+            return nil
+        end
+        if
+            node_is_standable_space(feet.name)
+            and node_is_standable_space(head.name)
+            and node_is_walkable(below.name)
+        then
+            return { x = bx + 0.5, y = fy, z = bz + 0.5 }
+        end
+        return nil
+    end
+
+    local at_pref = try_feet_y(by)
+    if at_pref then
+        return at_pref
+    end
+    for dy = 1, 64 do
+        local found = try_feet_y(by + dy)
+        if found then
+            return found
+        end
+    end
+    for dy = 1, 64 do
+        local found = try_feet_y(by - dy)
+        if found then
+            return found
+        end
+    end
+    return preferred
+end
+
+local function teleport_player_to_pos(player, pos, label)
+    if not player or type(pos) ~= "table" then
+        return
+    end
+    local x = tonumber(pos.x)
+    local y = tonumber(pos.y)
+    local z = tonumber(pos.z)
+    if not x or not y or not z then
+        return
+    end
+    local target = { x = x, y = y, z = z }
+    local minp = { x = math.floor(x) - 1, y = math.floor(y) - 2, z = math.floor(z) - 1 }
+    local maxp = { x = math.floor(x) + 1, y = math.floor(y) + 66, z = math.floor(z) + 1 }
+    core.emerge_area(minp, maxp, function(_, _, calls_remaining)
+        if calls_remaining and calls_remaining > 0 then
+            return
+        end
+        if not player or not player:get_pos() then
+            return
+        end
+        local safe = find_safe_standing_pos(target)
+        player:set_pos(safe)
+        local mode_now = storage:get_string("mode_" .. player:get_player_name())
+        local restore_fly = (mode_now == "build" or mode_now == "watch")
+        force_exit_fly_mode(player, restore_fly)
+        local msg = label or "Spawn"
+        core.chat_send_player(player:get_player_name(), "Teleport: " .. tostring(msg))
+        core.log(
+            "action",
+            "[mcc_bridge] teleport player="
+                .. player:get_player_name()
+                .. " requested="
+                .. tostring(x)
+                .. ","
+                .. tostring(y)
+                .. ","
+                .. tostring(z)
+                .. " safe="
+                .. tostring(safe.x)
+                .. ","
+                .. tostring(safe.y)
+                .. ","
+                .. tostring(safe.z)
+                .. " label="
+                .. tostring(msg)
+        )
+    end)
+end
+
+local function teleport_player_to_world_spawn(player)
+    teleport_player_to_pos(player, parse_static_spawnpoint(), "Welt-Spawn / world spawn")
+end
 
 local function collect_main_inventory(player)
     local payload = {}
@@ -768,10 +971,21 @@ apply_join_result = function(name, join)
     storage:set_string("paused_" .. name, "")
     set_player_frozen(player, false)
     local privs = {}
+    local want_fly = false
     for _, p in ipairs(join.privs or {}) do
-        privs[p] = true
+        -- Defer fly/noclip: granting them in the same step as join often leaves
+        -- the client in free_move (esp. build mode). force_exit restores later.
+        if p == "fly" or p == "noclip" then
+            want_fly = true
+        else
+            privs[p] = true
+        end
     end
     core.set_player_privs(name, privs)
+    local mode = join.mode or "play"
+    storage:set_string("mode_" .. name, mode)
+    local restore_fly = want_fly or mode == "build" or mode == "watch"
+    force_exit_fly_mode(player, restore_fly)
     local inv = player:get_inventory()
     if inv then
         clear_player_inventories(player)
@@ -791,7 +1005,15 @@ apply_join_result = function(name, join)
     if join.mode then
         core.chat_send_player(name, "Modus / Mode: " .. tostring(join.mode))
     end
-    storage:set_string("mode_" .. name, join.mode or "play")
+    if type(join.spawn) == "table" and join.spawn.x ~= nil then
+        local label = "Region"
+        if join.spawn.region_id then
+            label = "Region " .. tostring(join.spawn.region_id)
+        end
+        teleport_player_to_pos(player, join.spawn, label)
+    elseif join.teleport_to_spawn then
+        teleport_player_to_world_spawn(player)
+    end
 end
 
 local function poll_waiting_sessions()

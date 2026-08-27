@@ -31,6 +31,38 @@ PRIVS_BY_MODE = {
     LuantiAccount.MODE_WATCH: ["shout", "fly", "noclip"],
 }
 
+# Rough Minecraft-/op equivalent for Luanti (Mineclonia). Granted when
+# LuantiAccount.server_op is set, merged on top of the mode privs.
+PRIVS_SERVER_OP = [
+    "shout",
+    "interact",
+    "fast",
+    "fly",
+    "noclip",
+    "teleport",
+    "bring",
+    "give",
+    "protection_bypass",
+    "privs",
+    "ban",
+    "kick",
+    "server",
+    "settime",
+    "password",
+]
+
+
+def privs_for_account(account: LuantiAccount, mode: str) -> list[str]:
+    """Effective privilege list for a session mode (optional server_op merge)."""
+    privs = list(PRIVS_BY_MODE.get(mode, ["shout"]))
+    if getattr(account, "server_op", False):
+        seen = set(privs)
+        for p in PRIVS_SERVER_OP:
+            if p not in seen:
+                privs.append(p)
+                seen.add(p)
+    return privs
+
 
 def account_duration_bounds(account: LuantiAccount) -> tuple[int, int]:
     """Resolved (min, max) minutes for an account (config fallbacks)."""
@@ -87,9 +119,68 @@ def get_active_session(login_name: str) -> LuantiSession | None:
             login_name__iexact=login_name.strip(),
             status__in=LuantiSession.OPEN_STATUSES,
         )
-        .select_related("account")
+        .select_related("account", "spawn_region", "spawn_region__parent")
         .first()
     )
+
+
+def region_spawn_xyz(region) -> tuple[float, float, float]:
+    """Session teleport target for a Luanti protected region (custom spawn or cuboid)."""
+    if getattr(region, "has_custom_spawn", False):
+        return (
+            float(region.spawn_x) + 0.5,
+            float(region.spawn_y),
+            float(region.spawn_z) + 0.5,
+        )
+    min_x, min_y, min_z, max_x, max_y, max_z = region.normalized_bounds()
+    x = (min_x + max_x) / 2.0 + 0.5
+    z = (min_z + max_z) / 2.0 + 0.5
+    height = int(max_y) - int(min_y)
+    if height <= 32:
+        y = float(min_y + 2)
+        if y > max_y:
+            y = (float(min_y) + float(max_y)) / 2.0
+    else:
+        # Prefer static spawn Y when region is a tall column.
+        y = float(getattr(settings, "MCC_LUANTI_SPAWN_Y", 10) or 10)
+        if y < min_y:
+            y = float(min_y + 2)
+        if y > max_y:
+            y = float(max_y) - 1.0 if max_y > min_y else float(max_y)
+        if y < min_y:
+            y = float(min_y)
+    return x, y, z
+
+
+def resolve_spawn_region(region_pk: int | str | None):
+    """Return enabled protected region or raise SessionError."""
+    if region_pk is None or region_pk == "":
+        return None
+    from luanti.models import LuantiProtectedRegion
+
+    try:
+        pk = int(region_pk)
+    except (TypeError, ValueError) as exc:
+        raise SessionError("invalid_spawn_region") from exc
+    region = (
+        LuantiProtectedRegion.objects.filter(pk=pk, enabled=True)
+        .select_related("parent")
+        .first()
+    )
+    if region is None:
+        raise SessionError("invalid_spawn_region")
+    return region
+
+
+def spawn_region_choices() -> list[dict]:
+    """Enabled regions for the session freigabe dropdown (hierarchical labels)."""
+    from luanti.services.region_admin import hierarchical_region_list, region_label
+
+    return [
+        {"pk": r.pk, "label": region_label(r)}
+        for r in hierarchical_region_list()
+        if r.enabled
+    ]
 
 
 def get_or_create_inventory(account: LuantiAccount, mode: str) -> LuantiPlayerInventory:
@@ -158,6 +249,9 @@ def start_session(
     station=None,
     started_by=None,
     wallet_group=None,
+    teleport_to_spawn: bool = False,
+    spawn_region=None,
+    spawn_region_id: int | str | None = None,
 ) -> LuantiSession:
     if not account.is_active:
         raise SessionError("account_inactive")
@@ -168,6 +262,12 @@ def start_session(
     existing = get_active_session(account.login_name)
     if existing:
         raise SessionError("already_active", str(existing.session_id))
+
+    resolved_region = spawn_region
+    if resolved_region is None and spawn_region_id not in (None, ""):
+        resolved_region = resolve_spawn_region(spawn_region_id)
+    # Selecting a region always implies a one-shot spawn teleport.
+    do_teleport = bool(teleport_to_spawn) or bool(resolved_region)
 
     minutes = resolve_duration_minutes(account, override=duration)
     now = timezone.now()
@@ -184,6 +284,8 @@ def start_session(
         station=station,
         started_by=started_by,
         wallet_group=wallet_group,
+        teleport_to_spawn=do_teleport,
+        spawn_region=resolved_region,
     )
     from luanti.services.presence import clear_waiting
 
@@ -583,7 +685,22 @@ def join_payload(login_name: str, server_id: str = "") -> dict:
         privs = ["shout"]
     else:
         effective_mode = session.mode
-        privs = list(PRIVS_BY_MODE.get(effective_mode, ["shout"]))
+        privs = privs_for_account(account, effective_mode)
+    # One-shot: teleport only on the first join after freigabe.
+    do_spawn_tp = bool(session.teleport_to_spawn) and not paused
+    spawn_payload = None
+    if do_spawn_tp:
+        session.teleport_to_spawn = False
+        session.save(update_fields=["teleport_to_spawn"])
+        if session.spawn_region_id:
+            region = session.spawn_region
+            if region is None:
+                from luanti.models import LuantiProtectedRegion
+
+                region = LuantiProtectedRegion.objects.filter(pk=session.spawn_region_id).first()
+            if region is not None:
+                sx, sy, sz = region_spawn_xyz(region)
+                spawn_payload = {"x": sx, "y": sy, "z": sz, "region_id": region.region_id}
     return {
         "ok": True,
         "wait": False,
@@ -600,6 +717,8 @@ def join_payload(login_name: str, server_id: str = "") -> dict:
         "wallet_group_name": wallet["wallet_group_name"],
         "ends_at": session.ends_at.isoformat() if session.ends_at else None,
         "remaining_seconds": session.remaining_seconds if paused else None,
+        "teleport_to_spawn": do_spawn_tp and spawn_payload is None,
+        "spawn": spawn_payload,
     }
 
 

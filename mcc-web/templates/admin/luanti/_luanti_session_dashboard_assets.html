@@ -454,10 +454,14 @@
     var wallet = form.querySelector('[name="wallet_group"]');
     var duration = form.querySelector('[name="duration_minutes"]');
     var unlimited = form.querySelector('[name="session_unlimited"]');
+    var spawn = form.querySelector('[name="teleport_to_spawn"]');
+    var region = form.querySelector('[name="spawn_region_id"]');
     return {
       wallet_group: wallet ? wallet.value : '',
       duration_minutes: duration ? duration.value : '',
       session_unlimited: !!(unlimited && unlimited.checked),
+      teleport_to_spawn: !!(spawn && spawn.checked),
+      spawn_region_id: region ? region.value : '',
     };
   }
 
@@ -466,6 +470,8 @@
     var wallet = form.querySelector('[name="wallet_group"]');
     var duration = form.querySelector('[name="duration_minutes"]');
     var unlimited = form.querySelector('[name="session_unlimited"]');
+    var spawn = form.querySelector('[name="teleport_to_spawn"]');
+    var region = form.querySelector('[name="spawn_region_id"]');
     if (wallet && draft.wallet_group != null) {
       var opt = Array.prototype.find.call(wallet.options, function (o) {
         return o.value === String(draft.wallet_group);
@@ -482,6 +488,17 @@
     }
     if (duration && !duration.disabled && draft.duration_minutes != null && draft.duration_minutes !== '') {
       duration.value = String(draft.duration_minutes);
+    }
+    if (spawn) {
+      spawn.checked = !!draft.teleport_to_spawn;
+    }
+    if (region && draft.spawn_region_id != null) {
+      var ropt = Array.prototype.find.call(region.options, function (o) {
+        return o.value === String(draft.spawn_region_id);
+      });
+      if (ropt || draft.spawn_region_id === '') {
+        region.value = String(draft.spawn_region_id);
+      }
     }
     updateWalletPreview(form);
   }
@@ -518,7 +535,7 @@
         updateWalletPreview(form);
       }
 
-      form.querySelectorAll('[name="wallet_group"], [name="duration_minutes"], [name="session_unlimited"]').forEach(function (el) {
+      form.querySelectorAll('[name="wallet_group"], [name="duration_minutes"], [name="session_unlimited"], [name="teleport_to_spawn"], [name="spawn_region_id"]').forEach(function (el) {
         el.addEventListener('change', persist);
         el.addEventListener('input', persist);
       });

@@ -83,6 +83,14 @@
         <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
       </select>
+      <label>
+        <input type="checkbox" name="is_active" value="1" checked>
+        {% trans "Aktiv (benutzbar)" %}
+      </label>
+      <label>
+        <input type="checkbox" name="server_op" value="1">
+        {% trans "Server-Operator (erweiterte Privs, wie Minecraft /op)" %}
+      </label>
       <div class="btn-row">
         <button type="submit" class="primary">{% trans "Anlegen" %}</button>
       </div>
@@ -97,6 +105,7 @@
         <p class="muted">{{ a.login_name }} · RFID {{ a.id_tag }}</p>
         <p>
           {% if a.is_active %}{% trans "Aktiv" %}{% else %}{% trans "Inaktiv" %}{% endif %}
+          {% if a.server_op %}· {% trans "Server-OP" %}{% endif %}
           · {% trans "Modus" %} {{ a.default_mode }}
         </p>
         <p>
@@ -202,10 +211,18 @@
         <div class="card-actions">
           <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="action" value="toggle">
+            <input type="hidden" name="action" value="set_flags">
             <input type="hidden" name="account_id" value="{{ a.pk }}">
+            <label>
+              <input type="checkbox" name="is_active" value="1"{% if a.is_active %} checked{% endif %}>
+              {% trans "Aktiv (benutzbar / auf Session-Tafel)" %}
+            </label>
+            <label>
+              <input type="checkbox" name="server_op" value="1"{% if a.server_op %} checked{% endif %}>
+              {% trans "Server-Operator (erweiterte Privs)" %}
+            </label>
             <div class="btn-row">
-              <button type="submit">{% if a.is_active %}{% trans "Deaktivieren" %}{% else %}{% trans "Aktivieren" %}{% endif %}</button>
+              <button type="submit" class="primary">{% trans "Flags speichern" %}</button>
             </div>
           </form>
         </div>
