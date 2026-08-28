@@ -57,7 +57,7 @@ class LuantiAccountAdmin(admin.ModelAdmin):
     list_display = (
         "login_name",
         "id_tag",
-        "login_password",
+        "password_display",
         "password_provisioned",
         "is_active",
         "default_mode",
@@ -70,6 +70,26 @@ class LuantiAccountAdmin(admin.ModelAdmin):
     search_fields = ("login_name", "id_tag", "display_name")
     readonly_fields = ("password_last_set_at", "created_at", "updated_at")
     autocomplete_fields = ("assigned_to_group", "active_wallet")
+
+    @admin.display(description=_("Login-Passwort"))
+    def password_display(self, obj):
+        request = getattr(self, "_request", None)
+        if request and request.user.is_superuser:
+            return obj.login_password or "—"
+        return "********" if obj.login_password else "—"
+
+    def changelist_view(self, request, extra_context=None):
+        self._request = request
+        return super().changelist_view(request, extra_context)
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        self._request = request
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
+    def get_exclude(self, request, obj=None):
+        if not request.user.is_superuser:
+            return ["login_password"]
+        return super().get_exclude(request, obj)
 
 
 @admin.register(LuantiSession)

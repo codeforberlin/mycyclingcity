@@ -61,6 +61,16 @@ def user_can_manage_luanti_accounts(user: UserLike) -> bool:
     return user.has_perm("luanti.manage_luanti_accounts")
 
 
+def user_can_view_luanti_account_password(user: UserLike) -> bool:
+    """Plaintext Luanti login passwords — system administrators only."""
+    return _ok(user) and user.is_superuser
+
+
+def user_can_set_luanti_account_password(user: UserLike) -> bool:
+    """Set or reset Luanti login passwords — system administrators only."""
+    return _ok(user) and user.is_superuser
+
+
 def user_can_manage_luanti_sessions(user: UserLike) -> bool:
     if not _ok(user):
         return False

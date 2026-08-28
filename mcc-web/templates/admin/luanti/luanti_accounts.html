@@ -64,8 +64,12 @@
       <input id="login_name" name="login_name" type="text" required autocomplete="off">
       <label for="id_tag">{% trans "RFID-UID" %}</label>
       <input id="id_tag" name="id_tag" type="text" autocomplete="off">
+      {% if can_set_password %}
       <label for="login_password">{% trans "Passwort (leer = automatisch)" %}</label>
       <input id="login_password" name="login_password" type="text" autocomplete="off">
+      {% else %}
+      <p class="muted">{% trans "Passwort wird automatisch vergeben (nur SystemAdmin kann es einsehen oder setzen)." %}</p>
+      {% endif %}
       <label for="create-home">{% trans "Heimat-Gruppe" %}</label>
       <select id="create-home" name="assigned_to_group">
         <option value="">—</option>
@@ -110,7 +114,14 @@
         </p>
         <p>
           {% trans "Passwort" %}:
+          {% if can_view_password %}
           <strong style="user-select:all;">{% if a.login_password %}{{ a.login_password }}{% else %}—{% endif %}</strong>
+          {% elif a.login_password %}
+          <strong>********</strong>
+          <span class="muted">({% trans "gesetzt" %})</span>
+          {% else %}
+          <strong>—</strong>
+          {% endif %}
         </p>
         <p class="muted">
           {% if a.password_provisioned %}{% trans "Auf Server gesetzt" %}{% else %}{% trans "Noch nicht auf Server" %}{% endif %}
@@ -195,6 +206,7 @@
           </form>
         </div>
 
+        {% if can_set_password %}
         <div class="card-actions">
           <form method="post">
             {% csrf_token %}
@@ -207,6 +219,7 @@
             </div>
           </form>
         </div>
+        {% endif %}
 
         <div class="card-actions">
           <form method="post">

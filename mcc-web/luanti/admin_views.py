@@ -45,6 +45,8 @@ from luanti.services.permissions import (
     user_can_manage_luanti_accounts,
     user_can_manage_luanti_sessions,
     user_can_manage_luanti_stations,
+    user_can_set_luanti_account_password,
+    user_can_view_luanti_account_password,
 )
 from luanti.services.session_control import (
     SessionError,
@@ -244,12 +246,16 @@ def luanti_accounts(request):
         wallet_payload,
     )
 
+    can_set_password = user_can_set_luanti_account_password(request.user)
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
             login_name = (request.POST.get("login_name") or "").strip()
             id_tag = (request.POST.get("id_tag") or login_name).strip()
-            password = (request.POST.get("login_password") or "").strip()
+            password = ""
+            if can_set_password:
+                password = (request.POST.get("login_password") or "").strip()
             home_id = request.POST.get("assigned_to_group") or None
             wallet_id = request.POST.get("active_wallet") or None
             wallet_mode = request.POST.get("wallet_mode") or LuantiAccount.WALLET_FIXED
@@ -274,11 +280,20 @@ def luanti_accounts(request):
                 )
                 if created or not account.login_password or password:
                     provision_account_password(account, password or None)
-                    messages.success(
-                        request,
-                        _("Account angelegt. Passwort: %(pw)s")
-                        % {"pw": account.login_password},
-                    )
+                    if can_set_password:
+                        messages.success(
+                            request,
+                            _("Account angelegt. Passwort: %(pw)s")
+                            % {"pw": account.login_password},
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            _(
+                                "Account angelegt. Passwort wurde automatisch "
+                                "gesetzt (nur SystemAdmin kann es einsehen)."
+                            ),
+                        )
                 else:
                     messages.info(request, _("Account existiert bereits."))
             return redirect("admin:luanti_accounts")
@@ -297,6 +312,12 @@ def luanti_accounts(request):
             messages.success(request, _("Account aktualisiert."))
             return redirect("admin:luanti_accounts")
         if action == "reset_password":
+            if not can_set_password:
+                messages.error(
+                    request,
+                    _("Passwort ändern ist nur für SystemAdmin erlaubt."),
+                )
+                return redirect("admin:luanti_accounts")
             account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
             password = (request.POST.get("login_password") or "").strip()
             provision_account_password(account, password or None)
@@ -404,6 +425,8 @@ def luanti_accounts(request):
             "top_groups": top_groups,
             "leaves_by_home": leaves_by_home_payload(top_groups),
             "wallet_mode_choices": LuantiAccount.WALLET_MODE_CHOICES,
+            "can_view_password": user_can_view_luanti_account_password(request.user),
+            "can_set_password": can_set_password,
         },
     )
 
