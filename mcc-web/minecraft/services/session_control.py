@@ -879,8 +879,6 @@ def start_builder_session(
     )
     if registration is None:
         raise AccountNotFoundError(f"No active builder registration: {name}")
-    if registration.group_id and not registration.group.is_visible:
-        raise AccountNotFoundError(f"Builder group not visible: {name}")
 
     login = registration.mc_username
     tickets = _normalize_world_ticket_count(ticket_count)

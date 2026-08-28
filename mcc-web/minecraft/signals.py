@@ -70,11 +70,6 @@ def on_group_post_save(sender, instance, created, **kwargs):
     if not registration:
         return
 
-    if not instance.is_visible:
-        if registration.is_active:
-            deactivate_registration(registration, reason="group_hidden")
-        return
-
     if (
         instance.mc_username
         and registration.was_ever_registered

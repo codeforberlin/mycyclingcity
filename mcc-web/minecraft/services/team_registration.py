@@ -30,10 +30,9 @@ def get_display_name() -> str:
 
 
 def pending_team_candidates() -> QuerySet[Group]:
-    """Visible groups with mc_username that were never registered."""
+    """Groups with mc_username that were never registered (map visibility irrelevant)."""
     return (
         Group.objects.filter(
-            is_visible=True,
             mc_username__isnull=False,
         )
         .exclude(mc_username="")
@@ -50,7 +49,6 @@ def active_registrations() -> QuerySet[MinecraftTeamRegistration]:
     return (
         MinecraftTeamRegistration.objects.filter(
             is_active=True,
-            group__is_visible=True,
         )
         .select_related("group", "group__group_type")
         .order_by("mc_username")
@@ -73,7 +71,7 @@ def get_active_registration_for_group(group: Group) -> MinecraftTeamRegistration
         registration = group.minecraft_registration
     except MinecraftTeamRegistration.DoesNotExist:
         return None
-    if not registration.is_active or not group.is_visible:
+    if not registration.is_active:
         return None
     return registration
 
@@ -83,7 +81,6 @@ def get_active_registration_by_mc_username(mc_username: str) -> MinecraftTeamReg
         MinecraftTeamRegistration.objects.filter(
             mc_username__iexact=mc_username,
             is_active=True,
-            group__is_visible=True,
         )
         .select_related("group")
         .first()
@@ -91,7 +88,7 @@ def get_active_registration_by_mc_username(mc_username: str) -> MinecraftTeamReg
 
 
 def should_sync_group_to_minecraft(group: Group) -> bool:
-    if not group.is_visible or not group.mc_username:
+    if not group.mc_username:
         return False
     config = MinecraftIntegrationConfig.get_config()
     if not config.sync_on_earn:
@@ -103,8 +100,6 @@ def should_sync_group_to_minecraft(group: Group) -> bool:
 def register_group_for_minecraft(group: Group, user=None) -> MinecraftTeamRegistration:
     if not group.mc_username:
         raise ValueError("Group has no mc_username")
-    if not group.is_visible:
-        raise ValueError("Group is not visible")
 
     registration, created = MinecraftTeamRegistration.objects.get_or_create(
         group=group,
@@ -164,8 +159,8 @@ def deactivate_registration(
 @transaction.atomic
 def reactivate_registration(registration: MinecraftTeamRegistration) -> None:
     group = registration.group
-    if not group.is_visible or not group.mc_username:
-        raise ValueError("Group is not visible or has no mc_username")
+    if not group.mc_username:
+        raise ValueError("Group has no mc_username")
 
     registration.mc_username = group.mc_username
     registration.is_active = True

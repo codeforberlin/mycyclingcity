@@ -389,7 +389,7 @@
             <td>{{ item.reason }}</td>
             <td>{{ item.deactivated_at|default:"-" }}</td>
             <td>
-                {% if item.group.is_visible and item.group.mc_username %}
+                {% if item.group.mc_username %}
                 <button class="button success small"
                         onclick="performTeamAction('{% url 'admin:minecraft_reactivate_team' item.registration.id %}', this, '{% trans "Team reaktivieren?" %}')">
                     {% trans 'Reaktivieren' %}

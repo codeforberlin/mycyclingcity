@@ -485,7 +485,7 @@ def minecraft_control(request):
             "group": registration.group,
             "player": registration.mc_username,
             "deactivated_at": registration.deactivated_at,
-            "reason": _("Ausgeblendet") if not registration.group.is_visible else _("Deaktiviert"),
+            "reason": _("Deaktiviert"),
         }
         for registration in deactivated_registrations()
     ]

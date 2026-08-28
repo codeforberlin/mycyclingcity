@@ -65,17 +65,26 @@ class TestTeamRegistration:
             payload__player='team_x',
         ).exists()
 
-    def test_active_registrations_only_visible_groups(self):
+    def test_active_registrations_includes_hidden_groups(self):
         visible = GroupFactory(name='Visible', mc_username='visible_team')
         hidden = GroupFactory(name='Hidden', mc_username='hidden_team', is_visible=False)
         register_group_for_minecraft(visible)
-        MinecraftTeamRegistration.objects.create(
-            group=hidden,
-            mc_username='hidden_team',
-            is_active=True,
-            was_ever_registered=True,
-        )
+        hidden_reg = register_group_for_minecraft(hidden)
 
         active_names = set(active_registrations().values_list('mc_username', flat=True))
         assert 'visible_team' in active_names
-        assert 'hidden_team' not in active_names
+        assert 'hidden_team' in active_names
+        assert hidden_reg.is_active is True
+
+    def test_register_hidden_group(self):
+        hidden = GroupFactory(name='HiddenOnly', mc_username='hidden_only', is_visible=False)
+        registration = register_group_for_minecraft(hidden)
+        assert registration.is_active is True
+
+    def test_hiding_group_does_not_deactivate_registration(self):
+        group = GroupFactory(name='HideMe', mc_username='hide_me_team', is_visible=True)
+        registration = register_group_for_minecraft(group)
+        group.is_visible = False
+        group.save()
+        registration.refresh_from_db()
+        assert registration.is_active is True

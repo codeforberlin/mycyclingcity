@@ -71,9 +71,7 @@ def top_group_for(group: Group | None) -> Group | None:
 
 
 def list_top_groups() -> list[Group]:
-    return list(
-        Group.objects.filter(parent__isnull=True, is_visible=True).order_by("name")
-    )
+    return list(Group.objects.filter(parent__isnull=True).order_by("name"))
 
 
 def _op_lookup_candidates(*names: str) -> list[str]:
