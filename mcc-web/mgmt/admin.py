@@ -8565,6 +8565,7 @@ from minecraft.waitlist_views import (
 )
 from luanti.admin_views import (
     luanti_accounts,
+    luanti_account_reveal_password,
     luanti_action,
     luanti_arena,
     luanti_city,
@@ -8647,6 +8648,11 @@ def get_urls_with_custom_views():
             name='luanti_action',
         ),
         path('luanti/accounts/', admin.site.admin_view(luanti_accounts), name='luanti_accounts'),
+        path(
+            'luanti/accounts/<int:account_id>/reveal-password/',
+            admin.site.admin_view(luanti_account_reveal_password),
+            name='luanti_account_reveal_password',
+        ),
         path('luanti/sessions/', admin.site.admin_view(luanti_sessions), name='luanti_sessions'),
         path('luanti/shop-ops/', admin.site.admin_view(luanti_shop_ops), name='luanti_shop_ops'),
         path('luanti/city/', admin.site.admin_view(luanti_city), name='luanti_city'),

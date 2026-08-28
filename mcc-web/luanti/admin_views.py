@@ -280,20 +280,9 @@ def luanti_accounts(request):
                 )
                 if created or not account.login_password or password:
                     provision_account_password(account, password or None)
-                    if can_set_password:
-                        messages.success(
-                            request,
-                            _("Account angelegt. Passwort: %(pw)s")
-                            % {"pw": account.login_password},
-                        )
-                    else:
-                        messages.success(
-                            request,
-                            _(
-                                "Account angelegt. Passwort wurde automatisch "
-                                "gesetzt (nur SystemAdmin kann es einsehen)."
-                            ),
-                        )
+                    if created:
+                        messages.success(request, _("Account angelegt."))
+                    messages.success(request, _("Passwort wurde gesetzt."))
                 else:
                     messages.info(request, _("Account existiert bereits."))
             return redirect("admin:luanti_accounts")
@@ -321,10 +310,7 @@ def luanti_accounts(request):
             account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
             password = (request.POST.get("login_password") or "").strip()
             provision_account_password(account, password or None)
-            messages.success(
-                request,
-                _("Passwort neu gesetzt: %(pw)s") % {"pw": account.login_password},
-            )
+            messages.success(request, _("Passwort wurde neu gesetzt."))
             return redirect("admin:luanti_accounts")
         if action == "set_wallet":
             account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
@@ -428,6 +414,19 @@ def luanti_accounts(request):
             "can_view_password": user_can_view_luanti_account_password(request.user),
             "can_set_password": can_set_password,
         },
+    )
+
+
+@user_passes_test(user_can_view_luanti_account_password)
+@staff_member_required
+@require_POST
+def luanti_account_reveal_password(request, account_id: int):
+    account = get_object_or_404(LuantiAccount, pk=account_id)
+    return JsonResponse(
+        {
+            "ok": True,
+            "password": account.login_password or "",
+        }
     )
 
 

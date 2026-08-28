@@ -61,17 +61,45 @@ def test_accounts_page_masks_password_for_operator(client, operator_user, accoun
     assert "Secret99" not in content
     assert "********" in content
     assert "Passwort neu setzen" not in content
+    assert "Anzeigen" not in content
 
 
 @pytest.mark.django_db
-def test_accounts_page_shows_password_for_superuser(client, superuser, account_with_password):
+def test_accounts_page_masks_password_for_superuser_on_load(
+    client, superuser, account_with_password
+):
     client.force_login(superuser)
     url = reverse("admin:luanti_accounts")
     response = client.get(url)
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Secret99" in content
+    assert "Secret99" not in content
+    assert "********" in content
+    assert "Anzeigen" in content
     assert "Passwort neu setzen" in content
+
+
+@pytest.mark.django_db
+def test_superuser_reveal_password_endpoint(client, superuser, account_with_password):
+    client.force_login(superuser)
+    url = reverse(
+        "admin:luanti_account_reveal_password",
+        args=[account_with_password.pk],
+    )
+    response = client.post(url)
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "password": "Secret99"}
+
+
+@pytest.mark.django_db
+def test_operator_reveal_password_forbidden(client, operator_user, account_with_password):
+    client.force_login(operator_user)
+    url = reverse(
+        "admin:luanti_account_reveal_password",
+        args=[account_with_password.pk],
+    )
+    response = client.post(url)
+    assert response.status_code == 302
 
 
 @pytest.mark.django_db

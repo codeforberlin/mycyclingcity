@@ -73,18 +73,7 @@ class LuantiAccountAdmin(admin.ModelAdmin):
 
     @admin.display(description=_("Login-Passwort"))
     def password_display(self, obj):
-        request = getattr(self, "_request", None)
-        if request and request.user.is_superuser:
-            return obj.login_password or "—"
         return "********" if obj.login_password else "—"
-
-    def changelist_view(self, request, extra_context=None):
-        self._request = request
-        return super().changelist_view(request, extra_context)
-
-    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        self._request = request
-        return super().changeform_view(request, object_id, form_url, extra_context)
 
     def get_exclude(self, request, obj=None):
         if not request.user.is_superuser:

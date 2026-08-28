@@ -48,6 +48,47 @@
       var walletSel = document.getElementById('wallet-' + id);
       bindPair(homeSel, walletSel);
     });
+    function csrfToken() {
+      var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return el ? el.value : '';
+    }
+    document.querySelectorAll('.pw-reveal-btn').forEach(function (btn) {
+      var revealLabel = btn.textContent;
+      var hideLabel = '{% trans "Ausblenden" %}';
+      btn.addEventListener('click', function () {
+        var accountId = btn.getAttribute('data-account-id');
+        var url = btn.getAttribute('data-reveal-url');
+        var display = document.getElementById('pw-display-' + accountId);
+        if (!display) return;
+        if (display.getAttribute('data-revealed') === '1') {
+          display.textContent = '********';
+          display.removeAttribute('data-revealed');
+          btn.textContent = revealLabel;
+          return;
+        }
+        if (!url) return;
+        btn.disabled = true;
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken(),
+            'Accept': 'application/json',
+          },
+          credentials: 'same-origin',
+        }).then(function (resp) {
+          return resp.json().then(function (data) {
+            if (!resp.ok || !data.ok) throw new Error('reveal failed');
+            display.textContent = data.password || '—';
+            display.setAttribute('data-revealed', '1');
+            btn.textContent = hideLabel;
+            btn.disabled = false;
+          });
+        }).catch(function () {
+          btn.disabled = false;
+          alert('{% trans "Passwort konnte nicht geladen werden." %}');
+        });
+      });
+    });
   });
 })();
 </script>
@@ -66,7 +107,7 @@
       <input id="id_tag" name="id_tag" type="text" autocomplete="off">
       {% if can_set_password %}
       <label for="login_password">{% trans "Passwort (leer = automatisch)" %}</label>
-      <input id="login_password" name="login_password" type="text" autocomplete="off">
+      <input id="login_password" name="login_password" type="password" autocomplete="new-password">
       {% else %}
       <p class="muted">{% trans "Passwort wird automatisch vergeben (nur SystemAdmin kann es einsehen oder setzen)." %}</p>
       {% endif %}
@@ -114,11 +155,15 @@
         </p>
         <p>
           {% trans "Passwort" %}:
-          {% if can_view_password %}
-          <strong style="user-select:all;">{% if a.login_password %}{{ a.login_password }}{% else %}—{% endif %}</strong>
-          {% elif a.login_password %}
-          <strong>********</strong>
+          {% if a.login_password %}
+          <strong id="pw-display-{{ a.pk }}" style="user-select:all;">********</strong>
           <span class="muted">({% trans "gesetzt" %})</span>
+          {% if can_view_password %}
+          <button type="button" class="info pw-reveal-btn" data-account-id="{{ a.pk }}"
+                  data-reveal-url="{% url 'admin:luanti_account_reveal_password' a.pk %}">
+            {% trans "Anzeigen" %}
+          </button>
+          {% endif %}
           {% else %}
           <strong>—</strong>
           {% endif %}
@@ -213,7 +258,7 @@
             <input type="hidden" name="action" value="reset_password">
             <input type="hidden" name="account_id" value="{{ a.pk }}">
             <label for="reset-pw-{{ a.pk }}">{% trans "Neues Passwort (leer = auto)" %}</label>
-            <input id="reset-pw-{{ a.pk }}" name="login_password" type="text" autocomplete="off">
+            <input id="reset-pw-{{ a.pk }}" name="login_password" type="password" autocomplete="new-password">
             <div class="btn-row">
               <input type="submit" class="info" value="{% trans 'Passwort neu setzen' %}">
             </div>
