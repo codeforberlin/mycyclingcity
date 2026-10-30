@@ -554,6 +554,43 @@ def run_migrations(project_dir: Path, fake_initial: bool = False, python_exe: Op
         return False
 
 
+def sync_preset_auth_groups(project_dir: Path, python_exe: Optional[str] = None) -> bool:
+    """
+    Assign new model permissions to preset auth groups (minecraft_admin, luanti_admin, …).
+
+    Migrations only create Permission rows; group membership is updated here.
+    Non-critical: warnings on failure, deployment continues.
+    """
+    print_info("Syncing Minecraft/Luanti preset auth groups...")
+    if python_exe is None:
+        python_exe = get_python_executable(project_dir)
+    if not python_exe:
+        print_warning("Could not sync preset groups: no Python executable")
+        return False
+    ok = True
+    for command_name in (
+        "setup_minecraft_preset_groups",
+        "setup_luanti_preset_groups",
+    ):
+        exit_code, stdout, stderr = run_command(
+            [python_exe, "manage.py", command_name],
+            cwd=project_dir,
+            check=False,
+            capture_output=True,
+        )
+        if exit_code == 0:
+            print_success(f"{command_name} completed")
+            if stdout.strip():
+                for line in stdout.strip().splitlines()[:6]:
+                    print_info(f"  {line}")
+        else:
+            ok = False
+            print_warning(f"{command_name} failed (exit {exit_code})")
+            if stderr.strip():
+                print_warning(stderr.strip()[:500])
+    return ok
+
+
 def collect_static_files(project_dir: Path, clear: bool = False, python_exe: Optional[str] = None) -> bool:
     """
     Collect static files using Django's collectstatic command.
@@ -914,7 +951,8 @@ print(settings.DATABASES['default']['NAME'])
     if not run_migrations(project_dir, fake_initial=fake_initial, python_exe=python_exe):
         print_error("Migration failed - deployment aborted")
         return False
-    
+    sync_preset_auth_groups(project_dir, python_exe=python_exe)
+
     # Step 4: Collect static files
     print_step(4, 6, "Collecting static files")
     if not skip_static:

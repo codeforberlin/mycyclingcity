@@ -1,0 +1,121 @@
+{% load i18n %}
+<style>
+  .luanti-admin .accounts-table-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+  .luanti-admin table.accounts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .luanti-admin table.accounts-table th,
+  .luanti-admin table.accounts-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    vertical-align: top;
+  }
+  .luanti-admin table.accounts-table th {
+    font-weight: 600;
+    background: #fafafa;
+  }
+  .luanti-admin .top-group-heading {
+    font-weight: 700;
+    margin: 1rem 0 0.35rem;
+    font-size: 0.9rem;
+    color: #444;
+  }
+  .luanti-admin .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-right: 4px;
+  }
+  .luanti-admin .badge.ok { background: #d4edda; color: #155724; }
+  .luanti-admin .badge.muted { background: #eee; color: #555; }
+  .luanti-admin .badge.op { background: #cce5ff; color: #004085; }
+  .luanti-admin .filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .luanti-admin .filters-row input[type="search"] {
+    min-width: 12rem;
+    flex: 1 1 12rem;
+    max-width: 24rem;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+  .luanti-admin .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+</style>
+
+<form method="get" class="filters-row">
+  <label for="lt-acc-top" style="font-weight:600;">{% trans "TOP-Gruppe" %}</label>
+  <select id="lt-acc-top" name="top" onchange="this.form.submit()" style="min-width:12rem;padding:8px;">
+    <option value="">{% trans "Alle TOP-Gruppen" %}</option>
+    {% if show_unassigned_top %}
+    <option value="0"{% if selected_top_id == 0 %} selected{% endif %}>{% trans "Ohne TOP" %}</option>
+    {% endif %}
+    {% for g in top_groups %}
+    <option value="{{ g.pk }}"{% if selected_top_id == g.pk %} selected{% endif %}>{{ g.name }}</option>
+    {% endfor %}
+  </select>
+  <label for="lt-acc-status">{% trans "Status" %}</label>
+  <select id="lt-acc-status" name="status" onchange="this.form.submit()" style="padding:8px;">
+    <option value="all"{% if status_filter == "all" %} selected{% endif %}>{% trans "Alle" %}</option>
+    <option value="active"{% if status_filter == "active" %} selected{% endif %}>{% trans "Aktiv" %}</option>
+    <option value="inactive"{% if status_filter == "inactive" %} selected{% endif %}>{% trans "Inaktiv" %}</option>
+  </select>
+  <label for="lt-acc-q" class="muted">{% trans "Suche" %}</label>
+  <input id="lt-acc-q" type="search" name="q" value="{{ search_q }}" placeholder="{% trans 'Login, RFID, Anzeigename' %}">
+  <button type="submit" class="primary" style="min-height:44px;padding:8px 14px;">{% trans "Filtern" %}</button>
+</form>
+
+{% if not account_rows %}
+<p class="muted">{% trans "Keine Accounts für diese Auswahl." %}</p>
+{% else %}
+
+{% if selected_top_id is not None %}
+<div class="accounts-table-wrap">
+  {% include "admin/luanti/_luanti_accounts_table_rows.html" with rows=account_rows show_top_column=False %}
+</div>
+{% else %}
+{% regroup account_rows by account.assigned_to_group as grouped_by_top %}
+{% for group in grouped_by_top %}
+<h4 class="top-group-heading">
+  {% if group.grouper %}{{ group.grouper.name }}{% else %}{% trans "Ohne TOP" %}{% endif %}
+</h4>
+<div class="accounts-table-wrap">
+  {% include "admin/luanti/_luanti_accounts_table_rows.html" with rows=group.list show_top_column=False %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="{% trans 'Seiten' %}">
+  {% if page_obj.has_previous %}
+  <a href="?{% if list_query %}{{ list_query }}&{% endif %}page={{ page_obj.previous_page_number }}">{% trans "Zurück" %}</a>
+  {% endif %}
+  <span class="muted">
+    {% blocktrans with num=page_obj.number total=page_obj.paginator.num_pages %}
+    Seite {{ num }} von {{ total }}
+    {% endblocktrans %}
+  </span>
+  {% if page_obj.has_next %}
+  <a href="?{% if list_query %}{{ list_query }}&{% endif %}page={{ page_obj.next_page_number }}">{% trans "Weiter" %}</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% endif %}

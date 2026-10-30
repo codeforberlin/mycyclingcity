@@ -14,8 +14,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
-from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -46,7 +49,9 @@ from luanti.services.permissions import (
     user_can_manage_luanti_sessions,
     user_can_manage_luanti_stations,
     user_can_set_luanti_account_password,
+    user_can_set_luanti_account_password_for,
     user_can_view_luanti_account_password,
+    user_can_view_luanti_account_password_for,
 )
 from luanti.services.session_control import (
     SessionError,
@@ -235,18 +240,225 @@ def luanti_action(request, action: str):
     )
 
 
+def _get_luanti_account_for_operator(user, account_id) -> LuantiAccount:
+    account = get_object_or_404(LuantiAccount, pk=account_id)
+    if not account_in_operator_session_scope(user, account):
+        raise Http404
+    return account
+
+
+def _validate_home_top_for_operator(user, home_id_raw: str | None) -> int | None:
+    """Return TOP pk or None; raises ValueError with message key for scoped operators."""
+    allowed_tops = operator_session_top_ids(user)
+    if not home_id_raw:
+        if allowed_tops is not None:
+            raise ValueError("home_required")
+        return None
+    home_id = int(home_id_raw)
+    if allowed_tops is not None and home_id not in allowed_tops:
+        raise ValueError("home_forbidden")
+    return home_id
+
+
+LUANTI_ACCOUNTS_PAGE_SIZE = 25
+LUANTI_TOP_UNASSIGNED = 0
+
+
+def _luanti_top_groups_for_user(user):
+    from api.models import Group
+
+    allowed_tops = operator_session_top_ids(user)
+    top_qs = Group.objects.filter(parent__isnull=True).order_by("name")
+    if allowed_tops is not None:
+        top_qs = top_qs.filter(pk__in=allowed_tops) if allowed_tops else top_qs.none()
+    return list(top_qs), allowed_tops
+
+
+def _parse_luanti_accounts_top_filter(request, allowed_tops):
+    raw = (request.GET.get("top") or "").strip()
+    if not raw:
+        return None
+    try:
+        top_id = int(raw)
+    except ValueError:
+        return None
+    if top_id == LUANTI_TOP_UNASSIGNED:
+        if allowed_tops is not None:
+            return None
+        return LUANTI_TOP_UNASSIGNED
+    if allowed_tops is not None and top_id not in allowed_tops:
+        return None
+    return top_id
+
+
+def _luanti_accounts_queryset(user, *, selected_top_id, search_q, status_filter):
+    accounts = LuantiAccount.objects.select_related(
+        "assigned_to_group", "active_wallet"
+    ).order_by("assigned_to_group__name", "sort_order", "login_name")
+    allowed_tops = operator_session_top_ids(user)
+    if allowed_tops is not None:
+        accounts = accounts.filter(assigned_to_group_id__in=allowed_tops)
+    if selected_top_id == LUANTI_TOP_UNASSIGNED:
+        accounts = accounts.filter(assigned_to_group__isnull=True)
+    elif selected_top_id is not None:
+        accounts = accounts.filter(assigned_to_group_id=selected_top_id)
+    if status_filter == "active":
+        accounts = accounts.filter(is_active=True)
+    elif status_filter == "inactive":
+        accounts = accounts.filter(is_active=False)
+    q = (search_q or "").strip()
+    if q:
+        accounts = accounts.filter(
+            Q(login_name__icontains=q)
+            | Q(id_tag__icontains=q)
+            | Q(display_name__icontains=q)
+        )
+    return accounts
+
+
+def _luanti_accounts_list_redirect(request):
+    params = request.GET.copy()
+    if "page" in params and params.get("page") in ("", "1"):
+        del params["page"]
+    url = reverse("admin:luanti_accounts")
+    if params:
+        return redirect(f"{url}?{params.urlencode()}")
+    return redirect(url)
+
+
+def _luanti_account_detail_redirect(account_id: int):
+    return redirect("admin:luanti_account_detail", account_id=account_id)
+
+
+def _handle_luanti_account_post(request, account: LuantiAccount) -> bool:
+    """Apply POST mutation for one account. Returns True if handled."""
+    from luanti.services.password_audit import log_luanti_password_action
+    from luanti.services.passwords import provision_account_password
+    from luanti.services.wallet import candidate_wallet_groups
+
+    action = request.POST.get("action")
+    if action == "set_flags":
+        account.is_active = bool(request.POST.get("is_active"))
+        account.server_op = bool(request.POST.get("server_op"))
+        account.save(update_fields=["is_active", "server_op", "updated_at"])
+        messages.success(request, _("Account-Flags gespeichert."))
+        return True
+    if action == "toggle":
+        account.is_active = not account.is_active
+        account.save(update_fields=["is_active", "updated_at"])
+        messages.success(request, _("Account aktualisiert."))
+        return True
+    if action == "reset_password":
+        if not user_can_set_luanti_account_password_for(request.user, account):
+            messages.error(
+                request,
+                _("Passwort ändern ist für diesen Account nicht erlaubt."),
+            )
+            return True
+        password = (request.POST.get("login_password") or "").strip()
+        stored = provision_account_password(account, password or None)
+        log_luanti_password_action(
+            action="reset",
+            user_id=request.user.pk,
+            account=account,
+        )
+        messages.success(request, _("Passwort wurde neu gesetzt."))
+        if user_can_view_luanti_account_password_for(request.user, account):
+            messages.info(
+                request,
+                _("Neues Passwort für %(name)s (bitte kopieren): %(pwd)s")
+                % {"name": account.login_name, "pwd": stored},
+            )
+        return True
+    if action == "set_wallet":
+        home_id = request.POST.get("assigned_to_group") or ""
+        wallet_id = request.POST.get("active_wallet") or ""
+        wallet_mode = request.POST.get("wallet_mode") or LuantiAccount.WALLET_FIXED
+        try:
+            home_pk = _validate_home_top_for_operator(
+                request.user, home_id if home_id else None
+            )
+        except ValueError:
+            messages.error(
+                request,
+                _("Diese Heimat-Gruppe dürfen Sie nicht zuweisen."),
+            )
+            return True
+        account.assigned_to_group_id = home_pk
+        account.active_wallet_id = int(wallet_id) if wallet_id else None
+        if wallet_mode in dict(LuantiAccount.WALLET_MODE_CHOICES):
+            account.wallet_mode = wallet_mode
+        if account.assigned_to_group_id and account.active_wallet_id:
+            allowed = {g.pk for g in candidate_wallet_groups(account.assigned_to_group)}
+            if account.active_wallet_id not in allowed:
+                account.active_wallet_id = None
+                messages.warning(
+                    request,
+                    _("Wallet gehört nicht zur Heimat-Gruppe — Auswahl zurückgesetzt."),
+                )
+        account.save(
+            update_fields=[
+                "assigned_to_group",
+                "active_wallet",
+                "wallet_mode",
+                "updated_at",
+            ]
+        )
+        messages.success(request, _("Wallet-Zuweisung gespeichert."))
+        return True
+    if action == "set_session_limits":
+
+        def _opt_int(key):
+            raw = (request.POST.get(key) or "").strip()
+            if raw == "":
+                return None
+            return max(0, int(raw))
+
+        try:
+            account.session_duration_minutes = _opt_int("session_duration_minutes")
+            account.session_duration_min_minutes = _opt_int("session_duration_min_minutes")
+            account.session_duration_max_minutes = _opt_int("session_duration_max_minutes")
+            step_raw = _opt_int("session_add_minutes")
+            account.session_add_minutes = (
+                max(1, step_raw) if step_raw is not None else None
+            )
+        except (TypeError, ValueError):
+            messages.error(request, _("Ungültige Minutenwerte."))
+            return True
+        account.session_unlimited = bool(request.POST.get("session_unlimited"))
+        if (
+            account.session_duration_min_minutes is not None
+            and account.session_duration_max_minutes is not None
+            and account.session_duration_min_minutes
+            > account.session_duration_max_minutes
+        ):
+            messages.error(request, _("Minimum darf nicht größer als Maximum sein."))
+            return True
+        account.save(
+            update_fields=[
+                "session_duration_minutes",
+                "session_duration_min_minutes",
+                "session_duration_max_minutes",
+                "session_add_minutes",
+                "session_unlimited",
+                "updated_at",
+            ]
+        )
+        messages.success(request, _("Session-Dauer gespeichert."))
+        return True
+    return False
+
+
 @user_passes_test(user_can_manage_luanti_accounts)
 @staff_member_required
 def luanti_accounts(request):
-    from api.models import Group
+    from luanti.services.password_audit import log_luanti_password_action
     from luanti.services.passwords import provision_account_password
-    from luanti.services.wallet import (
-        candidate_wallet_groups,
-        leaves_by_home_payload,
-        wallet_payload,
-    )
+    from luanti.services.wallet import leaves_by_home_payload, wallet_payload
 
     can_set_password = user_can_set_luanti_account_password(request.user)
+    top_groups, allowed_tops = _luanti_top_groups_for_user(request.user)
+    show_unassigned_top = allowed_tops is None
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -256,10 +468,24 @@ def luanti_accounts(request):
             password = ""
             if can_set_password:
                 password = (request.POST.get("login_password") or "").strip()
-            home_id = request.POST.get("assigned_to_group") or None
+            home_raw = request.POST.get("assigned_to_group") or None
             wallet_id = request.POST.get("active_wallet") or None
             wallet_mode = request.POST.get("wallet_mode") or LuantiAccount.WALLET_FIXED
             if login_name:
+                try:
+                    home_pk = _validate_home_top_for_operator(request.user, home_raw)
+                except ValueError as exc:
+                    if str(exc) == "home_required":
+                        messages.error(
+                            request,
+                            _("Heimat-Gruppe (TOP) ist für Ihre Rolle erforderlich."),
+                        )
+                    else:
+                        messages.error(
+                            request,
+                            _("Diese Heimat-Gruppe dürfen Sie nicht zuweisen."),
+                        )
+                    return _luanti_accounts_list_redirect(request)
                 defaults = {
                     "id_tag": id_tag or login_name,
                     "allowed_modes": ["play", "build", "watch"],
@@ -270,149 +496,154 @@ def luanti_accounts(request):
                     if wallet_mode in dict(LuantiAccount.WALLET_MODE_CHOICES)
                     else LuantiAccount.WALLET_FIXED,
                 }
-                if home_id:
-                    defaults["assigned_to_group_id"] = int(home_id)
+                if home_pk is not None:
+                    defaults["assigned_to_group_id"] = home_pk
                 if wallet_id:
                     defaults["active_wallet_id"] = int(wallet_id)
                 account, created = LuantiAccount.objects.get_or_create(
                     login_name=login_name,
                     defaults=defaults,
                 )
+                if not account_in_operator_session_scope(request.user, account):
+                    messages.error(
+                        request,
+                        _("Kein Zugriff auf diesen Account."),
+                    )
+                    return _luanti_accounts_list_redirect(request)
                 if created or not account.login_password or password:
-                    provision_account_password(account, password or None)
+                    if password and not user_can_set_luanti_account_password_for(
+                        request.user, account
+                    ):
+                        password = ""
+                    stored = provision_account_password(account, password or None)
+                    log_luanti_password_action(
+                        action="create" if created else "provision",
+                        user_id=request.user.pk,
+                        account=account,
+                    )
                     if created:
                         messages.success(request, _("Account angelegt."))
                     messages.success(request, _("Passwort wurde gesetzt."))
+                    if user_can_view_luanti_account_password_for(request.user, account):
+                        messages.info(
+                            request,
+                            _(
+                                "Login-Passwort für %(name)s (bitte kopieren und im "
+                                "Luanti Client hinterlegen): %(pwd)s"
+                            )
+                            % {"name": account.login_name, "pwd": stored},
+                        )
                 else:
                     messages.info(request, _("Account existiert bereits."))
-            return redirect("admin:luanti_accounts")
-        if action == "set_flags":
-            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
-            account.is_active = bool(request.POST.get("is_active"))
-            account.server_op = bool(request.POST.get("server_op"))
-            account.save(update_fields=["is_active", "server_op", "updated_at"])
-            messages.success(request, _("Account-Flags gespeichert."))
-            return redirect("admin:luanti_accounts")
-        if action == "toggle":
-            # Legacy toggle (kept for bookmarks); prefer set_flags checkboxes.
-            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
-            account.is_active = not account.is_active
-            account.save(update_fields=["is_active", "updated_at"])
-            messages.success(request, _("Account aktualisiert."))
-            return redirect("admin:luanti_accounts")
-        if action == "reset_password":
-            if not can_set_password:
-                messages.error(
-                    request,
-                    _("Passwort ändern ist nur für SystemAdmin erlaubt."),
-                )
-                return redirect("admin:luanti_accounts")
-            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
-            password = (request.POST.get("login_password") or "").strip()
-            provision_account_password(account, password or None)
-            messages.success(request, _("Passwort wurde neu gesetzt."))
-            return redirect("admin:luanti_accounts")
-        if action == "set_wallet":
-            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
-            home_id = request.POST.get("assigned_to_group") or ""
-            wallet_id = request.POST.get("active_wallet") or ""
-            wallet_mode = request.POST.get("wallet_mode") or LuantiAccount.WALLET_FIXED
-            account.assigned_to_group_id = int(home_id) if home_id else None
-            account.active_wallet_id = int(wallet_id) if wallet_id else None
-            if wallet_mode in dict(LuantiAccount.WALLET_MODE_CHOICES):
-                account.wallet_mode = wallet_mode
-            # Reject wallet outside selected TOP's leaves.
-            if account.assigned_to_group_id and account.active_wallet_id:
-                allowed = {
-                    g.pk for g in candidate_wallet_groups(account.assigned_to_group)
-                }
-                if account.active_wallet_id not in allowed:
-                    account.active_wallet_id = None
-                    messages.warning(
-                        request,
-                        _("Wallet gehört nicht zur Heimat-Gruppe — Auswahl zurückgesetzt."),
-                    )
-            account.save(
-                update_fields=[
-                    "assigned_to_group",
-                    "active_wallet",
-                    "wallet_mode",
-                    "updated_at",
-                ]
-            )
-            messages.success(request, _("Wallet-Zuweisung gespeichert."))
-            return redirect("admin:luanti_accounts")
-        if action == "set_session_limits":
-            account = get_object_or_404(LuantiAccount, pk=request.POST.get("account_id"))
+                return _luanti_account_detail_redirect(account.pk)
+            return _luanti_accounts_list_redirect(request)
+        account_id = request.POST.get("account_id")
+        if account_id and action in (
+            "set_flags",
+            "toggle",
+            "reset_password",
+            "set_wallet",
+            "set_session_limits",
+        ):
+            account = _get_luanti_account_for_operator(request.user, account_id)
+            _handle_luanti_account_post(request, account)
+            return _luanti_account_detail_redirect(account.pk)
+        messages.error(
+            request,
+            _("Account-Änderungen bitte auf der Detailseite vornehmen."),
+        )
+        return _luanti_accounts_list_redirect(request)
 
-            def _opt_int(key):
-                raw = (request.POST.get(key) or "").strip()
-                if raw == "":
-                    return None
-                return max(0, int(raw))
+    selected_top_id = _parse_luanti_accounts_top_filter(request, allowed_tops)
+    search_q = (request.GET.get("q") or "").strip()
+    status_filter = (request.GET.get("status") or "all").strip()
+    if status_filter not in ("active", "inactive", "all"):
+        status_filter = "all"
 
-            try:
-                account.session_duration_minutes = _opt_int("session_duration_minutes")
-                account.session_duration_min_minutes = _opt_int("session_duration_min_minutes")
-                account.session_duration_max_minutes = _opt_int("session_duration_max_minutes")
-                step_raw = _opt_int("session_add_minutes")
-                account.session_add_minutes = (
-                    max(1, step_raw) if step_raw is not None else None
-                )
-            except (TypeError, ValueError):
-                messages.error(request, _("Ungültige Minutenwerte."))
-                return redirect("admin:luanti_accounts")
-            account.session_unlimited = bool(request.POST.get("session_unlimited"))
-            if (
-                account.session_duration_min_minutes is not None
-                and account.session_duration_max_minutes is not None
-                and account.session_duration_min_minutes
-                > account.session_duration_max_minutes
-            ):
-                messages.error(request, _("Minimum darf nicht größer als Maximum sein."))
-                return redirect("admin:luanti_accounts")
-            account.save(
-                update_fields=[
-                    "session_duration_minutes",
-                    "session_duration_min_minutes",
-                    "session_duration_max_minutes",
-                    "session_add_minutes",
-                    "session_unlimited",
-                    "updated_at",
-                ]
-            )
-            messages.success(request, _("Session-Dauer gespeichert."))
-            return redirect("admin:luanti_accounts")
-    accounts = LuantiAccount.objects.select_related(
-        "assigned_to_group", "active_wallet"
-    ).order_by("sort_order", "login_name")
-    allowed_tops = operator_session_top_ids(request.user)
-    top_qs = Group.objects.filter(parent__isnull=True).order_by("name")
-    if allowed_tops is not None:
-        top_qs = top_qs.filter(pk__in=allowed_tops) if allowed_tops else top_qs.none()
-        accounts = accounts.filter(assigned_to_group_id__in=allowed_tops)
-    top_groups = list(top_qs)
+    accounts = _luanti_accounts_queryset(
+        request.user,
+        selected_top_id=selected_top_id,
+        search_q=search_q,
+        status_filter=status_filter,
+    )
+    paginator = Paginator(accounts, LUANTI_ACCOUNTS_PAGE_SIZE)
+    page_number = request.GET.get("page") or "1"
+    page_obj = paginator.get_page(page_number)
+
     account_rows = []
-    for a in accounts:
+    for a in page_obj.object_list:
         wp = wallet_payload(a)
         account_rows.append(
             {
                 "account": a,
                 "wallet": wp,
-                "wallet_choices": candidate_wallet_groups(a.assigned_to_group),
             }
         )
+
+    query_params = request.GET.copy()
+    if "page" in query_params:
+        del query_params["page"]
+
     return render(
         request,
         "admin/luanti/luanti_accounts.html",
         {
             "title": _("Luanti-Accounts"),
             "account_rows": account_rows,
+            "page_obj": page_obj,
+            "top_groups": top_groups,
+            "selected_top_id": selected_top_id,
+            "show_unassigned_top": show_unassigned_top,
+            "search_q": search_q,
+            "status_filter": status_filter,
+            "list_query": query_params.urlencode(),
+            "leaves_by_home": leaves_by_home_payload(top_groups),
+            "wallet_mode_choices": LuantiAccount.WALLET_MODE_CHOICES,
+            "can_set_password": can_set_password,
+            "require_home_top": allowed_tops is not None,
+            "create_default_top_id": selected_top_id
+            if selected_top_id and selected_top_id != LUANTI_TOP_UNASSIGNED
+            else None,
+        },
+    )
+
+
+@user_passes_test(user_can_manage_luanti_accounts)
+@staff_member_required
+def luanti_account_detail(request, account_id: int):
+    from luanti.services.wallet import (
+        candidate_wallet_groups,
+        leaves_by_home_payload,
+        wallet_payload,
+    )
+
+    account = _get_luanti_account_for_operator(request.user, account_id)
+    if request.method == "POST":
+        if _handle_luanti_account_post(request, account):
+            return _luanti_account_detail_redirect(account.pk)
+        messages.error(request, _("Unbekannte Aktion."))
+        return _luanti_account_detail_redirect(account.pk)
+
+    top_groups, _allowed_tops = _luanti_top_groups_for_user(request.user)
+    wp = wallet_payload(account)
+    return render(
+        request,
+        "admin/luanti/luanti_account_detail.html",
+        {
+            "title": account.label,
+            "account": account,
+            "wallet": wp,
+            "wallet_choices": candidate_wallet_groups(account.assigned_to_group),
             "top_groups": top_groups,
             "leaves_by_home": leaves_by_home_payload(top_groups),
             "wallet_mode_choices": LuantiAccount.WALLET_MODE_CHOICES,
-            "can_view_password": user_can_view_luanti_account_password(request.user),
-            "can_set_password": can_set_password,
+            "can_view_password": user_can_view_luanti_account_password_for(
+                request.user, account
+            ),
+            "can_set_password": user_can_set_luanti_account_password_for(
+                request.user, account
+            ),
+            "require_home_top": operator_session_top_ids(request.user) is not None,
         },
     )
 
@@ -421,7 +652,16 @@ def luanti_accounts(request):
 @staff_member_required
 @require_POST
 def luanti_account_reveal_password(request, account_id: int):
+    from luanti.services.password_audit import log_luanti_password_action
+
     account = get_object_or_404(LuantiAccount, pk=account_id)
+    if not user_can_view_luanti_account_password_for(request.user, account):
+        return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
+    log_luanti_password_action(
+        action="reveal",
+        user_id=request.user.pk,
+        account=account,
+    )
     return JsonResponse(
         {
             "ok": True,

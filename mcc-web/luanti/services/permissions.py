@@ -62,13 +62,37 @@ def user_can_manage_luanti_accounts(user: UserLike) -> bool:
 
 
 def user_can_view_luanti_account_password(user: UserLike) -> bool:
-    """Plaintext Luanti login passwords — system administrators only."""
-    return _ok(user) and user.is_superuser
+    """May use the reveal endpoint (still TOP-scoped per account)."""
+    if not _ok(user):
+        return False
+    if user.is_superuser:
+        return True
+    return user.has_perm("luanti.view_luanti_login_password")
 
 
 def user_can_set_luanti_account_password(user: UserLike) -> bool:
-    """Set or reset Luanti login passwords — system administrators only."""
-    return _ok(user) and user.is_superuser
+    """May set or reset Luanti login passwords (still TOP-scoped per account)."""
+    if not _ok(user):
+        return False
+    if user.is_superuser:
+        return True
+    return user.has_perm("luanti.set_luanti_login_password")
+
+
+def user_can_view_luanti_account_password_for(user: UserLike, account) -> bool:
+    if not user_can_view_luanti_account_password(user):
+        return False
+    if user.is_superuser:
+        return True
+    return account_in_operator_session_scope(user, account)
+
+
+def user_can_set_luanti_account_password_for(user: UserLike, account) -> bool:
+    if not user_can_set_luanti_account_password(user):
+        return False
+    if user.is_superuser:
+        return True
+    return account_in_operator_session_scope(user, account)
 
 
 def user_can_manage_luanti_sessions(user: UserLike) -> bool:

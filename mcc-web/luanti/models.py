@@ -87,6 +87,8 @@ class LuantiIntegrationConfig(models.Model):
             ("manage_luanti_accounts", _("Accounts verwalten")),
             ("manage_luanti_sessions", _("Sessions verwalten")),
             ("manage_luanti_stations", _("Stationen verwalten")),
+            ("view_luanti_login_password", _("Luanti Login-Passwort anzeigen")),
+            ("set_luanti_login_password", _("Luanti Login-Passwort setzen")),
         ]
 
     def __str__(self):

@@ -1,0 +1,42 @@
+{% load i18n %}
+<table class="accounts-table">
+  <thead>
+    <tr>
+      <th>{% trans "Account" %}</th>
+      <th>{% trans "RFID" %}</th>
+      {% if show_top_column %}
+      <th>{% trans "TOP" %}</th>
+      {% endif %}
+      <th>{% trans "Wallet" %}</th>
+      <th>{% trans "Status" %}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    {% with a=row.account %}
+    <tr>
+      <td>
+        <strong>{{ a.label }}</strong><br>
+        <span class="muted">{{ a.login_name }}</span>
+      </td>
+      <td class="muted">{{ a.id_tag }}</td>
+      {% if show_top_column %}
+      <td>{% if a.assigned_to_group %}{{ a.assigned_to_group.name }}{% else %}—{% endif %}</td>
+      {% endif %}
+      <td class="muted">
+        {% if row.wallet.wallet_group_name %}{{ row.wallet.wallet_group_name }}{% else %}—{% endif %}
+        · {{ row.wallet.velos_spendable }}
+      </td>
+      <td>
+        {% if a.is_active %}<span class="badge ok">{% trans "Aktiv" %}</span>{% else %}<span class="badge muted">{% trans "Inaktiv" %}</span>{% endif %}
+        {% if a.server_op %}<span class="badge op">{% trans "OP" %}</span>{% endif %}
+      </td>
+      <td>
+        <a href="{% url 'admin:luanti_account_detail' a.pk %}">{% trans "Bearbeiten" %}</a>
+      </td>
+    </tr>
+    {% endwith %}
+    {% endfor %}
+  </tbody>
+</table>

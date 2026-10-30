@@ -11,6 +11,8 @@ LUANTI_ADMIN_PERMISSION_CODENAMES: tuple[str, ...] = (
     "access_luanti_shop",
     "access_luanti_arena",
     "manage_luanti_accounts",
+    "view_luanti_login_password",
+    "set_luanti_login_password",
     "manage_luanti_sessions",
     "manage_luanti_stations",
     "manage_luanti_regions",

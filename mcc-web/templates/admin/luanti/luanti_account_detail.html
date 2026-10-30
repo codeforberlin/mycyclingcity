@@ -1,0 +1,235 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+{{ leaves_by_home|json_script:"leaves-by-home-data" }}
+<script>
+(function () {
+  function leavesMap() {
+    var el = document.getElementById('leaves-by-home-data');
+    if (!el) return {};
+    try { return JSON.parse(el.textContent); } catch (e) { return {}; }
+  }
+  function fillWalletSelect(select, homeId, selectedId) {
+    if (!select) return;
+    var map = leavesMap();
+    var leaves = (homeId && map[String(homeId)]) ? map[String(homeId)] : [];
+    var keep = selectedId ? String(selectedId) : '';
+    select.innerHTML = '';
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = '—';
+    select.appendChild(empty);
+    leaves.forEach(function (g) {
+      var opt = document.createElement('option');
+      opt.value = String(g.id);
+      opt.textContent = g.name + ' (' + g.velos_spendable + ')';
+      if (keep && keep === String(g.id)) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+  function bindPair(homeSel, walletSel, selectedWallet) {
+    if (!homeSel || !walletSel) return;
+    fillWalletSelect(walletSel, homeSel.value, selectedWallet);
+    homeSel.addEventListener('change', function () {
+      fillWalletSelect(walletSel, homeSel.value, '');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    var homeSel = document.getElementById('home-detail');
+    var walletSel = document.getElementById('wallet-detail');
+    bindPair(homeSel, walletSel, walletSel ? walletSel.getAttribute('data-selected') : '');
+    function csrfToken() {
+      var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return el ? el.value : '';
+    }
+    var btn = document.querySelector('.pw-reveal-btn');
+    if (btn) {
+      var revealLabel = btn.textContent;
+      var hideLabel = '{% trans "Ausblenden" %}';
+      btn.addEventListener('click', function () {
+        var display = document.getElementById('pw-display');
+        if (!display) return;
+        if (display.getAttribute('data-revealed') === '1') {
+          display.textContent = '********';
+          display.removeAttribute('data-revealed');
+          btn.textContent = revealLabel;
+          return;
+        }
+        var url = btn.getAttribute('data-reveal-url');
+        if (!url) return;
+        btn.disabled = true;
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken(),
+            'Accept': 'application/json',
+          },
+          credentials: 'same-origin',
+        }).then(function (resp) {
+          return resp.json().then(function (data) {
+            if (!resp.ok || !data.ok) throw new Error('reveal failed');
+            display.textContent = data.password || '—';
+            display.setAttribute('data-revealed', '1');
+            btn.textContent = hideLabel;
+            btn.disabled = false;
+          });
+        }).catch(function () {
+          btn.disabled = false;
+          alert('{% trans "Passwort konnte nicht geladen werden." %}');
+        });
+      });
+    }
+  });
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <p class="muted" style="margin-bottom:1rem;">
+    <a href="{% url 'admin:luanti_accounts' %}">{% trans "Luanti-Accounts" %}</a>
+    → {{ account.login_name }}
+  </p>
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 1rem;">{{ title }}</h1>
+
+  <div class="card">
+    <h3>{{ account.label }}</h3>
+    <p class="muted">{{ account.login_name }} · RFID {{ account.id_tag }}</p>
+    <p>
+      {% if account.is_active %}{% trans "Aktiv" %}{% else %}{% trans "Inaktiv" %}{% endif %}
+      {% if account.server_op %}· {% trans "Server-OP" %}{% endif %}
+      · {% trans "Modus" %} {{ account.default_mode }}
+    </p>
+    <p>
+      {% trans "Passwort" %}:
+      {% if account.login_password %}
+      <strong id="pw-display" style="user-select:all;">********</strong>
+      <span class="muted">({% trans "gesetzt" %})</span>
+      {% if can_view_password %}
+      <button type="button" class="info pw-reveal-btn"
+              data-reveal-url="{% url 'admin:luanti_account_reveal_password' account.pk %}">
+        {% trans "Anzeigen" %}
+      </button>
+      {% endif %}
+      {% else %}
+      <strong>—</strong>
+      {% endif %}
+    </p>
+    <p class="muted">
+      {% if account.password_provisioned %}{% trans "Auf Server gesetzt" %}{% else %}{% trans "Noch nicht auf Server" %}{% endif %}
+      {% if account.password_last_set_at %}· {{ account.password_last_set_at }}{% endif %}
+    </p>
+    <p>
+      {% trans "Wallet" %}:
+      <strong>{% if wallet.wallet_group_name %}{{ wallet.wallet_group_name }}{% else %}—{% endif %}</strong>
+      · {{ wallet.velos_spendable }} Velos
+    </p>
+    <p class="muted">
+      {% if account.session_unlimited %}
+        {% trans "Dauer" %}: {% trans "unbegrenzt" %}
+      {% else %}
+        {% trans "Dauer" %}:
+        {% if account.session_duration_minutes %}{{ account.session_duration_minutes }}{% else %}—{% endif %}
+        {% trans "Min." %}
+        · {% trans "Min" %}
+        {% if account.session_duration_min_minutes %}{{ account.session_duration_min_minutes }}{% else %}—{% endif %}
+        · {% trans "Max" %}
+        {% if account.session_duration_max_minutes %}{{ account.session_duration_max_minutes }}{% else %}—{% endif %}
+      {% endif %}
+      · {% trans "Schritt ±" %}
+      {% if account.session_add_minutes %}{{ account.session_add_minutes }}{% else %}—{% endif %}
+    </p>
+
+    <div class="card-actions">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_session_limits">
+        <label for="dur-detail">{% trans "Session-Dauer (Min., leer = Standard)" %}</label>
+        <input id="dur-detail" name="session_duration_minutes" type="number" min="0"
+               value="{% if account.session_duration_minutes %}{{ account.session_duration_minutes }}{% endif %}">
+        <label for="dmin-detail">{% trans "Minimum (Min.)" %}</label>
+        <input id="dmin-detail" name="session_duration_min_minutes" type="number" min="1"
+               value="{% if account.session_duration_min_minutes %}{{ account.session_duration_min_minutes }}{% endif %}">
+        <label for="dmax-detail">{% trans "Maximum (Min.)" %}</label>
+        <input id="dmax-detail" name="session_duration_max_minutes" type="number" min="1"
+               value="{% if account.session_duration_max_minutes %}{{ account.session_duration_max_minutes }}{% endif %}">
+        <label for="dstep-detail">{% trans "Zeit-Schrittgröße ± (Min., leer = Standard)" %}</label>
+        <input id="dstep-detail" name="session_add_minutes" type="number" min="1"
+               value="{% if account.session_add_minutes %}{{ account.session_add_minutes }}{% endif %}">
+        <label>
+          <input type="checkbox" name="session_unlimited" value="1"{% if account.session_unlimited %} checked{% endif %}>
+          {% trans "Unbegrenzte Session" %}
+        </label>
+        <div class="btn-row">
+          <button type="submit" class="primary">{% trans "Dauer speichern" %}</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card-actions">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_wallet">
+        <label for="home-detail">{% trans "Heimat-Gruppe" %}</label>
+        <select id="home-detail" name="assigned_to_group">
+          <option value="">—</option>
+          {% for g in top_groups %}
+          <option value="{{ g.pk }}"{% if account.assigned_to_group_id == g.pk %} selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+        <label for="wallet-detail">{% trans "Aktives Wallet (Leaf)" %}</label>
+        <select id="wallet-detail" name="active_wallet" data-selected="{% if account.active_wallet_id %}{{ account.active_wallet_id }}{% endif %}">
+          <option value="">—</option>
+          {% for g in wallet_choices %}
+          <option value="{{ g.pk }}"{% if account.active_wallet_id == g.pk %} selected{% endif %}>{{ g.name }} ({{ g.velos_spendable }})</option>
+          {% endfor %}
+        </select>
+        <label for="wmode-detail">{% trans "Wallet-Modus" %}</label>
+        <select id="wmode-detail" name="wallet_mode">
+          {% for value, label in wallet_mode_choices %}
+          <option value="{{ value }}"{% if account.wallet_mode == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="btn-row">
+          <button type="submit" class="primary">{% trans "Wallet speichern" %}</button>
+        </div>
+      </form>
+    </div>
+
+    {% if can_set_password %}
+    <div class="card-actions">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reset_password">
+        <label for="reset-pw-detail">{% trans "Neues Passwort (leer = auto)" %}</label>
+        <input id="reset-pw-detail" name="login_password" type="password" autocomplete="new-password">
+        <div class="btn-row">
+          <input type="submit" class="info" value="{% trans 'Passwort neu setzen' %}">
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="card-actions">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_flags">
+        <label>
+          <input type="checkbox" name="is_active" value="1"{% if account.is_active %} checked{% endif %}>
+          {% trans "Aktiv (benutzbar / auf Session-Tafel)" %}
+        </label>
+        <label>
+          <input type="checkbox" name="server_op" value="1"{% if account.server_op %} checked{% endif %}>
+          {% trans "Server-Operator (erweiterte Privs)" %}
+        </label>
+        <div class="btn-row">
+          <button type="submit" class="primary">{% trans "Flags speichern" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
