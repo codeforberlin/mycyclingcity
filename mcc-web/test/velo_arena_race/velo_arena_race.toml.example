@@ -2,7 +2,7 @@
 # Copy to velo_arena_race.toml and adjust coordinates for your arena world.
 # Minecraft server (local / Wirk): /data/games/mcc/mc-srv
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Cyclists are assigned at runtime via CLI (--assign lane_id:cyclist),

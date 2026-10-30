@@ -3,7 +3,7 @@
 # MyCyclingCity Luanti World Backup
 # Stündliche Sicherung der Welt (SQLite-konsistent via .backup, optional Server-Stop).
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -euo pipefail

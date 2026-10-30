@@ -1,4 +1,4 @@
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # @file    0011_remove_application_log_and_update_logging_config.py

@@ -3,7 +3,7 @@
 # Setzt Leserechte (ACL) für mccweb auf die Minecraft-Welt.
 # Nur als root oder mcc ausführen – niemals von mccweb-Prozessen.
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -euo pipefail

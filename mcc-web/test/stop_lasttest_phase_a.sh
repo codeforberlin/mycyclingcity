@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Stop Phase A load test processes started by run_lasttest_phase_a.sh

@@ -1,4 +1,4 @@
--- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+-- Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 --
 -- Cuboid outline particles at player foot height + enter hint.

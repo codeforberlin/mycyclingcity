@@ -1,7 +1,7 @@
 # MyCyclingCity Minecraft World Backup Konfiguration
 # Kopieren nach backup_minecraft_world.conf und Werte anpassen.
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Minecraft-Server-Verzeichnis (enthält world / world_nether / world_the_end)

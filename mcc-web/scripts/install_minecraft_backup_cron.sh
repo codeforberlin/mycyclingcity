@@ -2,7 +2,7 @@
 #
 # Installiert einen stündlichen Cron-Job für Minecraft-Welt-Backups
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -euo pipefail

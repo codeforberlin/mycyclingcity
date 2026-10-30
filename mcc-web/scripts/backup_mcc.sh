@@ -3,7 +3,7 @@
 # MyCyclingCity Backup Script
 # Sichert Datenbank und wichtige Daten (ohne Logfiles) via rsync über SSH
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -euo pipefail

@@ -1,4 +1,4 @@
-/* Copyright (c) 2026 SAI-Lab / MyCyclingCity
+/* Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * @file    configserver.cpp

@@ -3,7 +3,7 @@
 # MyCyclingCity Minecraft World Backup
 # Stündliche Sicherung der Welten im laufenden Betrieb via RCON flush + tar.
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -euo pipefail

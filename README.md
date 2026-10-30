@@ -74,7 +74,7 @@ This project embraces modern development workflows. Parts of the codebase, docum
 
 ## License
 
-Copyright (c) 2026 SAI-Lab / MyCyclingCity
+Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 
 This project is licensed under multiple open-source licenses:
 

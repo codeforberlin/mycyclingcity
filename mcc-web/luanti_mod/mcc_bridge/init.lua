@@ -1,4 +1,4 @@
--- Copyright (c) 2026 SAI-Lab / MyCyclingCity
+-- Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 --
 -- MCC Luanti bridge: HTTP auth/session/inventory/shop + optional WS commands.
@@ -1143,7 +1143,7 @@ core.register_on_mods_loaded(function()
     install_play_mode_world_protection()
     install_direct_dig_to_inventory()
     -- Always ensure void worlds have a landing pad (independent of HTTP).
-    core.after(1, ensure_spawn_platform)
+    --RR disabled    core.after(1, ensure_spawn_platform)
 
     -- Re-apply freeze: other mods may reset physics_override.
     -- Also tick region outline particles / enter hints.

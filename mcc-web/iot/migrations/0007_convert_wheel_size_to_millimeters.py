@@ -1,5 +1,5 @@
 # Generated manually for wheel_size conversion from inches to millimeters
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 
 from django.db import migrations, models
 from django.core.validators import MinValueValidator, MaxValueValidator

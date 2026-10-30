@@ -1,7 +1,7 @@
 # VeloArena RCON simulation – track and team configuration
 # Copy to velo_arena_sim.toml and adjust coordinates for your world.
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Velos required to advance one block along the figure-8 path.

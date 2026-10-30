@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Start Phase A load test: 4 fixed device/cyclist pairs, one process each, interval 10s.

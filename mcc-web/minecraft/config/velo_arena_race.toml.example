@@ -4,7 +4,7 @@
 # Or copy to DATA_DIR/velo_arena_race.toml as fallback when DB has no active lanes.
 # Minecraft server (local / Wirk): /data/games/mcc/mc-srv
 #
-# Copyright (c) 2026 SAI-Lab / MyCyclingCity
+# Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Cyclists are assigned at runtime via Operator-GUI (Velo-Arena) or CLI.
