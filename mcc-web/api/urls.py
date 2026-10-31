@@ -12,6 +12,7 @@ from minecraft.waitlist_views import minecraft_waitlist_public_display
 from luanti.api_views import (
     luanti_arena_state,
     luanti_auth_check,
+    luanti_password_ack,
     luanti_counter_scan,
     luanti_heartbeat,
     luanti_inventory_sync,
@@ -47,6 +48,7 @@ urlpatterns = [
     # Luanti bridge
     path('luanti/heartbeat/', luanti_heartbeat, name='luanti_heartbeat'),
     path('luanti/auth/check/', luanti_auth_check, name='luanti_auth_check'),
+    path('luanti/password/ack/', luanti_password_ack, name='luanti_password_ack'),
     path('luanti/session/join/', luanti_session_join, name='luanti_session_join'),
     path('luanti/session/leave/', luanti_session_leave, name='luanti_session_leave'),
     path('luanti/session/set-mode/', luanti_session_set_mode, name='luanti_session_set_mode'),

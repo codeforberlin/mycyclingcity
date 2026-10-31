@@ -25,25 +25,56 @@ def generate_login_password(*, length: int = 8) -> str:
 def provision_account_password(
     account: LuantiAccount,
     password: str | None = None,
+    *,
+    mark_pending: bool = True,
 ) -> str:
     """
     Store plaintext password on the account and enqueue SET_PASSWORD for the bridge.
     Returns the password that was stored.
+
+    password_provisioned becomes True only after the bridge ACK (see ack_password_provisioned).
     """
     raw = (password or "").strip() or generate_login_password()
     now = timezone.now()
     account.login_password = raw
     account.password_last_set_at = now
-    account.save(update_fields=["login_password", "password_last_set_at", "updated_at"])
+    if mark_pending:
+        account.password_provisioned = False
+    account.save(
+        update_fields=[
+            "login_password",
+            "password_last_set_at",
+            "password_provisioned",
+            "updated_at",
+        ]
+    )
 
-    queued = LuantiEventConsumer.push_to_all_sync(
+    LuantiEventConsumer.push_to_all_sync(
         {
             "type": "SET_PASSWORD",
             "player": account.login_name,
             "password": raw,
+            "account_id": account.pk,
         }
     )
-    if queued:
+    return raw
+
+
+def ack_password_provisioned(
+    *,
+    account_id: int | None = None,
+    login_name: str = "",
+    ok: bool = True,
+) -> LuantiAccount | None:
+    """Mark account password as applied on the Luanti server (bridge ACK)."""
+    account = None
+    if account_id:
+        account = LuantiAccount.objects.filter(pk=account_id).first()
+    if account is None and login_name.strip():
+        account = LuantiAccount.objects.filter(login_name__iexact=login_name.strip()).first()
+    if account is None:
+        return None
+    if ok:
         account.password_provisioned = True
         account.save(update_fields=["password_provisioned", "updated_at"])
-    return raw
+    return account

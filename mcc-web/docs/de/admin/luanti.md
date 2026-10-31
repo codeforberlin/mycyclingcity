@@ -29,7 +29,8 @@ Skript: `scripts/luanti_server.sh` (PID unter `/data/var/mcc/tmp/luanti-server.p
 
 ## Auth & Sessions
 
-- Keine Self-Registration: Accounts in der Admin-GUI anlegen.
+- **Zweistufiger Zugang:** (1) Luanti-Client-Login mit **Benutzername + Passwort** aus MCC, (2) danach **Session-Freigabe** (Spieler bleibt eingefroren bis RFID/Admin eine Session startet).
+- Keine Self-Registration am Server: Accounts nur in der Admin-GUI anlegen; Passwortänderung nur in MCC (nicht im Luanti-Client).
 - Session-Start per Admin oder RFID: `POST /api/luanti/counter/scan/`
 - Modi: `play` / `build` / `watch` (Privs + getrenntes Inventar play/build)
 
@@ -43,7 +44,10 @@ Unter **Luanti → Accounts**:
 
 ### Login-Passwörter (Luanti Client)
 
-- Passwörter werden in MCC verwaltet und an den Luanti-Server (`SET_PASSWORD`) übergeben.
+- Passwörter werden **ausschließlich** in MCC verwaltet und per Bridge (`SET_PASSWORD`) auf den Luanti-Server gespiegelt. Status **„Auf Server gesetzt“** (`password_provisioned`) erst nach Bridge-ACK.
+- Nach Deploy oder Welt-Restore: `python manage.py provision_all_luanti_passwords` (Bridge muss laufen).
+- Unbekannte / nicht provisionierte Namen: Client sieht einen **Abbruch-Hinweis** (Registrierung deaktiviert, zentral in MCC). **Falsches Passwort:** Standard-Meldung des Luanti-Clients (vom Engine, nicht anpassbar).
+- Empfohlen in `minetest.conf`: `enable_player_registration = false`; optional `motd` mit Hinweis auf zentrale Account-Verwaltung.
 - **Superuser:** alle Accounts, Anzeigen und Setzen.
 - **Luanti Admin** (`luanti_admin`): Anzeigen/Setzen nur für Accounts der **Heimat-TOP** (`assigned_to_group`), die in den **Manager-Gruppen** des Users (`User.managed_groups`, TOP-Wurzeln) liegt.
 - Berechtigungen: `view_luanti_login_password`, `set_luanti_login_password` (in Preset-Gruppe `luanti_admin` enthalten).

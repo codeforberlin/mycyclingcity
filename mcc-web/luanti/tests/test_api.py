@@ -499,12 +499,73 @@ def test_provision_password_enqueues_set_password():
     account.refresh_from_db()
     assert pw == "TestPass1"
     assert account.login_password == "TestPass1"
-    assert account.password_provisioned is True
+    assert account.password_provisioned is False
     pending = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).order_by("-id").first()
     assert pending is not None
     assert pending.payload["type"] == "SET_PASSWORD"
     assert pending.payload["player"] == "Schule1"
     assert pending.payload["password"] == "TestPass1"
+    assert pending.payload["account_id"] == account.pk
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_password_ack_marks_provisioned(api_client):
+    from luanti.services.passwords import provision_account_password
+
+    account = LuantiAccount.objects.create(login_name="SchuleAck", id_tag="rfid-ack")
+    provision_account_password(account, "AckPass1")
+    account.refresh_from_db()
+    assert account.password_provisioned is False
+
+    resp = api_client.post(
+        "/api/luanti/password/ack/",
+        data=json.dumps(
+            _signed({"player": "SchuleAck", "account_id": account.pk, "ok": True})
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.json()["password_provisioned"] is True
+    account.refresh_from_db()
+    assert account.password_provisioned is True
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_auth_check_active_account(api_client):
+    LuantiAccount.objects.create(login_name="SchuleAuth", id_tag="rfid-auth", is_active=True)
+    resp = api_client.post(
+        "/api/luanti/auth/check/",
+        data=json.dumps(_signed({"player": "SchuleAuth"})),
+        content_type="application/json",
+    )
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["allowed"] is True
+    assert data["account"] == "SchuleAuth"
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_auth_check_inactive_denied(api_client):
+    LuantiAccount.objects.create(login_name="SchuleOff", id_tag="rfid-off", is_active=False)
+    resp = api_client.post(
+        "/api/luanti/auth/check/",
+        data=json.dumps(_signed({"player": "SchuleOff"})),
+        content_type="application/json",
+    )
+    data = resp.json()
+    assert data["allowed"] is False
 
 
 @pytest.mark.django_db

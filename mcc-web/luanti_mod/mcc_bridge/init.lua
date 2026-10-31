@@ -6,8 +6,8 @@
 local http = core.request_http_api and core.request_http_api()
 local modname = core.get_current_modname()
 local modpath = core.get_modpath(modname)
-
 local storage = core.get_mod_storage()
+local mcc_auth = dofile(modpath .. "/auth_handler.lua")
 
 local function settings_get(key, default)
     local v = core.settings:get("mcc_bridge." .. key)
@@ -776,11 +776,20 @@ local function apply_bridge_commands(commands)
             elseif t == "SET_PASSWORD" and cmd.player and cmd.password then
                 local pname = tostring(cmd.player)
                 local raw = tostring(cmd.password)
-                if core.set_player_password and core.get_password_hash then
-                    core.set_player_password(pname, core.get_password_hash(pname, raw))
-                    core.log("action", "[mcc_bridge] SET_PASSWORD player=" .. pname)
+                local applied = mcc_auth.apply_django_password(pname, raw)
+                if applied then
+                    api_post("/api/luanti/password/ack/", {
+                        player = pname,
+                        account_id = cmd.account_id,
+                        ok = true,
+                    })
                 else
-                    core.log("error", "[mcc_bridge] SET_PASSWORD unavailable")
+                    core.log("error", "[mcc_bridge] SET_PASSWORD failed player=" .. pname)
+                    api_post("/api/luanti/password/ack/", {
+                        player = pname,
+                        account_id = cmd.account_id,
+                        ok = false,
+                    })
                 end
             elseif t == "CART_COMMAND" then
                 mcc_bridge.cart_command(cmd)
@@ -1184,10 +1193,13 @@ core.register_on_mods_loaded(function()
     core.log("action", "[mcc_bridge] loaded server_id=" .. CFG.server_id)
 end)
 
--- Closed registration: only names that Django already knows get auth entries.
-core.register_on_prejoinplayer(function(name, ip)
+-- Only Django-provisioned accounts may connect (see auth_handler.lua).
+core.register_on_prejoinplayer(function(name, _ip)
     if not name or name == "" then
         return "Invalid name"
+    end
+    if not mcc_auth.is_provisioned(name) then
+        return mcc_auth.MSG_NO_REGISTRATION
     end
 end)
 
@@ -1210,7 +1222,7 @@ core.register_on_joinplayer(function(player)
     api_post("/api/luanti/auth/check/", { player = name }, function(ok, data)
         if not ok or not data or not data.allowed then
             pending_auth[name] = nil
-            core.kick_player(name, "Nicht freigegeben / Not authorized")
+            core.kick_player(name, mcc_auth.MSG_NOT_AUTHORIZED)
             return
         end
         api_post("/api/luanti/session/join/", { player = name }, function(ok2, join)

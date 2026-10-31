@@ -126,6 +126,38 @@ def luanti_auth_check(request):
 
 @csrf_exempt
 @require_POST
+def luanti_password_ack(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    from luanti.services.passwords import ack_password_provisioned
+
+    account_id = data.get("account_id")
+    try:
+        account_id = int(account_id) if account_id is not None else None
+    except (TypeError, ValueError):
+        account_id = None
+    login = str(data.get("player") or data.get("login_name") or "").strip()
+    ok = data.get("ok", True)
+    if ok in (False, 0, "0", "false", "False"):
+        ok = False
+    else:
+        ok = True
+    account = ack_password_provisioned(account_id=account_id, login_name=login, ok=ok)
+    if account is None and ok:
+        return JsonResponse({"ok": False, "error": "account_not_found"}, status=404)
+    return JsonResponse(
+        {
+            "ok": True,
+            "account": account.login_name if account else login,
+            "password_provisioned": bool(account and account.password_provisioned),
+        }
+    )
+
+
+@csrf_exempt
+@require_POST
 def luanti_session_join(request):
     data = _parse_json(request)
     data, err = _auth_or_error(data)
