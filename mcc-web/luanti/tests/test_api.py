@@ -284,6 +284,45 @@ def test_inventory_sync_accepts_lua_empty_object(api_client, settings):
     MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
+def test_admin_start_queues_session_started(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiPendingCommand, LuantiWaitingPlayer
+    from luanti.services.presence import mark_waiting
+
+    account = LuantiAccount.objects.create(
+        login_name="WaitStart1",
+        id_tag="rfid-ws1",
+        allowed_modes=["play", "build"],
+        default_mode="play",
+        is_active=True,
+    )
+    mark_waiting(account.login_name)
+    assert LuantiWaitingPlayer.objects.filter(account=account).exists()
+    user = User.objects.create_user(
+        username="luanti_start_op", password="x", is_staff=True, is_superuser=True
+    )
+    api_client.force_login(user)
+    resp = api_client.post(
+        reverse("admin:luanti_sessions"),
+        {
+            "action": "start",
+            "account_id": str(account.pk),
+            "mode": "play",
+        },
+    )
+    assert resp.status_code == 302
+    pending = (
+        LuantiPendingCommand.objects.filter(delivered_at__isnull=True).order_by("-id").first()
+    )
+    assert pending is not None
+    assert pending.payload.get("type") == "SESSION_STARTED"
+    assert pending.payload.get("player") == account.login_name
+    assert pending.payload.get("session_id")
+    assert LuantiSession.objects.filter(
+        login_name=account.login_name, status=LuantiSession.STATUS_ACTIVE
+    ).exists()
+
+
 def test_admin_kick_queues_without_ending_session(api_client, settings):
     """Admin kick must keep session active so leave can persist inventory."""
     settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"

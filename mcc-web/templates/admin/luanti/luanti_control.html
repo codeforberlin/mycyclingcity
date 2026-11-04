@@ -69,7 +69,7 @@
           {% for b in bridges %}
             <li>
               {{ b.server_id }} —
-              {% if b.is_connected %}{% trans "verbunden" %}{% else %}{% trans "getrennt" %}{% endif %}
+              {% if server_running and b.server_id in connected_ids %}{% trans "verbunden" %}{% else %}{% trans "getrennt" %}{% endif %}
               {% if b.last_seen_at %}<span class="muted">({{ b.last_seen_at }})</span>{% endif %}
             </li>
           {% endfor %}

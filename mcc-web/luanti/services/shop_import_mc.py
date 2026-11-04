@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from django.db import transaction
 from django.utils.text import slugify
 
-from luanti.models import LuantiShopCategory, LuantiShopItem
+from luanti.models import LuantiRegisteredItem, LuantiShopCategory, LuantiShopItem
 from luanti.services.material_map import resolve_material
 from luanti.services.shop_registry import registry_name_set
 from minecraft.models import MinecraftShopCategory
@@ -29,6 +29,87 @@ class McShopImportResult:
     @property
     def ok(self) -> bool:
         return True
+
+
+def normalize_shop_category_slug(raw: str) -> str:
+    slug = slugify((raw or "").strip(), allow_unicode=False).replace("-", "_")
+    return slug[:64]
+
+
+def get_or_create_shop_category(
+    *,
+    slug: str,
+    name: str = "",
+    sort_order: int = 999,
+    enabled: bool = True,
+) -> tuple[LuantiShopCategory, bool]:
+    """Resolve shop category by slug; create with display name when missing."""
+    cat_slug = normalize_shop_category_slug(slug) or "misc"
+    display = (name or "").strip() or cat_slug.replace("_", " ").title()
+    return LuantiShopCategory.objects.get_or_create(
+        slug=cat_slug,
+        defaults={
+            "name": display[:64],
+            "sort_order": max(0, int(sort_order)),
+            "enabled": enabled,
+        },
+    )
+
+
+def default_stack_size_for_kind(kind: str) -> int:
+    return 64 if (kind or "").strip() == "node" else 1
+
+
+def _registry_row_map(names: list[str]) -> dict[str, LuantiRegisteredItem]:
+    if not names:
+        return {}
+    rows = LuantiRegisteredItem.objects.filter(item_name__in=names)
+    return {row.item_name: row for row in rows}
+
+
+def registry_item_names_query(
+    *,
+    mod: str = "",
+    q: str = "",
+    only_missing: bool = True,
+    shop_names: set[str] | None = None,
+    limit: int | None = None,
+) -> list[str]:
+    """Ordered itemstrings matching registry filters (for server-side bulk add)."""
+    qs = LuantiRegisteredItem.objects.all()
+    mod_filter = (mod or "").strip()
+    if mod_filter:
+        qs = qs.filter(item_name__startswith=f"{mod_filter}:")
+    query = (q or "").strip()
+    if query:
+        qs = qs.filter(item_name__icontains=query)
+    if only_missing and shop_names is not None:
+        qs = qs.exclude(item_name__in=shop_names)
+    qs = qs.order_by("item_name").values_list("item_name", flat=True)
+    if limit is not None and limit > 0:
+        qs = qs[:limit]
+    return list(qs)
+
+
+def count_missing_registry_items(*, shop_names: set[str] | None = None) -> int:
+    qs = LuantiRegisteredItem.objects.all()
+    if shop_names is not None:
+        qs = qs.exclude(item_name__in=shop_names)
+    return qs.count()
+
+
+def missing_registry_counts_by_mod(*, shop_names: set[str] | None = None) -> dict[str, int]:
+    """Count registry items not yet in shop, grouped by mod prefix."""
+    qs = LuantiRegisteredItem.objects.all()
+    if shop_names is not None:
+        qs = qs.exclude(item_name__in=shop_names)
+    counts: dict[str, int] = {}
+    for name in qs.values_list("item_name", flat=True):
+        if ":" not in name:
+            continue
+        mod = name.split(":", 1)[0]
+        counts[mod] = counts.get(mod, 0) + 1
+    return counts
 
 
 @transaction.atomic
@@ -108,32 +189,43 @@ def add_registry_item_to_shop(
     category_slug: str,
     buy_price_velos: int,
     display_name: str = "",
-    stack_size: int = 1,
+    stack_size: int | None = None,
+    category_name: str = "",
+    category_sort_order: int = 999,
 ) -> LuantiShopItem:
     """Manually add a Mineclonia item from the live registry into the shop."""
     item_name = (item_name or "").strip()
     if not item_name or ":" not in item_name:
         raise ValueError("invalid_item_name")
     price = max(1, int(buy_price_velos))
-    cat = LuantiShopCategory.objects.filter(slug=category_slug).first()
-    if cat is None:
-        cat = LuantiShopCategory.objects.create(
-            slug=category_slug or "misc",
-            name=category_slug or "Misc",
-            sort_order=999,
-            enabled=True,
-        )
-    obj, _ = LuantiShopItem.objects.update_or_create(
+    cat, _created = get_or_create_shop_category(
+        slug=category_slug,
+        name=category_name,
+        sort_order=category_sort_order,
+    )
+    reg = LuantiRegisteredItem.objects.filter(item_name=item_name).first()
+    label = (display_name or "").strip()
+    if not label and reg and reg.description:
+        label = reg.description[:128]
+    stack = stack_size
+    if stack is None:
+        stack = default_stack_size_for_kind(reg.kind if reg else "item")
+
+    existing = LuantiShopItem.objects.filter(category=cat, item_name=item_name).first()
+    if existing:
+        existing.buy_price_velos = price
+        existing.enabled = True
+        existing.save(update_fields=["buy_price_velos", "enabled"])
+        return existing
+
+    return LuantiShopItem.objects.create(
         category=cat,
         item_name=item_name,
-        defaults={
-            "display_name": display_name or "",
-            "buy_price_velos": price,
-            "stack_size": max(1, int(stack_size)),
-            "enabled": True,
-        },
+        display_name=label,
+        buy_price_velos=price,
+        stack_size=max(1, int(stack)),
+        enabled=True,
     )
-    return obj
 
 
 @dataclass
@@ -149,16 +241,22 @@ def add_registry_items_bulk_to_shop(
     item_names: list[str],
     category_slug: str,
     buy_price_velos: int,
-    stack_size: int = 1,
+    stack_size: int | None = None,
     require_in_registry: bool = True,
+    category_name: str = "",
+    category_sort_order: int = 999,
 ) -> BulkAddResult:
     """Add many registry itemstrings to one shop category (shared price)."""
     result = BulkAddResult()
     registry = registry_name_set() if require_in_registry else None
     price = max(1, int(buy_price_velos))
-    stack = max(1, int(stack_size))
-    cat_slug = (category_slug or "misc").strip() or "misc"
+    cat, _created = get_or_create_shop_category(
+        slug=category_slug,
+        name=category_name,
+        sort_order=category_sort_order,
+    )
     seen: set[str] = set()
+    pending: list[str] = []
 
     for raw in item_names:
         name = (raw or "").strip()
@@ -173,25 +271,35 @@ def add_registry_items_bulk_to_shop(
             result.invalid.append(name)
             result.skipped += 1
             continue
-        cat = LuantiShopCategory.objects.filter(slug=cat_slug).first()
-        if cat is None:
-            cat = LuantiShopCategory.objects.create(
-                slug=cat_slug,
-                name=cat_slug,
-                sort_order=999,
-                enabled=True,
-            )
-        _obj, created = LuantiShopItem.objects.update_or_create(
+        pending.append(name)
+
+    reg_map = _registry_row_map(pending)
+
+    for name in pending:
+        reg = reg_map.get(name)
+        label = ""
+        if reg and reg.description:
+            label = reg.description[:128]
+        stack = stack_size
+        if stack is None:
+            stack = default_stack_size_for_kind(reg.kind if reg else "item")
+        stack = max(1, int(stack))
+
+        existing = LuantiShopItem.objects.filter(category=cat, item_name=name).first()
+        if existing:
+            existing.buy_price_velos = price
+            existing.enabled = True
+            existing.save(update_fields=["buy_price_velos", "enabled"])
+            result.updated += 1
+            continue
+
+        LuantiShopItem.objects.create(
             category=cat,
             item_name=name,
-            defaults={
-                "buy_price_velos": price,
-                "stack_size": stack,
-                "enabled": True,
-            },
+            display_name=label,
+            buy_price_velos=price,
+            stack_size=stack,
+            enabled=True,
         )
-        if created:
-            result.created += 1
-        else:
-            result.updated += 1
+        result.created += 1
     return result

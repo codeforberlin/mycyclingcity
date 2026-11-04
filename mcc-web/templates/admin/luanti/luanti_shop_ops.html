@@ -14,7 +14,8 @@
   .reg-bulk-toolbar input[type=search],
   .reg-bulk-toolbar input[type=number],
   .reg-bulk-actions select,
-  .reg-bulk-actions input[type=number] {
+  .reg-bulk-actions input[type=number],
+  .reg-bulk-actions input[type=text] {
     display: block;
     width: 100%;
     min-height: 44px;
@@ -37,6 +38,10 @@
     display: flex;
     gap: 0.4rem;
     align-items: center;
+  }
+  .reg-gap-stats {
+    margin: 0.35rem 0 0.75rem;
+    font-size: 0.92rem;
   }
   .reg-mod-chips {
     display: flex;
@@ -68,6 +73,12 @@
     color: #fff !important;
     font-weight: 700;
   }
+  .reg-mod-chips .mod-miss {
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-left: 0.2rem;
+    opacity: 0.9;
+  }
   .reg-active-mod {
     margin: 0.25rem 0 0.5rem;
     font-size: 0.9rem;
@@ -84,11 +95,17 @@
   .reg-bulk-list code { font-size: 0.82rem; }
   .reg-bulk-list .desc { color: #64748b; font-size: 0.78rem; }
   .reg-bulk-list .in-shop { color: #64748b; font-size: 0.75rem; margin-left: 0.25rem; }
+  .reg-bulk-list .row-quick-add { margin-left: auto; flex-shrink: 0; }
   .reg-bulk-actions {
     display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; margin-top: 0.5rem;
   }
   .reg-bulk-actions label { display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 0.2rem; }
   .reg-select-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.35rem 0; }
+  .cat-mode-row { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.5rem 0; font-size: 0.88rem; }
+  .cat-mode-row label { font-weight: 600; display: flex; gap: 0.35rem; align-items: center; }
+  .cat-target-block { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; }
+  .cat-target-block > div { min-width: 10rem; flex: 1 1 12rem; max-width: 22rem; }
+  .bulk-extra-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.65rem; }
 </style>
 <script>
 (function () {
@@ -98,6 +115,21 @@
     if (filterForm && onlyMissing) {
       onlyMissing.addEventListener('change', function () { filterForm.submit(); });
     }
+
+    function syncCategoryMode() {
+      var checked = document.querySelector('input[name=category_mode]:checked');
+      var isNew = checked && checked.value === 'new';
+      var blockExisting = document.getElementById('cat-block-existing');
+      var blockNew = document.getElementById('cat-block-new');
+      var sel = document.getElementById('bulk-cat');
+      if (blockExisting) blockExisting.style.display = isNew ? 'none' : '';
+      if (blockNew) blockNew.style.display = isNew ? '' : 'none';
+      if (sel) sel.required = !isNew;
+    }
+    document.querySelectorAll('input[name=category_mode]').forEach(function (el) {
+      el.addEventListener('change', syncCategoryMode);
+    });
+    syncCategoryMode();
 
     var list = document.getElementById('reg-bulk-list');
     var master = document.getElementById('reg-select-all');
@@ -134,15 +166,15 @@
 {% block content %}
 <div class="luanti-admin">
   <p class="muted">
-    {% blocktrans with items=item_count reg=registry_count %}
-    Katalog: {{ items }} Artikel · Mineclonia-Registry: {{ reg }} Einträge.
+    {% blocktrans with items=item_count reg=registry_count missing=missing_registry_total %}
+    Katalog: {{ items }} Artikel · Registry: {{ reg }} · noch {{ missing }} fehlend im Shop.
     {% endblocktrans %}
   </p>
 
   <div class="card" style="margin-bottom:16px;">
     <h3>{% trans "Import aus Minecraft-Shop" %}</h3>
     <p class="muted">
-      {% trans "Übernimmt Kategorien/Preise aus dem Minecraft-Shop und mappt Materialien auf Mineclonia-Itemstrings. Mit Registry werden nur existierende Items übernommen." %}
+      {% trans "Optional: Erstbefüllung aus dem Minecraft-Shop. Lücken (z. B. reine Mineclonia-Mods) danach über Registry-Bulk schließen." %}
     </p>
     <form method="post">
       {% csrf_token %}
@@ -152,9 +184,9 @@
   </div>
 
   <div class="card" style="margin-bottom:16px;">
-    <h3>{% trans "Registry → Shop (Bulk)" %}</h3>
+    <h3>{% trans "Registry → Luanti-Shop" %}</h3>
     <p class="muted">
-      {% trans "Mod anklicken oder suchen, Items per Checkbox wählen, dann in den Shop übernehmen." %}
+      {% trans "Fehlende Items filtern, Ziel-Kategorie wählen oder anlegen, dann Auswahl oder Mod-/Filter-Bulk übernehmen." %}
     </p>
     <form method="post" style="margin-bottom:12px;">
       {% csrf_token %}
@@ -183,20 +215,30 @@
       </div>
     </form>
 
-    <p class="muted" style="margin-bottom:0.25rem;">{% trans "Mod wählen (Klick filtert sofort):" %}</p>
+    {% if registry_only_missing %}
+    <p class="reg-gap-stats">
+      {% blocktrans with total=registry_matching_total cap=shop_bulk_cap %}
+      Aktueller Filter: <strong>{{ total }}</strong> fehlende Itemstrings (Massen-Limit {{ cap }} pro Aktion).
+      {% endblocktrans %}
+    </p>
+    {% endif %}
+
+    <p class="muted" style="margin-bottom:0.25rem;">{% trans "Mod wählen (Klick filtert sofort; Zahl = fehlend im Shop):" %}</p>
     <div class="reg-mod-chips" id="reg-mod-chips">
       <a href="?q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}"
          class="{% if not registry_mod %}active{% endif %}">{% trans "Alle Mods" %}</a>
-      {% for mod in registry_mods %}
-      <a href="?mod={{ mod|urlencode }}&amp;q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}"
-         class="{% if registry_mod == mod %}active{% endif %}">{{ mod }}</a>
+      {% for entry in registry_mods_with_missing %}
+      <a href="?mod={{ entry.name|urlencode }}&amp;q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}"
+         class="{% if registry_mod == entry.name %}active{% endif %}">{{ entry.name }}{% if entry.missing %}<span class="mod-miss">+{{ entry.missing }}</span>{% endif %}</a>
       {% endfor %}
     </div>
 
     {% if registry_mod %}
     <p class="reg-active-mod">
-      {% trans "Aktiver Mod-Filter:" %} <strong><code>{{ registry_mod }}</code></strong>
-      · <a href="?q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}">{% trans "Filter löschen" %}</a>
+      {% blocktrans with mod=registry_mod n=mod_missing_count %}
+      Aktiver Mod: <strong><code>{{ mod }}</code></strong> — {{ n }} fehlend im Shop.
+      {% endblocktrans %}
+      · <a href="?q={{ registry_query|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}">{% trans "Mod-Filter löschen" %}</a>
     </p>
     {% endif %}
 
@@ -205,13 +247,13 @@
     {% else %}
     <p class="muted">
       {% blocktrans with shown=registry_hits|length total=registry_matching_total limit=registry_limit %}
-      {{ shown }} von {{ total }} Treffern angezeigt (Limit {{ limit }}). Filter enger setzen bei Bedarf.
+      {{ shown }} von {{ total }} Treffern in der Liste (Anzeige-Limit {{ limit }}). Für mehr: Mod-Bulk oder Filter-Bulk nutzen.
       {% endblocktrans %}
     </p>
 
     <form method="post" id="reg-bulk-form">
       {% csrf_token %}
-      <input type="hidden" name="action" value="bulk_add_from_registry">
+      <input type="hidden" name="action" value="bulk_add_from_registry" id="reg-bulk-action">
       <input type="hidden" name="q" value="{{ registry_query }}">
       <input type="hidden" name="mod" value="{{ registry_mod }}">
       <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
@@ -239,29 +281,84 @@
         {% endfor %}
       </div>
 
-      {% if registry_hits %}
-      <div class="reg-bulk-actions">
-        <div>
-          <label for="bulk-cat">{% trans "Ziel-Kategorie" %}</label>
-          <select id="bulk-cat" name="category_slug" required>
+      <div class="cat-mode-row">
+        <span>{% trans "Ziel-Kategorie:" %}</span>
+        <label>
+          <input type="radio" name="category_mode" value="existing" checked>
+          {% trans "Bestehende" %}
+        </label>
+        <label>
+          <input type="radio" name="category_mode" value="new">
+          {% trans "Neu anlegen" %}
+        </label>
+      </div>
+      <div class="cat-target-block">
+        <div id="cat-block-existing">
+          <label for="bulk-cat">{% trans "Kategorie" %}</label>
+          <select id="bulk-cat" name="category_slug">
             {% if category_choices %}
               {% for slug, name in category_choices %}
-              <option value="{{ slug }}"{% if slug == "redstone" %} selected{% endif %}>{{ name }} ({{ slug }})</option>
+              <option value="{{ slug }}"{% if slug == last_category_slug %} selected{% elif not last_category_slug and slug == "misc" %} selected{% endif %}>{{ name }} ({{ slug }})</option>
               {% endfor %}
             {% else %}
-              <option value="misc">misc</option>
+              <option value="misc" selected>misc</option>
             {% endif %}
           </select>
         </div>
+        <div id="cat-block-new" style="display:none;">
+          <div>
+            <label for="new-cat-slug">{% trans "Slug" %}</label>
+            <input id="new-cat-slug" name="new_category_slug" type="text" placeholder="fences" autocomplete="off">
+          </div>
+          <div>
+            <label for="new-cat-name">{% trans "Anzeigename" %}</label>
+            <input id="new-cat-name" name="new_category_name" type="text" placeholder="Zäune &amp; Tore" autocomplete="off">
+          </div>
+          <div>
+            <label for="new-cat-sort">{% trans "Sortierung" %}</label>
+            <input id="new-cat-sort" name="new_category_sort_order" type="number" min="0" value="500" style="max-width:6rem;">
+          </div>
+        </div>
         <div>
           <label for="bulk-price">{% trans "Kaufpreis (Velos)" %}</label>
-          <input id="bulk-price" name="buy_price_velos" type="number" min="1" value="5" style="width:6rem;">
-        </div>
-        <div>
-          <button type="submit" class="primary">{% trans "Auswahl in Shop übernehmen" %}</button>
+          <input id="bulk-price" name="buy_price_velos" type="number" min="1" value="5" style="max-width:6rem;">
         </div>
       </div>
-      {% endif %}
+
+      <div class="reg-bulk-actions">
+        <button type="submit" class="primary" onclick="document.getElementById('reg-bulk-action').value='bulk_add_from_registry';">
+          {% trans "Auswahl in Shop übernehmen" %}
+        </button>
+      </div>
+
+      <div class="bulk-extra-actions">
+        {% if mod_bulk_allowed %}
+        <button type="submit" class="primary" onclick="document.getElementById('reg-bulk-action').value='bulk_add_mod_missing';">
+          {% blocktrans with mod=registry_mod n=mod_missing_count %}
+          Alle {{ n }} fehlenden von „{{ mod }}“ übernehmen
+          {% endblocktrans %}
+        </button>
+        {% elif registry_mod and registry_only_missing and mod_missing_count %}
+        <span class="muted">
+          {% blocktrans with n=mod_missing_count cap=shop_bulk_cap %}
+          Mod-Bulk: {{ n }} Items &gt; Limit {{ cap }} — Suche verengen.
+          {% endblocktrans %}
+        </span>
+        {% endif %}
+        {% if filter_bulk_allowed %}
+        <button type="submit" onclick="document.getElementById('reg-bulk-action').value='bulk_add_filter_missing';">
+          {% blocktrans with n=registry_matching_total %}
+          Alle {{ n }} fehlenden im Filter übernehmen
+          {% endblocktrans %}
+        </button>
+        {% elif registry_only_missing and registry_matching_total > shop_bulk_cap %}
+        <span class="muted">
+          {% blocktrans with n=registry_matching_total cap=shop_bulk_cap %}
+          Filter-Bulk: {{ n }} Treffer &gt; Limit {{ cap }} — Mod wählen oder Suche verengen.
+          {% endblocktrans %}
+        </span>
+        {% endif %}
+      </div>
     </form>
     {% endif %}
   </div>
@@ -285,7 +382,7 @@
         </ul>
       </div>
     {% empty %}
-      <p class="muted">{% trans "Noch keine Kategorien — Minecraft-Shop importieren." %}</p>
+      <p class="muted">{% trans "Noch keine Kategorien — Registry-Bulk oder Minecraft-Import." %}</p>
     {% endfor %}
   </div>
 </div>

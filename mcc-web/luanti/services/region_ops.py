@@ -16,7 +16,7 @@ _PLAYER_RE = re.compile(r"^[A-Za-z0-9_]{1,32}$")
 
 
 def default_world() -> str:
-    return (getattr(settings, "MCC_LUANTI_WORLD", None) or "world").strip() or "world"
+    return (getattr(settings, "MCC_LUANTI_WORLD", None) or "mycyclingcity").strip() or "mycyclingcity"
 
 
 def default_region_min_y() -> int:

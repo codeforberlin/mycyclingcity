@@ -693,7 +693,7 @@ MCC_LUANTI_SERVER_LOG = config(
     'MCC_LUANTI_SERVER_LOG',
     default=str(DATA_DIR / 'logs' / 'luanti-server.log'),
 )
-MCC_LUANTI_WORLD = config('MCC_LUANTI_WORLD', default='world')
+MCC_LUANTI_WORLD = config('MCC_LUANTI_WORLD', default='mycyclingcity')
 MCC_LUANTI_CONFIG = config(
     'MCC_LUANTI_CONFIG',
     default=str(Path(MCC_LUANTI_SERVER_DIR) / 'minetest.conf'),
@@ -707,6 +707,8 @@ MCC_LUANTI_SESSION_BOOTSTRAP_ENABLED = config(
 MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG = config(
     'MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG', default='session-bootstrap'
 )
+# Max items per server-side bulk add from registry (Shop Ops mod/filter bulk).
+LUANTI_SHOP_BULK_MOD_MAX = config('LUANTI_SHOP_BULK_MOD_MAX', default=500, cast=int)
 MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')
 MCC_MINECRAFT_ESGUI_SHOPS_DIR = config('MCC_MINECRAFT_ESGUI_SHOPS_DIR', default='')

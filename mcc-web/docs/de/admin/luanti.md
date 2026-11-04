@@ -23,7 +23,7 @@ Unter **Luanti → Control**:
 
 - **Server starten / stoppen / neu starten**
 - Status und Link zum Log (`luanti-server.log`)
-- Bridge-Heartbeat (Mod ↔ Django)
+- Bridge-Heartbeat (Mod ↔ Django): auf Control gilt die Bridge nur als **online**, wenn der **Luanti-Server-Prozess läuft** und zuletzt ein Heartbeat kam. Nach **Server stoppen** setzt Django die Bridge-Einträge zurück (sofort offline, nicht erst nach Heartbeat-Timeout).
 
 Skript: `scripts/luanti_server.sh` (PID unter `/data/var/mcc/tmp/luanti-server.pid`).
 
@@ -33,6 +33,24 @@ Skript: `scripts/luanti_server.sh` (PID unter `/data/var/mcc/tmp/luanti-server.p
 - Keine Self-Registration am Server: Accounts nur in der Admin-GUI anlegen; Passwortänderung nur in MCC (nicht im Luanti-Client).
 - Session-Start per Admin oder RFID: `POST /api/luanti/counter/scan/`
 - Modi: `play` / `build` / `watch` (Privs + getrenntes Inventar play/build)
+
+### Betrieb vor Ort: Passwort vs. Session-Freigabe
+
+Das Login-Passwort ist ein **technisches Hilfsmittel** (Anmeldung am Server, kein Wildwuchs an Accounts). Die **eigentliche Nutzungsfreigabe** ist immer die **Session** durch Erwachsene (Admin oder RFID).
+
+| Stufe | Bedeutung |
+|-------|-----------|
+| **Login** (Name + Passwort aus MCC) | Spieler ist auf dem Server, aber ohne Session **eingefroren** (Warte modus). |
+| **Session-Freigabe** | Spielen/Bauen/Zeit/Modus — nur nach Start durch Betreuer. |
+
+Nach dem Start (Admin **Start** oder RFID) sendet Django **`SESSION_STARTED`** an die Bridge; der Mod fordert sofort `/api/luanti/session/join/` an (veraltete HTTP-Antworten werden ignoriert). Der Spieler sollte **ohne Reconnect** innerhalb von Sekundenbruchteilen freigegeben werden, sobald die Bridge erreichbar ist.
+
+**Praktische Folgen für Schulen / vor Ort:**
+
+- **Einfache, gut lesbare Passwörter** sind in Ordnung (z. B. kurz, pro Gruppe gleich). Geheimhaltung **vor Kindern im Raum** ist **kein** Sicherheitsziel — wer das Passwort kennt, kann ohne laufende Session trotzdem nicht sinnvoll spielen.
+- Passwort **dürfen** an Aushang, Whiteboard oder mündlich durch Erwachsene weitergegeben werden; Alternativ tippt ein Betreuer beim Luanti-Client mit.
+- Der **Luanti-GUI-Client speichert Passwörter in der Regel nicht dauerhaft** (Engine-Standard). Wiederholtes Eingeben ist lästig, aber **kein** Sicherheitsproblem. Stationen können das Passwort automatisch übergeben (`scripts/luanti_station/`).
+- Admin-Rechte zum **Anzeigen/Setzen** von Passwörtern dienen der **Operator-Trennung** (TOP, Rollen, Fern-Admin), nicht dem „Verstecken vor Kindern“.
 
 ### Accounts (Listen- und Detailansicht)
 
@@ -54,6 +72,26 @@ Unter **Luanti → Accounts**:
 - Nach Migrationen mit neuen Luanti-Rechten: `python manage.py setup_luanti_preset_groups` (wird von `utils/deploy_production.py` nach `migrate` mit ausgeführt).
 - Nach dem Anlegen/Neu-Setzen erscheint das Passwort **einmalig** in einer Admin-Meldung zum Kopieren; dauerhaft über „Anzeigen“ (AJAX).
 - Audit: Aktionen `reveal` / `reset` / `create` werden geloggt (`luanti.password`), **ohne** Passwort im Log.
+
+## Shop (Velos-Katalog)
+
+Unter **Luanti → Shop** (`/admin/luanti/shop-ops/`). Berechtigung: `luanti.access_luanti_shop` (Preset-Gruppe `luanti_admin` u. a.).
+
+**Ziel:** Fehlende Mineclonia-Items aus der Live-Registry in den Luanti-Shop übernehmen — ohne jeden Itemstring einzeln in „Shop-Artikel“ anzulegen.
+
+1. Luanti-Server und Bridge laufen → **Registry vom Server aktualisieren** (Dump von `core.registered_items` in `LuantiRegisteredItem`).
+2. Filter **Nur fehlende** (Standard): zeigt Itemstrings, die noch in keiner Shop-Kategorie vorkommen. Oben: Anzahl fehlender Einträge gesamt und pro Mod-Chip (`+N`).
+3. Optional Mod-Chip oder Suche (z. B. `mcl_fencing`) einschränken.
+4. **Ziel-Kategorie:** bestehende wählen oder **Neu anlegen** (Slug, Anzeigename, Sortierung).
+5. **Kaufpreis (Velos)** setzen, dann eine Massenaktion:
+   - **Auswahl in Shop übernehmen** — markierte Zeilen in der Liste (Anzeige-Limit 200);
+   - **Alle fehlenden von Mod … übernehmen** — serverseitig alle fehlenden des aktiven Mods (Limit `LUANTI_SHOP_BULK_MOD_MAX`, Default 500 in `settings.py`);
+   - **Alle fehlenden im Filter übernehmen** — wenn der aktuelle Filter ≤ Limit Treffer hat.
+6. Im Spiel `/mccshop` oder Shop-GUI stichprobenartig prüfen.
+
+Anzeigenamen neuer Artikel kommen aus der Registry-Beschreibung; Knoten (`kind=node`) erhalten standardmäßig Stack 64.
+
+Optional vorher: **Minecraft-Shop importieren** (spiegelt MC-Kategorien/Preise; deckt nicht alle Mineclonia-Mods ab).
 
 ## Bridge (Lua)
 

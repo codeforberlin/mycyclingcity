@@ -36,7 +36,10 @@ from luanti.models import (
     LuantiStation,
 )
 from luanti.services.arena import cart_command
-from luanti.services.bridge_connection import get_connected_server_ids
+from luanti.services.bridge_connection import (
+    get_connected_server_ids,
+    mark_all_bridges_disconnected,
+)
 from luanti.services.city import mark_preset_run, preset_event_payload
 from luanti.services.permissions import (
     account_in_operator_session_scope,
@@ -116,7 +119,9 @@ def _luanti_script_env() -> dict[str, str]:
         getattr(settings, "MCC_LUANTI_SERVER_PIDFILE", "") or ""
     )
     env["MCC_LUANTI_SERVER_LOG"] = str(getattr(settings, "MCC_LUANTI_SERVER_LOG", "") or "")
-    env["MCC_LUANTI_WORLD"] = str(getattr(settings, "MCC_LUANTI_WORLD", "world") or "world")
+    env["MCC_LUANTI_WORLD"] = str(
+        getattr(settings, "MCC_LUANTI_WORLD", "mycyclingcity") or "mycyclingcity"
+    )
     env["MCC_LUANTI_CONFIG"] = str(getattr(settings, "MCC_LUANTI_CONFIG", "") or "")
     env["MCC_LUANTI_BIN_NAME"] = str(
         getattr(settings, "MCC_LUANTI_BIN_NAME", "luantiserver") or "luantiserver"
@@ -174,7 +179,7 @@ def _get_luanti_server_status() -> dict:
         "output": status.get("output") or "",
         "error": status.get("error") or "",
         "dir": getattr(settings, "MCC_LUANTI_SERVER_DIR", ""),
-        "world": getattr(settings, "MCC_LUANTI_WORLD", "world"),
+        "world": getattr(settings, "MCC_LUANTI_WORLD", "mycyclingcity"),
         "log": getattr(settings, "MCC_LUANTI_SERVER_LOG", ""),
     }
 
@@ -183,15 +188,17 @@ def _get_luanti_server_status() -> dict:
 @staff_member_required
 def luanti_control(request):
     config = LuantiIntegrationConfig.get_config()
-    connected = get_connected_server_ids()
-    bridges = list(LuantiBridgeConnection.objects.order_by("server_id"))
     server_status = _get_luanti_server_status()
+    connected = get_connected_server_ids()
+    server_running = bool(server_status.get("running"))
+    bridges = list(LuantiBridgeConnection.objects.order_by("server_id"))
     context = {
         "title": _("Luanti Control"),
         "config": config,
         "connected_ids": connected,
         "bridges": bridges,
-        "bridge_online": bool(connected),
+        "bridge_online": server_running and bool(connected),
+        "server_running": server_running,
         "server_status": server_status,
         "luanti_log_key": "luanti_server",
     }
@@ -223,6 +230,8 @@ def luanti_action(request, action: str):
             }
         )
     if result.get("ok"):
+        if script_action == "stop":
+            mark_all_bridges_disconnected()
         return JsonResponse(
             {
                 "success": True,
@@ -717,7 +726,7 @@ def luanti_sessions(request):
                             duration_override = max(0, int(raw_dur))
                         except ValueError:
                             raise SessionError("invalid_duration")
-                start_session(
+                session = start_session(
                     account=account,
                     mode=mode,
                     source=LuantiSession.SOURCE_ADMIN,
@@ -734,6 +743,7 @@ def luanti_sessions(request):
                         "type": "SESSION_STARTED",
                         "player": account.login_name,
                         "mode": mode,
+                        "session_id": str(session.session_id),
                     }
                 )
                 messages.success(request, _("Session gestartet."))
@@ -943,6 +953,82 @@ def luanti_sessions(request):
     )
 
 
+def _luanti_shop_ops_redirect(request, **extra_get):
+    from urllib.parse import urlencode
+
+    params = {}
+    for key in ("q", "mod", "only_missing"):
+        val = request.POST.get(key) or request.GET.get(key)
+        if val is not None and str(val) != "":
+            params[key] = val
+    params.update({k: v for k, v in extra_get.items() if v is not None and v != ""})
+    base = reverse("admin:luanti_shop_ops")
+    if params:
+        return redirect(f"{base}?{urlencode(params)}")
+    return redirect("admin:luanti_shop_ops")
+
+
+def _luanti_shop_parse_price(request) -> int:
+    try:
+        return max(1, int(request.POST.get("buy_price_velos") or "1"))
+    except ValueError:
+        return 1
+
+
+def _luanti_shop_parse_category_target(request):
+    from luanti.services.shop_import_mc import normalize_shop_category_slug
+
+    mode = (request.POST.get("category_mode") or "existing").strip()
+    if mode == "new":
+        slug = normalize_shop_category_slug(request.POST.get("new_category_slug") or "")
+        name = (request.POST.get("new_category_name") or "").strip()
+        if not slug:
+            return None, _("Slug fehlt oder ungültig.")
+        if not name:
+            return None, _("Anzeigename für neue Kategorie fehlt.")
+        if LuantiShopCategory.objects.filter(slug=slug).exists():
+            return None, _("Kategorie-Slug existiert bereits — bitte „Bestehende Kategorie“ wählen.")
+        try:
+            sort_order = int(request.POST.get("new_category_sort_order") or "500")
+        except ValueError:
+            sort_order = 500
+        return {"slug": slug, "name": name, "sort_order": max(0, sort_order)}, None
+
+    slug = (request.POST.get("category_slug") or "").strip()
+    if not slug:
+        slug = (request.session.get("luanti_shop_last_category_slug") or "misc").strip()
+    if not slug:
+        slug = "misc"
+    return {"slug": slug, "name": "", "sort_order": 999}, None
+
+
+def _luanti_shop_report_bulk(request, bulk, category_slug: str, price: int) -> None:
+    messages.success(
+        request,
+        _(
+            "Bulk-Übernahme nach „%(cat)s“: %(created)s neu, "
+            "%(updated)s aktualisiert, %(skipped)s übersprungen "
+            "(Preis %(price)s Velos)."
+        )
+        % {
+            "cat": category_slug,
+            "created": bulk.created,
+            "updated": bulk.updated,
+            "skipped": bulk.skipped,
+            "price": max(1, price),
+        },
+    )
+    if bulk.invalid:
+        preview = ", ".join(bulk.invalid[:15])
+        more = len(bulk.invalid) - 15
+        suffix = _(" … (+%(n)s)") % {"n": more} if more > 0 else ""
+        messages.warning(
+            request,
+            _("Nicht in Registry / ungültig: %(list)s%(more)s")
+            % {"list": preview, "more": suffix},
+        )
+
+
 @user_passes_test(user_can_access_luanti_shop)
 @staff_member_required
 def luanti_shop_ops(request):
@@ -950,24 +1036,14 @@ def luanti_shop_ops(request):
     from luanti.services.shop_import_mc import (
         add_registry_item_to_shop,
         add_registry_items_bulk_to_shop,
+        count_missing_registry_items,
         import_minecraft_shop_catalog,
+        missing_registry_counts_by_mod,
+        registry_item_names_query,
     )
     from luanti.services.shop_registry import registry_count, request_registry_dump
 
-    def _ops_redirect(**extra_get):
-        from django.urls import reverse
-        from urllib.parse import urlencode
-
-        params = {}
-        for key in ("q", "mod", "only_missing"):
-            val = request.POST.get(key) or request.GET.get(key)
-            if val is not None and str(val) != "":
-                params[key] = val
-        params.update({k: v for k, v in extra_get.items() if v is not None and v != ""})
-        base = reverse("admin:luanti_shop_ops")
-        if params:
-            return redirect(f"{base}?{urlencode(params)}")
-        return redirect("admin:luanti_shop_ops")
+    bulk_cap = max(1, int(getattr(settings, "LUANTI_SHOP_BULK_MOD_MAX", 500)))
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -996,7 +1072,7 @@ def luanti_shop_ops(request):
                     _("Ohne Mapping (Auszug): %(list)s%(more)s")
                     % {"list": preview, "more": suffix},
                 )
-            return _ops_redirect()
+            return _luanti_shop_ops_redirect(request)
         if action == "refresh_registry":
             if request_registry_dump():
                 messages.success(
@@ -1008,70 +1084,142 @@ def luanti_shop_ops(request):
                 )
             else:
                 messages.warning(request, _("Bridge nicht erreichbar / kein Dump eingeordnet."))
-            return _ops_redirect()
+            return _luanti_shop_ops_redirect(request)
         if action == "add_from_registry":
             item_name = (request.POST.get("item_name") or "").strip()
-            category_slug = (request.POST.get("category_slug") or "misc").strip() or "misc"
             display_name = (request.POST.get("display_name") or "").strip()
-            try:
-                price = int(request.POST.get("buy_price_velos") or "1")
-            except ValueError:
-                price = 1
+            price = _luanti_shop_parse_price(request)
+            target, err = _luanti_shop_parse_category_target(request)
+            if err:
+                messages.error(request, err)
+                return _luanti_shop_ops_redirect(request)
             try:
                 add_registry_item_to_shop(
                     item_name=item_name,
-                    category_slug=category_slug,
+                    category_slug=target["slug"],
                     buy_price_velos=price,
                     display_name=display_name,
+                    category_name=target.get("name") or "",
+                    category_sort_order=target.get("sort_order", 999),
                 )
+                request.session["luanti_shop_last_category_slug"] = target["slug"]
                 messages.success(
                     request,
                     _("Artikel %(item)s zur Kategorie %(cat)s hinzugefügt.")
-                    % {"item": item_name, "cat": category_slug},
+                    % {"item": item_name, "cat": target["slug"]},
                 )
             except ValueError:
                 messages.error(request, _("Ungültiger Itemstring."))
-            return _ops_redirect()
-        if action == "bulk_add_from_registry":
-            names = [n.strip() for n in request.POST.getlist("item_names") if n.strip()]
-            category_slug = (request.POST.get("category_slug") or "misc").strip() or "misc"
-            try:
-                price = int(request.POST.get("buy_price_velos") or "1")
-            except ValueError:
-                price = 1
-            if not names:
-                messages.warning(request, _("Keine Items ausgewählt."))
-                return _ops_redirect()
+            return _luanti_shop_ops_redirect(request)
+
+        registry_bulk_actions = {
+            "bulk_add_from_registry",
+            "bulk_add_mod_missing",
+            "bulk_add_filter_missing",
+        }
+        if action in registry_bulk_actions:
+            price = _luanti_shop_parse_price(request)
+            target, err = _luanti_shop_parse_category_target(request)
+            if err:
+                messages.error(request, err)
+                return _luanti_shop_ops_redirect(request)
+
+            shop_names = set(LuantiShopItem.objects.values_list("item_name", flat=True))
+            mod_filter = (request.POST.get("mod") or "").strip()
+            q = (request.POST.get("q") or "").strip()
+            only_missing = (request.POST.get("only_missing") or "1") != "0"
+
+            if action == "bulk_add_from_registry":
+                names = [n.strip() for n in request.POST.getlist("item_names") if n.strip()]
+                if not names:
+                    messages.warning(request, _("Keine Items ausgewählt."))
+                    return _luanti_shop_ops_redirect(request)
+            elif action == "bulk_add_mod_missing":
+                if not mod_filter:
+                    messages.warning(request, _("Bitte zuerst einen Mod-Filter wählen."))
+                    return _luanti_shop_ops_redirect(request)
+                if not only_missing:
+                    messages.warning(
+                        request,
+                        _("Mod-Bulk nur sinnvoll mit „Nur fehlende“ — Filter aktivieren."),
+                    )
+                    return _luanti_shop_ops_redirect(request)
+                mod_total = len(
+                    registry_item_names_query(
+                        mod=mod_filter,
+                        q=q,
+                        only_missing=True,
+                        shop_names=shop_names,
+                        limit=None,
+                    )
+                )
+                if mod_total > bulk_cap:
+                    messages.error(
+                        request,
+                        _(
+                            "Mod „%(mod)s“ hat %(n)s fehlende Items (Limit %(cap)s). "
+                            "Suche verengen oder Limit in LUANTI_SHOP_BULK_MOD_MAX erhöhen."
+                        )
+                        % {"mod": mod_filter, "n": mod_total, "cap": bulk_cap},
+                    )
+                    return _luanti_shop_ops_redirect(request)
+                names = registry_item_names_query(
+                    mod=mod_filter,
+                    q=q,
+                    only_missing=True,
+                    shop_names=shop_names,
+                    limit=bulk_cap,
+                )
+                if not names:
+                    messages.warning(request, _("Keine fehlenden Items für diesen Mod."))
+                    return _luanti_shop_ops_redirect(request)
+            else:  # bulk_add_filter_missing
+                if not only_missing:
+                    messages.warning(
+                        request,
+                        _("Filter-Bulk erfordert „Nur fehlende“ im Filter."),
+                    )
+                    return _luanti_shop_ops_redirect(request)
+                filter_total = len(
+                    registry_item_names_query(
+                        mod=mod_filter,
+                        q=q,
+                        only_missing=True,
+                        shop_names=shop_names,
+                        limit=None,
+                    )
+                )
+                if filter_total == 0:
+                    messages.warning(request, _("Keine fehlenden Treffer für den aktuellen Filter."))
+                    return _luanti_shop_ops_redirect(request)
+                if filter_total > bulk_cap:
+                    messages.error(
+                        request,
+                        _(
+                            "Aktueller Filter: %(n)s fehlende Items (Limit %(cap)s). "
+                            "Mod wählen oder Suche verengen."
+                        )
+                        % {"n": filter_total, "cap": bulk_cap},
+                    )
+                    return _luanti_shop_ops_redirect(request)
+                names = registry_item_names_query(
+                    mod=mod_filter,
+                    q=q,
+                    only_missing=True,
+                    shop_names=shop_names,
+                    limit=bulk_cap,
+                )
+
             bulk = add_registry_items_bulk_to_shop(
                 item_names=names,
-                category_slug=category_slug,
+                category_slug=target["slug"],
                 buy_price_velos=price,
+                category_name=target.get("name") or "",
+                category_sort_order=target.get("sort_order", 999),
             )
-            messages.success(
-                request,
-                _(
-                    "Bulk-Übernahme nach „%(cat)s“: %(created)s neu, "
-                    "%(updated)s aktualisiert, %(skipped)s übersprungen "
-                    "(Preis %(price)s Velos)."
-                )
-                % {
-                    "cat": category_slug,
-                    "created": bulk.created,
-                    "updated": bulk.updated,
-                    "skipped": bulk.skipped,
-                    "price": max(1, price),
-                },
-            )
-            if bulk.invalid:
-                preview = ", ".join(bulk.invalid[:15])
-                more = len(bulk.invalid) - 15
-                suffix = _(" … (+%(n)s)") % {"n": more} if more > 0 else ""
-                messages.warning(
-                    request,
-                    _("Nicht in Registry / ungültig: %(list)s%(more)s")
-                    % {"list": preview, "more": suffix},
-                )
-            return _ops_redirect()
+            request.session["luanti_shop_last_category_slug"] = target["slug"]
+            _luanti_shop_report_bulk(request, bulk, target["slug"], price)
+            return _luanti_shop_ops_redirect(request)
 
     categories = LuantiShopCategory.objects.prefetch_related("items").order_by("sort_order")
     q = (request.GET.get("q") or "").strip()
@@ -1083,6 +1231,9 @@ def luanti_shop_ops(request):
         list_limit = 200
 
     shop_names = set(LuantiShopItem.objects.values_list("item_name", flat=True))
+    missing_total = count_missing_registry_items(shop_names=shop_names)
+    missing_by_mod = missing_registry_counts_by_mod(shop_names=shop_names)
+
     qs = LuantiRegisteredItem.objects.all()
     if mod_filter:
         qs = qs.filter(item_name__startswith=f"{mod_filter}:")
@@ -1100,7 +1251,6 @@ def luanti_shop_ops(request):
         for name, desc in registry_rows
     ]
 
-    # Distinct mods for filter dropdown (from full registry, cheap enough at ~2.5k).
     mod_names: list[str] = []
     seen_mods: set[str] = set()
     for name in LuantiRegisteredItem.objects.order_by("item_name").values_list(
@@ -1112,6 +1262,24 @@ def luanti_shop_ops(request):
         if mod not in seen_mods:
             seen_mods.add(mod)
             mod_names.append(mod)
+    registry_mods_with_missing = [
+        {"name": mod, "missing": missing_by_mod.get(mod, 0)} for mod in mod_names
+    ]
+
+    mod_missing_for_filter = (
+        missing_by_mod.get(mod_filter, 0) if mod_filter else 0
+    )
+    filter_bulk_allowed = (
+        only_missing
+        and matching_total > 0
+        and matching_total <= bulk_cap
+    )
+    mod_bulk_allowed = (
+        bool(mod_filter)
+        and only_missing
+        and mod_missing_for_filter > 0
+        and mod_missing_for_filter <= bulk_cap
+    )
 
     category_choices = list(
         LuantiShopCategory.objects.order_by("sort_order", "slug").values_list(
@@ -1119,6 +1287,7 @@ def luanti_shop_ops(request):
         )
     )
     category_slugs = [slug for slug, _name in category_choices]
+    last_category_slug = request.session.get("luanti_shop_last_category_slug") or ""
 
     return render(
         request,
@@ -1128,6 +1297,7 @@ def luanti_shop_ops(request):
             "categories": categories,
             "item_count": LuantiShopItem.objects.count(),
             "registry_count": registry_count(),
+            "missing_registry_total": missing_total,
             "registry_query": q,
             "registry_mod": mod_filter,
             "registry_only_missing": only_missing,
@@ -1135,8 +1305,15 @@ def luanti_shop_ops(request):
             "registry_matching_total": matching_total,
             "registry_hits": registry_hits,
             "registry_mods": mod_names,
+            "registry_mods_with_missing": registry_mods_with_missing,
+            "missing_by_mod": missing_by_mod,
             "category_slugs": category_slugs,
             "category_choices": category_choices,
+            "last_category_slug": last_category_slug,
+            "shop_bulk_cap": bulk_cap,
+            "mod_missing_count": mod_missing_for_filter,
+            "mod_bulk_allowed": mod_bulk_allowed,
+            "filter_bulk_allowed": filter_bulk_allowed,
             "shop_item_names": shop_names,
         },
     )

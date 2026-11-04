@@ -27,7 +27,7 @@ PRIVS_BY_MODE = {
     # Mineclonia: do NOT grant "creative" unless world creative_mode is on —
     # otherwise inventory code expects creative.lua (not loaded) and crashes the server.
     LuantiAccount.MODE_PLAY: ["shout", "fast", "interact"],
-    LuantiAccount.MODE_BUILD: ["shout", "fast", "interact", "fly"],
+    LuantiAccount.MODE_BUILD: ["shout", "fast", "interact", "fly", "painter"],
     LuantiAccount.MODE_WATCH: ["shout", "fly", "noclip"],
 }
 

@@ -477,6 +477,16 @@ def luanti_counter_scan(request):
             mode=mode,
             source=LuantiSession.SOURCE_RFID,
         )
+        from luanti.consumers import LuantiEventConsumer
+
+        LuantiEventConsumer.push_to_all_sync(
+            {
+                "type": "SESSION_STARTED",
+                "player": account.login_name,
+                "mode": session.mode,
+                "session_id": str(session.session_id),
+            }
+        )
     except SessionError as exc:
         if exc.code == "already_active":
             session = get_active_session(account.login_name)

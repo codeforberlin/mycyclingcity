@@ -37,6 +37,14 @@ def mark_bridge_disconnected(server_id: str) -> None:
     )
 
 
+def mark_all_bridges_disconnected() -> int:
+    """Mark every bridge row disconnected (e.g. after Luanti server process stop)."""
+    return LuantiBridgeConnection.objects.filter(is_connected=True).update(
+        is_connected=False,
+        last_seen_at=timezone.now(),
+    )
+
+
 def touch_bridge_connection(server_id: str) -> None:
     mark_bridge_connected(server_id)
 

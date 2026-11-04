@@ -128,6 +128,10 @@ end
 local waiting_poll = {} -- name -> true
 -- True from join until first apply_join_result (HTTP auth/join in flight).
 local pending_auth = {} -- name -> true
+-- Monotonic join request id per player (ignore stale async HTTP responses).
+local join_seq = {}
+-- Avoid repeating the waiting-room chat on every poll.
+local waiting_intro_sent = {}
 local clear_player_inventories -- forward decl (defined below)
 
 local function set_player_frozen(player, frozen)
@@ -177,6 +181,15 @@ local function lock_waiting_player(player, name)
     if player then
         set_player_frozen(player, true)
     end
+end
+
+local function bump_join_seq(name)
+    if not name or name == "" then
+        return 0
+    end
+    local n = (join_seq[name] or 0) + 1
+    join_seq[name] = n
+    return n
 end
 
 --- Force the client out of fly / free_move (build & watch grant "fly").
@@ -324,6 +337,8 @@ local function refresh_regions_from_api()
 end
 
 local apply_join_result -- forward decl (defined below)
+local handle_join_response -- forward decl (defined below)
+local request_session_join -- forward decl (defined below)
 
 local function parse_static_spawnpoint()
     local sp = core.settings:get("static_spawnpoint") or ""
@@ -565,8 +580,8 @@ local function apply_bridge_commands(commands)
                 core.log("action", "[mcc_bridge] city preset " .. tostring(cmd.slug or "?"))
             elseif t == "SESSION_STARTED" and cmd.player then
                 local pname = tostring(cmd.player)
-                -- Poll will apply session; keep locked until join returns wait=false.
                 lock_waiting_player(core.get_player_by_name(pname), pname)
+                request_session_join(pname, { granted_chat = true })
             elseif t == "SET_MODE" and cmd.player then
                 local pname = tostring(cmd.player)
                 local player = core.get_player_by_name(pname)
@@ -605,21 +620,12 @@ local function apply_bridge_commands(commands)
                         local mode_body = inventory_body_fields(player)
                         mode_body.player = pname
                         mode_body.mode = new_mode
+                        local mode_seq = bump_join_seq(pname)
                         api_post(
                             "/api/luanti/session/set-mode/",
                             mode_body,
                             function(ok, join)
-                                if ok and join and not join.wait then
-                                    apply_join_result(pname, join)
-                                elseif ok and join and join.wait then
-                                    lock_waiting_player(core.get_player_by_name(pname), pname)
-                                else
-                                    core.log(
-                                        "warning",
-                                        "[mcc_bridge] SET_MODE failed player=" .. pname
-                                    )
-                                    lock_waiting_player(core.get_player_by_name(pname), pname)
-                                end
+                                handle_join_response(pname, mode_seq, ok, join, {})
                             end
                         )
                     else
@@ -991,18 +997,25 @@ apply_join_result = function(name, join)
     if not player or not join then
         return
     end
+    if join.ok == false then
+        return
+    end
     if join.wait then
         lock_waiting_player(player, name)
         storage:set_string("paused_" .. name, "")
         clear_player_inventories(player)
-        core.chat_send_player(
-            name,
-            "Warte auf Session-Freigabe — Bewegung gesperrt. / Waiting for session — movement locked."
-        )
+        if not waiting_intro_sent[name] then
+            waiting_intro_sent[name] = true
+            core.chat_send_player(
+                name,
+                "Warte auf Session-Freigabe — Bewegung gesperrt. / Waiting for session — movement locked."
+            )
+        end
         core.set_player_privs(name, { shout = true })
         storage:set_string("mode_" .. name, "play")
         return
     end
+    waiting_intro_sent[name] = nil
     waiting_poll[name] = nil
     pending_auth[name] = nil
     local paused = join.paused == true or join.mode == "paused"
@@ -1065,20 +1078,54 @@ apply_join_result = function(name, join)
     end
 end
 
+handle_join_response = function(name, seq, ok, join, opts)
+    if not name or name == "" then
+        return
+    end
+    if seq ~= join_seq[name] then
+        return
+    end
+    opts = opts or {}
+    if not ok or not join then
+        lock_waiting_player(core.get_player_by_name(name), name)
+        return
+    end
+    if join.ok == false then
+        lock_waiting_player(core.get_player_by_name(name), name)
+        return
+    end
+    if join.wait then
+        apply_join_result(name, join)
+        return
+    end
+    apply_join_result(name, join)
+    if opts.granted_chat then
+        core.chat_send_player(name, "Session freigegeben! / Session granted!")
+    end
+end
+
+request_session_join = function(name, opts)
+    if not name or name == "" then
+        return
+    end
+    if not core.get_player_by_name(name) then
+        return
+    end
+    local seq = bump_join_seq(name)
+    api_post("/api/luanti/session/join/", { player = name }, function(ok, join)
+        handle_join_response(name, seq, ok, join, opts)
+    end)
+end
+
 local function poll_waiting_sessions()
     for name, _ in pairs(waiting_poll) do
         if not core.get_player_by_name(name) then
             waiting_poll[name] = nil
             pending_auth[name] = nil
+            join_seq[name] = nil
+            waiting_intro_sent[name] = nil
         else
-            api_post("/api/luanti/session/join/", { player = name }, function(ok, join)
-                if ok and join and not join.wait then
-                    apply_join_result(name, join)
-                    core.chat_send_player(name, "Session freigegeben! / Session granted!")
-                elseif ok and join and join.wait then
-                    lock_waiting_player(core.get_player_by_name(name), name)
-                end
-            end)
+            request_session_join(name, { granted_chat = true })
         end
     end
     core.after(5, poll_waiting_sessions)
@@ -1225,14 +1272,7 @@ core.register_on_joinplayer(function(player)
             core.kick_player(name, mcc_auth.MSG_NOT_AUTHORIZED)
             return
         end
-        api_post("/api/luanti/session/join/", { player = name }, function(ok2, join)
-            if not ok2 or not join then
-                -- Stay frozen; keep polling via waiting_poll.
-                lock_waiting_player(core.get_player_by_name(name), name)
-                return
-            end
-            apply_join_result(name, join)
-        end)
+        request_session_join(name)
     end)
 end)
 
@@ -1240,6 +1280,8 @@ core.register_on_leaveplayer(function(player)
     local name = player:get_player_name()
     waiting_poll[name] = nil
     pending_auth[name] = nil
+    join_seq[name] = nil
+    waiting_intro_sent[name] = nil
     if region_outline and region_outline.clear_player then
         region_outline.clear_player(name)
     end

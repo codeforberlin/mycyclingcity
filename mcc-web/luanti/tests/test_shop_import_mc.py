@@ -181,3 +181,99 @@ def test_shop_ops_bulk_add_view(client, django_user_model):
         item_name="mesecons_noteblock:noteblock", buy_price_velos=7
     ).exists()
     assert LuantiShopItem.objects.filter(item_name="mcl_core:stone").exists()
+
+
+@pytest.mark.django_db
+def test_bulk_add_uses_registry_description_and_node_stack():
+    from luanti.services.shop_import_mc import add_registry_items_bulk_to_shop
+
+    replace_registry_items(
+        [{"name": "mcl_core:dirt", "description": "Dirt block", "kind": "node"}],
+        clear=True,
+    )
+    add_registry_items_bulk_to_shop(
+        item_names=["mcl_core:dirt"],
+        category_slug="blocks",
+        buy_price_velos=4,
+        category_name="Blöcke",
+    )
+    item = LuantiShopItem.objects.get(item_name="mcl_core:dirt")
+    assert item.display_name == "Dirt block"
+    assert item.stack_size == 64
+    assert item.category.slug == "blocks"
+    assert item.category.name == "Blöcke"
+
+
+@pytest.mark.django_db
+def test_registry_item_names_query_and_missing_counts():
+    from luanti.services.shop_import_mc import (
+        count_missing_registry_items,
+        registry_item_names_query,
+    )
+
+    replace_registry_items(
+        [
+            {"name": "mcl_fencing:fence_oak", "kind": "node"},
+            {"name": "mcl_fencing:gate_oak", "kind": "node"},
+            {"name": "mcl_core:stone", "kind": "node"},
+        ],
+        clear=True,
+    )
+    LuantiShopItem.objects.create(
+        category=LuantiShopCategory.objects.create(slug="misc", name="Misc"),
+        item_name="mcl_core:stone",
+        buy_price_velos=1,
+        stack_size=1,
+    )
+    shop_names = set(LuantiShopItem.objects.values_list("item_name", flat=True))
+    assert count_missing_registry_items(shop_names=shop_names) == 2
+    names = registry_item_names_query(
+        mod="mcl_fencing",
+        only_missing=True,
+        shop_names=shop_names,
+    )
+    assert names == ["mcl_fencing:fence_oak", "mcl_fencing:gate_oak"]
+
+
+@pytest.mark.django_db
+def test_shop_ops_mod_bulk_and_new_category(client, django_user_model):
+    from django.contrib.auth.models import Permission
+    from django.urls import reverse
+
+    user = django_user_model.objects.create_user(
+        username="shop_op2", password="x", is_staff=True, is_active=True
+    )
+    perm = Permission.objects.get(
+        codename="access_luanti_shop", content_type__app_label="luanti"
+    )
+    user.user_permissions.add(perm)
+    client.force_login(user)
+
+    replace_registry_items(
+        [
+            {"name": "mcl_fencing:fence_oak", "description": "Oak Fence", "kind": "node"},
+            {"name": "mcl_fencing:gate_oak", "description": "Oak Gate", "kind": "node"},
+        ],
+        clear=True,
+    )
+    url = reverse("admin:luanti_shop_ops")
+    resp = client.post(
+        url,
+        {
+            "action": "bulk_add_mod_missing",
+            "mod": "mcl_fencing",
+            "category_mode": "new",
+            "new_category_slug": "fences",
+            "new_category_name": "Zäune",
+            "new_category_sort_order": "40",
+            "buy_price_velos": "6",
+            "only_missing": "1",
+        },
+        follow=True,
+    )
+    assert resp.status_code == 200
+    assert LuantiShopCategory.objects.filter(slug="fences", name="Zäune").exists()
+    assert LuantiShopItem.objects.filter(category__slug="fences").count() == 2
+    gate = LuantiShopItem.objects.get(item_name="mcl_fencing:gate_oak")
+    assert gate.display_name == "Oak Gate"
+    assert gate.buy_price_velos == 6
