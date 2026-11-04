@@ -106,6 +106,12 @@
   .cat-target-block { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; }
   .cat-target-block > div { min-width: 10rem; flex: 1 1 12rem; max-width: 22rem; }
   .bulk-extra-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.65rem; }
+  #missing-de-labels { scroll-margin-top: 5.5rem; }
+  a.missing-de-labels-jump { font-weight: 700; }
+  .shop-icon-ok { color: #15803d; font-size: 0.78rem; font-weight: 600; }
+  .shop-icon-uncertain { color: #b45309; font-size: 0.78rem; font-weight: 600; }
+  .shop-icon-missing { color: #b91c1c; font-size: 0.78rem; font-weight: 600; }
+  .shop-icon-legend { font-size: 0.82rem; margin: 0.35rem 0 0.75rem; }
 </style>
 <script>
 (function () {
@@ -158,6 +164,20 @@
       if (ev.target && ev.target.name === 'item_names') refreshCount();
     });
     refreshCount();
+
+    document.querySelectorAll('a.missing-de-labels-jump').forEach(function (link) {
+      link.addEventListener('click', function (ev) {
+        var target = document.getElementById('missing-de-labels');
+        if (!target) {
+          return;
+        }
+        ev.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', '#missing-de-labels');
+        }
+      });
+    });
   });
 })();
 </script>
@@ -166,10 +186,140 @@
 {% block content %}
 <div class="luanti-admin">
   <p class="muted">
-    {% blocktrans with items=item_count reg=registry_count missing=missing_registry_total %}
-    Katalog: {{ items }} Artikel · Registry: {{ reg }} · noch {{ missing }} fehlend im Shop.
-    {% endblocktrans %}
+    Katalog: {{ item_count }} Artikel ({{ de_labels_nonempty }} mit DE-Anzeigename{% if de_labels_missing %}, <a href="#missing-de-labels" class="missing-de-labels-jump">{{ de_labels_missing }} ohne</a>{% else %}, {{ de_labels_missing }} ohne{% endif %})
+    · Registry: {{ registry_count }} · noch {{ missing_registry_total }} fehlend im Shop.
   </p>
+
+  {% if de_labels_missing %}
+  <div class="card" style="margin-bottom:16px;" id="missing-de-labels">
+    <h3>{% trans "Artikel ohne DE-Anzeigename" %}</h3>
+    <p class="muted">
+      {% blocktrans with n=de_labels_missing %}
+      {{ n }} Shop-Artikel ohne gültiges DE-Label — direkt bearbeiten (Inline „Shop-Artikel-Übersetzungen“, Sprache de).
+      {% endblocktrans %}
+    </p>
+    {% if shop_missing_de_labels %}
+    <div class="reg-bulk-list" style="max-height:18rem;">
+      {% for row in shop_missing_de_labels %}
+      <div style="margin:0.35rem 0;font-size:0.88rem;display:flex;flex-wrap:wrap;gap:0.35rem 0.75rem;align-items:baseline;">
+        <a class="button" style="padding:0.25rem 0.55rem;font-size:0.82rem;" href="{% url 'admin:luanti_luantishopitem_change' row.item_id %}">{% trans "Bearbeiten" %}</a>
+        <code>{{ row.item_name }}</code>
+        <span class="muted">{{ row.category_name }} ({{ row.category_slug }})</span>
+        {% if row.de_label_stored %}
+        <span class="muted">{% trans "DE leer/Alt:" %} „{{ row.de_label_stored|truncatechars:40 }}“</span>
+        {% elif row.legacy_display_name %}
+        <span class="muted">{% trans "Legacy:" %} {{ row.legacy_display_name|truncatechars:40 }}</span>
+        {% endif %}
+        {% if row.registry_plain %}
+        <span class="muted">{% trans "Registry-Vorschlag:" %} {{ row.registry_plain|truncatechars:48 }}</span>
+        {% endif %}
+        <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+        {% if not row.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">{% trans "Liste momentan leer — Seite neu laden oder Support prüfen (Zähler und Liste sollten übereinstimmen)." %}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Artikelnamen (DE / EN)" %}</h3>
+    <p class="muted">
+      {% trans "Empfohlen einmalig: DE aus Mineclonia-Locales (echte deutsche Namen), danach DE aus Registry für Lücken. EN invertiert dieselben *.de.tr-Dateien. Im Spiel steuert die Client-Sprache die Anzeige via Katalog-API." %}
+    </p>
+    <form method="post" style="display:inline-block;margin-right:8px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="import_labels_de_locales">
+      <input type="hidden" name="shop_q" value="{{ shop_query }}">
+      <button type="submit"{% if not locale_root_configured %} disabled title="MCC_LUANTI_LOCALE_ROOT"{% endif %}>
+        {% trans "DE-Labels aus Mineclonia-Locales" %}
+      </button>
+    </form>
+    <form method="post" style="display:inline-block;margin-right:8px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="sync_labels_de">
+      <input type="hidden" name="shop_q" value="{{ shop_query }}">
+      <button type="submit">{% trans "DE-Labels aus Registry" %}</button>
+    </form>
+    <form method="post" style="display:inline-block;margin-right:8px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="repair_labels_de">
+      <input type="hidden" name="shop_q" value="{{ shop_query }}">
+      <button type="submit">{% trans "DE-Labels reparieren (Markup → Locales)" %}</button>
+    </form>
+    <form method="post" style="display:inline-block;margin-right:8px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="sync_category_labels">
+      <button type="submit">{% trans "Kategorie-Titel DE/EN (Slug-Vorschläge)" %}</button>
+    </form>
+    <form method="post" style="display:inline-block;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="import_labels_en">
+      <button type="submit"{% if not locale_root_configured %} disabled title="MCC_LUANTI_LOCALE_ROOT"{% endif %}>
+        {% trans "EN-Labels aus Mineclonia-Locales" %}
+      </button>
+    </form>
+    {% if not locale_root_configured %}
+    <p class="muted">{% trans "EN-Import: MCC_LUANTI_LOCALE_ROOT in settings.py / .env setzen (Mods-Verzeichnis mit locale/)." %}</p>
+    {% endif %}
+    <p class="shop-icon-legend muted">
+      {% trans "Shop-Icon-Hinweis (nach „Registry aktualisieren“):" %}
+      <span class="shop-icon-ok">{% trans "wahrscheinlich OK" %}</span> ·
+      <span class="shop-icon-uncertain">{% trans "unsicher (Mesh/ohne Inventarbild)" %}</span> ·
+      <span class="shop-icon-missing">{% trans "fehlt (nicht in Registry)" %}</span>
+      — {% trans "Stichprobe im Spiel (/mccshop) bleibt maßgeblich." %}
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Shop-Artikel suchen" %}</h3>
+    <p class="muted">
+      {% trans "Wie im Spiel (/mccshop): z. B. „holz“ findet alle Artikel mit Holz im Namen oder in der Holz-Kategorie — unabhängig vom Registry-Filter oben." %}
+    </p>
+    <form method="get" class="reg-bulk-toolbar">
+      <input type="hidden" name="q" value="{{ registry_query }}">
+      <input type="hidden" name="mod" value="{{ registry_mod }}">
+      <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
+      <div>
+        <label for="shop-q">{% trans "Shop-Suche" %}</label>
+        <input id="shop-q" name="shop_q" type="search" value="{{ shop_query }}" placeholder="holz / birke / eichen" autocomplete="off">
+      </div>
+      <div style="flex:0 0 auto; min-width:auto;">
+        <button type="submit">{% trans "Shop durchsuchen" %}</button>
+        {% if shop_query %}
+        <a href="?q={{ registry_query|urlencode }}&amp;mod={{ registry_mod|urlencode }}&amp;only_missing={% if registry_only_missing %}1{% else %}0{% endif %}" style="margin-left:0.5rem;">{% trans "Shop-Filter löschen" %}</a>
+        {% endif %}
+      </div>
+    </form>
+    {% if shop_query %}
+    <p class="muted">
+      {% blocktrans with n=shop_search_hits|length q=shop_query %}
+      {{ n }} Treffer für „{{ q }}“ (max. 400).
+      {% endblocktrans %}
+    </p>
+    {% if shop_search_hits %}
+    <div class="reg-bulk-list" style="max-height:16rem;">
+      {% for row in shop_search_hits %}
+      <div style="margin:0.25rem 0;font-size:0.88rem;">
+        <strong>{{ row.label_de }}</strong>
+        {% if row.label_en and row.label_en != row.label_de %}
+        <span class="muted">/ {{ row.label_en }}</span>
+        {% endif %}
+        — <code>{{ row.item_name }}</code>
+        — <span class="muted">{{ row.category_name }} ({{ row.category_slug }})</span>
+        — {{ row.buy_price_velos }} {% trans "Velos" %}
+        <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+        {% if not row.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">{% trans "Keine Shop-Artikel passen zum Suchtext." %}</p>
+    {% endif %}
+    {% endif %}
+  </div>
 
   <div class="card" style="margin-bottom:16px;">
     <h3>{% trans "Import aus Minecraft-Shop" %}</h3>
@@ -274,6 +424,7 @@
             <code>{{ row.item_name }}</code>
             {% if row.in_shop %}<span class="in-shop">({% trans "schon im Shop" %})</span>{% endif %}
             {% if row.description %}<div class="desc">{{ row.description }}</div>{% endif %}
+            <div class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</div>
           </span>
         </label>
         {% empty %}
@@ -363,18 +514,22 @@
     {% endif %}
   </div>
 
-  <p class="muted">{% trans "Verwaltung auch unter Shop-Kategorien / Shop-Artikel im Admin." %}</p>
+  <p class="muted">{% trans "Verwaltung auch unter Shop-Kategorien / Shop-Artikel im Admin." %}{% if shop_query %} {% trans "Unten nur Kategorien mit Treffern zur Shop-Suche." %}{% endif %}</p>
   <div class="card-grid">
-    {% for cat in categories %}
+    {% for block in shop_categories_admin %}
       <div class="card">
-        <h3>{{ cat.name }} <span class="muted">({{ cat.slug }})</span></h3>
+        <h3>{{ block.category.name }} <span class="muted">({{ block.category.slug }})</span></h3>
         <ul>
-          {% for item in cat.items.all %}
+          {% for row in block.items %}
             <li>
-              {{ item.display_name|default:item.item_name }}
-              — <code>{{ item.item_name }}</code>
-              — {{ item.buy_price_velos }} {% trans "Velos" %}
-              {% if not item.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
+              <strong>{{ row.label_de }}</strong>
+              {% if row.label_en and row.label_en != row.label_de %}
+              <span class="muted">/ {{ row.label_en }}</span>
+              {% endif %}
+              — <code>{{ row.item.item_name }}</code>
+              — {{ row.item.buy_price_velos }} {% trans "Velos" %}
+              <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+              {% if not row.item.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
             </li>
           {% empty %}
             <li class="muted">{% trans "Keine Artikel" %}</li>
@@ -382,7 +537,7 @@
         </ul>
       </div>
     {% empty %}
-      <p class="muted">{% trans "Noch keine Kategorien — Registry-Bulk oder Minecraft-Import." %}</p>
+      <p class="muted">{% if shop_query %}{% trans "Keine Kategorien mit Treffern." %}{% else %}{% trans "Noch keine Kategorien — Registry-Bulk oder Minecraft-Import." %}{% endif %}</p>
     {% endfor %}
   </div>
 </div>

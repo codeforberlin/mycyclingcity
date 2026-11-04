@@ -671,10 +671,42 @@ local function apply_bridge_commands(commands)
                             kind = "tool"
                         end
                         local desc = ""
-                        if type(def) == "table" and def.description then
-                            desc = tostring(def.description):gsub("\n", " "):sub(1, 200)
+                        local drawtype = ""
+                        local inventory_image = ""
+                        local wield_image = ""
+                        local not_in_creative = false
+                        if type(def) == "table" then
+                            if def.description then
+                                desc = tostring(def.description):gsub("\n", " "):sub(1, 200)
+                            end
+                            if def.drawtype then
+                                drawtype = tostring(def.drawtype):sub(1, 32)
+                            end
+                            if def.inventory_image then
+                                inventory_image = tostring(def.inventory_image):sub(1, 128)
+                            end
+                            if def.wield_image then
+                                wield_image = tostring(def.wield_image):sub(1, 128)
+                            end
+                            local groups = def.groups
+                            if type(groups) == "table" then
+                                local nic = groups.not_in_creative_inventory
+                                if type(nic) == "number" and nic >= 1 then
+                                    not_in_creative = true
+                                elseif nic == true then
+                                    not_in_creative = true
+                                end
+                            end
                         end
-                        batch[#batch + 1] = { name = name, description = desc, kind = kind }
+                        batch[#batch + 1] = {
+                            name = name,
+                            description = desc,
+                            kind = kind,
+                            drawtype = drawtype,
+                            inventory_image = inventory_image,
+                            wield_image = wield_image,
+                            not_in_creative_inventory = not_in_creative,
+                        }
                         total = total + 1
                         if #batch >= batch_size then
                             flush()
@@ -1237,7 +1269,10 @@ core.register_on_mods_loaded(function()
         core.after(20, regions_loop)
     end)
     core.after(5, poll_waiting_sessions)
-    core.log("action", "[mcc_bridge] loaded server_id=" .. CFG.server_id)
+    core.log(
+        "action",
+        "[mcc_bridge] loaded server_id=" .. CFG.server_id .. " mod_version=4 shop_ui=hardcoded_de"
+    )
 end)
 
 -- Only Django-provisioned accounts may connect (see auth_handler.lua).

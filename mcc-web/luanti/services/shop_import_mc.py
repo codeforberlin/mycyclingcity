@@ -12,6 +12,13 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from luanti.models import LuantiRegisteredItem, LuantiShopCategory, LuantiShopItem
+from luanti.services.shop_labels import (
+    DEFAULT_LANG,
+    set_category_label,
+    set_item_label,
+    suggested_category_label_de,
+    suggested_category_label_en,
+)
 from luanti.services.material_map import resolve_material
 from luanti.services.shop_registry import registry_name_set
 from minecraft.models import MinecraftShopCategory
@@ -46,7 +53,7 @@ def get_or_create_shop_category(
     """Resolve shop category by slug; create with display name when missing."""
     cat_slug = normalize_shop_category_slug(slug) or "misc"
     display = (name or "").strip() or cat_slug.replace("_", " ").title()
-    return LuantiShopCategory.objects.get_or_create(
+    cat, created = LuantiShopCategory.objects.get_or_create(
         slug=cat_slug,
         defaults={
             "name": display[:64],
@@ -54,6 +61,17 @@ def get_or_create_shop_category(
             "enabled": enabled,
         },
     )
+    if created:
+        de_name = display[:64] or suggested_category_label_de(cat)
+        set_category_label(cat, "de", de_name, overwrite=True)
+        set_category_label(
+            cat,
+            "en",
+            suggested_category_label_en(cat),
+            overwrite=True,
+            sync_legacy_de=False,
+        )
+    return cat, created
 
 
 def default_stack_size_for_kind(kind: str) -> int:
@@ -143,6 +161,13 @@ def import_minecraft_shop_catalog(*, only_enabled: bool = True) -> McShopImportR
         )
         if created:
             result.categories_created += 1
+            set_category_label(lu_cat, "de", mc_cat.name or suggested_category_label_de(lu_cat))
+            set_category_label(
+                lu_cat,
+                "en",
+                mc_cat.name or suggested_category_label_en(lu_cat),
+                sync_legacy_de=False,
+            )
         else:
             lu_cat.name = mc_cat.name
             lu_cat.sort_order = mc_cat.sort_order
@@ -216,9 +241,11 @@ def add_registry_item_to_shop(
         existing.buy_price_velos = price
         existing.enabled = True
         existing.save(update_fields=["buy_price_velos", "enabled"])
+        if label:
+            set_item_label(existing, DEFAULT_LANG, label, overwrite=False)
         return existing
 
-    return LuantiShopItem.objects.create(
+    obj = LuantiShopItem.objects.create(
         category=cat,
         item_name=item_name,
         display_name=label,
@@ -226,6 +253,9 @@ def add_registry_item_to_shop(
         stack_size=max(1, int(stack)),
         enabled=True,
     )
+    if label:
+        set_item_label(obj, DEFAULT_LANG, label, overwrite=True)
+    return obj
 
 
 @dataclass
@@ -290,10 +320,12 @@ def add_registry_items_bulk_to_shop(
             existing.buy_price_velos = price
             existing.enabled = True
             existing.save(update_fields=["buy_price_velos", "enabled"])
+            if label:
+                set_item_label(existing, DEFAULT_LANG, label, overwrite=False)
             result.updated += 1
             continue
 
-        LuantiShopItem.objects.create(
+        obj = LuantiShopItem.objects.create(
             category=cat,
             item_name=name,
             display_name=label,
@@ -301,5 +333,7 @@ def add_registry_items_bulk_to_shop(
             stack_size=stack,
             enabled=True,
         )
+        if label:
+            set_item_label(obj, DEFAULT_LANG, label, overwrite=True)
         result.created += 1
     return result

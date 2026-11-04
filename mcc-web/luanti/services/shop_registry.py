@@ -43,9 +43,21 @@ def replace_registry_items(
             continue
         desc = str(raw.get("description") or "")[:256]
         kind = str(raw.get("kind") or "item")[:16]
+        drawtype = str(raw.get("drawtype") or "")[:32]
+        inventory_image = str(raw.get("inventory_image") or "")[:128]
+        wield_image = str(raw.get("wield_image") or "")[:128]
+        not_in_creative = bool(raw.get("not_in_creative_inventory"))
         LuantiRegisteredItem.objects.update_or_create(
             item_name=name,
-            defaults={"description": desc, "kind": kind, "updated_at": now},
+            defaults={
+                "description": desc,
+                "kind": kind,
+                "drawtype": drawtype,
+                "inventory_image": inventory_image,
+                "wield_image": wield_image,
+                "not_in_creative_inventory": not_in_creative,
+                "updated_at": now,
+            },
         )
         count += 1
     return count

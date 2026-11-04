@@ -17,7 +17,9 @@ from luanti.models import (
     LuantiRegisteredItem,
     LuantiSession,
     LuantiShopCategory,
+    LuantiShopCategoryLabel,
     LuantiShopItem,
+    LuantiShopItemLabel,
     LuantiShopPurchaseCredit,
     LuantiShopTransaction,
     LuantiStation,
@@ -115,11 +117,23 @@ class LuantiShopItemInline(admin.TabularInline):
     extra = 0
 
 
+class LuantiShopItemLabelInline(admin.TabularInline):
+    model = LuantiShopItemLabel
+    extra = 0
+    fields = ("language_code", "display_name")
+
+
+class LuantiShopCategoryLabelInline(admin.TabularInline):
+    model = LuantiShopCategoryLabel
+    extra = 0
+    fields = ("language_code", "display_name")
+
+
 @admin.register(LuantiShopCategory)
 class LuantiShopCategoryAdmin(admin.ModelAdmin):
     list_display = ("slug", "name", "enabled", "sort_order")
-    search_fields = ("name", "slug")
-    inlines = [LuantiShopItemInline]
+    search_fields = ("name", "slug", "labels__display_name")
+    inlines = [LuantiShopCategoryLabelInline, LuantiShopItemInline]
 
 
 @admin.register(LuantiShopItem)
@@ -133,9 +147,11 @@ class LuantiShopItemAdmin(admin.ModelAdmin):
         "sort_order",
     )
     list_filter = ("enabled", "category")
+    inlines = [LuantiShopItemLabelInline]
     search_fields = (
         "item_name",
         "display_name",
+        "labels__display_name",
         "category__name",
         "category__slug",
     )

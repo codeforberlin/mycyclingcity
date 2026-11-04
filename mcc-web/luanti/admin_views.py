@@ -957,7 +957,7 @@ def _luanti_shop_ops_redirect(request, **extra_get):
     from urllib.parse import urlencode
 
     params = {}
-    for key in ("q", "mod", "only_missing"):
+    for key in ("q", "mod", "only_missing", "shop_q"):
         val = request.POST.get(key) or request.GET.get(key)
         if val is not None and str(val) != "":
             params[key] = val
@@ -1041,6 +1041,7 @@ def luanti_shop_ops(request):
         missing_registry_counts_by_mod,
         registry_item_names_query,
     )
+    from luanti.services.shop_labels import locale_root_configured
     from luanti.services.shop_registry import registry_count, request_registry_dump
 
     bulk_cap = max(1, int(getattr(settings, "LUANTI_SHOP_BULK_MOD_MAX", 500)))
@@ -1084,6 +1085,152 @@ def luanti_shop_ops(request):
                 )
             else:
                 messages.warning(request, _("Bridge nicht erreichbar / kein Dump eingeordnet."))
+            return _luanti_shop_ops_redirect(request)
+        if action == "sync_labels_de":
+            from luanti.services.shop_labels import sync_labels_from_registry
+
+            overwrite = (request.POST.get("overwrite") or "") == "1"
+            result = sync_labels_from_registry(
+                language_code="de",
+                overwrite=overwrite,
+                only_empty=not overwrite,
+            )
+            messages.success(
+                request,
+                _(
+                    "DE-Labels aus Registry: %(created)s neu, %(updated)s aktualisiert, "
+                    "%(skipped)s übersprungen (%(miss)s ohne Registry-Treffer)."
+                )
+                % {
+                    "created": result.created,
+                    "updated": result.updated,
+                    "skipped": result.skipped,
+                    "miss": result.missing_registry,
+                },
+            )
+            return _luanti_shop_ops_redirect(request)
+        if action == "import_labels_de_locales":
+            from luanti.services.shop_labels import import_german_labels_from_locales
+
+            overwrite = (request.POST.get("overwrite") or "") == "1"
+            result = import_german_labels_from_locales(
+                overwrite=overwrite,
+                only_empty=not overwrite,
+            )
+            if "locale_root_missing" in result.errors:
+                messages.error(
+                    request,
+                    _(
+                        "DE-Locale-Import: MCC_LUANTI_LOCALE_ROOT fehlt oder ungültig "
+                        "(Mineclonia-Mod-Pfad mit locale/*.de.tr)."
+                    ),
+                )
+            elif "no_de_tr_files" in result.errors:
+                messages.warning(
+                    request, _("DE-Locale-Import: keine *.de.tr unter Locale-Root gefunden.")
+                )
+            else:
+                messages.success(
+                    request,
+                    _(
+                        "DE-Labels aus Mineclonia-Locales: %(created)s neu, %(updated)s aktualisiert, "
+                        "%(skipped)s übersprungen (ohne EN-Quelle: %(nos)s, "
+                        "ohne DE-Mapping: %(nom)s)."
+                    )
+                    % {
+                        "created": result.created,
+                        "updated": result.updated,
+                        "skipped": result.skipped,
+                        "nos": result.no_en_source,
+                        "nom": result.no_de_match,
+                    },
+                )
+            return _luanti_shop_ops_redirect(request)
+        if action == "repair_labels_de":
+            from luanti.services.shop_labels import repair_de_shop_labels
+
+            repair_result = repair_de_shop_labels(apply_locales=True)
+            if "locale_root_missing" in repair_result.errors:
+                messages.warning(
+                    request,
+                    _(
+                        "DE-Reparatur: Markup bereinigt; Locales fehlen "
+                        "(MCC_LUANTI_LOCALE_ROOT) — nur Plain-Text aus Beschreibung."
+                    ),
+                )
+            elif "no_de_tr_files" in repair_result.errors:
+                messages.warning(
+                    request,
+                    _("DE-Reparatur: keine *.de.tr — nur Markup bereinigt."),
+                )
+            messages.success(
+                request,
+                _(
+                    "DE-Labels repariert: %(updated)s aktualisiert, "
+                    "%(same)s unverändert, %(empty)s ohne Titel."
+                )
+                % {
+                    "updated": repair_result.updated,
+                    "same": repair_result.unchanged,
+                    "empty": repair_result.no_plain_title,
+                },
+            )
+            return _luanti_shop_ops_redirect(request)
+        if action == "import_labels_en":
+            from luanti.services.shop_labels import import_english_labels_from_locales
+
+            overwrite = (request.POST.get("overwrite") or "") == "1"
+            result = import_english_labels_from_locales(
+                overwrite=overwrite,
+                only_empty=not overwrite,
+            )
+            if "locale_root_missing" in result.errors:
+                messages.error(
+                    request,
+                    _(
+                        "EN-Import: MCC_LUANTI_LOCALE_ROOT fehlt oder ungültig "
+                        "(Mineclonia-Mod-Pfad mit locale/*.de.tr)."
+                    ),
+                )
+            elif "no_de_tr_files" in result.errors:
+                messages.warning(request, _("EN-Import: keine *.de.tr unter Locale-Root gefunden."))
+            else:
+                messages.success(
+                    request,
+                    _(
+                        "EN-Labels: %(created)s neu, %(updated)s aktualisiert, "
+                        "%(skipped)s übersprungen (ohne DE-Text: %(node)s, "
+                        "ohne EN-Mapping: %(nom)s)."
+                    )
+                    % {
+                        "created": result.created,
+                        "updated": result.updated,
+                        "skipped": result.skipped,
+                        "node": result.no_de_text,
+                        "nom": result.no_en_match,
+                    },
+                )
+            return _luanti_shop_ops_redirect(request)
+        if action == "sync_category_labels":
+            from luanti.services.shop_labels import sync_category_labels_defaults
+
+            overwrite = (request.POST.get("overwrite") or "") == "1"
+            result = sync_category_labels_defaults(
+                overwrite=overwrite,
+                only_empty=not overwrite,
+            )
+            messages.success(
+                request,
+                _(
+                    "Kategorie-Titel (DE/EN): %(created)s neu, %(updated)s aktualisiert, "
+                    "%(skipped)s übersprungen."
+                )
+                % {
+                    "created": result.created,
+                    "updated": result.updated,
+                    "skipped": result.skipped,
+                },
+            )
             return _luanti_shop_ops_redirect(request)
         if action == "add_from_registry":
             item_name = (request.POST.get("item_name") or "").strip()
@@ -1221,7 +1368,34 @@ def luanti_shop_ops(request):
             _luanti_shop_report_bulk(request, bulk, target["slug"], price)
             return _luanti_shop_ops_redirect(request)
 
-    categories = LuantiShopCategory.objects.prefetch_related("items").order_by("sort_order")
+    from luanti.services.shop_labels import (
+        build_shop_categories_for_admin,
+        shop_de_label_stats,
+        shop_item_search_hits,
+        shop_items_missing_de_label,
+    )
+
+    shop_q = (request.GET.get("shop_q") or "").strip()
+    categories_qs = LuantiShopCategory.objects.prefetch_related(
+        "labels", "items__labels"
+    ).order_by("sort_order")
+    shop_categories_admin = build_shop_categories_for_admin(categories_qs, shop_q=shop_q)
+    label_stats = shop_de_label_stats()
+    from luanti.services.shop_icon import icon_hint_for_item_name, registry_item_map_full
+
+    reg_icon_map = registry_item_map_full()
+    shop_missing_de_labels = shop_items_missing_de_label()
+    for row in shop_missing_de_labels:
+        row.update(icon_hint_for_item_name(str(row["item_name"]), reg_icon_map))
+    shop_search_hits = shop_item_search_hits(shop_q) if shop_q else []
+    for row in shop_search_hits:
+        row.update(icon_hint_for_item_name(str(row["item_name"]), reg_icon_map))
+    for block in shop_categories_admin:
+        for row in block["items"]:
+            row.update(
+                icon_hint_for_item_name(str(row["item"].item_name), reg_icon_map)
+            )
+
     q = (request.GET.get("q") or "").strip()
     mod_filter = (request.GET.get("mod") or "").strip()
     only_missing = (request.GET.get("only_missing") or "1") != "0"
@@ -1238,18 +1412,23 @@ def luanti_shop_ops(request):
     if mod_filter:
         qs = qs.filter(item_name__startswith=f"{mod_filter}:")
     if q:
-        qs = qs.filter(item_name__icontains=q)
+        qs = qs.filter(Q(item_name__icontains=q) | Q(description__icontains=q))
     if only_missing:
         qs = qs.exclude(item_name__in=shop_names)
 
     matching_total = qs.count()
-    registry_rows = list(
-        qs.order_by("item_name").values_list("item_name", "description")[:list_limit]
-    )
-    registry_hits = [
-        {"item_name": name, "description": desc or "", "in_shop": name in shop_names}
-        for name, desc in registry_rows
-    ]
+    registry_objs = list(qs.order_by("item_name")[:list_limit])
+    registry_hits = []
+    for reg in registry_objs:
+        hint = icon_hint_for_item_name(reg.item_name, {reg.item_name: reg})
+        registry_hits.append(
+            {
+                "item_name": reg.item_name,
+                "description": reg.description or "",
+                "in_shop": reg.item_name in shop_names,
+                **hint,
+            }
+        )
 
     mod_names: list[str] = []
     seen_mods: set[str] = set()
@@ -1294,7 +1473,14 @@ def luanti_shop_ops(request):
         "admin/luanti/luanti_shop_ops.html",
         {
             "title": _("Luanti Shop"),
-            "categories": categories,
+            "categories": categories_qs,
+            "shop_categories_admin": shop_categories_admin,
+            "shop_query": shop_q,
+            "shop_search_hits": shop_search_hits,
+            "label_stats": label_stats,
+            "de_labels_nonempty": label_stats.de_labels_nonempty,
+            "de_labels_missing": label_stats.de_labels_missing,
+            "shop_missing_de_labels": shop_missing_de_labels,
             "item_count": LuantiShopItem.objects.count(),
             "registry_count": registry_count(),
             "missing_registry_total": missing_total,
@@ -1315,6 +1501,7 @@ def luanti_shop_ops(request):
             "mod_bulk_allowed": mod_bulk_allowed,
             "filter_bulk_allowed": filter_bulk_allowed,
             "shop_item_names": shop_names,
+            "locale_root_configured": locale_root_configured(),
         },
     )
 

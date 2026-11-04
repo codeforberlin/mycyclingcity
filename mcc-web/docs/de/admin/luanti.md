@@ -89,7 +89,23 @@ Unter **Luanti → Shop** (`/admin/luanti/shop-ops/`). Berechtigung: `luanti.acc
    - **Alle fehlenden im Filter übernehmen** — wenn der aktuelle Filter ≤ Limit Treffer hat.
 6. Im Spiel `/mccshop` oder Shop-GUI stichprobenartig prüfen.
 
-Anzeigenamen neuer Artikel kommen aus der Registry-Beschreibung; Knoten (`kind=node`) erhalten standardmäßig Stack 64.
+Anzeigenamen werden in **`LuantiShopItemLabel`** pro Sprachcode gepflegt (zuerst **de**, **en**). Bulk-Import legt **de** aus der Registry an.
+
+**Mehrsprachige Namen:**
+
+- **DE-Labels aus Mineclonia-Locales** (empfohlen zuerst) — matcht Registry-/Legacy-EN-Text gegen `locale/*.de.tr`; Shop Ops oder `python manage.py sync_luanti_shop_labels --lang de --source locales`
+- **DE-Labels aus Registry** — Plain-Text aus `LuantiRegisteredItem.description` (oft Englisch, füllt Lücken); `--lang de` / `--source registry` oder `--source both`
+- **EN-Labels aus Mineclonia** — invertiert dieselben `*.de.tr`-Dateien; Pfad **`MCC_LUANTI_LOCALE_ROOT`**; `--lang en`
+- Shop Ops zeigt **DE/EN-Anzeigenamen** pro Artikel und **Shop-Suche** wie ingame (`holz` über alle Kategorien)
+- Manuell: Shop-Artikel im Admin → Inline „Shop-Artikel-Übersetzungen“
+
+Im Spiel: **Luanti-Client-Sprache** steuert Menü (`mcc_bridge` `.tr`), **Kategorie-Titel** und **Artikelnamen** (Bridge sendet `lang` an `/api/luanti/shop/catalog/`). Fallback: angefragte Sprache → de → en → gespeicherter Name.
+
+**Kategorie-Titel (Tabs):** `LuantiShopCategoryLabel` (de/en). Shop Ops: **Kategorie-Titel DE/EN (Slug-Vorschläge)** oder `python manage.py sync_luanti_shop_labels --categories`. Gängige Slugs (`blocks`, `tools`, …) werden automatisch deutsch benannt (z. B. „Blöcke“, „Werkzeuge“); Anpassung im Admin unter Shop-Kategorien → Inline Übersetzungen.
+
+**Suche im `/mccshop`:** mit gesetztem Suchtext alle Kategorien; Treffer in Anzeigename, allen Labels und `item_name`.
+
+Knoten (`kind=node`) erhalten standardmäßig Stack 64.
 
 Optional vorher: **Minecraft-Shop importieren** (spiegelt MC-Kategorien/Preise; deckt nicht alle Mineclonia-Mods ab).
 

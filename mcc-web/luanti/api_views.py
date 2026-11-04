@@ -262,12 +262,18 @@ def luanti_shop_registry(request):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def luanti_shop_catalog(request):
+    from luanti.services.shop_labels import normalize_language_code
+
+    lang = normalize_language_code(
+        request.GET.get("lang") if request.method == "GET" else None
+    )
     if request.method == "POST":
         data = _parse_json(request)
         data, err = _auth_or_error(data)
         if err:
             return err
-        payload = build_catalog_payload()
+        lang = normalize_language_code(str(data.get("lang") or lang or ""))
+        payload = build_catalog_payload(lang=lang)
         login = str(data.get("player") or "").strip()
         if login:
             from luanti.models import LuantiAccount
@@ -284,7 +290,8 @@ def luanti_shop_catalog(request):
                 payload["session_ok"] = False
                 payload["session_paused"] = False
         return JsonResponse(payload)
-    return JsonResponse(build_catalog_payload())
+    lang = normalize_language_code(request.GET.get("lang") or lang)
+    return JsonResponse(build_catalog_payload(lang=lang))
 
 
 @csrf_exempt

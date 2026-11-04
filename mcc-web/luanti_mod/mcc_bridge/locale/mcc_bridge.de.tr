@@ -1,4 +1,5 @@
 # textdomain: mcc_bridge
+# Shop formspec: hardcoded DE in shop_gui.lua (UI table). Strings below are for init.lua chat only.
 Categories=Kategorien
 MCC Shop=MCC-Shop
 Velos=Velos
@@ -25,3 +26,5 @@ Inventory full=Inventar voll
 Nothing to sell=Nichts zu verkaufen
 Sold=Verkauft
 Not sellable (no purchase credit)=Nicht verkaufbar (kein Kauf-Guthaben)
+Clear=Leeren
+@1 hits in entire shop=Treffer

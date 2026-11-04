@@ -155,3 +155,17 @@ pytest api/tests/                   # Run tests
 make test                           # Run test suite
 python manage.py migrate            # Run migrations
 ```
+
+### Production deploy (`mcc-web`) — Gunicorn (CRITICAL)
+
+After syncing or deploying **`mcc-web`** to production (e.g. `/data/appl/mcc/mcc-web` / versioned dir), **always perform a full Gunicorn restart** — do **not** rely on `reload` (SIGHUP) alone. Templates, Python code, and in-process caches must be picked up reliably.
+
+```bash
+/data/appl/mcc/mcc-web/scripts/mcc-web.sh restart
+```
+
+Use `status` to verify afterward. Optional: run `utils/deploy_production.py` from the production tree before restart (migrate, backup).
+
+**Luanti Lua/mod changes** (`mcc-web/luanti_mod/`, symlinked into the game) require a separate **`luanti_server.sh restart`**, not Gunicorn.
+
+When the user asks to **deploy** web changes, include this restart in the same turn unless they explicitly forbid it.

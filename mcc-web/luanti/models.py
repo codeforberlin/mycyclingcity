@@ -494,6 +494,33 @@ class LuantiShopCategory(models.Model):
         return self.name
 
 
+class LuantiShopCategoryLabel(models.Model):
+    """Localized display name for a shop category tab."""
+
+    category = models.ForeignKey(
+        LuantiShopCategory,
+        on_delete=models.CASCADE,
+        related_name="labels",
+        verbose_name=_("Shop-Kategorie"),
+    )
+    language_code = models.CharField(max_length=16, verbose_name=_("Sprachcode"))
+    display_name = models.CharField(max_length=64, verbose_name=_("Anzeigename"))
+
+    class Meta:
+        verbose_name = _("Shop-Kategorie-Übersetzung")
+        verbose_name_plural = _("Shop-Kategorie-Übersetzungen")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["category", "language_code"],
+                name="luanti_shop_category_label_unique",
+            ),
+        ]
+        ordering = ["category", "language_code"]
+
+    def __str__(self):
+        return f"{self.language_code}: {self.display_name}"
+
+
 class LuantiShopItem(models.Model):
     category = models.ForeignKey(
         LuantiShopCategory,
@@ -529,6 +556,33 @@ class LuantiShopItem(models.Model):
     def __str__(self):
         label = self.display_name or self.item_name
         return f"{label} ({self.buy_price_velos} Velos)"
+
+
+class LuantiShopItemLabel(models.Model):
+    """Localized display name for a shop item (extensible per language_code)."""
+
+    item = models.ForeignKey(
+        LuantiShopItem,
+        on_delete=models.CASCADE,
+        related_name="labels",
+        verbose_name=_("Shop-Artikel"),
+    )
+    language_code = models.CharField(max_length=16, verbose_name=_("Sprachcode"))
+    display_name = models.CharField(max_length=128, verbose_name=_("Anzeigename"))
+
+    class Meta:
+        verbose_name = _("Shop-Artikel-Übersetzung")
+        verbose_name_plural = _("Shop-Artikel-Übersetzungen")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["item", "language_code"],
+                name="luanti_shop_item_label_unique",
+            ),
+        ]
+        ordering = ["item", "language_code"]
+
+    def __str__(self):
+        return f"{self.language_code}: {self.display_name}"
 
 
 class LuantiShopPurchaseCredit(models.Model):
@@ -591,6 +645,13 @@ class LuantiRegisteredItem(models.Model):
     )
     description = models.CharField(max_length=256, blank=True, verbose_name=_("Beschreibung"))
     kind = models.CharField(max_length=16, default="item", verbose_name=_("Art"))
+    drawtype = models.CharField(max_length=32, blank=True, verbose_name=_("Drawtype"))
+    inventory_image = models.CharField(max_length=128, blank=True, verbose_name=_("Inventarbild"))
+    wield_image = models.CharField(max_length=128, blank=True, verbose_name=_("Wield-Bild"))
+    not_in_creative_inventory = models.BooleanField(
+        default=False,
+        verbose_name=_("Nicht im Kreativ-Inventar"),
+    )
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert"))
 
     class Meta:

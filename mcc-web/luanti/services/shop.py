@@ -20,18 +20,60 @@ class ShopError(Exception):
         super().__init__(message or code)
 
 
-def build_catalog_payload() -> dict:
+def build_catalog_payload(*, lang: str | None = None) -> dict:
     from luanti.models import LuantiShopCategory
+    from luanti.models import LuantiRegisteredItem
+    from luanti.services.shop_labels import (
+        build_item_search_blob,
+        category_labels_map_for_categories,
+        labels_map_for_items,
+        normalize_language_code,
+        resolve_category_display_name,
+        resolve_item_display_name,
+        resolve_search_labels,
+    )
 
+    lang_norm = normalize_language_code(lang)
+    cat_qs = list(
+        LuantiShopCategory.objects.filter(enabled=True).order_by("sort_order", "slug")
+    )
+    cat_label_maps = category_labels_map_for_categories([c.pk for c in cat_qs])
+    all_item_names: list[str] = []
+    for cat in cat_qs:
+        for item_name in cat.items.filter(enabled=True).values_list("item_name", flat=True):
+            all_item_names.append(item_name)
+    registry_desc = {
+        row.item_name: (row.description or "").strip()
+        for row in LuantiRegisteredItem.objects.filter(item_name__in=all_item_names).only(
+            "item_name", "description"
+        )
+    }
     categories = []
-    for cat in LuantiShopCategory.objects.filter(enabled=True).order_by("sort_order", "slug"):
+    for cat in cat_qs:
+        item_qs = list(cat.items.filter(enabled=True).order_by("sort_order", "item_name"))
+        label_maps = labels_map_for_items([it.pk for it in item_qs])
+        cat_labels = cat_label_maps.get(cat.pk, {})
+        cat_display = resolve_category_display_name(cat, lang_norm, labels=cat_labels)
         items = []
-        for item in cat.items.filter(enabled=True).order_by("sort_order", "item_name"):
+        for item in item_qs:
+            item_labels = label_maps.get(item.pk, {})
+            display_name = resolve_item_display_name(
+                item, lang_norm, labels=item_labels
+            )
             items.append(
                 {
                     "id": item.pk,
                     "item_name": item.item_name,
-                    "display_name": item.display_name or item.item_name,
+                    "display_name": display_name,
+                    "labels": resolve_search_labels(item, labels=item_labels),
+                    "search": build_item_search_blob(
+                        item,
+                        labels=item_labels,
+                        resolved_display_name=display_name,
+                        category=cat,
+                        category_labels=cat_labels,
+                        registry_description=registry_desc.get(item.item_name, ""),
+                    ),
                     "buy_price_velos": item.buy_price_velos,
                     "sell_price_velos": item.buy_price_velos,
                     "stack_size": item.stack_size,
@@ -40,11 +82,12 @@ def build_catalog_payload() -> dict:
         categories.append(
             {
                 "slug": cat.slug,
-                "name": cat.name,
+                "name": cat_display,
+                "labels": cat_labels,
                 "items": items,
             }
         )
-    return {"ok": True, "categories": categories}
+    return {"ok": True, "categories": categories, "catalog_lang": lang_norm}
 
 
 def resolve_group_for_player(login_name: str) -> Group | None:

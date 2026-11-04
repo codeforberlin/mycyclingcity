@@ -89,7 +89,23 @@ Open **Luanti → Shop** (`/admin/luanti/shop-ops/`). Permission: `luanti.access
    - **Add all missing in filter** — when the current filter has ≤ cap matches.
 6. Spot-check in-game via `/mccshop` or the bridge shop GUI.
 
-New items get `display_name` from registry descriptions; nodes (`kind=node`) default to stack size 64.
+Display names live in **`LuantiShopItemLabel`** per language (initially **de**, **en**). Bulk import sets **de** from the registry.
+
+**Multilingual names:**
+
+- **DE from Mineclonia locales** (run first) — matches registry/legacy English to `locale/*.de.tr`; `--lang de --source locales` or `--source both`
+- **DE from registry** — plain text from registered item descriptions (often English, fills gaps); `--lang de` / `--source registry`
+- **EN from Mineclonia** — inverted same `*.de.tr` files; set **`MCC_LUANTI_LOCALE_ROOT`**; `--lang en`
+- Shop Ops lists **DE/EN display names** per item and **shop search** like in-game (`holz` across all categories)
+- Manual edits: Shop item admin → inline translations
+
+In-game: **Luanti client language** drives menu strings (`mcc_bridge` `.tr`), **category tab titles**, and **item names** (bridge sends `lang` to `/api/luanti/shop/catalog/`). Fallback: requested → de → en → stored name.
+
+**Category tabs:** `LuantiShopCategoryLabel` (de/en). Shop Ops: **Category titles DE/EN (slug presets)** or `python manage.py sync_luanti_shop_labels --categories`. Common slugs map to German child-friendly titles (e.g. blocks → Blöcke); edit via Shop categories → inline translations.
+
+**`/mccshop` search:** with a filter text, all categories are searched (display name, all labels, `item_name`).
+
+Nodes (`kind=node`) default to stack size 64.
 
 Optional first step: **Import Minecraft shop** (mirrors MC categories/prices; does not cover every Mineclonia mod).
 

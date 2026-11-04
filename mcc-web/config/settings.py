@@ -709,6 +709,12 @@ MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG = config(
 )
 # Max items per server-side bulk add from registry (Shop Ops mod/filter bulk).
 LUANTI_SHOP_BULK_MOD_MAX = config('LUANTI_SHOP_BULK_MOD_MAX', default=500, cast=int)
+# Mineclonia mod tree for shop label import (*.de.tr under …/mods/**/locale/).
+# Override via .env only when Luanti/Mineclonia is installed elsewhere.
+MCC_LUANTI_LOCALE_ROOT = config(
+    'MCC_LUANTI_LOCALE_ROOT',
+    default=str(Path(MCC_LUANTI_SERVER_DIR) / 'games' / 'mineclonia' / 'mods'),
+)
 MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')
 MCC_MINECRAFT_ESGUI_SHOPS_DIR = config('MCC_MINECRAFT_ESGUI_SHOPS_DIR', default='')
