@@ -707,8 +707,31 @@ MCC_LUANTI_SESSION_BOOTSTRAP_ENABLED = config(
 MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG = config(
     'MCC_LUANTI_SESSION_BOOTSTRAP_PRESET_SLUG', default='session-bootstrap'
 )
+# Heartbeat reconcile: do not end sessions younger than this (freigabe vs. player list lag).
+LUANTI_SESSION_RECONCILE_GRACE_SECONDS = config(
+    'LUANTI_SESSION_RECONCILE_GRACE_SECONDS', default=45, cast=int
+)
 # Max items per server-side bulk add from registry (Shop Ops mod/filter bulk).
 LUANTI_SHOP_BULK_MOD_MAX = config('LUANTI_SHOP_BULK_MOD_MAX', default=500, cast=int)
+
+# Luanti hologram planning mode (defaults in code; .env override optional)
+LUANTI_PLAN_AUTO_CONVERT_ENABLED = True
+LUANTI_PLAN_AUTO_CONVERT_MAX_BLOCKS_PER_TICK = 2
+LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_TICK = 8
+LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_EARN = 8
+LUANTI_PLAN_LIVE_CONVERT_MIN_BLOCKS_PER_EARN = 1
+LUANTI_PLAN_AUTO_CONVERT_ORDER = "y_asc"
+LUANTI_PLAN_HUD_SUMMARY_SECONDS = 8
+LUANTI_PLAN_FUNDING_DEBIT_ORDER = "explicit_groups_then_top"
+LUANTI_PLAN_FX_ENABLED = True
+LUANTI_PLAN_CONVERT_LAYER_DELAY = 0.35
+LUANTI_PLAN_CONVERT_BLOCK_DELAY = 0.0
+LUANTI_PLAN_LIVE_CONVERT_LAYER_DELAY = 0.1
+LUANTI_PLAN_LIVE_CONVERT_BLOCK_DELAY = 0.0
+LUANTI_PLAN_LIVE_CONVERT_FX_STAGGER = True
+LUANTI_PLAN_AUTO_REQUIRE_SPECTATOR = False
+LUANTI_PLAN_CLEAR_MAX_BATCH = 512
+LUANTI_PLAN_CLEAR_DEFAULT_BATCH = 32
 # Mineclonia mod tree for shop label import (*.de.tr under …/mods/**/locale/).
 # Override via .env only when Luanti/Mineclonia is installed elsewhere.
 MCC_LUANTI_LOCALE_ROOT = config(

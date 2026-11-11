@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026 SAI-Lab / MyCyclingCity / ADFC Berlin
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * @file    external_display_settings_admin.css
+ * @author  Roland Rutz
+ * @note    This code was developed with the assistance of AI (LLMs).
+ */
+
+/* Wider first column — visible changelist link label */
+.model-externaldisplaysettings #result_list th.field-settings_changelist_label,
+.model-externaldisplaysettings #result_list td.field-settings_changelist_label {
+    min-width: 22rem;
+    width: 32%;
+    max-width: 36rem;
+}
+
+.model-externaldisplaysettings #result_list td.field-settings_changelist_label a {
+    white-space: normal;
+    line-height: 1.35;
+}

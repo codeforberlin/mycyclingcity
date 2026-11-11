@@ -4,6 +4,7 @@
 import json
 import pytest
 from decimal import Decimal
+from django.db import transaction
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -133,6 +134,39 @@ class TestApplyVelosEarn:
         assert not MinecraftOutboxEvent.objects.filter(
             event_type=MinecraftOutboxEvent.EVENT_UPDATE_TEAM_VELOS,
         ).exists()
+
+    def test_plan_live_convert_error_does_not_block_earn(
+        self, settings, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        settings.LUANTI_PLAN_AUTO_CONVERT_ENABLED = True
+
+        def _boom(_velos_added: int) -> int:
+            raise RuntimeError("plan tick failed")
+
+        monkeypatch.setattr(
+            "luanti.services.plan.tick_plan_live_convert_on_earn",
+            _boom,
+        )
+
+        leaf_group = GroupFactory(name='Leaf-plan-safe')
+        cyclist = CyclistFactory()
+        cyclist.groups.add(leaf_group)
+        device = DeviceFactory(group=leaf_group)
+        config = device.configuration
+        config.wheel_size = 2300.0
+        config.paedagogischer_bonus = 0.0
+        config.save()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            with transaction.atomic():
+                delta = apply_velos_earn(cyclist, device, Decimal('1.0'))
+                cyclist.save(update_fields=['velos_balance'])
+        assert delta == 100
+
+        cyclist.refresh_from_db()
+        leaf_group.refresh_from_db()
+        assert cyclist.velos_balance == 100
+        assert leaf_group.velos_spendable == 100
 
 
 @pytest.mark.unit

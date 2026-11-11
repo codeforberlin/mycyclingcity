@@ -285,12 +285,8 @@ function M.tick(dtime)
             local foot_y = by
             local inside = nil
             for _, region in ipairs(snapshot) do
-                if drawing then
-                    local nearest_x = clamp(px, region.min_x, region.max_x)
-                    local nearest_z = clamp(pz, region.min_z, region.max_z)
-                    if dist2_horizontal(px, pz, nearest_x, nearest_z) <= view_sq then
-                        draw_outline(name, region, foot_y)
-                    end
+                if drawing and contains_block(region, bx, by, bz) then
+                    draw_outline(name, region, foot_y)
                 end
                 if contains_block(region, bx, by, bz) then
                     inside = region

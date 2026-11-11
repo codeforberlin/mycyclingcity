@@ -11,11 +11,13 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from luanti.models import LuantiIntegrationConfig, LuantiProtectedRegion
 from luanti.services.permissions import user_can_manage_luanti_regions
 from luanti.services.player_pos import fetch_player_block_pos
+from api.models import Group
 from luanti.services.region_admin import (
     account_choices,
     annotate_move_flags,
@@ -185,7 +187,7 @@ def luanti_regions_admin(request):
                         )
                         % {"id": region.region_id, "detail": detail},
                     )
-                return redirect(redirect_name)
+                return redirect(f"{reverse(redirect_name)}?edit={region.pk}")
 
             elif action == "push":
                 ok, detail = push_protected_regions_to_luanti()
@@ -209,6 +211,69 @@ def luanti_regions_admin(request):
             elif action == "cancel":
                 return redirect(redirect_name)
 
+            elif action in {
+                "plan_live_start",
+                "plan_live_stop",
+                "plan_live_convert_once",
+            }:
+                from luanti.services.plan import PlanError
+                from luanti.services.region_plan_live import (
+                    admin_convert_once,
+                    plan_summary_for_admin,
+                    start_plan_live,
+                    stop_plan_live,
+                )
+
+                pk = int(request.POST.get("rg_pk") or 0)
+                region = LuantiProtectedRegion.objects.filter(pk=pk).first()
+                if region is None:
+                    raise ValueError(_("Region nicht gefunden."))
+                if action == "plan_live_start":
+                    start_plan_live(region, request.user)
+                    summary = plan_summary_for_admin(region)
+                    messages.success(
+                        request,
+                        _(
+                            "Live-Umwandlung gestartet für „%(id)s“ "
+                            "(%(planned)s Hologramme, Pool %(pool)s Velos)."
+                        )
+                        % {
+                            "id": region.region_id,
+                            "planned": summary["planned_count"],
+                            "pool": summary["available_velos"],
+                        },
+                    )
+                elif action == "plan_live_stop":
+                    stop_plan_live(region, request.user)
+                    messages.success(
+                        request,
+                        _("Live-Umwandlung gestoppt für „%(id)s“.")
+                        % {"id": region.region_id},
+                    )
+                else:
+                    try:
+                        raw_n = (request.POST.get("plan_live_max") or "4").strip()
+                        max_n = int(raw_n) if raw_n else 4
+                    except ValueError:
+                        max_n = 4
+                    try:
+                        result = admin_convert_once(region, max_count=max_n)
+                        messages.success(
+                            request,
+                            _("Umgewandelt: %(n)s Block/Blöcke in „%(id)s“.")
+                            % {
+                                "n": int(result.get("converted") or 0),
+                                "id": region.region_id,
+                            },
+                        )
+                    except PlanError as exc:
+                        messages.error(
+                            request,
+                            _("Umwandlung fehlgeschlagen: %(code)s") % {"code": exc.code},
+                        )
+                region_draft = region_to_draft(region)
+                return redirect(redirect_name)
+
         except ValidationError as exc:
             messages.error(request, validation_error_message(exc))
             region_draft = draft_from_post(request.POST, keep_y_defaults=True)
@@ -216,10 +281,42 @@ def luanti_regions_admin(request):
             messages.error(request, str(exc))
             region_draft = draft_from_post(request.POST, keep_y_defaults=True)
 
+    if region_draft is None and request.method == "GET":
+        edit_raw = (request.GET.get("edit") or "").strip()
+        if edit_raw.isdigit():
+            loaded = (
+                LuantiProtectedRegion.objects.select_related("parent")
+                .filter(pk=int(edit_raw))
+                .first()
+            )
+            if loaded is not None:
+                region_draft = region_to_draft(loaded)
+
     if region_draft is None:
         region_draft = empty_region_draft()
 
+    from luanti.services.region_plan_live import plan_summary_for_admin
+
     regions = annotate_move_flags(hierarchical_region_list())
+    region_ids = [row.pk for row in regions]
+    region_plan_summaries = {
+        r.pk: plan_summary_for_admin(r)
+        for r in LuantiProtectedRegion.objects.filter(pk__in=region_ids).select_related(
+            "plan_live_convert_started_by"
+        )
+    }
+    for row in regions:
+        setattr(row, "plan_admin_summary", region_plan_summaries.get(row.pk, {}))
+    if region_draft.get("pk"):
+        try:
+            loaded = LuantiProtectedRegion.objects.filter(
+                pk=int(region_draft["pk"])
+            ).select_related("plan_live_convert_started_by").first()
+            if loaded:
+                region_draft["plan_summary"] = plan_summary_for_admin(loaded)
+                region_draft["plan_live_active"] = loaded.plan_live_convert_active
+        except (TypeError, ValueError):
+            pass
     return render(
         request,
         "admin/luanti/luanti_regions.html",
@@ -231,6 +328,7 @@ def luanti_regions_admin(request):
             "rg_top_groups": top_groups_queryset(),
             "rg_member_choices": account_choices(),
             "rg_online_players": online_player_names(),
+            "rg_funding_group_choices": Group.objects.order_by("name")[:400],
             "integration_config": cfg,
         },
     )

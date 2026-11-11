@@ -1,0 +1,25 @@
+/* Plan hologram clone status (Shop-Artikel admin + Shop-Ops). */
+.shop-plan-shape,
+.shop-plan-preview_shape {
+    color: #15803d;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.shop-plan-preview_shape {
+    color: #0d9488;
+}
+.shop-plan-fallback {
+    color: #b45309;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.shop-plan-na {
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.shop-plan-unknown {
+    color: #b91c1c;
+    font-weight: 600;
+    white-space: nowrap;
+}

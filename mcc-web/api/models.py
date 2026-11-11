@@ -210,8 +210,15 @@ class Group(models.Model):
         # First save normally so the file exists on disk
         super().save(*args, **kwargs)
 
-        if self.logo:
-            self._process_image(self.logo.path, (400, 400))
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "logo" not in update_fields:
+            return
+        if not self.logo:
+            return
+        path = self.logo.path
+        if not os.path.isfile(path):
+            return
+        self._process_image(path, (400, 400))
 
     def _process_image(self, path, size):
         img = Image.open(path)
@@ -459,8 +466,15 @@ class Cyclist(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        if self.avatar:
-            self._process_image(self.avatar.path, (200, 200))
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "avatar" not in update_fields:
+            return
+        if not self.avatar:
+            return
+        path = self.avatar.path
+        if not os.path.isfile(path):
+            return
+        self._process_image(path, (200, 200))
 
     def _process_image(self, path, size):
         img = Image.open(path)

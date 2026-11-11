@@ -20,3 +20,194 @@
     max-width: 180px !important;
 }
 
+/* Hide Django related-object icons (add/change/delete/view) — use custom admin links instead. */
+.model-group .field-parent .related-widget-wrapper-link,
+.model-group .field-group_type .related-widget-wrapper-link,
+.model-cyclist .field-group .related-widget-wrapper-link,
+.model-traveltrack .field-assigned_to_group .related-widget-wrapper-link,
+.model-traveltrack .inline-related .related-widget-wrapper-link {
+    display: none !important;
+}
+
+/* Route form: extra space between TOP-group select and nav link */
+.model-traveltrack .field-assigned_to_group .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-traveltrack .field-assigned_to_group a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+    padding-left: 0;
+}
+
+/* Participating groups inline (tabular) */
+.model-traveltrack #grouptravelstatus_set-group .related-widget-wrapper-link,
+.model-traveltrack .inline-group .field-group .related-widget-wrapper-link,
+.model-traveltrack .tabular td.field-group .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-traveltrack .tabular td.field-group .related-widget-wrapper,
+.model-traveltrack .tabular td.field-group .mcc-group-nav-inline {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    max-width: 100%;
+}
+
+.model-traveltrack .tabular td.field-group a.cyclist-group-admin-link {
+    margin-left: 0.25rem;
+    font-size: 0.8125rem;
+}
+
+/* Milestone change form: Route + TOP group */
+.model-milestone .field-track .related-widget-wrapper-link,
+.model-milestone .field-assigned_to_group .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-milestone .field-track .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    max-width: 100%;
+}
+
+.model-milestone .field-assigned_to_group .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-milestone .field-track a.cyclist-group-admin-link {
+    margin-left: 0.85rem;
+}
+
+.model-milestone .field-assigned_to_group a.cyclist-group-admin-link,
+.model-milestone .field-assigned_to_group_link_display a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+}
+
+/* Group travel status (Gruppenstatus) */
+.model-grouptravelstatus .field-group .related-widget-wrapper-link,
+.model-grouptravelstatus .field-track .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-grouptravelstatus .field-group .related-widget-wrapper,
+.model-grouptravelstatus .field-track .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-grouptravelstatus .field-track .related-widget-wrapper {
+    gap: 1.25rem;
+}
+
+.model-grouptravelstatus .field-track a.cyclist-group-admin-link {
+    margin-left: 0.85rem;
+}
+
+.model-grouptravelstatus .field-group a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+}
+
+/* Events: TOP group + participating groups inline */
+.model-event .field-top_group .related-widget-wrapper-link,
+.model-event #group_statuses-group .related-widget-wrapper-link,
+.model-event #groupeventstatus_set-group .related-widget-wrapper-link,
+.model-event .inline-related .field-group .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-event .field-top_group .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-event .field-top_group a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+}
+
+.model-event .tabular td.field-group .related-widget-wrapper,
+.model-event .tabular td.field-group .mcc-group-nav-inline {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    max-width: 100%;
+}
+
+.model-event .tabular td.field-group a.cyclist-group-admin-link {
+    margin-left: 0.25rem;
+    font-size: 0.8125rem;
+}
+
+/* Luanti player inventory: Account FK */
+.model-luantiplayerinventory .field-account .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-luantiplayerinventory .field-account .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-luantiplayerinventory .field-account a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+}
+
+/* Luanti account (Mgmt): home group + wallet */
+.model-luantiaccount .field-assigned_to_group .related-widget-wrapper-link,
+.model-luantiaccount .field-active_wallet .related-widget-wrapper-link {
+    display: none !important;
+}
+
+.model-luantiaccount .field-assigned_to_group .related-widget-wrapper,
+.model-luantiaccount .field-active_wallet .related-widget-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.05rem;
+    max-width: 100%;
+}
+
+.model-luantiaccount .field-assigned_to_group a.cyclist-group-admin-link,
+.model-luantiaccount .field-active_wallet a.cyclist-group-admin-link {
+    margin-left: 0.35rem;
+}
+
+.mcc-group-nav-inline {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.3rem;
+    vertical-align: middle;
+}
+
+.mcc-group-nav-inline select {
+    max-width: min(28rem, 100%);
+}
+
+a.cyclist-group-admin-link {
+    font-weight: 600;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+}
+

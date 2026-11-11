@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-03 15:35+0200\n"
+"POT-Creation-Date: 2026-11-08 18:17+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,6 +20,14 @@ msgstr ""
 
 msgid "Gruppen & Radler"
 msgstr "Gruppen & Radler"
+
+#, python-format
+msgid "Kalenderjahr %(year)s (%(range)s)"
+msgstr ""
+
+#, python-format
+msgid "Periode %(range)s"
+msgstr ""
 
 #, python-format
 msgid "Das Logo ist mit %(w)spx x %(h)spx zu groß. Maximal 500x500px erlaubt."
@@ -103,15 +111,27 @@ msgid "Kilometer im Leaderboard-Footer"
 msgstr ""
 
 msgid ""
-"Zeigt die Summe der Kilometer (HourlyMetric) neben den Velos im Footer von "
-"Leaderboard und Kiosk-Leaderboard an."
+"Zeigt die Summe der Gesamt-km (Group.distance_total, wie im Ranking) neben "
+"den Velos im Footer von Leaderboard und Kiosk-Leaderboard an. Standard: aus "
+"— Velos im Leaderboard nutzen weiterhin HourlyMetric-Zeiträume."
 msgstr ""
 
 msgid "Kilometer in Ranking-Gruppenköpfen"
 msgstr ""
 
 msgid ""
-"Zeigt Kilometer zusätzlich zu Velos in den Kopfzeilen der Ranking-Hierarchie."
+"Zeigt Gesamt-km aus Group.distance_total zusätzlich zu Velos in den "
+"Kopfzeilen der Ranking-Hierarchie."
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer (km)"
+msgid "Kilometer im Eventboard"
+msgstr "Kilometer (km)"
+
+msgid ""
+"Zeigt Event-km zusätzlich zu Velos auf dem Eventboard (Event-Auswahl, "
+"Gruppenkarten, Podest, Statistik)."
 msgstr ""
 
 #, fuzzy
@@ -129,7 +149,8 @@ msgstr "In Map/Game anzeigen"
 
 #, python-format
 msgid ""
-"Anzeige-Einstellungen (Leaderboard-Footer: %(footer)s, Ranking: %(ranking)s)"
+"Anzeige-Einstellungen (Leaderboard: %(footer)s, Ranking: %(ranking)s, "
+"Eventboard: %(eventboard)s)"
 msgstr ""
 
 msgid "ja"
@@ -176,6 +197,14 @@ msgstr "Minecraft-Name"
 msgid ""
 "Nur für Leaf-Gruppen. Überschreibt Radler-Minecraft-Namen für die "
 "Synchronisation."
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Luanti-Name (Gruppe)"
+msgstr "Minecraft-Name"
+
+msgid "Team-Key für Luanti-Shop/Velos (Leaf-Gruppen)."
 msgstr ""
 
 msgid "Logo für Karte"
@@ -254,6 +283,14 @@ msgstr "Kilometer-Erfassung aktiv"
 msgid "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
 msgstr "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
 
+msgid "Arena-/API-Simulation erlaubt"
+msgstr ""
+
+msgid ""
+"Nur freigegebene Radler dürfen in der Arena-Simulation (intern oder über die "
+"API) verwendet werden."
+msgstr ""
+
 msgid "Operator-RFID-Tag"
 msgstr ""
 
@@ -300,6 +337,14 @@ msgstr ""
 msgid "Velos"
 msgstr ""
 
+msgid "Energie (Wh)"
+msgstr ""
+
+msgid ""
+"Summierte virtuelle Nabendynamo-Energie (Wh) für diese Stunde. Wird beim "
+"Distanz-Ingest aus Intervallgeschwindigkeit berechnet."
+msgstr ""
+
 msgid "Hourly Metric"
 msgstr "Stündliche Metrik"
 
@@ -337,11 +382,96 @@ msgstr "Einlösen"
 msgid "Velos-Einlösungen"
 msgstr "Einlösen"
 
+#, fuzzy
+#| msgid "Belohnung"
+msgid "Velos von Radlern einlösen"
+msgstr "Belohnung"
+
+msgid "Konsolidierung (Umbuchung)"
+msgstr ""
+
+msgid "Spendable nullen"
+msgstr ""
+
+msgid "Batch-ID"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Aktion"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Tabelle"
+msgid "Quelle"
+msgstr "Tabelle"
+
+msgid "Ziel"
+msgstr ""
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Betrag (Spendable)"
+msgstr "Distanz (km)"
+
+msgid "Grund / Event"
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Ausgeführt von"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Gruppen-Filter"
+msgid "Gruppen-Velo-Transfer"
+msgstr "Gruppen-Filter"
+
+#, fuzzy
+#| msgid "Gruppen-Filter"
+msgid "Gruppen-Velo-Transfers"
+msgstr "Gruppen-Filter"
+
+msgid "Ausgebbare Gruppen-Velos konsolidieren/umbuchen"
+msgstr ""
+
 msgid "Sitzungs-Distanz (km)"
 msgstr "Sitzungs-Distanz (km)"
 
 msgid "Startzeit"
 msgstr "Startzeit"
+
+#, fuzzy
+#| msgid "Sitzungs-Distanz (km)"
+msgid "Sitzungs-Energie (Wh)"
+msgstr "Sitzungs-Distanz (km)"
+
+msgid "Virtuelle Nabendynamo-Energie seit Session-Start."
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktuelle Distanz (km)"
+msgid "Letzte Leistung (W)"
+msgstr "Aktuelle Distanz (km)"
+
+msgid "Momentanleistung aus dem letzten Distanz-Intervall."
+msgstr ""
+
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Letzte Drehzahl (RPM)"
+msgstr "Letztes Intervall (km)"
+
+msgid "Mittlere Rad-Drehzahl aus dem letzten Distanz-Intervall."
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktuelle Distanz (km)"
+msgid "Letzte Geschwindigkeit (km/h)"
+msgstr "Aktuelle Distanz (km)"
+
+msgid "Mittlere Geschwindigkeit aus dem letzten Distanz-Intervall."
+msgstr ""
 
 msgid "Cyclist - Active Session"
 msgstr "Radler - aktive Sitzung"
@@ -629,6 +759,13 @@ msgstr "Gesamt-KM"
 msgid "Gruppen-Velos gesamt"
 msgstr ""
 
+msgid "Gruppen-Velos ausgebbar (TOP)"
+msgstr ""
+
+msgid ""
+"velos_spendable der TOP-Gruppe zum Abschlusszeitpunkt (wird nicht genullt)"
+msgstr ""
+
 #, fuzzy
 #| msgid "Erstellt am"
 msgid "Erstellt von"
@@ -663,16 +800,48 @@ msgstr ""
 msgid "Velos zum Abschlusszeitpunkt"
 msgstr ""
 
+msgid "Ausgebbare Velos zum Abschlusszeitpunkt"
+msgstr ""
+
+msgid ""
+"Nur für Gruppen relevant. Radler/Geräte: 0. Spendable wird beim Abschluss "
+"nicht genullt — nur historisch gespeichert."
+msgstr ""
+
 msgid "Jahresabschluss-Detail"
 msgstr ""
 
 msgid "Jahresabschluss-Details"
 msgstr ""
 
+#, fuzzy, python-format
+#| msgid "Einlösen"
+msgid "Velos-Einlösung #%(id)s"
+msgstr "Einlösen"
+
+msgid "Der Einlösungsbetrag muss größer als 0 sein."
+msgstr ""
+
+#, python-format
+msgid ""
+"%(amount)s Velos eingelöst — Spiel-Session in Warteliste (Ticket "
+"#%(ticket)s, %(minutes)s Min.)."
+msgstr ""
+
+#, python-format
+msgid ""
+"%(amount)s Velos eingelöst — Bau-Session in Warteliste (Ticket #%(ticket)s, "
+"%(minutes)s Min.)."
+msgstr ""
+
 #, fuzzy
 #| msgid "Keine aktiven Gruppen gefunden."
 msgid "Kein Velos-Guthaben zum Einlösen vorhanden."
 msgstr "Keine aktiven Gruppen gefunden."
+
+#, python-format
+msgid "Nur %(available)s Velos verfügbar, %(requested)s angefordert."
+msgstr ""
 
 msgid "Radler ist keiner Leaf-Gruppe zugeordnet."
 msgstr ""
@@ -728,6 +897,14 @@ msgstr ""
 msgid "All Tracks"
 msgstr "Alle Tracks"
 
+#, fuzzy
+#| msgid "Kilometerziel"
+msgid "Kilometer anzeigen"
+msgstr "Kilometerziel"
+
+msgid "Standard: Velos"
+msgstr ""
+
 msgid "Apply Filters"
 msgstr "Filter anwenden"
 
@@ -740,23 +917,67 @@ msgstr "Hierarchie-Aufschlüsselung"
 msgid "Show Top Groups (Master Groups)"
 msgstr "Top-Gruppen (Mastergruppen) anzeigen"
 
-msgid "Uncheck to show Subgroups with Cyclists"
-msgstr "(Deaktivieren, um Untergruppen mit Radlern anzuzeigen)"
+#, fuzzy
+#| msgid "Leaf-Gruppe"
+msgid "Deaktivieren für Leaf-Gruppen"
+msgstr "Leaf-Gruppe"
 
-msgid "Total Distance"
-msgstr "Gesamtdistanz"
+#, fuzzy
+#| msgid "Gesammelte Kilometer"
+msgid "Gesamt-Velos"
+msgstr "Gesammelte Kilometer"
 
-msgid "Daily Record"
-msgstr "Tagesrekord"
+#, fuzzy
+#| msgid "Warnung"
+msgid "Tag"
+msgstr "Warnung"
 
-msgid "Weekly Record"
-msgstr "Wochenrekord"
+#, fuzzy
+#| msgid "Aktuelle Reise-Distanz (km)"
+msgid "Aktuell"
+msgstr "Aktuelle Reise-Distanz (km)"
 
-msgid "Monthly Record"
-msgstr "Monatsrekord"
+msgid "Rekord"
+msgstr ""
 
-msgid "Yearly Record"
-msgstr "Jahresrekord"
+msgid "Woche"
+msgstr ""
+
+msgid "Monat"
+msgstr ""
+
+msgid "Jahr"
+msgstr ""
+
+msgid "Chart-Ansicht:"
+msgstr ""
+
+msgid "Gesamt"
+msgstr "Gesamt"
+
+#, fuzzy
+#| msgid "Gruppen"
+msgid "Nach Gruppen"
+msgstr "Gruppen"
+
+#, fuzzy
+#| msgid "Gesamt-Coins"
+msgid "Gesamtkurve anzeigen"
+msgstr "Gesamt-Coins"
+
+#, fuzzy
+#| msgid "Gruppen & Radler"
+msgid "Gruppen im Chart"
+msgstr "Gruppen & Radler"
+
+msgid "Alle"
+msgstr "Alle"
+
+msgid "Keine"
+msgstr ""
+
+msgid "Top 5"
+msgstr ""
 
 msgid "Daily Utilization"
 msgstr "Tägliche Nutzung"
@@ -764,8 +985,21 @@ msgstr "Tägliche Nutzung"
 msgid "Hourly Utilization"
 msgstr "Stündliche Nutzung"
 
-msgid "Top Groups by Mileage"
-msgstr "Top Gruppen nach Kilometer"
+msgid ""
+"Gruppen-/Radler-/Geräte-km, Gesamtdistanz und Jahreskachel „Aktuell“: Ledger "
+"(wie Ranking). Tag/Woche/Monat „Aktuell“: HourlyMetric (Kalenderperioden). "
+"„Rekord“: historische Spitzenwerte aus HourlyMetric."
+msgstr ""
+
+#, fuzzy
+#| msgid "Gruppenname"
+msgid "Gruppen nach Velos"
+msgstr "Gruppenname"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Alle auswählen"
+msgstr "Keine Gruppen"
 
 msgid "Rank"
 msgstr "Rang"
@@ -773,20 +1007,19 @@ msgstr "Rang"
 msgid "Type"
 msgstr "Typ"
 
-msgid "Distance (km)"
-msgstr "Distanz (km)"
-
 msgid "Loading..."
 msgstr "Laden..."
 
-msgid "Top Cyclists by Mileage"
-msgstr "Top Radler nach Kilometer"
+msgid "Top Radler nach Velos"
+msgstr ""
 
 msgid "ID Tag"
 msgstr "ID-Tag"
 
-msgid "Top Devices by Mileage"
-msgstr "Top Geräte nach Kilometer"
+#, fuzzy
+#| msgid "Gerätename"
+msgid "Top Geräte nach Velos"
+msgstr "Gerätename"
 
 msgid "Device"
 msgstr "Gerät"
@@ -794,9 +1027,15 @@ msgstr "Gerät"
 msgid "Export Data"
 msgstr "Daten exportieren"
 
-msgid "Export the filtered report data in your preferred format:"
+msgid ""
+"Rohdaten als CSV/Excel oder den zusammengefassten Analysebericht als PDF "
+"exportieren:"
 msgstr ""
-"Exportieren Sie die gefilterten Berichtsdaten in Ihrem bevorzugten Format:"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Bericht als PDF"
+msgstr "Letzter Bericht"
 
 msgid "Export as CSV"
 msgstr "Als CSV exportieren"
@@ -804,17 +1043,61 @@ msgstr "Als CSV exportieren"
 msgid "Export as Excel"
 msgstr "Als Excel exportieren"
 
-msgid "Daily Distance (km)"
-msgstr "Tägliche Distanz (km)"
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "ausgewählt"
+msgstr "Keine Gruppen"
 
-msgid "Hourly Distance (km)"
-msgstr "Stündliche Distanz (km)"
+msgid "Summe"
+msgstr ""
+
+msgid "No data available for the selected filters."
+msgstr "Keine Daten verfügbar für die ausgewählten Filter."
 
 msgid "Unknown"
 msgstr "Unbekannt"
 
-msgid "No data available for the selected filters."
-msgstr "Keine Daten verfügbar für die ausgewählten Filter."
+msgid "Distance (km)"
+msgstr "Distanz (km)"
+
+msgid "Daily Distance (km)"
+msgstr "Tägliche Distanz (km)"
+
+msgid "Tägliche Velos"
+msgstr ""
+
+msgid "Hourly Distance (km)"
+msgstr "Stündliche Distanz (km)"
+
+msgid "Stündliche Velos"
+msgstr ""
+
+msgid "No data available"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gesamt-Coins"
+msgid "Gesamtdistanz"
+msgstr "Gesamt-Coins"
+
+#, fuzzy
+#| msgid "Gruppenname"
+msgid "Gruppen nach Kilometer"
+msgstr "Gruppenname"
+
+msgid "Top Radler nach Kilometer"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gesammelte Kilometer"
+msgid "Top Geräte nach Kilometer"
+msgstr "Gesammelte Kilometer"
+
+msgid "Bitte warten Sie, bis die Charts geladen sind."
+msgstr ""
+
+msgid "PDF-Export fehlgeschlagen."
+msgstr ""
 
 msgid "Home"
 msgstr ""
@@ -957,6 +1240,170 @@ msgstr ""
 
 msgid "Alle KM-Marken neu berechnen"
 msgstr "Alle KM-Marken neu berechnen"
+
+msgid ""
+"Teil- oder Volleinlösung aus dem Velos-Guthaben eines Radlers. Bei "
+"Restguthaben 0 wird die Geräte-Session beendet."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Radler suchen"
+msgstr "Spieler nicht gefunden"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine TOP-Gruppe verfügbar"
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Radler Avatar"
+msgid "Radler aus Liste"
+msgstr "Radler Avatar"
+
+msgid "— Bitte wählen —"
+msgstr ""
+
+msgid "oder"
+msgstr ""
+
+msgid "Radler (Name oder RFID-Tag)"
+msgstr ""
+
+msgid "z. B. anna oder RFID-Tag"
+msgstr ""
+
+#, fuzzy
+#| msgid "Radler"
+msgid "Radler laden"
+msgstr "Radler"
+
+msgid "Guthaben"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gruppen"
+msgid "Gruppe(n)"
+msgstr "Gruppen"
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Kein Radler in der gewählten TOP-Gruppe gefunden."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Einlösungsart"
+msgstr "Einlösen"
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Freie Einlösung"
+msgstr "Einlösen"
+
+msgid "Nur Velos-Guthaben abziehen (Wuhlis o. Ä.), keine Minecraft-Warteliste."
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Spiel-Session (Warteliste)"
+msgstr "Letzter Bericht"
+
+msgid ""
+"Velos abziehen und Eintrag in der Session-Warteliste anlegen (Arena-"
+"Zuweisung wie bisher)."
+msgstr ""
+
+msgid "Bau-Session (Warteliste)"
+msgstr ""
+
+msgid ""
+"Velos abziehen und Eintrag in der Bau-Warteliste anlegen (Team-Zuweisung wie "
+"bisher). Dauer wie bei Spiel-Session aus den Velos."
+msgstr ""
+
+#, python-format
+msgid ""
+"Mindestens %(min)s Velos. Dauer = Velos ÷ %(rate)s (z. B. %(min)s Velos → "
+"%(mins)s Min.)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Belohnung"
+msgid "Betrag einlösen"
+msgstr "Belohnung"
+
+msgid "Schnellauswahl oder manuelle Eingabe:"
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle"
+msgid "Alles"
+msgstr "Alle"
+
+#, fuzzy
+#| msgid "KM-Marke"
+msgid "Velos-Betrag"
+msgstr "KM-Marke"
+
+msgid "Manuelle Eingabe"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "optional"
+msgstr "Station"
+
+msgid "z. B. Wuhlis"
+msgstr ""
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Velos einlösen"
+msgstr "Einlösen"
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Eingelöste Velos anzeigen"
+msgstr "In Map/Game anzeigen"
+
+#, fuzzy
+#| msgid "Belohnung"
+msgid "Spiel-Session einlösen"
+msgstr "Belohnung"
+
+#, fuzzy
+#| msgid "Belohnung"
+msgid "Bau-Session einlösen"
+msgstr "Belohnung"
+
+msgid "Velo-Konsolidierung"
+msgstr ""
+
+#, python-format
+msgid ""
+"TOP-Leaves konsolidiert: %(n)s Velos in %(lines)s Buchung(en). Batch "
+"%(batch)s"
+msgstr ""
+
+#, python-format
+msgid "Spendable genullt: %(n)s Velos in %(lines)s Gruppe(n)."
+msgstr ""
+
+#, python-format
+msgid ""
+"Umbuchung OK: %(n)s Velos → Ziel. Batch %(batch)s. Tipp: Luanti-Accounts "
+"ggf. auf Wallet-Modus „Pool“ stellen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Eingabe."
+msgstr "Ungültiges Format."
+
+#, python-format
+msgid "Fehler: %(code)s"
+msgstr ""
 
 #, fuzzy
 #| msgid "Ungültiger API-Schlüssel"
@@ -1163,6 +1610,336 @@ msgstr "English"
 msgid "Deutsch"
 msgstr "Deutsch"
 
+msgid "Anzeige"
+msgstr "Anzeige"
+
+msgid "Kennlinie"
+msgstr ""
+
+msgid "Äquivalente"
+msgstr ""
+
+msgid "Dynamo"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Aktualisierungsintervall (Sekunden)"
+msgstr "Letztes Intervall (km)"
+
+msgid "Polling-Intervall für die Dynamo-Live-Anzeige."
+msgstr ""
+
+msgid "Leistungs-Cap (Watt)"
+msgstr ""
+
+msgid "Maximale Nabendynamo-Leistung in der pädagogischen Kennlinie."
+msgstr ""
+
+msgid "Leistungs-Kennlinie"
+msgstr ""
+
+msgid ""
+"Liste von Punkten {speed_kmh, power_w} für die virtuelle Dynamo-Kennlinie."
+msgstr ""
+
+msgid "High-Power-Schwelle (Watt)"
+msgstr ""
+
+msgid "Ab dieser Momentanleistung wird ein Tempo-Blitz angezeigt."
+msgstr ""
+
+msgid "Annahme-Geschwindigkeit für Schätzungen (km/h)"
+msgstr ""
+
+msgid ""
+"Wird genutzt, wenn Energie aus Distanz ohne Intervallgeschwindigkeit "
+"geschätzt werden muss (z. B. Alt-Daten)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerätename"
+msgid "Geräte-Äquivalente"
+msgstr "Gerätename"
+
+msgid "Liste {key, label, watts} für „Was könnte man betreiben?“."
+msgstr ""
+
+msgid "Velos und Kilometer bei aktiven Radlern"
+msgstr ""
+
+msgid ""
+"Zeigt Session-Velos und Session-Kilometer auf den Kacheln der aktiven "
+"Radler. Per URL überschreibbar: ?ride_stats=1 oder ?ride_stats=0."
+msgstr ""
+
+msgid "Ladegerät-Vergleich (Profi)"
+msgstr ""
+
+msgid ""
+"Erlaubt Umschalten auf generische Ladegerät-Klassen (Einfach / Standard / "
+"Optimiert). Gespeicherte Wh bleiben Dynamo-Rohwerte. URL: ?charger=direct|"
+"simple|standard|optimized"
+msgstr ""
+
+msgid "Ladegerät-Wirkungsgrade"
+msgstr ""
+
+msgid ""
+"Generische η(v)-Kennlinien ohne Markennamen: {direct|simple|standard|"
+"optimized: [{speed_kmh, efficiency}, ...]}."
+msgstr ""
+
+#, fuzzy
+#| msgid "Anzeige"
+msgid "Dynamo-Anzeige"
+msgstr "Anzeige"
+
+msgid "Kann Dynamo-Anzeige konfigurieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel-Einstellungen"
+msgid "Dynamo-Anzeige-Einstellungen"
+msgstr "Geräteverwaltungs-Einstellungen"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Kapazität (Wh)"
+msgstr ""
+
+msgid "Icon-Schlüssel"
+msgstr ""
+
+msgid "CSS/Template-Schlüssel, z. B. phone, tablet, notebook, ebike, house."
+msgstr ""
+
+msgid "Sortierung"
+msgstr ""
+
+#, fuzzy
+#| msgid "In Reise verwendet"
+msgid "Tagesenergie verwenden"
+msgstr "In Reise verwendet"
+
+msgid ""
+"Wenn aktiv: Füllstand aus heutiger Gruppen-Energie. Sonst aus Session-Summe "
+"der aktiven Radler."
+msgstr ""
+
+msgid "Dynamo-Akku-Ziel"
+msgstr ""
+
+msgid "Dynamo-Akku-Ziele"
+msgstr ""
+
+msgid "Kann Dynamo-Akku-Ziele verwalten"
+msgstr ""
+
+msgid "Virtueller Nabendynamo"
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Alle Gruppen"
+msgstr "Alle Top-Gruppen"
+
+msgid "Alle Leafs"
+msgstr ""
+
+#, fuzzy
+#| msgid "Radler"
+msgid "aktive Radler"
+msgstr "Radler"
+
+#, fuzzy
+#| msgid "Ansichtstyp"
+msgid "Ansicht"
+msgstr "Ansichtstyp"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Einzelne"
+msgstr "Spieler"
+
+msgid "Watt Dynamo"
+msgstr ""
+
+msgid "Watt nutzbar"
+msgstr ""
+
+msgid "Heute"
+msgstr ""
+
+msgid "Zeitraum"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Session"
+msgstr "2.2 Sitzungsdaten"
+
+msgid "Max RPM"
+msgstr ""
+
+msgid "Ansicht: alle Radler · Zeitraum wählbar"
+msgstr ""
+
+msgid "Was könnte man betreiben?"
+msgstr ""
+
+msgid "Profi: Ladegerät-Vergleich"
+msgstr ""
+
+msgid "Nur zur Erklärung – Wh-Summen bleiben Dynamo-Rohwerte."
+msgstr ""
+
+msgid ""
+"Vergleich für einen Nabendynamo (nicht Summe aller Räder). Generische "
+"Klassen ohne Markennamen."
+msgstr ""
+
+msgid "Ladegerät-Klasse"
+msgstr ""
+
+msgid "Einfach"
+msgstr ""
+
+msgid "Standard"
+msgstr ""
+
+msgid "Optimiert"
+msgstr ""
+
+msgid "Schließen"
+msgstr ""
+
+msgid "Bezug: ein Dynamo bei"
+msgstr ""
+
+#, fuzzy
+#| msgid "Anleitung:"
+msgid "Rohleistung"
+msgstr "Anleitung:"
+
+msgid "Akku-Bank"
+msgstr ""
+
+msgid "Füllstand für"
+msgstr ""
+
+msgid "Team-Power"
+msgstr ""
+
+msgid "Team-Power gilt nur in der Ansicht „Alle“."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Aktive Radler"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Velos & km anzeigen"
+msgstr "Auf Karte anzeigen"
+
+msgid "Heute stündlich"
+msgstr ""
+
+msgid "Diagramme zeigen die Gruppen-Historie (Ansicht „Alle“)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzte 7 Tage"
+msgstr "Letzter Bericht"
+
+#, fuzzy
+#| msgid "Filters"
+msgid "Filter"
+msgstr "Filter"
+
+#, fuzzy
+#| msgid "Zugeordnete Gruppe"
+msgid "gesamte TOP-Gruppe"
+msgstr "Zugewiesene TOP-Gruppe"
+
+msgid "unter 1 min"
+msgstr ""
+
+msgid "Gerade niemand aktiv"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Session von"
+msgstr "2.2 Sitzungsdaten"
+
+msgid "Ansicht: einzelner Radler (Session) · Restzeit an aktueller Leistung"
+msgstr ""
+
+msgid "Noch keine Akku-Ziele konfiguriert."
+msgstr ""
+
+msgid "voll"
+msgstr ""
+
+msgid "noch ca."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "bei aktueller Leistung"
+msgstr "Spieler"
+
+msgid "Noch keine Leistung – bitte treten"
+msgstr ""
+
+msgid "Bezug"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gruppen & Radler"
+msgid "Gruppe gerade"
+msgstr "Gruppen & Radler"
+
+msgid "Räder"
+msgstr ""
+
+msgid "Keine Leistung – losradeln!"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Teams."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, fuzzy
+#| msgid "Leaf-Gruppe"
+msgid "Leaf-Gruppe filtern"
+msgstr "Leaf-Gruppe"
+
+msgid "Gerade niemand unterwegs – wer lädt den Akku?"
+msgstr ""
+
+#, fuzzy
+#| msgid "Benutzer"
+msgid "nutzbar"
+msgstr "Benutzer"
+
+msgid "Tageswerte (7 Tage)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Daten"
+msgstr "Keine Gruppen"
+
+msgid "Dynamo – Energie aus dem Rad"
+msgstr ""
+
 msgid "Schulfest"
 msgstr ""
 
@@ -1253,6 +2030,15 @@ msgstr "Events"
 msgid "Aktuelle Velos"
 msgstr "Aktuelle Reise-Distanz (km)"
 
+#, fuzzy
+#| msgid "Aktuelle Distanz (km)"
+msgid "Aktuelle Event-km"
+msgstr "Aktuelle Distanz (km)"
+
+msgid ""
+"Während des Events erstrampelte Kilometer (real, unabhängig vom Radumfang)"
+msgstr ""
+
 msgid ""
 "Zeitpunkt, zu dem die Gruppe das Event-Ziel erreicht hat. Wird für die "
 "Sortierung auf dem Podest verwendet."
@@ -1289,6 +2075,11 @@ msgid ""
 "Die von dieser Leaf-Gruppe während des aktuellen Events erstrampelten Velos"
 msgstr ""
 
+msgid ""
+"Die von dieser Leaf-Gruppe während des aktuellen Events erstrampelten "
+"Kilometer"
+msgstr ""
+
 #, fuzzy
 #| msgid "Gruppen-Event-Status"
 msgid "Leaf-Gruppe Event-Beitrag"
@@ -1323,8 +2114,8 @@ msgstr "Wähle einen Spieler"
 msgid "Live"
 msgstr "MCC Live Map"
 
-msgid "Gesamt"
-msgstr "Gesamt"
+msgid "Kilometer"
+msgstr "Kilometer"
 
 #, fuzzy
 #| msgid "Keine Daten gefunden."
@@ -1349,6 +2140,9 @@ msgid "Event Logo rechts"
 msgstr "Logo Vorschau"
 
 msgid "Podest"
+msgstr ""
+
+msgid "km"
 msgstr ""
 
 msgid "Beste Klasse"
@@ -1376,11 +2170,23 @@ msgstr "Station"
 msgid "Velos gesamt"
 msgstr ""
 
+#, fuzzy
+#| msgid "Kilometer (km)"
+msgid "Kilometer gesamt"
+msgstr "Kilometer (km)"
+
 msgid "Teilnehmende Gruppen"
 msgstr "Teilnehmende Gruppen"
 
-msgid "Durchschnitt"
-msgstr ""
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Ø Velos"
+msgstr "Distanz (km)"
+
+#, fuzzy
+#| msgid "Kilometer"
+msgid "Ø Kilometer"
+msgstr "Kilometer"
 
 msgid "Bitte wählen Sie ein Event aus, um die Übersicht anzuzeigen."
 msgstr ""
@@ -2300,9 +3106,6 @@ msgstr ""
 msgid "Datenschutzerklärung"
 msgstr ""
 
-msgid "Schließen"
-msgstr ""
-
 msgid "Zeit abgelaufen — bitte Runde stoppen"
 msgstr ""
 
@@ -2450,8 +3253,24 @@ msgstr "Symbolischer Name (Anzeige)"
 msgid "Zugeordnete Gruppe"
 msgstr "Zugeordnete Gruppe"
 
-msgid "Laufleistung (km)"
+#, fuzzy
+#| msgid "Laufleistung (km)"
+msgid "Laufleistung Periode (km)"
 msgstr "Laufleistung (km)"
+
+msgid ""
+"KM seit dem letzten Jahresabschluss/Reset. Wird bei Jahresabschluss genullt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Laufleistung (km)"
+msgid "Lebenslaufleistung (km)"
+msgstr "Laufleistung (km)"
+
+msgid ""
+"Kumulative KM der Station über alle Verleihe/Events. Wird beim Ingest "
+"mitgeführt und bei Jahresabschluss nicht genullt."
+msgstr ""
 
 msgid "Letztes Intervall (km)"
 msgstr "Letztes Intervall (km)"
@@ -2464,6 +3283,11 @@ msgstr "Geräte"
 
 msgid "Wenn deaktiviert, werden keine Kilometer für dieses Gerät erfasst"
 msgstr "Wenn deaktiviert, werden keine Kilometer für dieses Gerät erfasst"
+
+msgid ""
+"Nur freigegebene Geräte dürfen in der Arena-Simulation (intern oder über die "
+"API) verwendet werden."
+msgstr ""
 
 msgid "Operator-Box"
 msgstr ""
@@ -2945,11 +3769,6 @@ msgstr "id_tag erforderlich."
 msgid "Heartbeat empfangen"
 msgstr "Keine Daten empfangen"
 
-#, fuzzy
-#| msgid "Station"
-msgid "Aktion"
-msgstr "Station"
-
 msgid "Benutzer"
 msgstr "Benutzer"
 
@@ -3183,6 +4002,18 @@ msgstr ""
 msgid "Leaderboard for"
 msgstr "Leaderboard für"
 
+msgid "Daily Record"
+msgstr "Tagesrekord"
+
+msgid "Weekly Record"
+msgstr "Wochenrekord"
+
+msgid "Monthly Record"
+msgstr "Monatsrekord"
+
+msgid "Yearly Record"
+msgstr "Jahresrekord"
+
 msgid "Bereit zum Start? Auf die Räder!"
 msgstr ""
 
@@ -3199,11 +4030,6 @@ msgstr "Keine aktiven Gruppen gefunden."
 msgid "Keine Endgruppen mit Mitgliedern gefunden."
 msgstr "Keine aktiven Gruppen gefunden."
 
-#, fuzzy
-#| msgid "Kilometer (km)"
-msgid "Kilometer gesamt"
-msgstr "Kilometer (km)"
-
 msgid "[X] Gruppen fahren aktuell"
 msgstr ""
 
@@ -3211,6 +4037,28 @@ msgstr ""
 #| msgid "Manual Mode"
 msgid "Manueller Modus"
 msgstr "Manueller Modus"
+
+msgid "Gesamt-km wie im Ranking (lebenslang)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometerweltmeister!"
+msgid "Velos-Zeitraum:"
+msgstr "Kilometerweltmeister!"
+
+#, fuzzy
+#| msgid "Zeitpunkt"
+msgid "Zeitraum:"
+msgstr "Zeitpunkt"
+
+msgid "gesamte erfasste Zeit"
+msgstr ""
+
+msgid "seit"
+msgstr ""
+
+msgid "seit jeweiligem Jahresabschluss"
+msgstr ""
 
 msgid "MEILENSTEIN ERREICHT"
 msgstr "MEILENSTEIN ERREICHT"
@@ -3227,6 +4075,1404 @@ msgstr "Start"
 #| msgid "hat %(km)s KM in dieser Runde geschafft!"
 msgid "Velos in dieser Runde gesammelt!"
 msgstr "hat %(km)s KM in dieser Runde geschafft!"
+
+msgid "Login-Passwort"
+msgstr ""
+
+msgid "Inventar leeren (DB + online)"
+msgstr ""
+
+#, python-format
+msgid ""
+"Inventar geleert: %(n)s Eintrag/Einträge. Revision erhöht; bei aktiver "
+"Session gleicher Modus auch live geleert."
+msgstr ""
+
+msgid ""
+"Suche in allen Shop-Artikeln: Itemstring, Anzeigename oder Kategoriename."
+msgstr ""
+
+msgid "Plan-Hologramm"
+msgstr ""
+
+msgid "Plan-Hologramm (Registry)"
+msgstr ""
+
+msgid "In andere Kategorie verschieben…"
+msgstr ""
+
+msgid "Shop-Artikel in andere Kategorie verschieben"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Ziel-Kategorie."
+msgstr "Ungültiges Format."
+
+msgid "Ziel-Kategorie existiert nicht."
+msgstr ""
+
+#, python-format
+msgid "%(n)s Artikel nach „%(cat)s“ verschoben."
+msgstr ""
+
+#, python-format
+msgid "%(n)s Artikel übersprungen (waren bereits in der Ziel-Kategorie)."
+msgstr ""
+
+#, python-format
+msgid ""
+"%(n)s Artikel übersprungen: gleicher Itemstring existiert bereits in der "
+"Ziel-Kategorie (Eindeutigkeit)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Artikel ausgewählt."
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "No groups found"
+msgid "Script not found"
+msgstr "Keine Gruppen gefunden"
+
+msgid "Script not executable"
+msgstr ""
+
+msgid "Timeout"
+msgstr ""
+
+msgid "Luanti Control"
+msgstr ""
+
+msgid "Invalid action"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Account-Flags gespeichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Account aktualisiert."
+msgstr "Zuletzt aktiv"
+
+msgid "Passwort ändern ist für diesen Account nicht erlaubt."
+msgstr ""
+
+#, fuzzy
+#| msgid "🛑 Session wurde zurückgesetzt."
+msgid "Passwort wurde neu gesetzt."
+msgstr "🛑 Session wurde zurückgesetzt."
+
+#, python-format
+msgid "Neues Passwort für %(name)s (bitte kopieren): %(pwd)s"
+msgstr ""
+
+msgid "Diese Heimat-Gruppe dürfen Sie nicht zuweisen."
+msgstr ""
+
+msgid "Wallet gehört nicht zur Heimat-Gruppe — Auswahl zurückgesetzt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen gelöscht."
+msgid "Wallet-Zuweisung gespeichert."
+msgstr "Alle Zuweisungen gelöscht."
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Minutenwerte."
+msgstr "Ungültiges Format."
+
+msgid "Minimum darf nicht größer als Maximum sein."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Dauer gespeichert."
+msgstr "Session beenden"
+
+msgid "Heimat-Gruppe (TOP) ist für Ihre Rolle erforderlich."
+msgstr ""
+
+msgid "Kein Zugriff auf diesen Account."
+msgstr ""
+
+msgid "Account angelegt."
+msgstr ""
+
+#, fuzzy
+#| msgid "🛑 Session wurde zurückgesetzt."
+msgid "Passwort wurde gesetzt."
+msgstr "🛑 Session wurde zurückgesetzt."
+
+#, python-format
+msgid ""
+"Login-Passwort für %(name)s (bitte kopieren und im Luanti Client "
+"hinterlegen): %(pwd)s"
+msgstr ""
+
+msgid "Account existiert bereits."
+msgstr ""
+
+msgid "Account-Änderungen bitte auf der Detailseite vornehmen."
+msgstr ""
+
+msgid "Accounts"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannte Aktion."
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Session gestartet."
+msgstr "Neu gestartet"
+
+msgid "Kick gesendet — Inventar wird beim Verlassen gesichert."
+msgstr ""
+
+msgid "Zeit verlängert."
+msgstr ""
+
+msgid "Zeit gekürzt."
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Session pausiert."
+msgstr "2.2 Sitzungsdaten"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session fortgesetzt."
+msgstr "Session beenden"
+
+msgid "Moduswechsel gesendet — Inventar wird gesichert."
+msgstr ""
+
+msgid "Bridge offline — Modus ohne Live-Inventar gewechselt."
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Sessions"
+msgstr "2.2 Sitzungsdaten"
+
+msgid "Slug fehlt oder ungültig."
+msgstr ""
+
+msgid "Anzeigename für neue Kategorie fehlt."
+msgstr ""
+
+msgid "Kategorie-Slug existiert bereits — bitte „Bestehende Kategorie“ wählen."
+msgstr ""
+
+#, python-format
+msgid ""
+"Bulk-Übernahme nach „%(cat)s“: %(created)s neu, %(updated)s aktualisiert, "
+"%(skipped)s übersprungen (Preis %(price)s Velos)."
+msgstr ""
+
+#, python-format
+msgid " … (+%(n)s)"
+msgstr ""
+
+#, python-format
+msgid "Nicht in Registry / ungültig: %(list)s%(more)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Minecraft-Import: %(cc)s/%(cu)s Kategorien neu/aktualisiert, %(ic)s/%(iu)s "
+"Artikel neu/aktualisiert, %(sk)s übersprungen."
+msgstr ""
+
+#, python-format
+msgid "Ohne Mapping (Auszug): %(list)s%(more)s"
+msgstr ""
+
+msgid ""
+"Registry-Dump an Bridge gesendet — in wenigen Sekunden aktualisiert "
+"(Heartbeat)."
+msgstr ""
+
+msgid "Bridge nicht erreichbar / kein Dump eingeordnet."
+msgstr ""
+
+#, python-format
+msgid ""
+"Plan-Hologramm-Prüfung für %(n)s Shop-Artikel an Bridge gesendet (echter "
+"Klon-Test auf dem Server)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Shop-Artikel zum Prüfen."
+msgstr "Keine aktiven Gruppen gefunden."
+
+msgid "Bridge nicht erreichbar / Plan-Prüfung nicht eingeordnet."
+msgstr ""
+
+#, python-format
+msgid ""
+"DE-Labels aus Registry: %(created)s neu, %(updated)s aktualisiert, "
+"%(skipped)s übersprungen (%(miss)s ohne Registry-Treffer)."
+msgstr ""
+
+msgid ""
+"DE-Locale-Import: MCC_LUANTI_LOCALE_ROOT fehlt oder ungültig (Mineclonia-Mod-"
+"Pfad mit locale/*.de.tr)."
+msgstr ""
+
+msgid "DE-Locale-Import: keine *.de.tr unter Locale-Root gefunden."
+msgstr ""
+
+#, python-format
+msgid ""
+"DE-Labels aus Mineclonia-Locales: %(created)s neu, %(updated)s aktualisiert, "
+"%(skipped)s übersprungen (ohne EN-Quelle: %(nos)s, ohne DE-Mapping: %(nom)s)."
+msgstr ""
+
+msgid ""
+"DE-Reparatur: Markup bereinigt; Locales fehlen (MCC_LUANTI_LOCALE_ROOT) — "
+"nur Plain-Text aus Beschreibung."
+msgstr ""
+
+msgid "DE-Reparatur: keine *.de.tr — nur Markup bereinigt."
+msgstr ""
+
+#, python-format
+msgid ""
+"DE-Labels repariert: %(updated)s aktualisiert, %(same)s unverändert, "
+"%(empty)s ohne Titel."
+msgstr ""
+
+msgid ""
+"EN-Import: MCC_LUANTI_LOCALE_ROOT fehlt oder ungültig (Mineclonia-Mod-Pfad "
+"mit locale/*.de.tr)."
+msgstr ""
+
+msgid "EN-Import: keine *.de.tr unter Locale-Root gefunden."
+msgstr ""
+
+#, python-format
+msgid ""
+"EN-Labels: %(created)s neu, %(updated)s aktualisiert, %(skipped)s "
+"übersprungen (ohne DE-Text: %(node)s, ohne EN-Mapping: %(nom)s)."
+msgstr ""
+
+#, python-format
+msgid ""
+"Kategorie-Titel (DE/EN): %(created)s neu, %(updated)s aktualisiert, "
+"%(skipped)s übersprungen."
+msgstr ""
+
+#, python-format
+msgid "Artikel %(item)s zur Kategorie %(cat)s hinzugefügt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiger API-Schlüssel"
+msgid "Ungültiger Itemstring."
+msgstr "Ungültiger API-Schlüssel"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Items ausgewählt."
+msgstr "Keine Gruppen"
+
+msgid "Bitte zuerst einen Mod-Filter wählen."
+msgstr ""
+
+msgid "Mod-Bulk nur sinnvoll mit „Nur fehlende“ — Filter aktivieren."
+msgstr ""
+
+#, python-format
+msgid ""
+"Mod „%(mod)s“ hat %(n)s fehlende Items (Limit %(cap)s). Suche verengen oder "
+"Limit in LUANTI_SHOP_BULK_MOD_MAX erhöhen."
+msgstr ""
+
+msgid "Keine fehlenden Items für diesen Mod."
+msgstr ""
+
+msgid "Filter-Bulk erfordert „Nur fehlende“ im Filter."
+msgstr ""
+
+msgid "Keine fehlenden Treffer für den aktuellen Filter."
+msgstr ""
+
+#, python-format
+msgid ""
+"Aktueller Filter: %(n)s fehlende Items (Limit %(cap)s). Mod wählen oder "
+"Suche verengen."
+msgstr ""
+
+msgid "Luanti Shop"
+msgstr ""
+
+#, python-format
+msgid "An %(n)s Bridge(s) gesendet"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Bridge verbunden"
+msgstr "Keine Daten gefunden."
+
+msgid "Preset an Bridge gesendet/eingereiht."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel konnte nicht gestoppt werden."
+msgid "Befehl konnte nicht zugestellt werden."
+msgstr "Spiel konnte nicht gestoppt werden."
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Luanti Stadtsteuerung"
+msgstr "Minecraft-Name"
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Arena-Status aktualisiert."
+msgstr "Zuletzt aktiv"
+
+msgid "Clear-Carts gesendet."
+msgstr ""
+
+msgid "Spawn gesendet."
+msgstr ""
+
+msgid "Luanti Arena / Loren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Station angelegt."
+msgstr "Session beenden"
+
+msgid "Reload angefordert."
+msgstr ""
+
+msgid "Spiel-PCs (Operator)"
+msgstr ""
+
+msgid "Luanti"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Hinweis aktive Session"
+msgstr "Radler - aktive Sitzungen"
+
+msgid "Standard-Sessiondauer (Min.)"
+msgstr ""
+
+msgid "Zeit hinzufügen/kürzen (Min.)"
+msgstr ""
+
+msgid "Standard-Minimum Dauer (Min.)"
+msgstr ""
+
+msgid "Fallback, wenn am Account kein Minimum gesetzt ist."
+msgstr ""
+
+msgid "Standard-Maximum Dauer (Min.)"
+msgstr ""
+
+msgid "Fallback, wenn am Account kein Maximum gesetzt ist."
+msgstr ""
+
+msgid "Session-Ende-Warnung (Sek.)"
+msgstr ""
+
+msgid ""
+"Spieler erhält eine Chat-Warnung so viele Sekunden vor Session-Ende. 0 = "
+"keine Warnung."
+msgstr ""
+
+msgid "Regionen-Markierung aktiv"
+msgstr ""
+
+msgid "Cuboid-Grenzen als Partikel in der Nähe von Spielern zeichnen."
+msgstr ""
+
+msgid "Hinweis beim Betreten"
+msgstr ""
+
+msgid "Region-Namen kurz anzeigen, wenn ein Spieler eine Zone betritt."
+msgstr ""
+
+msgid "Sichtweite Regionen (Blöcke)"
+msgstr ""
+
+msgid "Horizontale Distanz, ab der Outline-Partikel gezeichnet werden."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Luanti-Konfiguration"
+msgstr "id_tag erforderlich."
+
+msgid "Control öffnen"
+msgstr ""
+
+msgid "Stadtsteuerung öffnen"
+msgstr ""
+
+msgid "Shop öffnen"
+msgstr ""
+
+msgid "Arena/Loren öffnen"
+msgstr ""
+
+msgid "Accounts verwalten"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Sessions verwalten"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Station"
+msgid "Stationen verwalten"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Luanti Login-Passwort anzeigen"
+msgstr "Auf Karte anzeigen"
+
+msgid "Luanti Login-Passwort setzen"
+msgstr ""
+
+msgid "Server-ID"
+msgstr ""
+
+msgid "Verbunden"
+msgstr ""
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Verbunden seit"
+msgstr "In Map/Game anzeigen"
+
+msgid "Zuletzt gesehen"
+msgstr ""
+
+msgid "Bridge-Verbindung"
+msgstr ""
+
+msgid "Bridge-Verbindungen"
+msgstr ""
+
+msgid "Leer = für alle Server."
+msgstr ""
+
+msgid "Payload"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Erstellt"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Zugestellt"
+msgstr "Erstellt am"
+
+msgid "Ausstehender Bridge-Befehl"
+msgstr ""
+
+msgid "Ausstehende Bridge-Befehle"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spielen"
+msgstr "Spieler"
+
+msgid "Bauen"
+msgstr ""
+
+msgid "Zuschauen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Event-Name"
+msgid "Login-Name"
+msgstr "Event-Name"
+
+msgid "Luanti-Spielername (ohne Leerzeichen)."
+msgstr ""
+
+msgid "Token für RFID-Session-Start."
+msgstr ""
+
+#, fuzzy
+#| msgid "Anzeige"
+msgid "Anzeigename"
+msgstr "Anzeige"
+
+#, fuzzy
+#| msgid "Hourly Metrics"
+msgid "Server-Operator"
+msgstr "Stündliche Metriken"
+
+msgid ""
+"Wenn aktiv: bei Session-Freigabe erweiterte Luanti-Privilegien (u. a. "
+"server, privs, ban, kick, protection_bypass, give, teleport) — vergleichbar "
+"mit Minecraft /op."
+msgstr ""
+
+msgid "Erlaubte Modi"
+msgstr ""
+
+msgid "Liste z. B. [\"play\",\"build\",\"watch\"]. Leer = alle drei."
+msgstr ""
+
+msgid "Standard-Modus"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Dauer (Min.)"
+msgstr "Session beenden"
+
+msgid "Leer = globaler Standard."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Min. Dauer (Min.)"
+msgstr "Keine Gruppen"
+
+msgid "Untergrenze für Start/Kürzung. Leer = globaler Standard."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Max. Dauer (Min.)"
+msgstr "Keine Gruppen"
+
+msgid "Obergrenze für Start/Verlängerung. Leer = globaler Standard."
+msgstr ""
+
+msgid "Zeit-Schrittgröße (Min.)"
+msgstr ""
+
+msgid ""
+"Schrittweite der ±-Buttons auf Session-Kacheln. Leer = globaler Standard."
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Unbegrenzte Session"
+msgstr "Radler - aktive Sitzungen"
+
+msgid ""
+"Klartext für Admin-Anzeige und Linux-Station-Launcher. Wird auch auf dem "
+"Luanti-Server gesetzt."
+msgstr ""
+
+msgid "Passwort auf Server gesetzt"
+msgstr ""
+
+msgid "Passwort gesetzt am"
+msgstr ""
+
+msgid "Festes Wallet"
+msgstr ""
+
+msgid "Auto: Leaf mit meistem Spendable"
+msgstr ""
+
+#, fuzzy
+#| msgid "No Group"
+msgid "Pool: Heimat-Gruppe"
+msgstr "Keine Gruppe"
+
+#, fuzzy
+#| msgid "Leaf-Gruppe"
+msgid "Heimat-Gruppe"
+msgstr "Leaf-Gruppe"
+
+msgid "Organisation / TOP (Filter, Pool-Modus)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Aktives Wallet"
+msgstr "Spieler"
+
+msgid "Gruppe, deren velos_spendable belastet wird (bei Modus „Fest“)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Manual Mode"
+msgid "Wallet-Modus"
+msgstr "Manueller Modus"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Account (Mgmt)"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Accounts (Mgmt)"
+msgstr "Session beenden"
+
+msgid "Bereit"
+msgstr ""
+
+msgid "Pausiert"
+msgstr ""
+
+msgid "Admin-GUI"
+msgstr ""
+
+msgid "RFID-Scan"
+msgstr ""
+
+msgid "System"
+msgstr ""
+
+msgid "Account"
+msgstr ""
+
+msgid "Modus"
+msgstr ""
+
+msgid "0 = unbegrenzt."
+msgstr ""
+
+msgid "Geplantes Ende"
+msgstr ""
+
+#, fuzzy
+#| msgid "Entfernen"
+msgid "Ende-Warnung gesendet"
+msgstr "Entfernen"
+
+msgid "Zeitpunkt der Chat-Vorwarnung vor Session-Ende."
+msgstr ""
+
+msgid "Pausiert seit"
+msgstr ""
+
+msgid "Restzeit bei Pause (Sek.)"
+msgstr ""
+
+msgid "Gespeicherte Restzeit während STATUS_PAUSED."
+msgstr ""
+
+msgid "Tatsächliches Ende"
+msgstr ""
+
+msgid "Station"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Session-Wallet"
+msgstr "2.2 Sitzungsdaten"
+
+msgid "Optional: überschreibt Account-Wallet nur für diese Session."
+msgstr ""
+
+msgid "Zum Welt-Spawn beim Start"
+msgstr ""
+
+msgid ""
+"Wenn gesetzt: nach Freigabe einmal zum static_spawnpoint teleportieren. "
+"Sonst letzte Spielerposition behalten."
+msgstr ""
+
+msgid "Spawn-Region"
+msgstr ""
+
+msgid ""
+"Wenn gesetzt: Session startete mit Teleport in diese Region (statt Welt-"
+"Spawn)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Historie"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Events - Histories"
+msgid "Sessions-Historie"
+msgstr "Events - Historien"
+
+msgid "Inventar (JSON)"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Revision"
+msgstr "Version"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spieler-Inventar"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "MCC Game Interface"
+msgid "Spieler-Inventare"
+msgstr "MCC Spiel-Interface"
+
+msgid "Slug"
+msgstr ""
+
+msgid "Shop-Kategorie"
+msgstr ""
+
+msgid "Shop-Kategorien"
+msgstr ""
+
+msgid "Sprachcode"
+msgstr ""
+
+msgid "Shop-Kategorie-Übersetzung"
+msgstr ""
+
+msgid "Shop-Kategorie-Übersetzungen"
+msgstr ""
+
+msgid "Kategorie"
+msgstr ""
+
+#, fuzzy
+#| msgid "Event-Name"
+msgid "Item-Name"
+msgstr "Event-Name"
+
+msgid "Luanti itemstring, z. B. mcl_core:diamond"
+msgstr ""
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Kaufpreis (Velos)"
+msgstr "Distanz (km)"
+
+msgid "Stack-Größe"
+msgstr ""
+
+msgid ""
+"Max. Stapel im Inventar; Shop-Menge pro Kauf ist höchstens dieser Wert (max. "
+"64)."
+msgstr ""
+
+msgid "Shop-Artikel"
+msgstr ""
+
+msgid "Shop-Artikel-Übersetzung"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Shop-Artikel-Übersetzungen"
+msgstr "Spieler"
+
+msgid "Restmenge"
+msgstr ""
+
+msgid "Shop-Kaufguthaben"
+msgstr ""
+
+msgid "Kauf"
+msgstr ""
+
+msgid "Verkauf"
+msgstr ""
+
+msgid "Plan-Kauf"
+msgstr ""
+
+msgid "Client-Tx-ID"
+msgstr ""
+
+#, fuzzy
+#| msgid "KM-Marke"
+msgid "Velos-Delta"
+msgstr "KM-Marke"
+
+msgid "Shop-Transaktion"
+msgstr ""
+
+msgid "Shop-Transaktionen"
+msgstr ""
+
+msgid "Itemstring"
+msgstr ""
+
+msgid "Art"
+msgstr ""
+
+msgid "Drawtype"
+msgstr ""
+
+#, fuzzy
+#| msgid "Event-Name"
+msgid "Inventarbild"
+msgstr "Event-Name"
+
+msgid "Wield-Bild"
+msgstr ""
+
+msgid "Nicht im Kreativ-Inventar"
+msgstr ""
+
+msgid "Plan-Hologramm-Status"
+msgstr ""
+
+msgid ""
+"Vom Luanti-Server: shape = Form-Klon, fallback = Glaswürfel, na = kein Node."
+msgstr ""
+
+msgid "Plan-Hologramm-Detail"
+msgstr ""
+
+msgid "Plan-Hologramm geprüft am"
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Aktualisiert"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Registry"
+msgstr "Aktualisiert am"
+
+msgid "Welt & Wetter"
+msgstr ""
+
+msgid "Schritte"
+msgstr ""
+
+msgid ""
+"Semantische Bridge-Commands, z. B. [{\"op\":\"set_time\",\"value\":6000}]. "
+"Im Preset-Editor als Zeilen bearbeitbar — nicht im Code verdrahtet."
+msgstr ""
+
+msgid "System-Preset"
+msgstr ""
+
+msgid "Geschützt: Löschen/Slug nur mit System-Rechten."
+msgstr ""
+
+msgid "Moderator darf ausführen"
+msgstr ""
+
+msgid "Erlaubt Ausführen auch ohne change-Recht (Stadtsteuerung)."
+msgstr ""
+
+msgid "Bestätigung"
+msgstr ""
+
+msgid "Stadt-Preset"
+msgstr ""
+
+msgid "Stadt-Presets"
+msgstr ""
+
+msgid "Stadt-Preset ausführen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "System-Stadt-Preset bearbeiten"
+msgstr "Session beenden"
+
+msgid "System-Stadt-Preset löschen"
+msgstr ""
+
+msgid "Region-ID"
+msgstr ""
+
+msgid "Welt"
+msgstr ""
+
+msgid "Master-Region"
+msgstr ""
+
+msgid "Leer = Master-Region. Gesetzt = Subregion innerhalb der Master-Bounds."
+msgstr ""
+
+msgid ""
+"Nur bei Master-Regionen: permanente Zuordnung zur TOP-Gruppe. Subregionen "
+"erben über die Master-Region."
+msgstr ""
+
+msgid "Reihenfolge in der Liste (Master untereinander, Subs je Master)."
+msgstr ""
+
+msgid "Min X"
+msgstr ""
+
+msgid "Min Y"
+msgstr ""
+
+msgid "Min Z"
+msgstr ""
+
+msgid "Max X"
+msgstr ""
+
+msgid "Max Y"
+msgstr ""
+
+msgid "Max Z"
+msgstr ""
+
+msgid "Spawn X"
+msgstr ""
+
+msgid ""
+"Optionaler Session-Spawn (Blockkoordinaten). Y = Block, auf dem gestanden "
+"wird (z. B. Gras); Teleport stellt die Füße darauf. Leer = Cuboid-Mitte."
+msgstr ""
+
+msgid "Spawn Y"
+msgstr ""
+
+msgid "Spawn Z"
+msgstr ""
+
+msgid "Bauen schützen"
+msgstr ""
+
+msgid ""
+"Wenn aktiv: im Build-Modus dürfen nur Members in diesem Cuboid bauen. Aus = "
+"Passthrough (kein eigener Bau-Schutz)."
+msgstr ""
+
+msgid "Mitglieder (Accounts)"
+msgstr ""
+
+msgid "Accounts, die im Build-Modus in dieser Region bauen dürfen."
+msgstr ""
+
+msgid "TOP der Master-Region für Plan-Velos"
+msgstr ""
+
+msgid ""
+"Spendable Velos der Master-TOP-Gruppe fließen in den Umwandlungs-Pool dieser "
+"Zone."
+msgstr ""
+
+msgid "Live-Umwandlung aktiv"
+msgstr ""
+
+msgid ""
+"Server wandelt Hologramme fortlaufend um, sobald Plan-Pool-Velos (z. B. "
+"durch Radfahren) verfügbar sind — ohne /mccplan autoconvert ingame."
+msgstr ""
+
+msgid "Live-Umwandlung gestartet am"
+msgstr ""
+
+msgid "Live-Umwandlung gestartet von"
+msgstr ""
+
+msgid "Geändert von"
+msgstr ""
+
+msgid "Geschützte Region"
+msgstr ""
+
+msgid "Geschützte Regionen"
+msgstr ""
+
+msgid "Geschützte Regionen verwalten"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Master-Region nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+msgid ""
+"Subregionen dürfen nur einer Master-Region (ohne Parent) untergeordnet sein."
+msgstr ""
+
+msgid "Eine Region kann nicht ihr eigener Parent sein."
+msgstr ""
+
+msgid ""
+"TOP-Zuordnung nur bei Master-Regionen; Subregionen erben über den Parent."
+msgstr ""
+
+msgid "Subregion muss in derselben Welt wie die Master-Region liegen."
+msgstr ""
+
+msgid "Subregion muss vollständig innerhalb der Master-Region liegen."
+msgstr ""
+
+msgid "Nur TOP-Gruppen (ohne übergeordnete Gruppe) dürfen zugewiesen werden."
+msgstr ""
+
+#, python-format
+msgid "Master-Bounds würden Subregion „%(id)s“ ausschließen."
+msgstr ""
+
+msgid ""
+"Spawn-Punkt: X, Y und Z müssen zusammen gesetzt werden (oder alle leer)."
+msgstr ""
+
+msgid "Spawn-Punkt muss innerhalb der Regions-Bounds liegen."
+msgstr ""
+
+#, python-format
+msgid "Subregion überlappt mit Geschwister-Region „%(id)s“."
+msgstr ""
+
+#, python-format
+msgid "Master-Region überlappt mit anderer Master-Region „%(id)s“."
+msgstr ""
+
+msgid "Region"
+msgstr ""
+
+#, fuzzy
+#| msgid "No Group"
+msgid "Plan-Velos Gruppe"
+msgstr "Keine Gruppe"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Plan-Velos Gruppen"
+msgstr "Alle Top-Gruppen"
+
+msgid "Geplant"
+msgstr ""
+
+msgid "Umgewandelt"
+msgstr ""
+
+msgid "X"
+msgstr ""
+
+msgid "Y"
+msgstr ""
+
+msgid "Z"
+msgstr ""
+
+msgid "Shop-Artikel-ID"
+msgstr ""
+
+msgid "Ziel-Item"
+msgstr ""
+
+msgid "Umwandlungspreis (Velos)"
+msgstr ""
+
+msgid "Param2"
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Platziert von"
+msgstr "Aktualisiert am"
+
+msgid "Kaufguthaben nach Umwandlung gebucht"
+msgstr ""
+
+msgid "Plan-Block"
+msgstr ""
+
+msgid "Plan-Blöcke"
+msgstr ""
+
+msgid "Plan-Umwandlungs-Transaktion"
+msgstr ""
+
+msgid "Plan-Umwandlungs-Transaktionen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Zuweisungen aktiv."
+msgid "Arena aktiv"
+msgstr "Keine Zuweisungen aktiv."
+
+msgid "Standardgeschwindigkeit"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel-Einstellungen"
+msgid "Arena-Einstellungen"
+msgstr "Geräteverwaltungs-Einstellungen"
+
+msgid "Arena-Spur"
+msgstr ""
+
+msgid "Arena-Spuren"
+msgstr ""
+
+msgid "Erstmals gesehen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Wartender Spieler"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Wartende Spieler"
+msgstr "Spieler"
+
+msgid "Hostname"
+msgstr ""
+
+msgid "Standort"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "API-Key"
+msgstr "Station"
+
+msgid "Wird beim Speichern erzeugt, wenn leer."
+msgstr ""
+
+msgid "Standard-Account"
+msgstr ""
+
+#, fuzzy
+#| msgid "Device Configuration"
+msgid "Desired Config"
+msgstr "Gerätekonfiguration"
+
+msgid "Launcher/Server-Einstellungen für den Station-Agent."
+msgstr ""
+
+msgid "Gemeldete Config"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Fehler"
+msgstr "Letzter Bericht"
+
+msgid "Spiel-PC (Mgmt)"
+msgstr ""
+
+msgid "Spiel-PCs (Mgmt)"
+msgstr ""
+
+msgid "Spielerpositions-Antwort"
+msgstr ""
+
+msgid "Spielerpositions-Antworten"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Stadt-Preset bearbeiten"
+msgstr "Session beenden"
+
+msgid "Stadt-Preset anlegen"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Name ist erforderlich."
+msgstr "id_tag erforderlich."
+
+msgid "Luanti Stadt-Presets"
+msgstr ""
+
+msgid "Preset gespeichert."
+msgstr ""
+
+#, python-format
+msgid "Preset „%(name)s“ gelöscht."
+msgstr ""
+
+#, python-format
+msgid "Kopie angelegt: %(name)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Datei gewählt."
+msgstr "Keine Gruppen"
+
+#, python-format
+msgid "JSON ungültig: %(err)s"
+msgstr ""
+
+msgid "Erwarte Liste oder {\"presets\": [...]}."
+msgstr ""
+
+#, python-format
+msgid "%(n)s Preset(s) importiert."
+msgstr ""
+
+#, python-format
+msgid "Seeds angelegt: %(s)s"
+msgstr ""
+
+msgid "Alle Seed-Presets waren schon vorhanden."
+msgstr ""
+
+#, python-format
+msgid "Markierung gespeichert und an Bridge gesendet (%(d)s)."
+msgstr ""
+
+#, python-format
+msgid "Markierung gespeichert (Bridge offline: %(d)s)."
+msgstr ""
+
+#, python-format
+msgid "Spawn-Punkt von %(player)s: X=%(x)s / Y=%(y)s / Z=%(z)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Position von %(player)s: X=%(x)s / Z=%(z)s → %(corner)s (Y unverändert, "
+"Spieler-Y war %(y)s)"
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ geladen."
+msgstr ""
+
+#, python-format
+msgid "Reihenfolge von „%(id)s“ aktualisiert."
+msgstr ""
+
+#, python-format
+msgid "„%(id)s“ ist bereits am Ende der Liste."
+msgstr ""
+
+msgid "Neue Master-Region — Bounds setzen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Master-Region."
+msgstr "Ungültiges Format."
+
+#, python-format
+msgid "Neue Subregion unter „%(id)s“ — Bounds bitte verkleinern."
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ gespeichert und an Bridge gesendet."
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ gespeichert (Bridge offline: %(detail)s)."
+msgstr ""
+
+#, python-format
+msgid "Regionen an Bridge gesendet (%(d)s)."
+msgstr ""
+
+#, python-format
+msgid "Push fehlgeschlagen: %(d)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Region nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+#, python-format
+msgid "Region „%(id)s“ gelöscht."
+msgstr ""
+
+#, python-format
+msgid ""
+"Live-Umwandlung gestartet für „%(id)s“ (%(planned)s Hologramme, Pool "
+"%(pool)s Velos)."
+msgstr ""
+
+#, python-format
+msgid "Live-Umwandlung gestoppt für „%(id)s“."
+msgstr ""
+
+#, python-format
+msgid "Umgewandelt: %(n)s Block/Blöcke in „%(id)s“."
+msgstr ""
+
+#, python-format
+msgid "Umwandlung fehlgeschlagen: %(code)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Luanti-Bridge ist nicht verbunden."
+msgstr "Spieler nicht gefunden"
+
+msgid "Kein Luanti-Bridge-Client erreichbar."
+msgstr ""
+
+msgid "Spielerposition nicht lesbar (Spieler offline oder keine Antwort)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige TOP-Gruppe."
+msgstr "Ungültiges Format."
+
+msgid "Eine bestehende Master-Region kann nicht zur Subregion werden."
+msgstr ""
+
+msgid "Subregion braucht weiterhin eine Master-Region."
+msgstr ""
+
+msgid "Master-Region einer Subregion darf nicht gewechselt werden."
+msgstr ""
+
+#, python-format
+msgid "Region-ID „%(id)s“ existiert bereits."
+msgstr ""
+
+msgid ""
+"Ungültige Region-ID (1–63 Zeichen, beginnt mit Buchstabe/Ziffer; erlaubt: A–"
+"Z, 0–9, _, -)."
+msgstr ""
+
+msgid "Ungültiger Spielername (1–32 Zeichen, A–Z, 0–9, _)."
+msgstr ""
+
+#, python-format
+msgid "Feld %(field)s fehlt."
+msgstr ""
+
+#, python-format
+msgid "Feld %(field)s ist keine ganze Zahl."
+msgstr ""
+
+msgid "Sub-Slug fehlt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiger API-Schlüssel"
+msgid "Ungültiger Sub-Slug."
+msgstr "Ungültiger API-Schlüssel"
 
 msgid "MCC Live Map"
 msgstr "MCC Live Map"
@@ -3247,14 +5493,6 @@ msgstr "Ebenen anzeigen/verstecken"
 #| msgid "Alle Top-Gruppen"
 msgid "Alle Routen"
 msgstr "Alle Top-Gruppen"
-
-#, fuzzy
-#| msgid "Alle Top-Gruppen"
-msgid "Alle Gruppen"
-msgstr "Alle Top-Gruppen"
-
-msgid "Anzeige"
-msgstr "Anzeige"
 
 #, fuzzy
 #| msgid "Gewinner"
@@ -3289,8 +5527,13 @@ msgstr "Gruppenname"
 msgid "Filter:"
 msgstr "Filter"
 
-msgid "Ziel"
+msgid "Lebenslauf"
 msgstr ""
+
+#, fuzzy
+#| msgid "Group Type"
+msgid "Periode"
+msgstr "Gruppentyp"
 
 #, fuzzy
 #| msgid "Meilenstein erreicht!"
@@ -3346,24 +5589,11 @@ msgstr "MCC Live Map"
 msgid "Tabelle"
 msgstr "Tabelle"
 
-#, fuzzy
-#| msgid "Filters"
-msgid "Filter"
-msgstr "Filter"
-
-#, fuzzy
-#| msgid "2.2 Session Data"
-msgid "Session"
-msgstr "2.2 Sitzungsdaten"
-
 msgid "Direkte Mitglieder"
 msgstr ""
 
 msgid "Keine aktiven Gruppen gefunden."
 msgstr "Keine aktiven Gruppen gefunden."
-
-msgid "Zeitraum"
-msgstr ""
 
 msgid "Listenansicht umschalten"
 msgstr ""
@@ -3420,9 +5650,6 @@ msgstr "AKTUELL AM START"
 msgid "Warten auf Radler..."
 msgstr "Warten auf Radler..."
 
-msgid "Station"
-msgstr "Station"
-
 msgid "Spieler"
 msgstr "Spieler"
 
@@ -3433,13 +5660,21 @@ msgid "Teilnehmende Gruppe"
 msgstr "Teilnehmende Gruppe"
 
 msgid ""
-"Möchten Sie die Reise für diese Gruppe wirklich abbrechen? Die aktuellen "
-"Reisekilometer ({}) gehen verloren."
+"Teilnehmende Gruppen (optional – Leaf-Gruppen können direkt beim Anlegen "
+"oder später zugewiesen werden)"
+msgstr ""
+
+msgid "Gruppe öffnen →"
 msgstr ""
 
 msgid ""
 "Die Gruppe '{}' hat bereits {} Reisekilometer. Bitte verwenden Sie die "
 "'Reise abbrechen'-Funktion, um die Gruppe von der Reise zu entfernen."
+msgstr ""
+
+msgid ""
+"Möchten Sie die Reise für diese Gruppe wirklich abbrechen? Die aktuellen "
+"Reisekilometer ({}) gehen verloren."
 msgstr ""
 
 msgid "Leaf-Gruppen Beiträge (Ranking)"
@@ -3494,7 +5729,13 @@ msgstr ""
 msgid "Radumfang (mm):"
 msgstr ""
 
+msgid "ACHTUNG: Kilometerstand und Velos-Guthaben manuell ändern?"
+msgstr ""
+
 msgid "ACHTUNG: Kilometerstand manuell ändern?"
+msgstr ""
+
+msgid "ACHTUNG: Velos-Guthaben manuell ändern?"
 msgstr ""
 
 msgid "API-Key-Verwaltung"
@@ -3614,6 +5855,16 @@ msgid "API-Key-Aktionen"
 msgstr ""
 
 #, fuzzy
+#| msgid "TOP-Gruppe"
+msgid "TOP-Gruppen"
+msgstr "TOP-Gruppe"
+
+msgid ""
+"TOP-Gruppen, denen dieser Benutzer als Manager zugeordnet ist (Zuweisung "
+"unter Gruppen → Manager)."
+msgstr ""
+
+#, fuzzy
 #| msgid "Gruppenname"
 msgid "Gruppeninformationen"
 msgstr "Gruppenname"
@@ -3630,11 +5881,18 @@ msgstr ""
 msgid "Verwaltung"
 msgstr ""
 
+#, fuzzy
+#| msgid "Übergeordnete Gruppe"
+msgid "Übergeordnete Gruppe öffnen →"
+msgstr "Übergeordnete Gruppe"
+
+#, fuzzy
+#| msgid "Gruppentyp"
+msgid "Gruppentyp öffnen →"
+msgstr "Gruppentyp"
+
 msgid "Gesamtkilometer"
 msgstr "Gesamtkilometer"
-
-msgid "Keine"
-msgstr ""
 
 msgid "Kein Logo"
 msgstr "Kein Logo"
@@ -3694,9 +5952,14 @@ msgid "Noch nicht erreicht"
 msgstr "Neu gestartet"
 
 msgid ""
-"Wählen Sie eine TOP-Gruppe aus. Eine Reise muss immer einer TOP-Gruppe "
-"zugeordnet werden, damit Sie sie nach dem Speichern sehen können."
+"TOP-Gruppe für Berechtigungen (Pflicht für Operatoren). Teilnehmende Leaf-"
+"Gruppen können nach dem Speichern der Route zugewiesen werden."
 msgstr ""
+
+#, fuzzy
+#| msgid "TOP-Gruppe"
+msgid "TOP-Gruppe öffnen →"
+msgstr "TOP-Gruppe"
 
 msgid ""
 "Eine TOP-Gruppe muss ausgewählt werden. Eine Reise muss immer einer TOP-"
@@ -3752,6 +6015,14 @@ msgstr ""
 "Beschreibung (max. 500 Zeichen) und externe Links werden in den Milestone-"
 "Details angezeigt. Die Beschreibung wird im Overlay mit maximal 200px Höhe "
 "angezeigt."
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine TOP-Gruppe zugewiesen"
+msgstr "Keine Daten gefunden."
+
+msgid "Route öffnen →"
+msgstr ""
 
 msgid "In Reise verwendet"
 msgstr "In Reise verwendet"
@@ -3929,9 +6200,6 @@ msgstr ""
 msgid "Event wurde in die Historie gespeichert und zurückgesetzt."
 msgstr "Event wurde in die Historie gespeichert und zurückgesetzt."
 
-msgid "Kilometer"
-msgstr "Kilometer"
-
 msgid ""
 "Die Order-Nummer {} ist bereits vergeben. Jede Order-Nummer darf nur einmal "
 "pro Gerät verwendet werden."
@@ -3995,6 +6263,14 @@ msgid "Set Brightness: 50%"
 msgstr ""
 
 msgid "Set Brightness: 100%"
+msgstr ""
+
+#, fuzzy
+#| msgid "Group Type"
+msgid "Periode KM"
+msgstr "Gruppentyp"
+
+msgid "Lebenslauf KM"
 msgstr ""
 
 msgid "Konfigurationsstatus"
@@ -4062,9 +6338,18 @@ msgid "Kilometer-Anzeige"
 msgstr "Kilometerziel"
 
 msgid ""
-"Steuert, ob und wie Kilometer (aus HourlyMetric) zusätzlich zu Velos in "
-"Leaderboard-Footer und Ranking angezeigt werden. Velos bleiben die primäre "
-"Wettbewerbsmetrik."
+"Steuert, ob und wie Kilometer zusätzlich zu Velos in Leaderboard, Ranking "
+"und Eventboard angezeigt werden. Leaderboard-km entsprechen dem Ranking "
+"(Group.distance_total); Velos bleiben die primäre Wettbewerbsmetrik mit "
+"HourlyMetric-Zeiträumen."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Konfiguration"
+msgstr "id_tag erforderlich."
+
+msgid "Einstellungen bearbeiten — Kilometer in externen GUIs"
 msgstr ""
 
 msgid "Popup-Dauer"
@@ -4124,11 +6409,6 @@ msgstr "Gruppenname"
 #| msgid "Gruppen-Reisestatus"
 msgid "Gesundheitsstatus"
 msgstr "Gruppen-Reisestatus"
-
-#, fuzzy
-#| msgid "id_tag erforderlich."
-msgid "Konfiguration"
-msgstr "id_tag erforderlich."
 
 msgid "Online-Status"
 msgstr ""
@@ -4292,7 +6572,97 @@ msgstr "View site"
 msgid "Backup Management"
 msgstr ""
 
-msgid "Minecraft Control"
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft"
+msgstr "Minecraft-Name"
+
+msgid "Control"
+msgstr ""
+
+msgid "Auth-Failover"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Account-Management"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spieler-Accounts"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Station"
+msgid "Stationen (PCs)"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Spieler-Sessions"
+msgstr "Radler - aktive Sitzungen"
+
+msgid "Bau-Accounts"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Bau-Sessions"
+msgstr "2.2 Sitzungsdaten"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Warteliste"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Anzeige"
+msgid "Wartelisten-Anzeige"
+msgstr "Anzeige"
+
+msgid "Vergabe-Katalog"
+msgstr ""
+
+msgid "VehiclesPlus Resourcepack"
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Stadtsteuerung"
+msgstr "Minecraft-Name"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Meine Bauzonen"
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Arena-Steuerung"
+msgstr "Minecraft-Name"
+
+msgid "Arena-Bahnen (Geometrie)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel-Einstellungen"
+msgid "Arena-Motion-Einstellungen"
+msgstr "Geräteverwaltungs-Einstellungen"
+
+msgid "Arena-Simulation"
+msgstr ""
+
+msgid "Shop-Betrieb"
+msgstr ""
+
+msgid "Shop-Import"
+msgstr ""
+
+msgid "Shop"
+msgstr ""
+
+msgid "Arena / Loren"
 msgstr ""
 
 msgid "Reisen"
@@ -4317,14 +6687,32 @@ msgid "Gespeicherte Werte"
 msgstr "Geräte"
 
 #, fuzzy
-#| msgid "Erstellt am"
-msgid "Erstellt"
-msgstr "Erstellt am"
-
-#, fuzzy
 #| msgid "Details"
 msgid "Anzahl Details"
 msgstr "Details"
+
+msgid "Rückgängig"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Dieser Jahresabschluss wurde bereits rückgängig gemacht."
+msgstr ""
+
+#, python-format
+msgid ""
+"Jahresabschluss #%(id)s rückgängig gemacht (%(g)s Gruppen, %(c)s Radler, "
+"%(d)s Geräte)."
+msgstr ""
+
+msgid "Fehler beim Rückgängigmachen: {}"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Jahresabschluss rückgängig machen"
+msgstr "Erstellt am"
 
 #, fuzzy
 #| msgid "Erstellt am"
@@ -4350,6 +6738,11 @@ msgstr ""
 msgid "Sie haben keine Berechtigung für diese Gruppe."
 msgstr ""
 
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Jahresabschluss — Vorschau prüfen"
+msgstr "Erstellt am"
+
 msgid "Jahresabschluss erfolgreich erstellt! Snapshot ID: {}"
 msgstr ""
 
@@ -4368,6 +6761,20 @@ msgstr ""
 #| msgid "Type"
 msgid "Typ"
 msgstr "Typ"
+
+msgid "SSH / Remote"
+msgstr ""
+
+msgid "Conf-Datei (geschrieben bei Speichern; Standard: Datenverzeichnis)"
+msgstr ""
+
+#, python-format
+msgid "Konfiguration gespeichert und nach %(path)s geschrieben."
+msgstr ""
+
+#, python-format
+msgid "Speichern ok, aber Conf-Datei konnte nicht geschrieben werden: %(err)s"
+msgstr ""
 
 msgid "MD5-Prüfsumme stimmt nicht überein: erwartet {}, berechnet {}"
 msgstr ""
@@ -4461,6 +6868,76 @@ msgstr ""
 msgid "Schwellenwert"
 msgstr ""
 
+msgid "Letzte Läufe (Fehler / manuell / geloggte Erfolge)"
+msgstr ""
+
+msgid "Ausführung"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zeitpunkt"
+msgid "Zeitplan"
+msgstr "Zeitpunkt"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Lauf / Zähler"
+msgstr "Letzter Bericht"
+
+msgid "Jetzt ausführen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Manual Mode"
+msgid "Manuell"
+msgstr "Manueller Modus"
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Job nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+msgid "Keine Berechtigung zum manuellen Starten."
+msgstr ""
+
+#, python-format
+msgid "Übersprungen: %(msg)s"
+msgstr ""
+
+msgid "Job erfolgreich ausgeführt."
+msgstr ""
+
+#, python-format
+msgid "Job beendet mit Status %(status)s: %(msg)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Ausgewählte Jobs aktivieren"
+msgstr "Auf Karte anzeigen"
+
+#, python-format
+msgid "%(count)d Job(s) aktiviert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Ausgewählte Jobs deaktivieren"
+msgstr "Auf Karte anzeigen"
+
+#, python-format
+msgid "%(count)d Job(s) deaktiviert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen löschen"
+msgid "Ausgewählte Jobs jetzt ausführen"
+msgstr "Alle Zuweisungen löschen"
+
+#, python-format
+msgid "Manuelle Läufe: %(ok)d OK, %(fail)d nicht OK."
+msgstr ""
+
 msgid "Massenerstellung: Schule, Klassen und Radler"
 msgstr ""
 
@@ -4481,6 +6958,19 @@ msgstr ""
 msgid "Massenerstellung: Schule, Klassen und Spieler"
 msgstr ""
 
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Gruppe"
+msgstr "Keine Gruppen"
+
+msgid "Strecke"
+msgstr ""
+
+#, fuzzy
+#| msgid "Leaf-Gruppe"
+msgid "Leaf-Gruppen"
+msgstr "Leaf-Gruppe"
+
 msgid ""
 "Zugriff verweigert. Nur System-Administratoren haben Zugriff auf diese "
 "Funktion."
@@ -4489,10 +6979,8 @@ msgstr ""
 msgid "Zugriff verweigert"
 msgstr ""
 
-#, fuzzy
-#| msgid "Keine Gruppen"
-msgid "Keine Gruppe"
-msgstr "Keine Gruppen"
+msgid "PDF-Export nicht verfügbar: reportlab ist nicht installiert."
+msgstr ""
 
 msgid "Event not found"
 msgstr ""
@@ -4506,6 +6994,64 @@ msgstr "Keine Gruppen gefunden"
 #| msgid "No groups found"
 msgid "Group not found"
 msgstr "Keine Gruppen gefunden"
+
+msgid "MyCyclingCity Analytics Report"
+msgstr ""
+
+msgid "MyCyclingCity – Analysebericht"
+msgstr ""
+
+#, python-format
+msgid "Zeitraum: %(start)s bis %(end)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Erstellt am"
+msgid "Erstellt am: %(ts)s"
+msgstr "Erstellt am"
+
+#, python-format
+msgid "Filter: %(filters)s"
+msgstr ""
+
+#, python-format
+msgid "Gruppentabelle: %(level)s"
+msgstr ""
+
+msgid "Tägliche Auslastung"
+msgstr ""
+
+msgid "Stündliche Auslastung"
+msgstr ""
+
+msgid "Rekordhalter"
+msgstr ""
+
+msgid "Perioden: Aktuell & Rekord"
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+msgid "Keine Daten für die gewählten Filter."
+msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Top Gruppen"
+msgstr "Alle Top-Gruppen"
+
+#, fuzzy
+#| msgid "Radler"
+msgid "Top Radler"
+msgstr "Radler"
+
+msgid "ID-Tag"
+msgstr ""
+
+#, fuzzy
+#| msgid "Geräte"
+msgid "Top Geräte"
+msgstr "Geräte"
 
 msgid "API Application Logs"
 msgstr ""
@@ -4557,6 +7103,34 @@ msgid "Minecraft Application Logs"
 msgstr ""
 
 msgid "All logs from the Minecraft application"
+msgstr ""
+
+msgid "Velocity Proxy Logs"
+msgstr ""
+
+msgid "Stdout/stderr from the Velocity proxy process"
+msgstr ""
+
+msgid "Limbo Waiting Room Logs"
+msgstr ""
+
+msgid "Stdout/stderr from the Limbo waiting-room process"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.1 Server Logs"
+msgid "Paper Server Logs"
+msgstr "2.1 Server-Logdateien"
+
+msgid "Stdout/stderr from the Paper (mc-srv) process"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.1 Server Logs"
+msgid "Luanti Server Logs"
+msgstr "2.1 Server-Logdateien"
+
+msgid "Stdout/stderr from the Luanti dedicated server process"
 msgstr ""
 
 msgid "Django Framework Logs"
@@ -4702,7 +7276,9 @@ msgstr ""
 msgid "Bind Adresse"
 msgstr "IP-Adresse"
 
-msgid "Adresse und Port, an die Gunicorn gebunden wird (z.B. 127.0.0.1:8001)"
+msgid ""
+"Adresse und Port für Gunicorn (Standard 0.0.0.0:8001 = alle Interfaces; "
+"öffentlich erreichbar ist nur Apache:443)"
 msgstr ""
 
 #, fuzzy
@@ -4756,6 +7332,45 @@ msgstr ""
 #| msgid "Device Configuration"
 msgid "Game Configuration"
 msgstr "Gerätekonfiguration"
+
+msgid "SSH-Host"
+msgstr ""
+
+msgid "Hostname oder IP des Backup-Servers"
+msgstr ""
+
+#, fuzzy
+#| msgid "Benutzer"
+msgid "SSH-Benutzer"
+msgstr "Benutzer"
+
+msgid "SSH-Port"
+msgstr ""
+
+msgid "SSH-Private-Key"
+msgstr ""
+
+msgid "Optionaler Pfad zum Private Key (leer = SSH-Default)"
+msgstr ""
+
+msgid "Remote-Backup-Verzeichnis"
+msgstr ""
+
+msgid ""
+"Zielverzeichnis auf dem Remote-Server (Unterordner backups/ und media/ "
+"werden verwendet)"
+msgstr ""
+
+msgid "Lokale Retention (Tage)"
+msgstr ""
+
+msgid "Aufbewahrung lokaler DB-Kopien unter /data/var/mcc/backups/database"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "MCC Backup-Konfiguration"
+msgstr "id_tag erforderlich."
 
 #, fuzzy
 #| msgid "Requested URL"
@@ -4876,9 +7491,6 @@ msgstr ""
 msgid "Worker Count"
 msgstr ""
 
-msgid "Name"
-msgstr "Name"
-
 msgid "Descriptive name for this alert rule"
 msgstr ""
 
@@ -4943,10 +7555,225 @@ msgstr ""
 msgid "Alert Rules"
 msgstr ""
 
+msgid "Django Management Command"
+msgstr ""
+
+msgid "Shell-Skript / Executable"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Intervall (Sekunden)"
+msgstr "Letztes Intervall (km)"
+
+msgid "Cron-Ausdruck"
+msgstr ""
+
+msgid "Noch nie"
+msgstr ""
+
+msgid "Übersprungen"
+msgstr ""
+
+msgid "Anzeigename im Admin"
+msgstr ""
+
+msgid "Stabiler technischer Schlüssel (z. B. mcc_worker)"
+msgstr ""
+
+msgid "Deaktivierte Jobs werden vom Scheduler ignoriert"
+msgstr ""
+
+msgid "Job-Typ"
+msgstr ""
+
+msgid "Befehl / Pfad"
+msgstr ""
+
+msgid ""
+"Management-Command-Name (z. B. mcc_worker) oder Shell-Skript-Pfad (absolut "
+"oder relativ zum Projektroot)"
+msgstr ""
+
+msgid "Argumente"
+msgstr ""
+
+msgid "Optionale Argumentzeile (wird mit shlex gesplittet)"
+msgstr ""
+
+msgid "Arbeitsverzeichnis"
+msgstr ""
+
+msgid "Leer = Projektroot (mcc-web)"
+msgstr ""
+
+msgid "Zeitplan-Typ"
+msgstr ""
+
+msgid "Nur bei Zeitplan-Typ „Intervall“"
+msgstr ""
+
+msgid "Fünf Felder: Minute Stunde Tag Monat Wochentag (z. B. 0 22 * * *)"
+msgstr ""
+
+msgid "Überlappung erlauben"
+msgstr ""
+
+#, fuzzy
+#| msgid "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
+msgid "Wenn deaktiviert, wird ein neuer Lauf übersprungen solange einer läuft"
+msgstr "Wenn deaktiviert, werden keine Kilometer für diesen Radler erfasst"
+
+msgid "Max. Log-Zeichen"
+msgstr ""
+
+msgid "Stdout/Stderr in der Historie werden auf diese Länge gekürzt"
+msgstr ""
+
+msgid "Erfolgreiche Scheduler-Läufe protokollieren"
+msgstr ""
+
+msgid ""
+"Standard: aus. Erfolgreiche Tick-Läufe aktualisieren nur last_* und Zähler; "
+"Historie nur bei Fehler/Timeout/manuell (oder wenn hier aktiv)."
+msgstr ""
+
+msgid "Erfolge (Zähler)"
+msgstr ""
+
+msgid "Fehler (Zähler)"
+msgstr ""
+
+msgid "Übersprungen (Zähler)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Zuletzt gestartet"
+msgstr "Neu gestartet"
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Zuletzt beendet"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Status"
+msgstr "Letzter Bericht"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzte Meldung"
+msgstr "Letzter Bericht"
+
+msgid "Geplanter Job"
+msgstr ""
+
+msgid "Geplante Jobs"
+msgstr ""
+
+msgid "Intervall muss mindestens 1 Sekunde sein."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Cron-Ausdruck ist erforderlich."
+msgstr "id_tag erforderlich."
+
+msgid "Paket croniter ist nicht installiert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültiger Cron-Ausdruck."
+msgstr "Ungültiges Format."
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Befehl / Pfad ist erforderlich."
+msgstr "id_tag erforderlich."
+
+msgid "Scheduler"
+msgstr ""
+
+msgid "Job"
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Gestartet"
+msgstr "Neu gestartet"
+
+#, fuzzy
+#| msgid "Station"
+msgid "Exit-Code"
+msgstr "Station"
+
+msgid "Auslöser"
+msgstr ""
+
+msgid "Stdout (Auszug)"
+msgstr ""
+
+msgid "Stderr (Auszug)"
+msgstr ""
+
+msgid "Meldung"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Ausgelöst von"
+msgstr "Erstellt am"
+
+msgid "Job-Ausführung"
+msgstr ""
+
+msgid "Job-Ausführungen"
+msgstr ""
+
 #, fuzzy
 #| msgid "Ziel erreicht am"
 msgid "Nicht verfügbar"
 msgstr "Ziel erreicht am"
+
+msgid "Keine Berechtigung für Velos-Einlösung."
+msgstr ""
+
+#, fuzzy
+#| msgid "Zugeordnete Gruppe"
+msgid "Bitte wählen Sie eine TOP-Gruppe."
+msgstr "Zugewiesene TOP-Gruppe"
+
+msgid ""
+"Bitte wählen Sie einen Radler aus der Liste oder geben Sie Name/RFID-Tag ein."
+msgstr ""
+
+msgid "Bitte wählen oder geben Sie einen gültigen Velos-Betrag ein."
+msgstr ""
+
+msgid "Radler nicht gefunden oder gehört nicht zur ausgewählten TOP-Gruppe."
+msgstr ""
+
+msgid "Keine Berechtigung."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine TOP-Gruppe verfügbar."
+msgstr "Keine Gruppen"
+
+msgid "Datenbank-Backups"
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft Welt-Backups"
+msgstr "Minecraft-Name"
+
+msgid "Luanti Welt-Backups"
+msgstr ""
 
 msgid "Could not determine database path"
 msgstr ""
@@ -4958,18 +7785,625 @@ msgid "Backup created successfully"
 msgstr ""
 
 #, fuzzy
-#| msgid "No groups found"
-msgid "Script not found"
-msgstr "Keine Gruppen gefunden"
+#| msgid "id_tag erforderlich."
+msgid "kind und filename erforderlich"
+msgstr "id_tag erforderlich."
 
-msgid "Script not executable"
+#, fuzzy, python-format
+#| msgid "Spieler nicht gefunden"
+msgid "Datei nicht gefunden (%(code)s)"
+msgstr "Spieler nicht gefunden"
+
+msgid "Backup gelöscht"
 msgstr ""
+
+msgid "Keine Berechtigung zum Anlegen von Accounts."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültiger Spielmodus."
+msgstr "Ungültiges Format."
+
+#, python-format
+msgid "Spieler-Account „%(name)s“ angelegt."
+msgstr ""
+
+msgid "Keine Berechtigung zum Löschen von Accounts."
+msgstr ""
+
+#, python-format
+msgid "Spieler-Account „%(name)s“ gelöscht."
+msgstr ""
+
+msgid "Keine Berechtigung zum Übernehmen als Bau-Account."
+msgstr ""
+
+#, python-format
+msgid "Limbo-Login „%(ms)s“ als Bau-Account „%(team)s“ übernommen."
+msgstr ""
+
+msgid "Keine Berechtigung zum Registrieren von Bau-Accounts."
+msgstr ""
+
+#, python-format
+msgid ""
+"Bau-Account „%(name)s“ registriert. LuckPerms/Scoreboard werden vom Worker "
+"synchronisiert."
+msgstr ""
+
+msgid "Keine Berechtigung zum Deaktivieren von Bau-Accounts."
+msgstr ""
+
+#, python-format
+msgid "Bau-Account „%(name)s“ deaktiviert."
+msgstr ""
+
+msgid "Keine Berechtigung zum Reaktivieren von Bau-Accounts."
+msgstr ""
+
+#, python-format
+msgid "Bau-Account „%(name)s“ reaktiviert."
+msgstr ""
+
+msgid "Keine Berechtigung zum Bearbeiten von Accounts."
+msgstr ""
+
+#, python-format
+msgid "Spieler-Account „%(name)s“ gespeichert."
+msgstr ""
+
+#, python-format
+msgid "Bau-Account „%(name)s“ gespeichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannter Account-Typ."
+msgstr "Keine Gruppen"
+
+msgid "Keine Berechtigung für Vanilla-Operatorrechte."
+msgstr ""
+
+#, python-format
+msgid "%(name)s ist jetzt Vanilla-Operator."
+msgstr ""
+
+#, python-format
+msgid "Operatorrechte von %(name)s entzogen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Account nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+#, python-format
+msgid "Aktion fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Account zum Bearbeiten nicht gefunden."
+msgstr "Gerät nicht gefunden"
+
+msgid "Partikel-Umrandungen der WorldGuard-Regionen über MCC-Bridge."
+msgstr ""
+
+msgid "Proxy / Presence"
+msgstr ""
+
+msgid ""
+"Velocity-RCON-Abfragen der Session-Dashboards und Wartezeit nach Session-"
+"Freigabe (bis Spieler auf Paper online)."
+msgstr ""
+
+msgid ""
+"Betriebsmodus für Microsoft-Auth-Failover. Playerdata-Migrationen über die "
+"Auth-Failover-Admin-Seite."
+msgstr ""
+
+msgid "World Border"
+msgstr ""
+
+msgid ""
+"Quadratischer Spielbereich (Vanilla worldborder). Primär über Stadtsteuerung "
+"anwenden; Werte hier speichern."
+msgstr ""
+
+msgid "Warteliste"
+msgstr ""
+
+msgid "MCC-Welt-Tickets"
+msgstr ""
+
+msgid ""
+"Paper-Tickets (custom_data mcc_ticket) beim Session-Start. Bei Radler-Konto "
+"an der Warteliste: Anzahl × Ticketpreis vom Guthaben."
+msgstr ""
+
+#, fuzzy
+#| msgid "KM-Marke"
+msgid "Velo-Arena"
+msgstr "KM-Marke"
+
+msgid ""
+"Default-Zeitlimit für Velo-Rennen (Arena-Steuerung / Simulation). Operatoren "
+"können den Wert pro Rennen weiter anpassen, sofern der Browser das zulässt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Metadaten"
+msgstr "Spiel starten"
+
+msgid ""
+"„Aktiv“ steuert die Sichtbarkeit in Spieler-Sessions, Warteliste und API. "
+"Deaktivierte Accounts bleiben erhalten und können jederzeit wieder "
+"eingeschaltet werden. TOP-Gruppe ist optional (Filter in Minecraft-Accounts)."
+msgstr ""
+
+msgid "Microsoft / Online"
+msgstr ""
+
+msgid ""
+"Microsoft-Gamertag für Velocity online-mode. Inventar/Shop hängen an der "
+"UUID. Bei wenigen Spiel-PCs Stations-Accounts (z. B. mccpc01) bevorzugen."
+msgstr ""
+
+msgid "AuthMe (Legacy)"
+msgstr ""
+
+msgid "Auf Minecraft-Server anlegen (AuthMe register, Legacy)"
+msgstr ""
+
+msgid ""
+"AuthMe-Registrierung ist im Online-Modus deaktiviert "
+"(MCC_MINECRAFT_SESSION_AUTH_MODE=online). Bitte Microsoft-Login setzen."
+msgstr ""
+
+#, python-format
+msgid "%(name)s: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "%(name)s: RCON/AuthMe-Fehler — %(error)s"
+msgstr ""
+
+#, python-format
+msgid "%(n)s Play-Account(s) auf dem Minecraft-Server angelegt bzw. bestätigt."
+msgstr ""
+
+msgid ""
+"Keine Accounts angelegt. Passwort in .env setzen? "
+"(MCC_MINECRAFT_PLAY_ACCOUNT_PASSWORD)"
+msgstr ""
+
+msgid ""
+"„Aktiv“ steuert die Sichtbarkeit in Bau-Sessions und Warteliste. Scoreboard-"
+"Name bleibt mc_username (z. B. Kette). Deaktivierte Bau-PCs bleiben erhalten "
+"und können jederzeit wieder eingeschaltet werden."
+msgstr ""
+
+msgid ""
+"Microsoft-Gamertag am Velocity-Proxy (z. B. mccpc01). Shop-Inventar hängt an "
+"der UUID. Bei wenigen Spiel-PCs Stations-Accounts bevorzugen (wenig OTP-"
+"Wechsel)."
+msgstr ""
+
+msgid "Sync / Metadaten"
+msgstr ""
+
+#, python-format
+msgid "Bridge-Override gepusht: %(ms)s → %(mc)s"
+msgstr ""
+
+msgid "Bridge-Override pushen (MS-Login → Scoreboard)"
+msgstr ""
+
+#, python-format
+msgid "%(name)s: kein Microsoft-Login gesetzt"
+msgstr ""
+
+#, python-format
+msgid "%(n)s Override(s) an die Bridge gesendet."
+msgstr ""
+
+msgid "Kein Override gesendet (Bridge offline oder kein MS-Login)."
+msgstr ""
+
+msgid ""
+"AuthMe-Registrierung ist im Online-Modus deaktiviert. Bitte Microsoft-Login "
+"setzen und Bridge-Override pushen."
+msgstr ""
+
+#, python-format
+msgid "%(n)s Bau-Account(s) auf dem Minecraft-Server angelegt bzw. bestätigt."
+msgstr ""
+
+msgid ""
+"Keine Accounts angelegt. Passwort in .env setzen? "
+"(MCC_MINECRAFT_BUILDER_ACCOUNT_PASSWORD oder "
+"MCC_MINECRAFT_PLAY_ACCOUNT_PASSWORD)"
+msgstr ""
+
+#, fuzzy
+#| msgid "KM-Marke"
+msgid "Velos-Preis"
+msgstr "KM-Marke"
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Ohne Velos (0)"
+msgstr "Distanz (km)"
+
+msgid "Mit Velos (≥ 1)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Datenfehler"
+msgid "Befehle"
+msgstr "Datenfehler"
+
+msgid ""
+"Suche in allen Shop-Artikeln: Material, Anzeigename, Item-Key, Item-Loc oder "
+"Kategoriename."
+msgstr ""
+
+msgid "Kaufpreis auf mindestens 1 Velo setzen"
+msgstr ""
+
+#, python-format
+msgid "%(n)s Artikel auf mindestens %(min)s Velo gesetzt."
+msgstr ""
+
+msgid "Timing"
+msgstr ""
+
+msgid "Distance → Motion"
+msgstr ""
+
+msgid "MCC-Boxen / Sessions"
+msgstr ""
+
+msgid "Meta"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Startposition"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Ziellinie"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Startzeitpunkt"
+msgid "Startimpuls"
+msgstr "Startzeitpunkt"
+
+msgid "Bevorzugte Stationen (Auto-Zuweisung)"
+msgstr ""
+
+msgid ""
+"Welche IoT-Counter bei „Aktive erkennen“ auf diese Bahn sollen (z. B. "
+"Stationen mit kleinen Rädern auf Bahn 1 und 2)."
+msgstr ""
+
+msgid "Optionales Welt-Schild"
+msgstr ""
+
+msgid "TOML-Beispiel/Config in DB importieren"
+msgstr ""
+
+#, python-format
+msgid ""
+"Importiert/aktualisiert: %(n)s Bahn(en). Geometrie kommt jetzt aus der DB."
+msgstr ""
+
+msgid "Keine Berechtigung für freie RCON-Befehle."
+msgstr ""
+
+msgid "RCON-Befehl darf nicht leer sein."
+msgstr ""
+
+#, python-format
+msgid "RCON OK: %(cmd)s → %(response)s"
+msgstr ""
+
+#, python-format
+msgid "RCON fehlgeschlagen: %(cmd)s → %(error)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Deaktiviert"
+msgstr "Gerät nicht gefunden"
+
+msgid "Minecraft Control"
+msgstr ""
+
+msgid ""
+"Spawn-Koordinaten nicht aus server.properties lesbar. Zentrum bitte manuell "
+"setzen."
+msgstr ""
+
+#, python-format
+msgid "Zentrum auf Spawn (%(x)s / %(z)s) gesetzt."
+msgstr ""
+
+msgid "World Border angewendet."
+msgstr ""
+
+msgid "World Border deaktiviert (Maximum)."
+msgstr ""
+
+#, python-format
+msgid "World Border RCON fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "World-Border-Einstellungen gespeichert."
+msgstr ""
+
+#, python-format
+msgid "Aktuelle Border-Größe: %(size)s Blöcke"
+msgstr ""
+
+#, python-format
+msgid "Status lesen fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "Unbekannte World-Border-Aktion."
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Ungültiges Format."
+msgid "Ungültige Border-Werte: %(err)s"
+msgstr "Ungültiges Format."
+
+#, python-format
+msgid ""
+"Chunky gestartet: %(world)s square, Zentrum (%(x)s/%(z)s), Radius %(r)s (ca. "
+"%(edge)s×%(edge)s)."
+msgstr ""
+
+#, python-format
+msgid "Chunky Start fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "Chunky pausiert."
+msgstr ""
+
+#, python-format
+msgid "Chunky Pause fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "Chunky fortgesetzt."
+msgstr ""
+
+#, python-format
+msgid "Chunky Continue fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Coins abgezogen."
+msgid "Chunky abgebrochen."
+msgstr "Coins abgezogen."
+
+#, python-format
+msgid "Chunky Cancel fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "Chunky-Fortschritt gelesen."
+msgstr ""
+
+#, python-format
+msgid "Chunky Progress fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannte Chunky-Aktion."
+msgstr "Keine Gruppen"
+
+#, python-format
+msgid "Ungültige Chunky-Werte: %(err)s"
+msgstr ""
+
+msgid "Keine Berechtigung für CoreProtect."
+msgstr ""
+
+msgid "CoreProtect Undo ausgeführt."
+msgstr ""
+
+#, python-format
+msgid "CoreProtect Undo fehlgeschlagen: %(err)s"
+msgstr ""
+
+msgid "CoreProtect-Vorschau ausgeführt."
+msgstr ""
+
+#, python-format
+msgid "CoreProtect-Vorschau fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "CoreProtect %(action)s ausgeführt."
+msgstr ""
+
+#, python-format
+msgid "CoreProtect fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannte CoreProtect-Aktion."
+msgstr "Keine Gruppen"
+
+#, python-format
+msgid "CoreProtect-Fehler: %(err)s"
+msgstr ""
+
+msgid "Keine Berechtigung für geschützte Regionen."
+msgstr ""
+
+msgid "Region-Markierung gespeichert und an Bridge gesendet."
+msgstr ""
+
+#, python-format
+msgid "Einstellungen gespeichert, Bridge-Sync fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ gespeichert (nur Datenbank)."
+msgstr ""
+
+#, python-format
+msgid "Members für „%(id)s“ synchronisiert."
+msgstr ""
+
+#, python-format
+msgid "Member-Sync fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ auf dem Server angewendet."
+msgstr ""
+
+#, python-format
+msgid "Anwenden fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Löschen der Subregion „%(id)s“ auf dem Server fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Löschen auf dem Server fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Region „%(id)s“ gelöscht%(suffix)s."
+msgstr ""
+
+msgid " (auch WorldGuard)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannte Regionen-Aktion."
+msgstr "Keine Gruppen"
+
+#, python-format
+msgid "Regionen-Fehler: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "%(count)s Shop-Artikel auf mindestens %(min)s Velo gesetzt."
+msgstr ""
+
+msgid "Keine Artikel mit 0 Velos gefunden — Katalog ist bereits in Ordnung."
+msgstr ""
+
+#, python-format
+msgid "Inventar→Ledger fehlgeschlagen: %(error)s"
+msgstr ""
+
+msgid "Keine Spieler online — nichts gutgeschrieben."
+msgstr ""
+
+#, python-format
+msgid ""
+"Inventar→Ledger: %(players)s Spieler, %(items)s Shop-Items gutgeschrieben. "
+"%(detail)s"
+msgstr ""
+
+#, python-format
+msgid "%(player)s: %(error)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Import mit Hinweisen: %(categories_created)s Kategorien neu, "
+"%(categories_updated)s aktualisiert, %(items_created)s Artikel neu, "
+"%(items_updated)s Artikel aktualisiert. Fehler: %(errors)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Import erfolgreich: %(categories_created)s Kategorien neu, "
+"%(categories_updated)s aktualisiert, %(items_created)s Artikel neu, "
+"%(items_updated)s Artikel aktualisiert."
+msgstr ""
+
+#, python-format
+msgid "Datei %(name)s ist keine gültige UTF-8-YAML-Datei."
+msgstr ""
+
+#, python-format
+msgid ""
+"Doppelter Shop-Pfad: %(path)s — mehrere verschiedene Dateien mit gleichem "
+"Namen. Bitte nur den shops/-Ordner wählen oder „Vom MC-Server importieren“ "
+"nutzen."
+msgstr ""
+
+msgid "EconomyShopGUI importieren"
+msgstr ""
+
+msgid "Server-Import nicht konfiguriert (MCC_MINECRAFT_ESGUI_SHOPS_DIR)."
+msgstr ""
+
+#, python-format
+msgid "Shop-Verzeichnis nicht gefunden: %(path)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Keine Daten gefunden."
+msgid "Keine Shop-YAML-Dateien unter %(path)s gefunden."
+msgstr "Keine Daten gefunden."
+
+msgid ""
+"Bitte mindestens eine Shop-YAML-Datei oder ein shops/-Verzeichnis wählen."
+msgstr ""
+
+msgid ""
+"Keine gültigen Shop-YAML-Dateien (.yml/.yaml) unter shops/ gefunden. Andere "
+"Dateien (z. B. transactions.db) und sections/ werden ignoriert."
+msgstr ""
+
+#, python-format
+msgid "Import fehlgeschlagen: %(error)s"
+msgstr ""
+
+msgid ""
+"Team registriert. LuckPerms-Gruppe und Shop-Zuordnung werden vom Minecraft-"
+"Worker synchronisiert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Team deaktiviert"
+msgstr "Gerät nicht gefunden"
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Registrierung nicht gefunden"
+msgstr "Spieler nicht gefunden"
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Team reaktiviert"
+msgstr "Gerät nicht gefunden"
 
 msgid "Only POST allowed"
 msgstr ""
 
-msgid "Invalid action"
-msgstr ""
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Permission denied"
+msgstr "Session beenden"
 
 msgid "Sync queued"
 msgstr ""
@@ -4978,8 +8412,11 @@ msgstr ""
 msgid "Sync failed: %(error)s"
 msgstr ""
 
+msgid "Objectives queued"
+msgstr ""
+
 #, python-format
-msgid "Snapshot updated: %(count)s groups updated"
+msgid "Snapshot updated: %(count)s teams updated"
 msgstr ""
 
 #, python-format
@@ -5021,16 +8458,185 @@ msgstr ""
 msgid "Minecraft Management"
 msgstr "Minecraft-Name"
 
+msgid "Rennmodus gespeichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen gelöscht."
+msgid "Zuweisungen gespeichert."
+msgstr "Alle Zuweisungen gelöscht."
+
+#, fuzzy
+#| msgid "Methode nicht erlaubt."
+msgid "TOP-Gruppe nicht erlaubt."
+msgstr "Methode nicht erlaubt."
+
+msgid "Keine aktiven Radler — Bahnzuweisungen geleert."
+msgstr ""
+
+#, python-format
+msgid ""
+"%(assigned)d aktive Radler erkannt und Bahnen zugeordnet (%(detected)d "
+"Session(s) gesamt)."
+msgstr ""
+
+#, python-format
+msgid "%(n)d über bevorzugte Stationen (Bahn-Setup)."
+msgstr ""
+
+#, python-format
+msgid "%(n)d weitere Session(s) ohne freie Bahn."
+msgstr ""
+
+msgid "Start gesendet."
+msgstr ""
+
+msgid "Stop gesendet."
+msgstr ""
+
+msgid "Init: vorhandene Loren zum Start gesetzt, fehlende Loren neu erzeugt."
+msgstr ""
+
+msgid ""
+"Reset: Arena-Loren gelöscht. Danach Init für neue Loren (z. B. vor neuen "
+"Avataren)."
+msgstr ""
+
+#, python-format
+msgid "Ungültige Rate für Bahn %(lane)s"
+msgstr ""
+
+msgid "Sim-Raten übernommen — wirken sofort, auch während der Simulation."
+msgstr ""
+
+msgid "Simulation gestartet (intern Distanz → Motion)."
+msgstr ""
+
+msgid "API-Live gestartet (Pulse → /api/update-data → Motion)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiger API-Schlüssel"
+msgid "Ungültiger Auth-Modus."
+msgstr "Ungültiger API-Schlüssel"
+
+#, python-format
+msgid "Auth-Betriebsmodus gesetzt: %(mode)s"
+msgstr ""
+
+msgid "online_mode muss true oder false sein."
+msgstr ""
+
+#, python-format
+msgid "Velocity online-mode=%(flag)s gesetzt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Velocity neu gestartet."
+msgstr "Neu gestartet"
+
+#, python-format
+msgid "online-mode gesetzt, Restart fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid "Velocity-Umschaltung fehlgeschlagen: %(err)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Es sind noch %(n)s aktive Session(s). Bitte zuerst alle kicken, dann erneut "
+"ausführen."
+msgstr ""
+
+msgid "Dry-Run"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Migration"
+msgstr "id_tag erforderlich."
+
+#, python-format
+msgid "%(label)s OK: %(n)s Account(s). Backup: %(path)s"
+msgstr ""
+
+#, python-format
+msgid "%(label)s mit Fehlern (%(n)s Accounts, %(e)s Fehler)."
+msgstr ""
+
+msgid "Auth-Failover / Playerdata"
+msgstr ""
+
+msgid "Legacy Offline → MS-Offline-Twin"
+msgstr ""
+
+msgid "Online → Offline-Twin"
+msgstr ""
+
+msgid "Offline-Twin → Online"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Art."
+msgstr "Ungültiges Format."
+
+msgid "Sortierung ungültig."
+msgstr ""
+
+msgid "Menge ungültig."
+msgstr ""
+
+msgid "Velos-Betrag ungültig."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "RCON-Vergabe ist erforderlich."
+msgstr "id_tag erforderlich."
+
+msgid "Katalogeintrag gespeichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Katalogeintrag bearbeiten"
+msgstr "Session beenden"
+
+msgid "Katalogeintrag anlegen"
+msgstr ""
+
+#, python-format
+msgid "Gelöscht: %(name)s"
+msgstr ""
+
 msgid "Update Player Coins (deprecated)"
 msgstr ""
 
-msgid "Update Group Velos"
+msgid "Update Group Velos (legacy)"
 msgstr ""
 
 #, fuzzy
 #| msgid "All Groups"
-msgid "Sync All Groups"
+msgid "Sync All Groups (legacy)"
 msgstr "Alle Gruppen"
+
+msgid "Register Team"
+msgstr ""
+
+msgid "Unregister Team"
+msgstr ""
+
+msgid "Update Team Velos"
+msgstr ""
+
+msgid "Sync Registered Teams"
+msgstr ""
+
+msgid "Ensure Objectives"
+msgstr ""
 
 msgid "Pending"
 msgstr ""
@@ -5043,33 +8649,1820 @@ msgstr "Laden..."
 msgid "Done"
 msgstr ""
 
-msgid "Failed"
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Outbox-Ereignis"
+msgstr "Auf Karte anzeigen"
+
+msgid "Outbox"
 msgstr ""
 
-msgid "Minecraft Outbox Event"
+msgid "Scoreboard-Anzeigename"
 msgstr ""
 
-msgid "Minecraft Outbox Events"
+msgid "Sidebar-Titel in Minecraft (ausgebare Velos)"
 msgstr ""
 
-msgid "Minecraft Scoreboard Snapshot"
+msgid "Objective-Slug"
 msgstr ""
 
-msgid "Minecraft Scoreboard Snapshots"
+msgid "Leer = Wert aus Umgebungsvariable / settings.py"
+msgstr ""
+
+msgid "Bei Velos-Earn synchronisieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung aktiv"
+msgid "Sidebar-Anzeige aktiv"
+msgstr "Kilometer-Erfassung aktiv"
+
+msgid "Objective automatisch in der Sidebar anzeigen (setdisplay)"
+msgstr ""
+
+msgid "Hinweis aktive Spieler-Session"
+msgstr ""
+
+msgid ""
+"Gelber Hinweis auf dem Spieler-Sessions-Dashboard bei laufender Session. "
+"Leer lassen = Hinweis ausblenden."
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Hinweis aktive Bau-Session"
+msgstr "Radler - aktive Sitzungen"
+
+msgid ""
+"Gelber Hinweis auf dem Bau-Sessions-Dashboard bei laufender Session. Leer "
+"lassen = Hinweis ausblenden."
+msgstr ""
+
+msgid "Öffentliche Wartelisten-Anzeige aktiv"
+msgstr ""
+
+msgid ""
+"Erlaubt die anonyme Live-Anzeige per Token-URL (nur Ticket-Nummern, keine "
+"Namen)."
+msgstr ""
+
+msgid "Token öffentliche Anzeige"
+msgstr ""
+
+msgid ""
+"Geheimer Token für die öffentliche Display-URL. Leer = automatisch "
+"generieren."
+msgstr ""
+
+msgid "Velos pro Spielminute"
+msgstr ""
+
+msgid "Beispiel: 300 Velos ÷ 20 = 15 Minuten Minecraft-Spielzeit."
+msgstr ""
+
+msgid "Mindest-Velos Spiel-Warteliste"
+msgstr ""
+
+msgid "Mindestbetrag für eine Spiel-Session aus der Warteliste."
+msgstr ""
+
+msgid "MCC-Welt-Tickets aktiv"
+msgstr ""
+
+msgid ""
+"Zeigt den Ticket-Zähler auf den Session-Kacheln und vergibt Paper-Tickets "
+"per RCON beim Freischalten."
+msgstr ""
+
+msgid "Velos pro MCC-Ticket"
+msgstr ""
+
+msgid ""
+"Preis eines Paper-Tickets. Bei Radler-Konto (RFID/Warteliste) wird Anzahl × "
+"dieser Betrag vom Guthaben abgezogen."
+msgstr ""
+
+msgid "Max. Tickets pro Freigabe"
+msgstr ""
+
+msgid "Obergrenze für den Ticket-Zähler auf den Session-Kacheln."
+msgstr ""
+
+#, fuzzy
+#| msgid "Update-Intervall (Sekunden)"
+msgid "Update-Intervall Velocity-RCON (s)"
+msgstr "Update-Intervall (Sekunden)"
+
+msgid ""
+"Wie oft die Session-Dashboards den Spieler-Standort per Velocity-RCON "
+"(glist) abfragen, wenn niemand im Warteraum wartet. Bei Warteraum-Status "
+"wird automatisch häufiger abgefragt. Minimum 2 Sekunden, Standard 10."
+msgstr ""
+
+msgid "Wartezeit nach Freigabe (s)"
+msgstr ""
+
+msgid ""
+"Nach Velocity-Send / AuthMe-Login wartet die Freigabe so lange, bis der "
+"Spieler auf dem Paper-Server online ist (Maus-Klick / Client-Fokus). Minimum "
+"5, Standard 45."
+msgstr ""
+
+msgid "Velo-Arena Default-Zeitlimit (Min.)"
+msgstr ""
+
+msgid ""
+"Standard-Zeitlimit für Velo-Rennen in der Arena-Steuerung (wenn noch kein "
+"Wert in der laufenden Session gespeichert ist). Nützlich, wenn das Zeitfeld "
+"auf älteren Browsern nicht änderbar ist. Minimum 1, Standard 5."
+msgstr ""
+
+msgid "Online (Microsoft)"
+msgstr ""
+
+msgid "Failover (Offline-Proxy)"
+msgstr ""
+
+msgid "Recovery (Rücktransfer)"
+msgstr ""
+
+msgid "Auth-Betriebsmodus"
+msgstr ""
+
+msgid ""
+"Operativer Modus für Microsoft-Auth-Failover. Steuert Hinweise in der Admin-"
+"GUI; Velocity online-mode wird über die Failover-Aktionen umgeschaltet."
+msgstr ""
+
+msgid "Failover seit"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Failback"
+msgstr "Letzter Bericht"
+
+msgid "Letztes Playerdata-Backup"
+msgstr ""
+
+msgid "Pfad des letzten Failover-/Migrate-Backups."
+msgstr ""
+
+msgid "World Border aktiv"
+msgstr ""
+
+msgid ""
+"Wenn aktiv: „Anwenden“ setzt die konfigurierte Größe. Wenn inaktiv bzw. "
+"„Deaktivieren“: Border auf Vanilla-Maximum."
+msgstr ""
+
+msgid "Border-Zentrum X"
+msgstr ""
+
+msgid "Border-Zentrum Z"
+msgstr ""
+
+msgid "Border-Größe (Blöcke)"
+msgstr ""
+
+msgid ""
+"Durchmesser / Kantenlänge des quadratischen Bereichs (1000 → ca. 1000×1000 "
+"Blöcke)."
+msgstr ""
+
+msgid "Warnung (Blöcke)"
+msgstr ""
+
+msgid "Vanilla worldborder warning distance."
+msgstr ""
+
+msgid "Schaden pro Sekunde"
+msgstr ""
+
+msgid ""
+"Vanilla worldborder damage amount. 0 = praktisch kein Schaden (Spieler "
+"werden weiterhin zurückgeschoben)."
+msgstr ""
+
+msgid "Region-Markierung (Partikel) aktiv"
+msgstr ""
+
+msgid ""
+"Wenn aktiv: MCC-Bridge zeichnet farbige Partikel-Umrandungen für geschützte "
+"Regionen in Spieler-Nähe."
+msgstr ""
+
+msgid "Hinweis beim Betreten der Region"
+msgstr ""
+
+msgid "Actionbar mit Anzeigename, wenn ein Spieler eine Region betritt."
+msgstr ""
+
+msgid "Sichtweite Region-Markierung (Blöcke)"
+msgstr ""
+
+msgid "Partikel nur, wenn ein Spieler so nah an der Region ist. Minimum 8."
+msgstr ""
+
+#, fuzzy
+#| msgid "Information"
+msgid "Integration"
+msgstr "Informationen"
+
+msgid "Shop-Betrieb öffnen"
+msgstr ""
+
+msgid "Freie RCON-Befehle senden"
+msgstr ""
+
+msgid "Spieler-Sessions verwalten"
+msgstr ""
+
+msgid "Builder-Sessions verwalten"
+msgstr ""
+
+msgid "Velo-Arena Simulation starten"
+msgstr ""
+
+msgid "Velocity / Limbo / Paper steuern"
+msgstr ""
+
+msgid "Auth-Failover / Playerdata-Transfer"
+msgstr ""
+
+msgid "CoreProtect Rollback/Restore"
+msgstr ""
+
+msgid "Geschützte Regionen (WorldGuard)"
+msgstr ""
+
+msgid "Zugewiesene Bauzonen (Subregionen der eigenen TOP-Gruppe)"
+msgstr ""
+
+msgid "Minecraft-Accounts (Spieler und Bau) verwalten"
+msgstr ""
+
+msgid "Vanilla-Operatorrechte (/op, /deop) verwalten"
+msgstr ""
+
+msgid "Minecraft-Stationen (PCs) und MS-Allowlist verwalten"
+msgstr ""
+
+msgid "Vergabe-Katalog (Fahrzeuge, Items) verwalten"
+msgstr ""
+
+msgid "VehiclesPlus Resourcepacks erzeugen/erweitern"
+msgstr ""
+
+msgid "Legacy-Offline → MS-Offline-Twin"
+msgstr ""
+
+msgid "Playerdata-Transfer"
+msgstr ""
+
+msgid "Playerdata-Transfers"
+msgstr ""
+
+msgid "op"
+msgstr ""
+
+msgid "deop"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spielername"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Event-Typ"
+msgid "Account-Typ"
+msgstr "Event-Typ"
+
+msgid "Account-Ref"
+msgstr ""
+
+msgid "Vanilla-OP-Aktion"
+msgstr ""
+
+msgid "Vanilla-OP-Aktionen"
+msgstr ""
+
+msgid "Microsoft-Login"
+msgstr ""
+
+msgid ""
+"Online-Gamertag am Velocity-Proxy (z. B. mccpc01). Scoreboard bleibt "
+"mc_username; RCON/send und Bridge-Override nutzen diesen Login."
+msgstr ""
+
+msgid "Microsoft-UUID"
+msgstr ""
+
+msgid "Optional; Inventar/Shop hängen an der UUID. Nach erstem Join ergänzbar."
+msgstr ""
+
+msgid "Aktiv in Minecraft"
+msgstr ""
+
+msgid "War schon einmal registriert"
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Registriert am"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Registriert von"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Deaktiviert am"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Sync-Fehler"
+msgstr "Letzter Bericht"
+
+msgid "Leer = globaler Standard (MCC_MINECRAFT_BUILDER_SESSION_MINUTES)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zeit hinzufügen (Min.)"
+msgstr "Zuweisung hinzufügen"
+
+msgid "Leer = globaler Standard (MCC_MINECRAFT_SESSION_ADD_MINUTES)"
+msgstr ""
+
+msgid ""
+"Kein Zeitlimit beim Admin-Start. Session endet bei manuellem Kick oder wenn "
+"der Spieler den Server verlässt (Logout). Wartelisten-Zuweisungen bleiben "
+"zeitbegrenzt."
+msgstr ""
+
+msgid "Auf MC-Server angelegt"
+msgstr ""
+
+msgid "AuthMe-Account wurde per RCON registriert"
+msgstr ""
+
+msgid "MC-Registrierung am"
+msgstr ""
+
+msgid "Letzter MC-Registrierungsfehler"
+msgstr ""
+
+msgid "Spectator-Modus bevorzugen"
+msgstr ""
+
+msgid ""
+"Nächste Session startet im Spectator-Modus. Bei aktiver Session per Toggle "
+"auf der Session-Kachel umschaltbar."
+msgstr ""
+
+msgid "Bevorzugter Spielmodus"
+msgstr ""
+
+msgid ""
+"Leer = Adventure. Werte: survival, adventure, spectator. Überschreibt "
+"„Spectator bevorzugen“, wenn gesetzt. Für Bau typischerweise leer lassen und "
+"Survival über die Session-GUI setzen."
 msgstr ""
 
 #, fuzzy
 #| msgid "Minecraft-Name"
-msgid "Minecraft Worker State"
+msgid "Minecraft Team Registration"
 msgstr "Minecraft-Name"
 
-msgid "Minecraft Worker States"
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft Team Registrations"
+msgstr "Minecraft-Name"
+
+msgid "Scoreboard-Snapshot"
+msgstr ""
+
+#, fuzzy
+#| msgid "Event-Name"
+msgid "Scoreboard"
+msgstr "Event-Name"
+
+msgid "EconomyShopGUI-Section"
+msgstr ""
+
+msgid "Leer = Slug"
+msgstr ""
+
+msgid "Material"
+msgstr ""
+
+msgid "EconomyShopGUI Item-Key"
+msgstr ""
+
+msgid "Kurzschlüssel aus der Shop-YAML (z. B. super_pickaxe)"
+msgstr ""
+
+msgid "EconomyShopGUI Item-Index"
+msgstr ""
+
+msgid "Eindeutige Position in der Shop-YAML, z. B. page1.items.super_pickaxe"
+msgstr ""
+
+msgid "Mindestens 1 Velo — kostenlose Artikel (0) sind nicht erlaubt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Gruppen-Status"
+msgid "Worker-Status"
+msgstr "Gruppen-Status"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Worker"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Spielregeln"
+msgstr "Spiel starten"
+
+msgid "RCON-Befehle"
+msgstr ""
+
+msgid "Liste von Befehlen, die nacheinander ausgeführt werden."
+msgstr ""
+
+msgid "Von Migration geliefert; Löschen nur mit Sonderberechtigung."
+msgstr ""
+
+msgid "Erlaubt Ausführung auch außerhalb der Kategorie „Welt & Wetter“."
+msgstr ""
+
+msgid "Bestätigung vor Ausführung"
+msgstr ""
+
+#, fuzzy
+#| msgid "Reise abbrechen"
+msgid "Bei Fehler abbrechen"
+msgstr "Reise abbrechen"
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Zuletzt ausgeführt"
+msgstr "Zuletzt aktiv"
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Zuletzt ausgeführt von"
+msgstr "Zuletzt aktiv"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Lauf erfolgreich"
+msgstr "Letzter Bericht"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzte Ausgabe"
+msgstr "Letzter Bericht"
+
+#, fuzzy
+#| msgid "Reset"
+msgid "RCON-Preset"
+msgstr "Zurücksetzen"
+
+msgid "RCON-Presets"
+msgstr ""
+
+msgid "RCON-Presets ausführen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "System-Presets bearbeiten"
+msgstr "Session beenden"
+
+msgid "System-Presets löschen"
+msgstr ""
+
+msgid "RCON-Presets exportieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Hourly Metrics"
+msgid "Server ID"
+msgstr "Stündliche Metriken"
+
+msgid "Eindeutiger Key (v1 oft gleich Kurzname, später echte RFID-UID)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclist (Optional)"
+msgid "Kurzname / Login"
+msgstr "Spieler (Optional)"
+
+msgid "Internes Slot-Label (z. B. Arena1); Scoreboard/Warteliste."
+msgstr ""
+
+msgid "Online-Gamertag am Velocity-Proxy für RCON/send."
+msgstr ""
+
+msgid "Optional; Inventar hängt an der UUID."
+msgstr ""
+
+msgid "Leer = Kurzname"
+msgstr ""
+
+msgid "Wenn aus: nicht in Spieler-Sessions, Warteliste und API sichtbar."
+msgstr ""
+
+msgid "Leer = globaler Standard (MCC_MINECRAFT_PLAYER_SESSION_MINUTES)"
+msgstr ""
+
+msgid ""
+"Leer = Adventure (Spieler). Werte: survival, adventure, spectator. "
+"Überschreibt „Spectator bevorzugen“, wenn gesetzt."
+msgstr ""
+
+msgid ""
+"Optionale Zuordnung zu einer TOP-Gruppe (parent is None) für Filter und "
+"Organisation in der Account-Verwaltung."
+msgstr ""
+
+msgid "Angelegt am"
+msgstr ""
+
+msgid "Geändert am"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spieler-Account"
+msgstr "Spieler"
+
+msgid "Bau-Account"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spieler (Arena)"
+msgstr "Spieler"
+
+msgid "Bau-Team"
+msgstr ""
+
+msgid "Survival"
+msgstr ""
+
+msgid "Adventure"
+msgstr ""
+
+msgid "Spectator"
+msgstr ""
+
+#, fuzzy
+#| msgid "Event-Name"
+msgid "Account-Name"
+msgstr "Event-Name"
+
+msgid "Interner Slot-/Team-Name (short_name oder Team-mc_username)"
+msgstr ""
+
+msgid "Microsoft-Login (Session)"
+msgstr ""
+
+msgid "Online-Spielername für RCON während der Session."
+msgstr ""
+
+msgid "0 = unbegrenzte Session (ends_at ist dann leer)."
+msgstr ""
+
+msgid "Leer bei unbegrenzter Session (kein Timeout)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Gestartet von"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Spectator aktiv"
+msgstr "Zuletzt aktiv"
+
+msgid "Legacy-Flag; gespiegelt aus play_gamemode == spectator."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Spielmodus"
+msgstr "Station"
+
+msgid "Aktueller Gamemode der Session (survival / adventure / spectator)."
+msgstr ""
+
+msgid ""
+"Wenn gesetzt: nach Login zum Welt-/Lobby-Spawn teleportieren. Sonst "
+"Minecraft-Standard (letzte Position)."
+msgstr ""
+
+msgid "Spawn-Versatz-Index"
+msgstr ""
+
+msgid "Gitter-/Ring-Index beim Spawn-Teleport (0 = exakter Spawn)."
+msgstr ""
+
+msgid ""
+"Wenn gesetzt: Session startete mit Teleport in diese geschützte Region "
+"(statt Welt-Spawn)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Station (PC)"
+msgstr "Station"
+
+msgid "Physischer PC, an dem diese Session freigegeben wurde."
+msgstr ""
+
+msgid ""
+"Anzahl Paper-Tickets (custom_data mcc_ticket), die beim Bootstrap per RCON "
+"ins Inventar gelegt werden."
+msgstr ""
+
+msgid "Vergabe-Katalog (Slugs)"
+msgstr ""
+
+msgid ""
+"Katalog-Slugs, die beim Session-Bootstrap per RCON vergeben werden (z. B. "
+"VehiclesPlus-Garage). Für Pending-Retry persistiert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Karte"
+msgid "Wartend"
+msgstr "Karte"
+
+#, fuzzy
+#| msgid "Zugeordnete Gruppe"
+msgid "Zugewiesen"
+msgstr "Zugewiesene TOP-Gruppe"
+
+msgid "Erledigt"
+msgstr ""
+
+msgid "Manuell (Flyer/Counter)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Velos-Einlösung (RFID)"
+msgstr "Einlösen"
+
+msgid "Wartelisten-Typ"
+msgstr ""
+
+msgid "Ticket-Nummer"
+msgstr ""
+
+msgid "Anonyme Kennung vom Flyer (öffentliche Anzeige)."
+msgstr ""
+
+msgid "Interner Name"
+msgstr ""
+
+msgid "Nur für Operatoren sichtbar, nicht auf öffentlicher Anzeige."
+msgstr ""
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Velos (Einlösung)"
+msgstr "Einlösen"
+
+msgid "Interne Notiz"
+msgstr ""
+
+msgid "Herkunft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Radler (RFID-Einlösung)"
+msgstr "Einlösen"
+
+msgid "Zugewiesener Spiel-Account"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zugeordnete Gruppe"
+msgid "Zugewiesenes Bau-Team"
+msgstr "Zugewiesene TOP-Gruppe"
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft-Session"
+msgstr "Minecraft-Name"
+
+msgid "Eingetragen am"
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Gestartet am"
+msgstr "Neu gestartet"
+
+#, fuzzy
+#| msgid "Beendet"
+msgid "Beendet am"
+msgstr "Beendet"
+
+msgid "Eingetragen von"
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Wartelisteneintrag"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Nur Spiel"
+msgstr "Spieler"
+
+msgid "Nur Bau"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Spiel und Bau"
+msgstr "Spiel starten"
+
+msgid "Rolle"
+msgstr ""
+
+msgid "Standard-Spiel-Slot"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Nur für Station"
+msgstr "Station"
+
+msgid "Leer = global für alle Stationen."
+msgstr ""
+
+msgid "Angelegt von"
+msgstr ""
+
+msgid "MS-Allowlist-Eintrag"
+msgstr ""
+
+msgid "MS-Allowlist"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Tick-Intervall (s)"
+msgstr "Letztes Intervall (km)"
+
+msgid "Min. Bewegungsdistanz für Motion"
+msgstr ""
+
+msgid "Lap-Cooldown (Ticks)"
+msgstr ""
+
+msgid "Actionbar-Ansagen"
+msgstr ""
+
+msgid "Nur Name (Status im HUD)"
+msgstr ""
+
+msgid "Voll (Platz, km/h, Runden auf der Lore)"
+msgstr ""
+
+msgid "Lore-Label-Modus"
+msgstr ""
+
+msgid "Floating-Labels an Loren"
+msgstr ""
+
+msgid "Referenz-Geschwindigkeit (m/s)"
+msgstr ""
+
+msgid "Min. Motion"
+msgstr ""
+
+msgid "Max. Motion"
+msgstr ""
+
+msgid "Default-Impuls X"
+msgstr ""
+
+msgid "Default-Impuls Y"
+msgstr ""
+
+msgid "Default-Impuls Z"
+msgstr ""
+
+msgid "Bahn-Geometrie aus Datenbank nutzen"
+msgstr ""
+
+msgid ""
+"Wenn aktiv und mindestens eine aktive Bahn existiert, wird die TOML-Datei "
+"ignoriert."
+msgstr ""
+
+msgid "Geräte-Sessions bei Rennstart beenden"
+msgstr ""
+
+msgid ""
+"Beim Velo-Arena-Start werden aktive Geräte-Sessions der zugewiesenen Radler "
+"beendet (Session-km/Velos starten bei 0; Standalone-Radler am Counter "
+"bleiben aktiv). OLED-Sperre wird unabhängig davon gelöst."
+msgstr ""
+
+msgid "Bahn-ID"
+msgstr ""
+
+msgid "Stabiler Schlüssel, z. B. lane_1"
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecart-Tag"
+msgstr "Minecraft-Name"
+
+msgid "Minecraft-Entity-Tag, z. B. velo_lane_1"
+msgstr ""
+
+msgid "Label-Farbe"
+msgstr ""
+
+msgid "Minecraft-Farbname für text_display"
+msgstr ""
+
+#, fuzzy
+#| msgid "Start"
+msgid "Start X"
+msgstr "Start"
+
+#, fuzzy
+#| msgid "Start"
+msgid "Start Y"
+msgstr "Start"
+
+#, fuzzy
+#| msgid "Start"
+msgid "Start Z"
+msgstr "Start"
+
+msgid "Yaw"
+msgstr ""
+
+msgid "Pitch"
+msgstr ""
+
+msgid "Basis-Motion"
+msgstr ""
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Ziel X min"
+msgstr "Distanz (km)"
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Ziel X max"
+msgstr "Distanz (km)"
+
+msgid "Ziel Z-Trigger"
+msgstr ""
+
+msgid "Impuls X"
+msgstr ""
+
+msgid "Impuls Y"
+msgstr ""
+
+msgid "Impuls Z"
+msgstr ""
+
+msgid "Schild X"
+msgstr ""
+
+msgid "Schild Y"
+msgstr ""
+
+msgid "Schild Z"
+msgstr ""
+
+msgid "Bevorzugte Stationen"
+msgstr ""
+
+msgid ""
+"IoT-Stationen, die bei „Aktive erkennen“ bevorzugt dieser Bahn zugeordnet "
+"werden (z. B. kleine Räder → Bahn 1 und 2). Leer = beliebige freie Session."
+msgstr ""
+
+msgid "Arena-Bahn (Geometrie)"
+msgstr ""
+
+msgid "Schild-Koordinaten sign_x/y/z müssen zusammen gesetzt werden."
+msgstr ""
+
+msgid "WorldGuard-Regionsname (a–z, 0–9, _, -)."
+msgstr ""
+
+msgid ""
+"Nur bei Master-Regionen: permanente Zuordnung zur TOP-Gruppe. Subregionen "
+"erben die Ownership über die Master-Region."
+msgstr ""
+
+msgid "Optionaler Session-Spawn. Leer = automatische Cuboid-Mitte."
+msgstr ""
+
+msgid ""
+"Wenn aktiv: WorldGuard-Standardschutz (Nicht-Mitglieder dürfen nicht bauen). "
+"Nicht das Flag „build deny“ — das würde auch Members blockieren."
+msgstr ""
+
+msgid "Bau-Accounts (Mitglieder)"
+msgstr ""
+
+msgid ""
+"Verknüpfte Bau-Registrierungen; Sync setzt WorldGuard-Members auf deren "
+"Microsoft-Login (ms_username)."
+msgstr ""
+
+msgid "Zuletzt synchronisierte Members"
+msgstr ""
+
+msgid "MS-Logins, die zuletzt per RCON als Member gesetzt wurden."
+msgstr ""
+
+msgid "Fahrzeug (Garage)"
+msgstr ""
+
+msgid "Inventar-Item"
+msgstr ""
+
+msgid "Währung / Guthaben"
+msgstr ""
+
+msgid "Modell-ID"
+msgstr ""
+
+#, python-brace-format
+msgid "z. B. VehiclesPlus ExampleBike — Platzhalter {model}."
+msgstr ""
+
+msgid "Standard-Menge"
+msgstr ""
+
+#, fuzzy
+#| msgid "KM-Marke"
+msgid "Velos-Kosten"
+msgstr "KM-Marke"
+
+msgid "0 = kostenlose Session-Vergabe; >0 = Einlösung vom Radler-Konto."
+msgstr ""
+
+msgid "Reparatur-Velos"
+msgstr ""
+
+msgid "Admin-Reparatur (VehiclesPlus); 0 = keine Reparatur-Aktion."
+msgstr ""
+
+msgid "RCON Vergabe"
+msgstr ""
+
+#, python-brace-format
+msgid "z. B. v give {player} {model}"
+msgstr ""
+
+#, fuzzy
+#| msgid "Entfernen"
+msgid "RCON Entfernen"
+msgstr "Entfernen"
+
+msgid ""
+"Optional beim Slot-Clear. Leer = nur DB-Status; Ingame-Garage ggf. manuell/"
+"andere Mittel."
+msgstr ""
+
+msgid "RCON Reparatur"
+msgstr ""
+
+#, python-brace-format
+msgid "z. B. v repair {player}. Leer = Art ohne Admin-Reparatur."
+msgstr ""
+
+msgid "Hinweis"
+msgstr ""
+
+msgid "Vergabe-Katalogeintrag"
+msgstr ""
+
+msgid "Widerrufen"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Session-Vergabe"
+msgstr "2.2 Sitzungsdaten"
+
+msgid "Katalog"
+msgstr ""
+
+msgid "Account-Slot"
+msgstr ""
+
+msgid "MS-Login"
+msgstr ""
+
+msgid "Menge"
+msgstr ""
+
+#, fuzzy
+#| msgid "Coins abgezogen."
+msgid "Velos abgezogen"
+msgstr "Coins abgezogen."
+
+msgid "Vergeben"
+msgstr ""
+
+msgid "Vergeben von"
+msgstr ""
+
+msgid "Vergabe-Eintrag"
+msgstr ""
+
+msgid "Vergabe-Einträge"
+msgstr ""
+
+msgid "Modell-ID fehlt — ZIP analysieren oder ID eingeben."
+msgstr ""
+
+#, python-format
+msgid "HJSON geschrieben: %(path)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"server.properties aktualisiert (Backup %(bak)s). Paper neu starten, damit "
+"Clients das Pack laden."
+msgstr ""
+
+#, python-format
+msgid "VehiclesPlus resourcePackUrl aktualisiert (Backup %(bak)s)."
+msgstr ""
+
+#, python-format
+msgid "Pack erzeugt: %(name)s (SHA1 %(sha1)s, custom_model_data=%(cmd)s)."
+msgstr ""
+
+msgid "Bitte ein Fahrzeug für den Export wählen."
+msgstr ""
+
+msgid "Bitte ein Modell-/Resourcepack-ZIP hochladen."
+msgstr ""
+
+#, python-format
+msgid ""
+"ZIP analysiert: %(n)s Modell(e) gefunden — Felder aus dem Archiv übernommen "
+"(CMD bleibt leer = nächste freie Nummer im Ziel-Pack)."
+msgstr ""
+
+msgid "ZIP-Import abgebrochen."
+msgstr ""
+
+msgid "Kein Staging-Token — ZIP bitte erneut analysieren."
+msgstr ""
+
+msgid "Bitte eine Modell-JSON-Datei hochladen."
+msgstr ""
+
+msgid "Modell-ID fehlt (für Blockbench-JSON erforderlich)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "RCON-Preset bearbeiten"
+msgstr "Session beenden"
+
+msgid "RCON-Preset anlegen"
+msgstr ""
+
+msgid "Preset gespeichert und ausgeführt."
+msgstr ""
+
+#, python-format
+msgid "Preset „%(name)s“ dupliziert."
+msgstr ""
+
+msgid "Bitte eine JSON-Datei wählen."
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Ungültiges JSON-Format"
+msgid "Ungültige JSON-Datei: %(error)s"
+msgstr "Ungültiges JSON-Format"
+
+msgid "JSON muss eine Liste von Presets sein."
+msgstr ""
+
+#, python-format
+msgid "Import abgeschlossen: %(created)s neu, %(updated)s aktualisiert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Preset nicht gefunden."
+msgstr "Gerät nicht gefunden"
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+msgid "Keine Berechtigung für diese Region."
+msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+
+#, python-format
+msgid "Subregion „%(id)s“ gespeichert (nur Datenbank)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Befehls-Warteschlange"
+msgid "RCON fehlgeschlagen"
+msgstr "Befehls-Warteschlange"
+
+msgid "Ungültige Zeitangabe (z. B. 30m, 2h, 1d2h)."
+msgstr ""
+
+msgid "Ungültiger Spielername (1–16 Zeichen, A–Z, 0–9, _)."
+msgstr ""
+
+#, python-format
+msgid "Radius nicht erlaubt. Erlaubt: %(opts)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültiges Format."
+msgid "Ungültige Aktion."
+msgstr "Ungültiges Format."
+
+msgid "Kein Radler verknüpft — Velos-Einlösung nicht möglich."
+msgstr ""
+
+#, fuzzy
+#| msgid "Nicht genug Coins"
+msgid "Nicht genug Velos."
+msgstr "Nicht genug Coins"
+
+#, python-format
+msgid "Vergabe „%(name)s“ (Katalog)"
+msgstr ""
+
+msgid "Kein aktives Fahrzeug-Grant auf diesem Slot."
+msgstr ""
+
+msgid "Kein Reparatur-RCON für diesen Katalogeintrag."
+msgstr ""
+
+#, python-format
+msgid "Reparatur „%(name)s“ (%(cost)s Velos)"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Mindestens ein RCON-Befehl ist erforderlich."
+msgstr "id_tag erforderlich."
+
+#, python-format
+msgid "Maximal %(max)s Befehle erlaubt."
+msgstr ""
+
+#, python-format
+msgid "Zeile %(line)s: Befehl zu lang (max. %(max)s Zeichen)."
+msgstr ""
+
+#, python-format
+msgid "Zeile %(line)s: „%(old)s“ ist veraltet — Vorschlag: „%(new)s“."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Preset nicht gefunden oder deaktiviert."
+msgstr "Spieler nicht gefunden"
+
+msgid "Keine Berechtigung, dieses Preset auszuführen."
+msgstr ""
+
+#, python-format
+msgid "Preset „%(name)s“:"
+msgstr ""
+
+msgid "Operatoren müssen eine Master-Region wählen."
+msgstr ""
+
+msgid "Operatoren dürfen Master-Regionen nicht ändern."
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+msgid "Keine Berechtigung für diese Master-Region."
+msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+
+msgid "Spielerposition nicht lesbar (Spieler offline oder ungültige Antwort)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Member-Änderungen."
+msgstr "Keine Daten gefunden."
+
+#, python-format
+msgid "Ungültige Koordinate %(field)s: %(val)s"
+msgstr ""
+
+msgid "Subregionen dürfen nur einer Master-Region untergeordnet sein."
+msgstr ""
+
+msgid "Subregion-Slug fehlt."
+msgstr ""
+
+msgid "RCON erreichbar und authentifiziert"
+msgstr ""
+
+msgid "RCON-Port erreichbar (Authentifizierung nicht geprüft)"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Ziel erreicht am"
+msgid "RCON nicht erreichbar: %(error)s"
+msgstr "Ziel erreicht am"
+
+msgid "RCON-Verbindung"
+msgstr ""
+
+msgid "RCON-Host, Port und Passwort in .env prüfen"
+msgstr ""
+
+#, python-format
+msgid "Bridge-Worker läuft, letzter Fehler: %(error)s"
+msgstr ""
+
+msgid "Bridge-Worker-Prozess läuft"
+msgstr ""
+
+#, python-format
+msgid "Bridge-Worker läuft, Heartbeat veraltet (%(minutes)s Min.)"
+msgstr ""
+
+msgid ""
+"Bridge-Worker ist gestoppt — Scoreboard-Sync aus der Datenbank ausstehend"
+msgstr ""
+
+msgid "Bridge-Worker"
+msgstr ""
+
+msgid "Worker in der Steuerzentrale starten"
+msgstr ""
+
+msgid "WebSocket ist in den Einstellungen deaktiviert"
+msgstr ""
+
+msgid "Daphne-WebSocket-Server läuft nicht"
+msgstr ""
+
+msgid "WebSocket-Server läuft"
+msgstr ""
+
+msgid "WebSocket-Server"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "WebSocket starten"
+msgstr "Spiel starten"
+
+msgid "WebSocket deaktiviert — MCC-Bridge kann nicht verbunden sein"
+msgstr ""
+
+msgid "Keine erlaubten server_id in MCC_MINECRAFT_WS_ALLOWED_SERVER_IDS"
+msgstr ""
+
+msgid "Keine aktive MCC-Bridge-Verbindung"
+msgstr ""
+
+#, python-format
+msgid "MCC-Bridge verbunden: %(servers)s"
+msgstr ""
+
+#, python-format
+msgid "Verbunden: %(connected)s — nicht verbunden: %(missing)s"
+msgstr ""
+
+msgid "MCC-Bridge"
+msgstr ""
+
+msgid "Auf dem MC-Server /mccbridge status prüfen"
+msgstr ""
+
+#, python-format
+msgid "%(count)s fehlgeschlagene Outbox-Events"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Keine Daten gefunden."
+msgid "%(count)s ausstehende Outbox-Events"
+msgstr "Keine Daten gefunden."
+
+#, python-format
+msgid "Outbox in Ordnung (%(pending)s ausstehend)"
+msgstr ""
+
+msgid "Postausgang bereinigen und Teams synchronisieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Snapshot-Worker"
+msgstr "Spiel starten"
+
+msgid "Snapshot-Worker gestoppt — Scoreboard-Abgleich nur manuell"
+msgstr ""
+
+msgid "Snapshot Worker starten oder Snapshot manuell aktualisieren"
+msgstr ""
+
+msgid "Scoreboard-Objective"
+msgstr ""
+
+#, python-format
+msgid "Aktives Objective: %(name)s"
+msgstr ""
+
+msgid "Kein Objective für Velos konfiguriert"
+msgstr ""
+
+msgid "Objective in der Scoreboard-Konfiguration setzen"
+msgstr ""
+
+msgid "Registrierte Teams"
+msgstr ""
+
+msgid "Kein aktives Team für Minecraft registriert"
+msgstr ""
+
+msgid "Teams in der Steuerzentrale registrieren"
+msgstr ""
+
+#, python-format
+msgid "%(count)s aktive Team-Registrierung(en)"
+msgstr ""
+
+msgid "Velos DB ↔ Scoreboard"
+msgstr ""
+
+#, python-format
+msgid "Abweichung bei: %(teams)s"
+msgstr ""
+
+msgid "Der Shop nutzt die Datenbank — Scoreboard muss synchronisiert werden"
+msgstr ""
+
+#, python-format
+msgid "Kein Snapshot für: %(teams)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Snapshot aktualisieren und Teams synchronisieren"
+msgstr "id_tag erforderlich."
+
+#, python-format
+msgid "Snapshot älter als %(hours)s h: %(teams)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Snapshot aktualisieren"
+msgstr "id_tag erforderlich."
+
+msgid "Alle registrierten Teams stimmen überein"
+msgstr ""
+
+msgid "Shop-Velos-Abfrage"
+msgstr ""
+
+#, python-format
+msgid "Shop-Lookup fehlgeschlagen für: %(teams)s"
+msgstr ""
+
+msgid "Team-Registrierung und mc_username prüfen"
+msgstr ""
+
+msgid "Shop würde für alle Teams den DB-Stand liefern"
+msgstr ""
+
+msgid "Shop-Katalog"
+msgstr ""
+
+#, python-format
+msgid "%(categories)s Kategorien, %(items)s aktive Artikel"
+msgstr ""
+
+msgid "Shop-Katalog importieren oder anlegen"
+msgstr ""
+
+#, python-format
+msgid "%(count)s ohne esgui_item_loc"
+msgstr ""
+
+#, python-format
+msgid "%(count)s mit Preis 0"
+msgstr ""
+
+msgid "Shop-Artikel vollständig"
+msgstr ""
+
+msgid "Shop-Betrieb → Artikel ohne Velos-Preis auf mindestens 1 setzen"
+msgstr ""
+
+msgid "Alle aktiven Artikel haben Preis und ESGUI-Zuordnung"
+msgstr ""
+
+msgid "Katalog-Push möglich"
+msgstr ""
+
+msgid "Shop kann an verbundene Bridge gepusht werden"
+msgstr ""
+
+msgid "Nach Katalog-Änderungen Shop-Preise pushen"
+msgstr ""
+
+msgid "Katalog vorhanden, aber Push derzeit nicht möglich"
+msgstr ""
+
+msgid "WebSocket und MCC-Bridge prüfen, dann Shop pushen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Station nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+msgid "Station ist inaktiv."
+msgstr ""
+
+msgid "Station unterstützt keine Spiel-Sessions."
+msgstr ""
+
+msgid "Station unterstützt keine Bau-Sessions."
+msgstr ""
+
+#, python-format
+msgid "Station %(name)s hat bereits eine aktive Session."
+msgstr ""
+
+#, python-format
+msgid "Station %(name)s existiert bereits."
+msgstr ""
+
+msgid "Station hat eine aktive Session und kann nicht gelöscht werden."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Microsoft-Login ist erforderlich."
+msgstr "id_tag erforderlich."
+
+#, python-format
+msgid "Microsoft-Login %(name)s steht nicht auf der Allowlist."
+msgstr ""
+
+#, python-format
+msgid "Allowlist-Eintrag für %(name)s existiert bereits."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Allowlist-Eintrag nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+#, fuzzy, python-format
+#| msgid "id_tag erforderlich."
+msgid "Mindestens %(min)s Velos erforderlich."
+msgstr "id_tag erforderlich."
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine freie Ticket-Nummer gefunden."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, python-format
+msgid "Ticket-Nummer %(ticket)s ist bereits in der Warteliste aktiv."
+msgstr ""
+
+msgid "Session-Dauer muss mindestens 1 Minute sein."
+msgstr ""
+
+msgid "Nur wartende oder zugewiesene Einträge können abgebrochen werden."
+msgstr ""
+
+msgid "Nur zugewiesene Einträge können freigegeben werden."
+msgstr ""
+
+msgid "Falscher Wartelisten-Typ."
+msgstr ""
+
+msgid "Eintrag ist nicht mehr wartend."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Spiel-Account nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+msgid "Spiel-Account ist belegt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler nicht gefunden"
+msgid "Bau-PC nicht gefunden."
+msgstr "Spieler nicht gefunden"
+
+msgid "Bau-PC ist belegt."
+msgstr ""
+
+#, python-format
+msgid "MCC-Welt-Tickets: %(count)s × %(price)s Velos"
+msgstr ""
+
+msgid ""
+"Minecraft-RCON nicht erreichbar (Paper/Velocity gestoppt oder Host/Port "
+"falsch). Bitte Server starten und unter Minecraft-Steuerung den RCON-Status "
+"prüfen."
+msgstr ""
+
+#, python-format
+msgid "Serverfehler: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "Serverfehler beim Laden der Sessions: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "Session-Fehler: %(error)s"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Sessions zum Beenden."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, python-format
+msgid "Kick aller Sessions fehlgeschlagen: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "%(ok)s Session(s) beendet; %(fail)s fehlgeschlagen."
+msgstr ""
+
+#, python-format
+msgid "Alle %(ok)s aktiven Session(s) beendet."
+msgstr ""
+
+msgid "Keine Sessions zum Starten (kein Warteraum / idle)."
+msgstr ""
+
+#, python-format
+msgid "Start aller Sessions fehlgeschlagen: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "%(ok)s Session(s) gestartet; %(fail)s fehlgeschlagen."
+msgstr ""
+
+#, python-format
+msgid "Alle %(ok)s Session(s) gestartet."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Sessions zum Spawn-Teleport."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, python-format
+msgid "Spawn-Teleport fehlgeschlagen: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "%(ok)s Spieler zum Spawn; %(fail)s fehlgeschlagen."
+msgstr ""
+
+#, python-format
+msgid "Alle %(ok)s aktiven Spieler zum Spawn teleportiert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Sessions zum Umschalten."
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, python-format
+msgid "Spielmodus-Umschaltung fehlgeschlagen: %(error)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"Spielmodus %(mode)s für %(ok)s Session(s) gesetzt; %(fail)s fehlgeschlagen."
+msgstr ""
+
+#, python-format
+msgid "Spielmodus %(mode)s für alle %(ok)s aktiven Session(s) gesetzt."
+msgstr ""
+
+#, python-format
+msgid "Session gestartet: %(name)s (unbegrenzt)"
+msgstr ""
+
+#, python-format
+msgid "Session gestartet: %(name)s (%(min)s Min.)"
+msgstr ""
+
+#, python-format
+msgid "%(base)s · %(n)s Ticket(s)"
+msgstr ""
+
+#, python-format
+msgid "%(base)s · %(n)s Vergabe(n)"
+msgstr ""
+
+#, python-format
+msgid "Vergaben geleert: %(name)s (%(n)s)"
+msgstr ""
+
+#, python-format
+msgid "Garage geleert: %(name)s (keine aktiven Vergabe-Einträge)"
+msgstr ""
+
+#, python-format
+msgid "Reparatur ausgelöst: %(item)s (%(name)s)"
+msgstr ""
+
+#, python-format
+msgid "Zum Spawn teleportiert: %(name)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Session beenden"
+msgid "Session beendet: %(name)s"
+msgstr "Session beenden"
+
+#, python-format
+msgid "Zeit verlängert: %(name)s (+%(min)s Min., Ende %(ends)s)"
+msgstr ""
+
+#, python-format
+msgid "Spectator aktiv: %(name)s"
+msgstr ""
+
+#, python-format
+msgid "Spielmodus aktiv: %(name)s"
+msgstr ""
+
+#, python-format
+msgid "Spielmodus %(mode)s: %(name)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Gerät nicht gefunden"
+msgid "Account nicht gefunden: %(name)s"
+msgstr "Gerät nicht gefunden"
+
+#, python-format
+msgid "Session bereits aktiv: %(name)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Cyclists - Active Sessions"
+msgid "Keine aktive Session: %(name)s"
+msgstr "Radler - aktive Sitzungen"
+
+#, python-format
+msgid "RCON fehlgeschlagen: %(error)s"
+msgstr ""
+
+#, python-format
+msgid "Builder-Session gestartet: %(name)s (unbegrenzt)"
+msgstr ""
+
+#, python-format
+msgid "Builder-Session gestartet: %(name)s (%(min)s Min.)"
+msgstr ""
+
+msgid "Keine Berechtigung für Stationen."
+msgstr ""
+
+msgid "Station gespeichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Station gelöscht."
+msgstr "Station"
+
+msgid "Allowlist-Eintrag hinzugefügt."
+msgstr ""
+
+msgid "Allowlist-Eintrag deaktiviert."
+msgstr ""
+
+msgid "Allowlist-Eintrag aktiviert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen gelöscht."
+msgid "Allowlist-Eintrag gelöscht."
+msgstr "Alle Zuweisungen gelöscht."
+
+#, python-format
+msgid "Unerwarteter Fehler: %(error)s"
+msgstr ""
+
+msgid "Spieler-Eintrag zur Warteliste hinzugefügt."
+msgstr ""
+
+msgid "Bau-Eintrag zur Warteliste hinzugefügt."
+msgstr ""
+
+#, python-format
+msgid ""
+"Ticketnummer für Flyer erzeugt: %(ticket)s — bitte auf den Flyer schreiben."
+msgstr ""
+
+#, python-format
+msgid "Ticketnummern für Flyer erzeugt: %(tickets)s"
+msgstr ""
+
+msgid "Wartelisteneintrag abgebrochen."
+msgstr ""
+
+msgid "Zuweisung aufgehoben — Eintrag wieder wartend."
+msgstr ""
+
+msgid ""
+"Arena zugewiesen. Freigabe (Login) bitte unter „Spieler-Sessions“ starten, "
+"sobald der PC verbunden ist."
+msgstr ""
+
+msgid ""
+"Bau-PC zugewiesen. Freigabe (Login) bitte unter „Bau-Sessions“ starten, "
+"sobald der PC verbunden ist."
+msgstr ""
+
+#, fuzzy
+#| msgid "Ungültige oder fehlende Daten."
+msgid "Ungültige Aktion oder fehlende Berechtigung."
+msgstr "Ungültige oder fehlende Daten."
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft-Wartelisten"
+msgstr "Minecraft-Name"
+
+msgid "Wartelisten-Anzeige (Operator)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft-Warteliste"
+msgstr "Minecraft-Name"
+
+msgid "Aktuell (laufende Periode)"
+msgstr ""
+
+msgid "Archiv"
 msgstr ""
 
 #, fuzzy
 #| msgid "Keine Gruppen"
 msgid "Keine Gruppen ausgewählt"
 msgstr "Keine Gruppen"
+
+msgid "Gesamt-km"
+msgstr "Gesamt-km"
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Archiv-Daten für diese Auswahl gefunden."
+msgstr "Keine Daten gefunden."
 
 msgid "Schule"
 msgstr ""
@@ -5146,13 +10539,113 @@ msgstr ""
 msgid "1 Schule"
 msgstr ""
 
+msgid "Vorschau — bitte alle Daten prüfen"
+msgstr ""
+
+msgid "Es wird noch nichts geschrieben."
+msgstr ""
+
+msgid ""
+"Nach Bestätigung: KM und velos_total / Radler-Guthaben → 0. velos_spendable "
+"bleibt unverändert (nur im Snapshot gespeichert)."
+msgstr ""
+
+msgid "Geräte"
+msgstr "Geräte"
+
+msgid "TOP KM"
+msgstr ""
+
+msgid "TOP Velos"
+msgstr ""
+
+msgid "TOP Spendable"
+msgstr ""
+
+#, fuzzy
+#| msgid "No Group"
+msgid "Parent"
+msgstr "Keine Gruppe"
+
+msgid "Sichtbar"
+msgstr ""
+
+msgid "KM"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zielkilometer (optional)"
+msgid "Velos total"
+msgstr "Zielkilometer (optional)"
+
+#, fuzzy
+#| msgid "Table"
+msgid "Spendable"
+msgstr "Tabelle"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Gruppen."
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Summe Gruppen KM"
+msgstr "Alle Top-Gruppen"
+
+msgid "inkl. unsichtbarer Event-Teams"
+msgstr ""
+
+msgid "User-ID / ID-Tag"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Radler."
+msgstr "Keine Daten gefunden."
+
+msgid "Summe Radler KM"
+msgstr ""
+
+#, fuzzy
+#| msgid "Group Type"
+msgid "KM Periode"
+msgstr "Gruppentyp"
+
+msgid "KM Lebenslauf"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Geräte."
+msgstr "Keine Daten gefunden."
+
+msgid "Summe Geräte KM Periode"
+msgstr ""
+
+msgid "Lebenslauf wird nicht genullt."
+msgstr ""
+
+msgid ""
+"Ich habe Gruppen, Radler und Geräte geprüft. Abschluss jetzt durchführen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Jahresabschluss jetzt erstellen"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "Zurück zu Alle Gruppen"
+msgid "Zurück / Abbrechen"
+msgstr "Zurück zu Alle Gruppen"
+
 msgid "Wichtiger Hinweis"
 msgstr ""
 
 msgid ""
-"Diese Aktion erstellt einen Jahresabschluss für die ausgewählte TOP-Gruppe "
-"und setzt alle Kilometerstände auf Null. Die historischen Daten werden in "
-"einem Snapshot gespeichert und können jederzeit eingesehen werden."
+"Zuerst erscheint eine Vorschau aller betroffenen Gruppen, Radler und Geräte. "
+"Erst nach manueller Prüfung wird der Abschluss geschrieben."
 msgstr ""
 
 msgid "Betroffen sind:"
@@ -5170,8 +10663,8 @@ msgid "Alle Geräte, die diesen Gruppen zugeordnet sind"
 msgstr ""
 
 msgid ""
-"Aktive Sessions werden nicht zurückgesetzt. Die stündlichen Metriken "
-"(HourlyMetric) bleiben als historische Daten erhalten."
+"Aktive Sessions werden nicht zurückgesetzt. HourlyMetric bleibt erhalten. "
+"velos_spendable wird nur archiviert, nicht genullt."
 msgstr ""
 
 #, fuzzy
@@ -5209,28 +10702,13 @@ msgstr "Gruppentyp"
 msgid "Abschlussdatum *"
 msgstr ""
 
-msgid ""
-"Datum und Uhrzeit, zu dem der Abschluss durchgeführt wird (Format: YYYY-MM-"
-"DD HH:MM)"
+msgid "Datum und Uhrzeit des Abschlusses"
 msgstr ""
 
-msgid ""
-"Optional: Startdatum der abgeschlossenen Periode (z.B. Schuljahresbeginn). "
-"Falls nicht angegeben, wird das Abschlussdatum verwendet."
-msgstr ""
-
-msgid ""
-"Optional: Enddatum der abgeschlossenen Periode (z.B. Schuljahresende). Falls "
-"nicht angegeben, wird das Abschlussdatum verwendet."
-msgstr ""
-
-msgid "Möchten Sie wirklich einen Jahresabschluss für"
-msgstr ""
-
-msgid ""
-"durchführen? Diese Aktion kann rückgängig gemacht werden, aber bitte "
-"vergewissern Sie sich, dass alle Daten korrekt sind."
-msgstr ""
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Vorschau anzeigen"
+msgstr "Auf Karte anzeigen"
 
 msgid "Event Management"
 msgstr ""
@@ -5256,6 +10734,134 @@ msgstr "Historien"
 msgid "Massenerstellung: Schule, Klassen & Radler"
 msgstr ""
 
+msgid ""
+"Überträgt nur velos_spendable. velos_total / KM bleiben unverändert — "
+"Historie bleibt erhalten."
+msgstr ""
+
+msgid "Vorschau — bitte bestätigen"
+msgstr ""
+
+msgid "Schnellaktion: alle Leaves → TOP"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erreicht von"
+msgid "Teilumbuchung"
+msgstr "Erreicht von"
+
+msgid "von"
+msgstr ""
+
+msgid "Verfügbar"
+msgstr ""
+
+msgid "Umbuchung"
+msgstr ""
+
+msgid "Keine Quellen mit Spendable > 0."
+msgstr ""
+
+msgid "Umbuchung ausführen"
+msgstr ""
+
+msgid "Quellen → Ziel umbuchen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Filters"
+msgid "TOP-Filter"
+msgstr "Filter"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "— alle TOP-Gruppen —"
+msgstr "Alle Top-Gruppen"
+
+msgid "Grenzt Quellen- und Zielliste auf eine TOP-Gruppe und ihre Leaves ein."
+msgstr ""
+
+msgid "Quellen (Mehrfachauswahl)"
+msgstr ""
+
+msgid ""
+"Strg/Cmd + Klick für mehrere Gruppen. Teilbetrag nur bei genau einer Quelle."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Zielgruppe"
+msgstr "Keine Gruppen"
+
+msgid "Betrag (optional, Teilumbuchung)"
+msgstr ""
+
+msgid "leer = gesamtes Spendable der Quelle(n)"
+msgstr ""
+
+msgid "z. B. TOP → Klasse 2b: eine Quelle wählen und Teilbetrag eingeben."
+msgstr ""
+
+msgid "z. B. FEZitty 2026 Abschluss"
+msgstr ""
+
+msgid "Schnell: alle Leaves eines TOP → dieses TOP"
+msgstr ""
+
+msgid "Zuerst Vorschau aller Leaf-Spendable, dann Bestätigung."
+msgstr ""
+
+msgid "Vorschau Leaves → TOP"
+msgstr ""
+
+msgid "Nur Spendable nullen (ohne Umbuchung)"
+msgstr ""
+
+msgid "Verfall / Reset ohne Ziel. Beträge werden auditiert."
+msgstr ""
+
+msgid "Spendable der gewählten Gruppen wirklich auf 0 setzen?"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Quellen"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine Gruppen mit Spendable > 0"
+msgstr "Keine aktiven Gruppen gefunden."
+
+msgid "Grund"
+msgstr ""
+
+msgid "Nullen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzte Transfers"
+msgstr "Letzter Bericht"
+
+#, fuzzy
+#| msgid "Zeitpunkt"
+msgid "Zeit"
+msgstr "Zeitpunkt"
+
+#, fuzzy
+#| msgid "Distance (km)"
+msgid "Betrag"
+msgstr "Distanz (km)"
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Von"
+msgstr "Version"
+
+msgid "Noch keine Transfers."
+msgstr ""
+
 msgid "Trip Management"
 msgstr ""
 
@@ -5271,6 +10877,33 @@ msgid "Save current trip progress to history?"
 msgstr ""
 
 msgid "Save to History"
+msgstr ""
+
+msgid "Achtung"
+msgstr ""
+
+msgid ""
+"Aktuelle Perioden-KM und Velos-Total werden mit den Snapshot-Werten "
+"überschrieben."
+msgstr ""
+
+msgid ""
+"Nicht geändert: velos_spendable, Geräte-Lebenslaufleistung, Shop-Credits."
+msgstr ""
+
+msgid "Snapshot-ID"
+msgstr ""
+
+msgid "TOP KM (Snapshot)"
+msgstr ""
+
+msgid "TOP Velos (Snapshot)"
+msgstr ""
+
+msgid "Ich verstehe, dass aktuelle Periodenstände überschrieben werden."
+msgstr ""
+
+msgid "Jetzt rückgängig machen"
 msgstr ""
 
 msgid "Django administration"
@@ -5377,50 +11010,1064 @@ msgstr "Spiel starten"
 msgid "Import from ZIP/GitHub"
 msgstr ""
 
-msgid "Create Backup"
+#, fuzzy
+#| msgid "RFID-UID"
+msgid "RFID"
+msgstr "RFID-UID"
+
+msgid "TOP"
 msgstr ""
 
-msgid "Create a new database backup."
+msgid "Wallet"
 msgstr ""
 
-msgid "Existing Backups"
+#, fuzzy
+#| msgid "Aktiv"
+msgid "Inaktiv"
+msgstr "Aktiv"
+
+msgid "OP"
 msgstr ""
 
-msgid "Filename"
+#, fuzzy
+#| msgid "Breitengrad"
+msgid "Bearbeiten"
+msgstr "Breitengrad"
+
+msgid "Ausblenden"
 msgstr ""
 
-msgid "Size"
+#, fuzzy
+#| msgid "Spiel konnte nicht gestoppt werden."
+msgid "Passwort konnte nicht geladen werden."
+msgstr "Spiel konnte nicht gestoppt werden."
+
+msgid "Server-OP"
 msgstr ""
 
-msgid "Created"
+msgid "Passwort"
 msgstr ""
 
-msgid "Actions"
+#, fuzzy
+#| msgid "Reset"
+msgid "gesetzt"
+msgstr "Zurücksetzen"
+
+#, fuzzy
+#| msgid "Anzeige"
+msgid "Anzeigen"
+msgstr "Anzeige"
+
+#, fuzzy
+#| msgid "2.1 Server Logs"
+msgid "Auf Server gesetzt"
+msgstr "2.1 Server-Logdateien"
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Noch nicht auf Server"
+msgstr "Neu gestartet"
+
+#, fuzzy
+#| msgid "Popup-Dauer"
+msgid "Dauer"
+msgstr "Popup-Dauer"
+
+msgid "unbegrenzt"
+msgstr ""
+
+msgid "Min."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Min"
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Map"
+msgid "Max"
+msgstr "Karte"
+
+msgid "Schritt ±"
+msgstr ""
+
+msgid "Session-Dauer (Min., leer = Standard)"
+msgstr ""
+
+msgid "Minimum (Min.)"
+msgstr ""
+
+msgid "Maximum (Min.)"
+msgstr ""
+
+msgid "Zeit-Schrittgröße ± (Min., leer = Standard)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Historien"
+msgid "Dauer speichern"
+msgstr "Historien"
+
+msgid "Aktives Wallet (Leaf)"
+msgstr ""
+
+msgid "Wallet speichern"
+msgstr ""
+
+msgid "Neues Passwort (leer = auto)"
+msgstr ""
+
+msgid "Passwort neu setzen"
+msgstr ""
+
+msgid "Aktiv (benutzbar / auf Session-Tafel)"
+msgstr ""
+
+msgid "Server-Operator (erweiterte Privs)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Historien"
+msgid "Flags speichern"
+msgstr "Historien"
+
+#, fuzzy
+#| msgid "Leaf-Gruppe"
+msgid "keine Leaf-Gruppen"
+msgstr "Leaf-Gruppe"
+
+#, fuzzy
+#| msgid "{count} day(s)"
+msgid "Account anlegen"
+msgstr "{count} Tag(e)"
+
+msgid "Passwort (leer = automatisch)"
+msgstr ""
+
+msgid ""
+"Passwort wird automatisch vergeben. Anzeigen/Setzen erfordert die "
+"entsprechende Luanti-Berechtigung und Ihre TOP-Gruppe."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Zuerst Heimat-Gruppe wählen"
+msgstr "Keine Gruppen"
+
+msgid "Aktiv (benutzbar)"
+msgstr ""
+
+msgid "Server-Operator (erweiterte Privs, wie Minecraft /op)"
+msgstr ""
+
+msgid "Anlegen"
+msgstr ""
+
+msgid "Ohne TOP"
+msgstr ""
+
+msgid "Suche"
+msgstr "Suche"
+
+msgid "Login, RFID, Anzeigename"
+msgstr ""
+
+#, fuzzy
+#| msgid "Filters"
+msgid "Filtern"
+msgstr "Filter"
+
+msgid "Keine Accounts für diese Auswahl."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Seiten"
+msgstr "Spieler"
+
+#, python-format
+msgid ""
+"\n"
+"    Seite %(num)s von %(total)s\n"
+"    "
+msgstr ""
+
+msgid "Weiter"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Zuweisungen aktiv."
+msgid "Arena inaktiv"
+msgstr "Keine Zuweisungen aktiv."
+
+msgid "Speed"
+msgstr ""
+
+msgid "Aktiv umschalten"
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen löschen"
+msgid "Alle Loren löschen"
+msgstr "Alle Zuweisungen löschen"
+
+msgid "Lore spawnen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Farbe definiert"
+msgid "Keine Spuren konfiguriert."
+msgstr "Keine Farbe definiert"
+
+msgid "Preset-Editor öffnen"
+msgstr ""
+
+msgid ""
+"Regionen mit Positionsübernahme (Min/Max/Spawn vom Spieler) und Build-Zonen-"
+"Schutz:"
+msgstr ""
+
+msgid "Geschützte Regionen öffnen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Zuletzt"
+msgstr "Zuletzt aktiv"
+
+msgid "Preset wirklich ausführen?"
+msgstr ""
+
+msgid "Ausführen"
+msgstr ""
+
+msgid "Keine Presets. Bitte im Preset-Editor anlegen."
+msgstr ""
+
+msgid "Zum Editor"
+msgstr ""
+
+msgid "Hinweise"
+msgstr ""
+
+msgid "Bridge-Schritte"
+msgstr ""
+
+msgid "Ein Schritt pro Zeile. Beispiele:"
+msgstr ""
+
+msgid "Oder JSON:"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Optionen"
+msgstr "Station"
+
+msgid "Speichern & Ausführen"
+msgstr ""
+
+msgid "Preset wirklich löschen?"
+msgstr ""
+
+#, fuzzy
+#| msgid "Alle Zuweisungen löschen"
+msgid "Preset löschen"
+msgstr "Alle Zuweisungen löschen"
+
+msgid ""
+"Bridge-Schritte (Zeit, Wetter, Chat) — in der DB gespeichert und hier "
+"editierbar, nicht im Code verdrahtet."
+msgstr ""
+
+msgid "+ Neues Preset"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zurück zu Alle Gruppen"
+msgid "Zurück zur Stadtsteuerung"
+msgstr "Zurück zu Alle Gruppen"
+
+msgid "JSON exportieren"
+msgstr ""
+
+msgid "JSON importieren"
+msgstr ""
+
+msgid "Fehlende Seeds anlegen"
+msgstr ""
+
+msgid "Duplizieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Presets gefunden."
+msgstr "Keine Daten gefunden."
+
+msgid "Preset ausführen"
+msgstr ""
+
+msgid "Luanti-Server läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Luanti-Server gestoppt"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Auf Karte anzeigen"
+msgid "Log anzeigen"
+msgstr "Auf Karte anzeigen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Server starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Server stoppen"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Server neu starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Status aktualisieren"
+msgstr "id_tag erforderlich."
+
+msgid ""
+"Stop/Neustart sichert zuerst Inventare und beendet offene Sessions (kann bis "
+"ca. 30 s dauern)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Device"
+msgid "Bridge online"
+msgstr "Gerät"
+
+msgid "Bridge offline – kein Heartbeat/WebSocket."
+msgstr ""
+
+msgid "Standard-Sessiondauer"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zeit hinzufügen"
+msgstr "Zuweisung hinzufügen"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Session-Ende-Warnung"
+msgstr "Session beenden"
+
+msgid "Sek."
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Admin → Luanti-Konfiguration"
+msgstr "id_tag erforderlich."
+
+#, fuzzy
+#| msgid "Hourly Metrics"
+msgid "Server-Verzeichnis"
+msgstr "Stündliche Metriken"
+
+#, fuzzy
+#| msgid "Entfernen"
+msgid "Verbindungen"
+msgstr "Entfernen"
+
+msgid "verbunden"
+msgstr ""
+
+msgid "getrennt"
+msgstr ""
+
+msgid "Noch keine Bridge gemeldet."
+msgstr ""
+
+msgid "Server stoppen? Offene Sessions werden beendet und Inventare gesichert."
+msgstr ""
+
+msgid ""
+"Server neu starten? Offene Sessions werden beendet und Inventare gesichert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Lade Daten..."
+msgid "Bitte warten…"
+msgstr "Lade Daten..."
+
+msgid ""
+"Cuboid-Regionen für den Build-Modus. Play/Watch sperren weiter die ganze "
+"Welt. Members dürfen in geschützten Cuboids bauen; außerhalb ist Bauen "
+"gesperrt, sobald mindestens eine Schutz-Region aktiv ist."
+msgstr ""
+
+msgid "Sichtbare Markierung (Partikel)"
+msgstr ""
+
+msgid ""
+"Farbige Umrandungen in Spieler-Nähe und kurzer Hinweis mit Regionsnamen beim "
+"Betreten."
+msgstr ""
+
+msgid "Partikel-Markierung aktiv"
+msgstr ""
+
+msgid "Sichtweite (Blöcke)"
+msgstr ""
+
+msgid "Markierung speichern & sync"
+msgstr ""
+
+msgid "Nur an Bridge syncen"
+msgstr ""
+
+msgid "Neue Master-Region"
+msgstr ""
+
+msgid "ID"
+msgstr ""
+
+msgid "Typ / TOP"
+msgstr ""
+
+#, fuzzy
+#| msgid "Bezeichnung"
+msgid "Bereich"
+msgstr "Bezeichnung"
+
+msgid "Members"
+msgstr ""
+
+msgid "Plan / Live"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "deaktiviert"
+msgstr "Gerät nicht gefunden"
+
+msgid "Sub"
+msgstr ""
+
+msgid "Master"
+msgstr ""
+
+msgid "Hologramme"
+msgstr ""
+
+msgid "Pool"
+msgstr ""
+
+msgid "Live-Umwandlung AN"
+msgstr ""
+
+msgid "Live-Umwandlung AUS"
+msgstr ""
+
+#, fuzzy
+#| msgid "MCC Live Karte"
+msgid "Live start"
+msgstr "MCC Live Karte"
+
+#, fuzzy
+#| msgid "MCC Live Map"
+msgid "Live stop"
+msgstr "MCC Live Map"
+
+msgid "Nach oben"
+msgstr ""
+
+msgid "Nach unten"
+msgstr ""
+
+msgid "Laden"
+msgstr ""
+
+msgid "+ Sub"
+msgstr ""
+
+msgid "Noch keine Regionen in der Datenbank."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Region bearbeiten"
+msgstr "Session beenden"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Region anlegen"
+msgstr "Session beenden"
+
+msgid "Master-Region (für Sub)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Master (keine)"
+msgstr "Keine Gruppen"
+
+msgid "Sub-Slug (neu)"
+msgstr ""
+
+#, fuzzy
+#| msgid "TOP-Gruppe"
+msgid "TOP-Gruppe (Master)"
+msgstr "TOP-Gruppe"
+
+msgid "Spawn löschen"
+msgstr ""
+
+msgid "TOP der Master-Region für Plan-Velos einbeziehen"
+msgstr ""
+
+msgid "Plan-Velos (zusätzliche Gruppen)"
+msgstr ""
+
+msgid ""
+"Radler dieser Gruppen finanzieren die Umwandlung von Hologrammen in dieser "
+"Zone."
+msgstr ""
+
+msgid "Live-Umwandlung (Plan)"
+msgstr ""
+
+msgid ""
+"Für Vorführungen: Kinder planen Hologramme, Betreuer starten hier die "
+"Umwandlung — Großeltern strampeln Velos in den Plan-Pool und schauen in "
+"Spiel/Flugmodus zu. Kein /mccplan autoconvert nötig."
+msgstr ""
+
+#, fuzzy
+#| msgid "MCC Live Map"
+msgid "Live AN"
+msgstr "MCC Live Map"
+
+#, fuzzy
+#| msgid "MCC Live Map"
+msgid "Live AUS"
+msgstr "MCC Live Map"
+
+msgid "Live-Umwandlung starten"
+msgstr ""
+
+msgid "Live-Umwandlung stoppen"
+msgstr ""
+
+msgid "Einmalig"
+msgstr ""
+
+msgid "Blöcke umwandeln"
+msgstr ""
+
+msgid "Mitglieder"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine aktiven Accounts."
+msgstr "Keine Daten gefunden."
+
+msgid "Spieler für Position"
+msgstr ""
+
+msgid "Min = Spieler-Pos"
+msgstr ""
+
+msgid "Max = Spieler-Pos"
+msgstr ""
+
+msgid "Spawn = Spieler-Pos"
+msgstr ""
+
+msgid "Region wirklich löschen?"
+msgstr ""
+
+msgid "Löschen"
+msgstr ""
+
+msgid ""
+"Alle konfigurierten Sessions. Wartet = gelb (Start möglich). Aktiv = grün. "
+"Zeit ± je Account."
+msgstr ""
+
+msgid ""
+"Keine Sessions für diese Auswahl (Accounts anlegen / Heimat-TOP zuweisen)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Karte"
+msgid "Wartet"
+msgstr "Karte"
+
+#, python-format
+msgid "Dauer %(duration)s Min."
+msgstr ""
+
+msgid "Dauer unbegrenzt"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"            Dauer %(duration)s Min. (%(lo)s–%(hi)s)\n"
+"            "
+msgstr ""
+
+msgid "Bereit zum Start"
+msgstr ""
+
+msgid "Fortsetzen"
+msgstr ""
+
+msgid "Pause"
+msgstr ""
+
+msgid "Kick"
+msgstr ""
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Weniger Minuten"
+msgstr "In Map/Game anzeigen"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Mehr Minuten"
+msgstr "Keine Gruppen"
+
+msgid "Unbegrenzt"
+msgstr ""
+
+msgid "Beim Start zum Welt-Spawn statt letzter Position"
+msgstr ""
+
+msgid "Spawn"
+msgstr ""
+
+msgid "In Region teleportieren (optionaler Spawn-Punkt / Cuboid-Mitte)"
+msgstr ""
+
+msgid "— Region —"
+msgstr ""
+
+msgid "Account-Standard"
+msgstr ""
+
+msgid "Artikel ohne DE-Anzeigename"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"      %(n)s Shop-Artikel ohne gültiges DE-Label — direkt bearbeiten (Inline "
+"„Shop-Artikel-Übersetzungen“, Sprache de).\n"
+"      "
+msgstr ""
+
+msgid "DE leer/Alt:"
+msgstr ""
+
+msgid "Legacy:"
+msgstr ""
+
+msgid "Registry-Vorschlag:"
+msgstr ""
+
+#, fuzzy
+#| msgid "Warnung"
+msgid "aus"
+msgstr "Warnung"
+
+msgid ""
+"Liste momentan leer — Seite neu laden oder Support prüfen (Zähler und Liste "
+"sollten übereinstimmen)."
+msgstr ""
+
+msgid "Artikelnamen (DE / EN)"
+msgstr ""
+
+msgid ""
+"Empfohlen einmalig: DE aus Mineclonia-Locales (echte deutsche Namen), danach "
+"DE aus Registry für Lücken. EN invertiert dieselben *.de.tr-Dateien. Im "
+"Spiel steuert die Client-Sprache die Anzeige via Katalog-API."
+msgstr ""
+
+msgid "DE-Labels aus Mineclonia-Locales"
+msgstr ""
+
+msgid "DE-Labels aus Registry"
+msgstr ""
+
+msgid "DE-Labels reparieren (Markup → Locales)"
+msgstr ""
+
+msgid "Kategorie-Titel DE/EN (Slug-Vorschläge)"
+msgstr ""
+
+msgid "EN-Labels aus Mineclonia-Locales"
+msgstr ""
+
+msgid ""
+"EN-Import: MCC_LUANTI_LOCALE_ROOT in settings.py / .env setzen (Mods-"
+"Verzeichnis mit locale/)."
+msgstr ""
+
+msgid "Shop-Icon-Hinweis (nach „Registry aktualisieren“):"
+msgstr ""
+
+msgid "wahrscheinlich OK"
+msgstr ""
+
+msgid "unsicher (Mesh/ohne Inventarbild)"
+msgstr ""
+
+msgid "fehlt (nicht in Registry)"
+msgstr ""
+
+msgid "Stichprobe im Spiel (/mccshop) bleibt maßgeblich."
+msgstr ""
+
+msgid "Plan-Hologramm (Planungsmodus):"
+msgstr ""
+
+msgid "Form-Klon (Server-Test)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Avatar Vorschau"
+msgid "Form-Klon (Vorschau)"
+msgstr "Avatar Vorschau"
+
+msgid "Glaswürfel"
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "nicht geprüft"
+msgstr "Neu gestartet"
+
+msgid "Vorschau im Registry-Dump; exakter Test über „Plan-Hologramme prüfen“."
+msgstr ""
+
+msgid "Shop-Artikel suchen"
+msgstr ""
+
+msgid ""
+"Wie im Spiel (/mccshop): z. B. „holz“ findet alle Artikel mit Holz im Namen "
+"oder in der Holz-Kategorie — unabhängig vom Registry-Filter oben."
+msgstr ""
+
+#, fuzzy
+#| msgid "Suche"
+msgid "Shop-Suche"
+msgstr "Suche"
+
+msgid "Shop durchsuchen"
+msgstr ""
+
+msgid "Shop-Filter löschen"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"      %(n)s Treffer für „%(q)s“ (max. 400).\n"
+"      "
+msgstr ""
+
+msgid "Keine Shop-Artikel passen zum Suchtext."
+msgstr ""
+
+msgid "Import aus Minecraft-Shop"
+msgstr ""
+
+msgid ""
+"Optional: Erstbefüllung aus dem Minecraft-Shop. Lücken (z. B. reine "
+"Mineclonia-Mods) danach über Registry-Bulk schließen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Minecraft-Name"
+msgid "Minecraft-Shop importieren"
+msgstr "Minecraft-Name"
+
+msgid "Registry → Luanti-Shop"
+msgstr ""
+
+msgid ""
+"Fehlende Items filtern, Ziel-Kategorie wählen oder anlegen, dann Auswahl "
+"oder Mod-/Filter-Bulk übernehmen."
+msgstr ""
+
+msgid "Registry vom Server aktualisieren"
+msgstr ""
+
+msgid "Plan-Hologramme für Shop-Artikel prüfen"
+msgstr ""
+
+msgid "Nur fehlende (noch nicht im Shop)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Suche"
+msgid "Suchen"
+msgstr "Suche"
+
+#, python-format
+msgid ""
+"\n"
+"      Aktueller Filter: <strong>%(total)s</strong> fehlende Itemstrings "
+"(Massen-Limit %(cap)s pro Aktion).\n"
+"      "
+msgstr ""
+
+msgid "Mod wählen (Klick filtert sofort; Zahl = fehlend im Shop):"
+msgstr ""
+
+#, fuzzy
+#| msgid "Manual Mode"
+msgid "Alle Mods"
+msgstr "Manueller Modus"
+
+#, python-format
+msgid ""
+"\n"
+"      Aktiver Mod: <strong><code>%(mod)s</code></strong> — %(n)s fehlend im "
+"Shop.\n"
+"      "
+msgstr ""
+
+msgid "Mod-Filter löschen"
+msgstr ""
+
+msgid "Registry leer — zuerst aktualisieren (Luanti muss laufen)."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"      %(shown)s von %(total)s Treffern in der Liste (Anzeige-Limit "
+"%(limit)s). Für mehr: Mod-Bulk oder Filter-Bulk nutzen.\n"
+"      "
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Alle sichtbaren auswählen"
+msgstr "Keine Gruppen"
+
+msgid "Ausgewählt:"
+msgstr ""
+
+msgid "schon im Shop"
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+msgid "Keine Treffer für diesen Filter."
+msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+
+msgid "Ziel-Kategorie:"
+msgstr ""
+
+#, fuzzy
+#| msgid "Beendet"
+msgid "Bestehende"
+msgstr "Beendet"
+
+msgid "Neu anlegen"
+msgstr ""
+
+msgid "Auswahl in Shop übernehmen"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"          Alle %(n)s fehlenden von „%(mod)s“ übernehmen\n"
+"          "
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"          Mod-Bulk: %(n)s Items &gt; Limit %(cap)s — Suche verengen.\n"
+"          "
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"          Alle %(n)s fehlenden im Filter übernehmen\n"
+"          "
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"          Filter-Bulk: %(n)s Treffer &gt; Limit %(cap)s — Mod wählen oder "
+"Suche verengen.\n"
+"          "
+msgstr ""
+
+msgid "Verwaltung auch unter Shop-Kategorien / Shop-Artikel im Admin."
+msgstr ""
+
+msgid "Unten nur Kategorien mit Treffern zur Shop-Suche."
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Artikel"
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Kategorien mit Treffern."
+msgstr "Keine Daten gefunden."
+
+msgid "Noch keine Kategorien — Registry-Bulk oder Minecraft-Import."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Station anlegen"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Config neu laden"
+msgstr "id_tag erforderlich."
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Stationen."
+msgstr "Keine Daten gefunden."
+
+#, python-format
+msgid ""
+"\n"
+"  Ein Artikel wird verschoben.\n"
+"  "
+msgid_plural ""
+"\n"
+"  %(counter)s Artikel werden verschoben.\n"
+"  "
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Ziel-Kategorie"
+msgstr ""
+
+#, fuzzy
+#| msgid "Lade Daten..."
+msgid "Bitte wählen"
+msgstr "Lade Daten..."
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Verschieben"
+msgstr "Version"
+
+msgid "Datenbank"
+msgstr ""
+
+#, fuzzy
+#| msgid "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+msgid "Keine Backups für diese Filter."
+msgstr "Kilometer-Erfassung für diesen Spieler ist deaktiviert"
+
+msgid "Bitte ein Backup auswählen."
+msgstr ""
+
+msgid "Backup unwiderruflich löschen?"
+msgstr ""
+
+#, python-format
+msgid "Root: %(dir)s"
+msgstr ""
+
+msgid "Backup-Typ"
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Datenbank-Backup erstellen"
+msgstr "Erstellt am"
+
+msgid "Neues SQLite-Archiv unter backups/database/."
+msgstr ""
+
+#, fuzzy
+#| msgid "Erstellt am"
+msgid "Backup erstellen"
+msgstr "Erstellt am"
+
+#, fuzzy
+#| msgid "ID Tag"
+msgid "7 Tage"
+msgstr "ID-Tag"
+
+#, fuzzy
+#| msgid "ID Tag"
+msgid "30 Tage"
+msgstr "ID-Tag"
+
+msgid "Neueste zuerst"
+msgstr ""
+
+msgid "Älteste zuerst"
+msgstr ""
+
+msgid "Größe ↓"
+msgstr ""
+
+msgid "Größe ↑"
+msgstr ""
+
+msgid "Name A–Z"
+msgstr ""
+
+msgid "Suche (Dateiname)"
+msgstr ""
+
+msgid "z. B. 20260827"
+msgstr ""
+
+msgid "Auswahl"
 msgstr ""
 
 msgid "Download"
 msgstr ""
 
-#, fuzzy
-#| msgid "No groups found"
-msgid "No backups found."
-msgstr "Keine Gruppen gefunden"
-
-#, fuzzy
-#| msgid "Loading..."
-msgid "Creating..."
-msgstr "Laden..."
-
-msgid "Creating backup..."
+msgid "Wird erstellt…"
 msgstr ""
 
-msgid "Error"
+msgid "Backup wird erstellt…"
 msgstr ""
 
 #, fuzzy
-#| msgid "Unknown"
-msgid "Unknown error"
-msgstr "Unbekannt"
+#| msgid "Neu gestartet"
+msgid "Backup erfolgreich erstellt"
+msgstr "Neu gestartet"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Unbekannter Fehler"
+msgstr "Keine Gruppen"
 
 #, fuzzy
 #| msgid "GPX-Datei"
@@ -5433,9 +12080,6 @@ msgid "Log-Datei"
 msgstr "GPX-Datei"
 
 msgid "Größe"
-msgstr ""
-
-msgid "Verfügbar"
 msgstr ""
 
 #, fuzzy
@@ -5458,16 +12102,10 @@ msgid ""
 "direkt im Admin-GUI anzeigen und durchsuchen."
 msgstr ""
 
-msgid "Hinweis"
-msgstr ""
-
 msgid ""
 "Große Log-Dateien können einen Moment zum Laden benötigen. Verwenden Sie die "
 "Such- und Filteroptionen, um spezifische Einträge zu finden."
 msgstr ""
-
-msgid "Suche"
-msgstr "Suche"
 
 msgid "In Logs suchen..."
 msgstr ""
@@ -5482,11 +12120,6 @@ msgstr "Alle Top-Gruppen"
 
 msgid "Zeilen pro Seite"
 msgstr ""
-
-#, fuzzy
-#| msgid "Filters"
-msgid "Filtern"
-msgstr "Filter"
 
 #, fuzzy
 #| msgid "In Map/Game anzeigen"
@@ -5524,12 +12157,6 @@ msgstr "Spieler"
 msgid "Keine Log-Einträge gefunden, die Ihren Filtern entsprechen."
 msgstr ""
 
-msgid "von"
-msgstr ""
-
-msgid "Weiter"
-msgstr ""
-
 msgid ""
 "Are you sure you want to activate maintenance mode? All visitors will see "
 "the maintenance page."
@@ -5545,6 +12172,14 @@ msgstr "Laden..."
 
 msgid "Action completed successfully"
 msgstr ""
+
+msgid "Error"
+msgstr ""
+
+#, fuzzy
+#| msgid "Unknown"
+msgid "Unknown error"
+msgstr "Unbekannt"
 
 msgid "Maintenance Mode: ACTIVE"
 msgstr ""
@@ -5689,9 +12324,6 @@ msgstr "Stündliche Metriken"
 msgid "Master Process"
 msgstr ""
 
-msgid "System"
-msgstr ""
-
 msgid "Worker Details"
 msgstr ""
 
@@ -5754,6 +12386,14 @@ msgstr ""
 msgid "Worker wirklich stoppen?"
 msgstr ""
 
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Snapshot Worker wirklich stoppen?"
+msgstr "Spiel stoppen"
+
+msgid "WebSocket-Server wirklich stoppen?"
+msgstr ""
+
 msgid "Worker wirklich neu starten?"
 msgstr ""
 
@@ -5771,10 +12411,957 @@ msgstr ""
 msgid "Aktion abgeschlossen"
 msgstr ""
 
+msgid "Prüfung läuft..."
+msgstr ""
+
+msgid "Shop-Betrieb: Alle Prüfungen bestanden"
+msgstr ""
+
+msgid "Shop-Betrieb: Betreibbar mit Warnungen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Warnung"
+msgid "Warnung(en)"
+msgstr "Warnung"
+
+msgid "Shop-Betrieb: Nicht bereit"
+msgstr ""
+
+msgid "Beheben"
+msgstr ""
+
+msgid "RCON-Preset ausführen?"
+msgstr ""
+
+msgid "Preset wird ausgeführt..."
+msgstr ""
+
+msgid "Fertig"
+msgstr ""
+
+msgid "Freien RCON-Befehl wirklich senden?"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        Dauer %(duration)s Min.\n"
+"        "
+msgstr ""
+
+msgid "Individuell"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"  Noch %(n)s Item in der Garage/Vergabe\n"
+"  "
+msgid_plural ""
+"\n"
+"  Noch %(n)s Items in der Garage/Vergabe\n"
+"  "
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy, python-format
+#| msgid "Einlösen"
+msgid "%(n)s Velos-Einlösung"
+msgid_plural "%(n)s Velos-Einlösungen"
+msgstr[0] "Einlösen"
+msgstr[1] "Einlösen"
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Jetzt leeren"
+msgstr "Letzter Bericht"
+
+msgid "Admin-Reparatur gegen Velos (VehiclesPlus)"
+msgstr ""
+
+msgid "Reparieren (Admin)"
+msgstr ""
+
+msgid "Vergabe"
+msgstr ""
+
+#, fuzzy
+#| msgid "Filters"
+msgid "Filtern…"
+msgstr "Filter"
+
+msgid "Vor Start: vorhandene Vergaben löschen"
+msgstr ""
+
+#, fuzzy
+#| msgid "MCC-Coins"
+msgid "MCC-Tickets"
+msgstr "MCC-Coins"
+
+msgid "Ticket weniger"
+msgstr ""
+
+#, python-format
+msgid "Anzahl Tickets (á %(price)s Velos)"
+msgstr ""
+
+msgid "Ticket mehr"
+msgstr ""
+
+msgid ""
+"Einheitliche Verwaltung für Spieler- und Bau-Accounts (inkl. Anlegen). "
+"Session-Steuerung bleibt in den Session-Dashboards."
+msgstr ""
+
+msgid "Limbo ohne Account (temporär)"
+msgstr ""
+
+msgid ""
+"Live-Abfrage Velocity-Warteraum. Namen werden nicht gespeichert — erst nach "
+"Übernehmen als Spieler- oder Bau-Account."
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Aktualisieren"
+msgstr "Aktualisiert am"
+
+msgid "Microsoft-Login (Limbo)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Als Spieler"
+msgstr "Spieler"
+
+msgid "Als Bau-Account"
+msgstr ""
+
+#, fuzzy
+#| msgid "Anzeige"
+msgid "nur Anzeige"
+msgstr "Anzeige"
+
+msgid "Keine unbekannten Spieler im Limbo."
+msgstr ""
+
+#, python-format
+msgid "„%(name)s“ als Bau-Account übernehmen"
+msgstr ""
+
+msgid "UUID"
+msgstr ""
+
+msgid ""
+"UUID konnte nicht automatisch ermittelt werden (usercache/Mojang) — nach "
+"erstem Paper-Join ergänzbar."
+msgstr ""
+
+msgid "Ziel (Gruppe / bestehender Bau-Account ohne MS-Login)"
+msgstr ""
+
+msgid "— wählen —"
+msgstr ""
+
+msgid "Keine offenen Bau-Ziele"
+msgstr ""
+
+msgid "Bau-Account übernehmen"
+msgstr ""
+
+msgid ""
+"Neu registrieren = Gruppe mit mc_username anlegen. Zuweisen = bestehenden "
+"Bau-Account ohne Microsoft-Login belegen."
+msgstr ""
+
+msgid "leer = Kurzname"
+msgstr ""
+
+msgid "— keine —"
+msgstr ""
+
+msgid "Spieler-Account anlegen"
+msgstr ""
+
+msgid "Bau-Account registrieren (Gruppe mit mc_username)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "— Gruppe wählen —"
+msgstr "Keine Gruppen"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine offenen Gruppen"
+msgstr "Keine Gruppen"
+
+msgid "Bau registrieren"
+msgstr ""
+
+msgid ""
+"Voraussetzung: Leaf-Gruppe mit mc_username, noch nicht (aktiv) registriert. "
+"Ansonsten Gruppe im Gruppen-Admin anlegen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktuelle Reise-Distanz (km)"
+msgid "Aktuelle Vanilla-Operatoren"
+msgstr "Aktuelle Reise-Distanz (km)"
+
+msgid "Keine Operatoren in ops.json."
+msgstr ""
+
+msgid "Spielername (/op)"
+msgstr ""
+
+msgid "OP vergeben"
+msgstr ""
+
+msgid "Spielername (/deop)"
+msgstr ""
+
+msgid "OP entziehen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Warnung"
+msgid "Bau"
+msgstr "Warnung"
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Inaktive anzeigen"
+msgstr "In Map/Game anzeigen"
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Account bearbeiten"
+msgstr "Session beenden"
+
+msgid "Spectator bevorzugen"
+msgstr ""
+
+msgid ""
+"Gruppe / mc_username bleiben über die Gruppen-Hierarchie. Aktiv/Inaktiv über "
+"„Deaktivieren“ / „Reaktivieren“ (Scoreboard-Sync)."
+msgstr ""
+
+msgid "Login / RFID"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "aktive Session"
+msgstr "Radler - aktive Sitzungen"
+
+msgid "Spieler-Account wirklich löschen?"
+msgstr ""
+
+msgid "Bau-Account deaktivieren (Scoreboard entfernen)?"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Deaktivieren"
+msgstr "Gerät nicht gefunden"
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Reaktivieren"
+msgstr "Gerät nicht gefunden"
+
+msgid "OP wirklich entziehen?"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Accounts gefunden."
+msgstr "Keine Daten gefunden."
+
+#, fuzzy
+#| msgid "Zuletzt aktiv"
+msgid "Letzte OP-Aktionen"
+msgstr "Zuletzt aktiv"
+
+#, fuzzy
+#| msgid "Details"
+msgid "Detail"
+msgstr "Details"
+
+msgid ""
+"Steuerung oben · Zuweisungen darunter: 1. Radler/Gerät speichern · 2. Init · "
+"3. optional Avatare · 4. Start · Reset nur für neue Avatare"
+msgstr ""
+
+msgid "Befehl"
+msgstr ""
+
+msgid "Loren bereit"
+msgstr ""
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Noch nicht bereit"
+msgstr "Neu gestartet"
+
+msgid "Rennmodus"
+msgstr ""
+
+msgid "Doppel-Sieg"
+msgstr ""
+
+#, fuzzy
+#| msgid "Anzeigedauer (Sekunden)"
+msgid "Rundenrennen"
+msgstr "Anzeigedauer (Sekunden)"
+
+#, fuzzy
+#| msgid "Einlösen"
+msgid "Velo-Rennen"
+msgstr "Einlösen"
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Runden"
+msgstr "In Map/Game anzeigen"
+
+#, fuzzy
+#| msgid "Ziel-km eingeben"
+msgid "Runden verringern"
+msgstr "Ziel-km eingeben"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Runden erhöhen"
+msgstr "Spiel starten"
+
+msgid "Zeitlimit (Min.)"
+msgstr ""
+
+msgid "Zeitlimit verringern"
+msgstr ""
+
+msgid "Zeitlimit erhöhen"
+msgstr ""
+
+msgid "Nach Ziel weiterfahren (kein harter Stop)"
+msgstr ""
+
+msgid "Strecken-Sieger"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel-km eingeben"
+msgid "Velo-Sieger"
+msgstr "Ziel-km eingeben"
+
+#, fuzzy
+#| msgid "Historien"
+msgid "Modus speichern"
+msgstr "Historien"
+
+msgid "Init"
+msgstr ""
+
+msgid ""
+"Später: Avatare aus den Ankleidekabinen in die Loren setzen. Ohne diesen "
+"Schritt bleiben die bisherigen Avatare."
+msgstr ""
+
+#, fuzzy
+#| msgid "Kein Avatar"
+msgid "Avatare"
+msgstr "Kein Avatar"
+
+msgid "Stop"
+msgstr ""
+
+msgid ""
+"Loren löschen — nur nötig, wenn danach neue Avatare gesetzt werden sollen. "
+"Danach Init."
+msgstr ""
+
+msgid ""
+"Wirklich alle Arena-Loren löschen? Danach Init (neue leere Loren). Nur nötig "
+"vor neuen Avataren."
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zuweisung"
+msgstr "Zuweisung hinzufügen"
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zuweisungsmodus"
+msgstr "Zuweisung hinzufügen"
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Auto (aktive Sessions)"
+msgstr "Radler - aktive Sitzungen"
+
+msgid "Radler kurz treten lassen, dann aktive Sessions auf Bahnen legen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Aktive erkennen"
+msgstr "Spieler"
+
+msgid ""
+"Vor dem Start kurz treten lassen — „Aktive erkennen“ belegt Bahnen. „Alle "
+"TOP-Gruppen“ erkennt Radler aus allen erlaubten TOPs (Cross-Gruppen-Rennen). "
+"Bevorzugte Stationen im Bahn-Setup."
+msgstr ""
+
+msgid "Name / ID-Tag"
+msgstr ""
+
+#, fuzzy
+#| msgid "Geräte"
+msgid "Gerät suchen"
+msgstr "Geräte"
+
+msgid "Anzeigename / Name"
+msgstr ""
+
+msgid "Nur Simulations-Freigabe"
+msgstr ""
+
+#, fuzzy
+#| msgid "Radler"
+msgid "kein Radler"
+msgstr "Radler"
+
+#, fuzzy
+#| msgid "Aktuelle Reise-Distanz (km)"
+msgid "aktuell zugewiesen"
+msgstr "Aktuelle Reise-Distanz (km)"
+
+#, fuzzy
+#| msgid "Gerät"
+msgid "IoT-Gerät"
+msgstr "Gerät"
+
+#, fuzzy
+#| msgid "Geräte"
+msgid "Gerät wählen"
+msgstr "Geräte"
+
+#, fuzzy
+#| msgid "Radler"
+msgid "Rad"
+msgstr "Radler"
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Runde"
+msgstr "In Map/Game anzeigen"
+
+msgid "noch im Rennen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine Bahnen in der Config gefunden."
+msgstr "Keine Daten gefunden."
+
+#, fuzzy
+#| msgid "Alle Zuweisungen löschen"
+msgid "Zuweisungen speichern"
+msgstr "Alle Zuweisungen löschen"
+
+msgid "Aktive Sessions der gewählten TOP-Gruppe auf Bahnen legen."
+msgstr ""
+
+msgid "Aktive Sessions aller erlaubten TOP-Gruppen auf Bahnen legen."
+msgstr ""
+
+msgid ""
+"Simuliert Rad-Distanzen für die zugewiesenen Radler. Ideal zum Bauen und "
+"Testen der Arena — ohne echte IoT-Geräte."
+msgstr ""
+
+msgid ""
+"Nur Radler und Geräte mit „Arena-/API-Simulation erlaubt“ sind zugelassen."
+msgstr ""
+
+msgid ""
+"„Start Simulation“ = interne Distanz. „Start via API“ = Pulse über /api/"
+"update-data (KM in Game/Rankings), Motion wie bei der internen Sim."
+msgstr ""
+
+msgid ""
+"„Raten anwenden“ ändert die Geschwindigkeit auch während einer laufenden "
+"Simulation."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Worker bereit"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Worker nicht bereit"
+msgstr "Neu gestartet"
+
+msgid ""
+"Noch keine Radler zugewiesen. Ein Admin legt sie unter <strong>Arena-"
+"Steuerung</strong> fest (Radler + Gerät speichern). Danach hier Raten "
+"einstellen und starten."
+msgstr ""
+
+msgid "Zur Arena-Steuerung"
+msgstr ""
+
+msgid "Orientierung für Kinder (typisch auf der Station):"
+msgstr ""
+
+msgid "20″-Rad: ca. 8–15 km/h (Vorschlag normal: 3,0 m/s ≈ 11 km/h)."
+msgstr ""
+
+msgid "24″-Rad: ca. 10–18 km/h (Vorschlag normal: 4,0 m/s ≈ 14 km/h)."
+msgstr ""
+
+msgid ""
+"Höhere Werte sind nur für Tests — in der Arena fahren alle Loren gleich "
+"schnell ab ca. 11 m/s (Schienen-Limit)."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"            Typisch %(wheel)s: %(range)s km/h\n"
+"            "
+msgstr ""
+
+msgid "Sim-Rate (m/s)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel-km eingeben"
+msgid "Rate verringern"
+msgstr "Ziel-km eingeben"
+
+msgid "Rate erhöhen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Radler"
+msgid "Kein Radler"
+msgstr "Radler"
+
+#, fuzzy
+#| msgid "Keine Farbe definiert"
+msgid "Keine Bahnen konfiguriert."
+msgstr "Keine Farbe definiert"
+
+msgid "Raten anwenden"
+msgstr ""
+
+#, fuzzy
+#| msgid "Storage Duration"
+msgid "Start Simulation"
+msgstr "Speicherdauer"
+
+#, fuzzy
+#| msgid "Start Date"
+msgid "Start via API"
+msgstr "Startdatum"
+
+msgid "Loren löschen — nur nötig vor neuen Avataren. Danach Init."
+msgstr ""
+
+msgid ""
+"Wirklich alle Arena-Loren löschen? Danach Init. Nur nötig vor neuen Avataren."
+msgstr ""
+
 #, fuzzy
 #| msgid "Minecraft-Name"
 msgid "Minecraft Steuerung"
 msgstr "Minecraft-Name"
+
+msgid ""
+"Kein AuthMe: Freigabe vor Ort. Playerdata hängt an der UUID — Online ≠ "
+"Offline."
+msgstr ""
+
+#, python-format
+msgid "Betriebsmodus: %(mode)s"
+msgstr ""
+
+#, python-format
+msgid "Letztes Backup: %(path)s"
+msgstr ""
+
+#, fuzzy, python-format
+#| msgid "Cyclists - Active Sessions"
+msgid "Aktive Sessions: %(n)s"
+msgstr "Radler - aktive Sitzungen"
+
+#, python-format
+msgid "Welt-Root: %(path)s"
+msgstr ""
+
+#, python-format
+msgid "Backup-Root: %(path)s"
+msgstr ""
+
+msgid "Velocity"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Status unbekannt"
+msgstr "Station"
+
+msgid "Modus setzen"
+msgstr ""
+
+msgid "Velocity online-mode wirklich umschalten und neu starten?"
+msgstr ""
+
+msgid "Proxy → Offline"
+msgstr ""
+
+msgid "Proxy → Online"
+msgstr ""
+
+msgid "Migrationsrichtung"
+msgstr ""
+
+msgid "Online-UUID"
+msgstr ""
+
+msgid "Offline-UUID"
+msgstr ""
+
+msgid "Legacy-UUID"
+msgstr ""
+
+msgid "Diff"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine Accounts mit ms_username gefunden."
+msgstr "Keine aktiven Gruppen gefunden."
+
+msgid "Wirklich Dateien kopieren? Bitte vorher Sessions kicken."
+msgstr ""
+
+msgid "Migration ausführen"
+msgstr ""
+
+msgid "dry"
+msgstr ""
+
+#, python-format
+msgid ""
+"Standard: Start %(min)s Min. · Zeit +%(add)s Min. (pro Account anpassbar)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Alle Sessions"
+msgstr "Radler - aktive Sitzungen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Alle starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Alle zum Spawn"
+msgstr "Alle Top-Gruppen"
+
+#, fuzzy
+#| msgid "Alle Top-Gruppen"
+msgid "Alle kicken"
+msgstr "Alle Top-Gruppen"
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Keine aktiven Bau-Team-Registrierungen."
+msgstr "Keine aktiven Gruppen gefunden."
+
+msgid "Warteraum"
+msgstr ""
+
+msgid "Kein Microsoft-Login"
+msgstr ""
+
+#, python-format
+msgid "Warteliste #%(ticket)s · %(mins)s Min."
+msgstr ""
+
+msgid "Zum Welt-Spawn statt letzter Position"
+msgstr ""
+
+msgid "In Bauzone teleportieren (nur Regionen mit Bau-Recht)"
+msgstr ""
+
+msgid "Default-MS"
+msgstr ""
+
+#, python-format
+msgid "+%(min)s Min."
+msgstr ""
+
+msgid "RCON Verbindung"
+msgstr ""
+
+msgid "Authentifizierung nicht geprüft (Thread-Modus)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ziel erreicht am"
+msgid "Nicht erreichbar"
+msgstr "Ziel erreicht am"
+
+msgid "Spielbereich (World Border)"
+msgstr ""
+
+msgid ""
+"Quadratischer Vanilla-Border für die Overworld. Gilt für alle Spieler (Bau "
+"und Arena). Größe = Kantenlänge in Blöcken (1000 → ca. 1000×1000)."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"    Vorschau: ±%(half)s Blöcke um (%(x)s / %(z)s) → ca. %(size)s×%(size)s.\n"
+"    "
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Status Config"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Aktiv"
+msgid "aktiv"
+msgstr "Aktiv"
+
+msgid "Zentrum X"
+msgstr ""
+
+msgid "Zentrum Z"
+msgstr ""
+
+msgid "Größe (Blöcke)"
+msgstr ""
+
+msgid "Schaden / s"
+msgstr ""
+
+msgid "Schnellwahl Größe"
+msgstr ""
+
+msgid "Anwenden"
+msgstr ""
+
+#, fuzzy
+#| msgid "Historien"
+msgid "Nur speichern"
+msgstr "Historien"
+
+#, fuzzy
+#| msgid "Station"
+msgid "Status lesen"
+msgstr "Station"
+
+msgid "Auf Spawn zentrieren"
+msgstr ""
+
+msgid "World Border deaktivieren (Welt praktisch unbegrenzt)?"
+msgstr ""
+
+msgid "Blöcke"
+msgstr ""
+
+msgid "weit / deaktiviert"
+msgstr ""
+
+msgid "Welt vorgenerieren (Chunky)"
+msgstr ""
+
+msgid ""
+"Vorgeneriert Chunks im quadratischen Border-Bereich (Plugin Chunky). "
+"Belastung der CPU — ideal bei wenig Spielern. Fortschritt manuell abfragen; "
+"Start blockiert die Seite nicht bis zur Fertigstellung."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"    Auswahl aus Border-Config: Welt %(world)s, Zentrum (%(x)s / %(z)s), "
+"Chunky-Radius %(r)s → ca. %(edge)s×%(edge)s Blöcke.\n"
+"    "
+msgstr ""
+
+msgid "Hinweis: Border-Größe 1000 (Kantenlänge) entspricht Chunky-Radius 500."
+msgstr ""
+
+msgid "Radius-Override (Blöcke)"
+msgstr ""
+
+msgid "Leer = Border-Größe / 2"
+msgstr ""
+
+#, fuzzy
+#| msgid "Letztes Intervall (km)"
+msgid "Quiet-Intervall (s)"
+msgstr "Letztes Intervall (km)"
+
+msgid ""
+"Live-Vanilla-Border verwenden (chunky worldborder) statt Config-Zentrum/"
+"Radius"
+msgstr ""
+
+#, python-format
+msgid ""
+"Chunky starten? Radius %(r)s (ca. %(edge)s×%(edge)s). Kann lange dauern und "
+"die CPU belasten."
+msgstr ""
+
+#, fuzzy
+#| msgid "Start"
+msgid "Starten"
+msgstr "Start"
+
+msgid "Fortschritt"
+msgstr ""
+
+msgid "Chunky-Task wirklich abbrechen? Fortschritt geht verloren."
+msgstr ""
+
+msgid "CoreProtect (Spieler-Rücksetzen)"
+msgstr ""
+
+msgid ""
+"Rollback macht Block-Aktionen eines Spielers in der Zeitspanne rückgängig "
+"(Anti-Griefing). Restore stellt einen Rollback wieder her. Ohne Radius würde "
+"CoreProtect nur 10 Blöcke nutzen — hier immer #global bzw. Weltname."
+msgstr ""
+
+msgid "Spieler (MS-Login)"
+msgstr ""
+
+msgid "Zeit-Preset"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zielkilometer (optional)"
+msgid "Zeit frei (optional)"
+msgstr "Zielkilometer (optional)"
+
+msgid "Überschreibt das Preset, wenn gesetzt"
+msgstr ""
+
+msgid "Radius"
+msgstr ""
+
+msgid "Rollback (rückgängig)"
+msgstr ""
+
+msgid "Restore (wiederherstellen)"
+msgstr ""
+
+msgid "Nur Blöcke (a:block)"
+msgstr ""
+
+msgid ""
+"CoreProtect Live-Aktion wirklich ausführen? Kann die Welt stark verändern "
+"und dauern."
+msgstr ""
+
+msgid "Letzte CoreProtect-Aktion rückgängig machen (co undo)?"
+msgstr ""
+
+msgid "Undo letzte Aktion"
+msgstr ""
+
+msgid ""
+"Cuboid-Regionen mit Bau-Schutz. Master-Regionen können einer TOP-Gruppe "
+"zugewiesen werden; Subregionen müssen innerhalb der Master-Bounds liegen. "
+"Mitglieder = verknüpfte Bau-Accounts (MS-Login). „Anwenden“ setzt Selection, "
+"Hierarchy, Flags (PvP/Explosionen/Feuer/Use/Greeting), Members."
+msgstr ""
+
+msgid ""
+"MCC-Bridge zeichnet farbige Umrandungen für Regionen in Spieler-Nähe. "
+"Speichern sendet die Einstellungen an den Minecraft-Server."
+msgstr ""
+
+msgid "Actionbar beim Betreten"
+msgstr ""
+
+msgid "— keine (diese ist Master) —"
+msgstr ""
+
+#, fuzzy
+#| msgid "TOP-Gruppe"
+msgid "TOP-Gruppe (nur Master)"
+msgstr "TOP-Gruppe"
+
+msgid "— nicht zugewiesen —"
+msgstr ""
+
+#, python-format
+msgid ""
+"Y steht standardmäßig auf voller Welthöhe (%(min_y)s … %(max_y)s); Spieler-"
+"Pos setzt nur X/Z. Y bei Bedarf anpassen."
+msgstr ""
+
+msgid ""
+"Optionaler Session-Spawn (innerhalb der Bounds). Leer = Cuboid-Mitte. Mit "
+"„Spawn = Spieler-Pos“ vom Spieler übernehmen."
+msgstr ""
+
+msgid "Spawn-Punkt löschen (beim Speichern)"
+msgstr ""
+
+msgid "Bauen schützen (WG-Standard; Nicht-Mitglieder blockiert)"
+msgstr ""
+
+msgid "Bau-Accounts (WorldGuard-Members)"
+msgstr ""
+
+msgid "Keine aktiven Bau-Accounts mit MS-Login."
+msgstr ""
+
+msgid "Region auf dem Server anwenden (WorldEdit/WorldGuard)?"
+msgstr ""
+
+msgid "Anwenden (WG)"
+msgstr ""
+
+msgid "Nur Members sync"
+msgstr ""
+
+msgid "Auch aus WorldGuard löschen"
+msgstr ""
+
+msgid "Stadt-Steuerung (Welt-Presets)"
+msgstr ""
+
+msgid "Ein-Klick-RCON-Befehle für Tageszeit, Wetter und Spielregeln."
+msgstr ""
+
+msgid "Presets verwalten"
+msgstr ""
+
+msgid ""
+"Keine aktiven Presets. Bitte unter „Presets verwalten“ anlegen oder "
+"aktivieren."
+msgstr ""
 
 msgid "Worker läuft"
 msgstr ""
@@ -5792,6 +13379,69 @@ msgstr ""
 msgid "Snapshot Worker gestoppt"
 msgstr "Spiel stoppen"
 
+msgid "Session Worker läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Session Worker gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Arena-Motion-Worker läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Arena-Motion-Worker gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Paper läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Paper gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Build"
+msgstr ""
+
+msgid "Limbo läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Limbo gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Velocity läuft"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Velocity gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Proxy-RCON (Velocircon)"
+msgstr ""
+
+msgid "nur Port-Check"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "WebSocket-Server gestoppt"
+msgstr "Spiel stoppen"
+
+msgid "Bridge-URL"
+msgstr ""
+
+msgid ""
+"Daphne lauscht nur lokal (127.0.0.1). Die Bridge-URL ist für den MCC-Bridge-"
+"Zugriff im LAN — nicht die öffentliche Web-Adresse. Bei MC-Server auf "
+"anderem Host: MCC_MINECRAFT_WS_PUBLIC_HOST in .env setzen."
+msgstr ""
+
 msgid "Websocket aktiv"
 msgstr ""
 
@@ -5806,27 +13456,11 @@ msgstr ""
 msgid "Fehlerhafte Events"
 msgstr "Alle Events"
 
-msgid "RCON Verbindung"
+msgid "Paper-RCON Verbindung"
 msgstr ""
-
-msgid "Verbunden"
-msgstr ""
-
-msgid "Authentifizierung nicht geprüft (Thread-Modus)"
-msgstr ""
-
-#, fuzzy
-#| msgid "Ziel erreicht am"
-msgid "Nicht erreichbar"
-msgstr "Ziel erreicht am"
 
 msgid "Worker-PID"
 msgstr ""
-
-#, fuzzy
-#| msgid "Letzter Bericht"
-msgid "Letzter Fehler"
-msgstr "Letzter Bericht"
 
 #, fuzzy
 #| msgid "Gruppen"
@@ -5839,6 +13473,17 @@ msgid "Script nicht gefunden!"
 msgstr "Gerät nicht gefunden"
 
 msgid "Script nicht ausführbar!"
+msgstr ""
+
+msgid "WebSocket-Script"
+msgstr ""
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "WebSocket-Script nicht gefunden!"
+msgstr "Gerät nicht gefunden"
+
+msgid "WebSocket-Script nicht ausführbar!"
 msgstr ""
 
 msgid ""
@@ -5866,13 +13511,69 @@ msgstr "Spiel starten"
 msgid "Snapshot Worker stoppen"
 msgstr "Spiel stoppen"
 
-msgid "Scoreboards befüllen (manuell)"
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Session Worker starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Session Worker stoppen"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Arena-Motion-Worker starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Arena-Motion-Worker stoppen"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Paper starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Paper stoppen"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Limbo starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Limbo stoppen"
+msgstr "Spiel stoppen"
+
+#, fuzzy
+#| msgid "Spiel starten"
+msgid "Velocity starten"
+msgstr "Spiel starten"
+
+#, fuzzy
+#| msgid "Spiel stoppen"
+msgid "Velocity stoppen"
+msgstr "Spiel stoppen"
+
+msgid "WebSocket in den Einstellungen deaktiviert"
 msgstr ""
 
 #, fuzzy
-#| msgid "id_tag erforderlich."
-msgid "Snapshot aktualisieren"
-msgstr "id_tag erforderlich."
+#| msgid "Spiel stoppen"
+msgid "WebSocket stoppen"
+msgstr "Spiel stoppen"
+
+msgid "Registrierte Teams synchronisieren"
+msgstr ""
+
+msgid "Scoreboard initialisieren"
+msgstr ""
 
 msgid "RCON Test"
 msgstr ""
@@ -5888,7 +13589,50 @@ msgstr ""
 msgid "Outbox anzeigen"
 msgstr "Auf Karte anzeigen"
 
-msgid "Minecraft Gruppen-Velos Überblick"
+msgid "Freier RCON-Befehl"
+msgstr ""
+
+msgid "z. B. list oder time query daytime"
+msgstr ""
+
+msgid "RCON senden"
+msgstr ""
+
+msgid ""
+"Wird ohne Preset direkt an den Minecraft-Server gesendet. Nur für Operatoren."
+msgstr ""
+
+#, fuzzy
+#| msgid "Device Configuration"
+msgid "Scoreboard-Konfiguration"
+msgstr "Gerätekonfiguration"
+
+msgid "Anzeigename (ausgebare Velos)"
+msgstr ""
+
+msgid "Leer = Standard aus Umgebungsvariable"
+msgstr ""
+
+msgid "Sidebar-Anzeige (setdisplay)"
+msgstr ""
+
+msgid "Wird bei „Scoreboard initialisieren“ gesetzt"
+msgstr ""
+
+#, fuzzy
+#| msgid "id_tag erforderlich."
+msgid "Konfiguration speichern"
+msgstr "id_tag erforderlich."
+
+#, fuzzy
+#| msgid "Neu gestartet"
+msgid "Noch nicht registrierte Teams"
+msgstr "Neu gestartet"
+
+msgid ""
+"Bei der Registrierung werden automatisch die LuckPerms-Gruppe (z. B. "
+"team_kette) und die MCC-Bridge-Zuordnung für den Shop angelegt – kein "
+"manueller Konsolenbefehl nötig."
 msgstr ""
 
 msgid "DB Velos gesamt"
@@ -5897,7 +13641,22 @@ msgstr ""
 msgid "DB Velos ausgebbar"
 msgstr ""
 
-msgid "Scoreboard gesamt"
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Team in Minecraft registrieren?"
+msgstr "Keine Daten gefunden."
+
+msgid "Registrieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine ausstehenden Teams."
+msgstr "Keine Daten gefunden."
+
+msgid ""
+"Bereits registrierte Teams ohne Shop-Zugriff: Deaktivieren und erneut "
+"aktivieren, damit LuckPerms und Bridge-Mapping neu synchronisiert werden."
 msgstr ""
 
 msgid "Scoreboard ausgebbar"
@@ -5906,10 +13665,21 @@ msgstr ""
 msgid "Snapshot Zeit"
 msgstr ""
 
+msgid "Team aus Minecraft entfernen?"
+msgstr ""
+
+msgid "Keine registrierten Teams."
+msgstr ""
+
 #, fuzzy
-#| msgid "Keine aktiven Gruppen gefunden."
-msgid "Keine Gruppen mit Minecraft-Namen gefunden."
-msgstr "Keine aktiven Gruppen gefunden."
+#| msgid "Aktualisiert am"
+msgid "Deaktivierte Teams"
+msgstr "Aktualisiert am"
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Team reaktivieren?"
+msgstr "Gerät nicht gefunden"
 
 msgid "Outbox Übersicht"
 msgstr ""
@@ -5918,11 +13688,6 @@ msgstr ""
 #| msgid "Letzter Bericht"
 msgid "Letzte Fehler"
 msgstr "Letzter Bericht"
-
-#, fuzzy
-#| msgid "Zeitpunkt"
-msgid "Zeit"
-msgstr "Zeitpunkt"
 
 #, fuzzy
 #| msgid "Keine aktiven Gruppen gefunden."
@@ -5935,6 +13700,805 @@ msgstr ""
 #, fuzzy
 #| msgid "Keine Daten gefunden."
 msgid "Keine ausstehenden Events."
+msgstr "Keine Daten gefunden."
+
+msgid "VehiclesPlus-Modell"
+msgstr ""
+
+msgid "aus Server-Bestand wählen"
+msgstr ""
+
+msgid ""
+"Auswahl füllt Modell-ID, Name und RCON-Defaults. Freitext bleibt editierbar."
+msgstr ""
+
+#, python-format
+msgid "Keine VehiclesPlus-Modelle gefunden (Pfad prüfen: %(path)s)."
+msgstr ""
+
+msgid "leer = aus Name"
+msgstr ""
+
+msgid "Wirklich löschen?"
+msgstr ""
+
+msgid "Neu"
+msgstr ""
+
+#, python-brace-format
+msgid ""
+"Generischer Katalog für Session-Vergaben (z. B. VehiclesPlus-Garage). "
+"Platzhalter: {player}, {model}, {quantity}, {slug}."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spieler/Bau"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Keine Gruppen"
+msgid "Keine Einträge."
+msgstr "Keine Gruppen"
+
+msgid ""
+"Hier verwalten Sie Subregionen innerhalb der Ihrer TOP-Gruppe zugewiesenen "
+"Master-Regionen. Master-Grenzen und TOP-Zuweisung werden in der "
+"Stadtsteuerung gesetzt."
+msgstr ""
+
+msgid ""
+"Keine Master-Regionen für Ihre TOP-Gruppe. Bitte einen Stadt-Admin bitten, "
+"eine Master-Region zuzuweisen."
+msgstr ""
+
+msgid "+ Subregion anlegen"
+msgstr ""
+
+msgid "Subregion"
+msgstr ""
+
+msgid "Noch keine Subregionen."
+msgstr ""
+
+#, fuzzy
+#| msgid "Session beenden"
+msgid "Subregion bearbeiten"
+msgstr "Session beenden"
+
+msgid "Neue Subregion"
+msgstr ""
+
+msgid "Subregion-Slug"
+msgstr ""
+
+msgid "Wird als MasterID_slug zur Region-ID."
+msgstr ""
+
+#, python-format
+msgid ""
+"Bounds müssen innerhalb der Master-Region liegen. Y standardmäßig %(min_y)s "
+"… %(max_y)s."
+msgstr ""
+
+msgid "Optionaler Session-Spawn innerhalb der Subregion. Leer = Cuboid-Mitte."
+msgstr ""
+
+msgid "Keine Bau-Accounts in Ihren Gruppen."
+msgstr ""
+
+msgid "Subregion wirklich löschen?"
+msgstr ""
+
+msgid "Keine aktiven Play-Accounts konfiguriert."
+msgstr ""
+
+msgid "Ein Befehl pro Zeile. Kein führendes / nötig."
+msgstr ""
+
+#, fuzzy
+#| msgid "Letzter Bericht"
+msgid "Letzter Lauf"
+msgstr "Letzter Bericht"
+
+msgid "Test (1. Befehl)"
+msgstr ""
+
+msgid ""
+"Befehlsvorlagen für Tageszeit, Wetter und Spielregeln — im laufenden Betrieb "
+"anpassbar."
+msgstr ""
+
+msgid "RCON-Preset ausführen"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        Aktuell %(categories)s Kategorien und %(items)s aktive Artikel im "
+"MCC-Katalog.\n"
+"        "
+msgstr ""
+
+msgid "Katalog verwalten"
+msgstr ""
+
+msgid "Alle Artikel durchsuchen"
+msgstr ""
+
+msgid "Artikel suchen"
+msgstr ""
+
+msgid "Material, Name, Item-Key, Loc…"
+msgstr ""
+
+msgid ""
+"Unterverzeichnisse unter shops/ werden unterstützt (z. B. Mobs/"
+"spawn_eggs.yml). Die Section-ID entspricht dem relativen Pfad ohne Endung."
+msgstr ""
+
+msgid "Kategorienamen & Sortierung (optional)"
+msgstr ""
+
+msgid "Vom MC-Server importieren"
+msgstr ""
+
+msgid "Liest rekursiv alle YAML-Dateien vom konfigurierten shops/-Pfad"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Sections"
+msgstr "Station"
+
+msgid "Bestehende Artikel ersetzen"
+msgstr ""
+
+msgid "Jetzt vom Server importieren"
+msgstr ""
+
+msgid ""
+"Server-Import: MCC_MINECRAFT_ESGUI_SHOPS_DIR in .env setzen (Pfad zum shops/-"
+"Ordner auf diesem Rechner)."
+msgstr ""
+
+msgid "YAML hochladen"
+msgstr ""
+
+msgid ""
+"Wähle den shops/-Ordner (nicht den EconomyShopGUI-Hauptordner). Unterpfade "
+"wie Mobs/spawn_eggs.yml bleiben erhalten."
+msgstr ""
+
+msgid "Shop-Ordner oder -Dateien"
+msgstr ""
+
+msgid "Sections-Ordner oder -Dateien"
+msgstr ""
+
+msgid "Pro Kategorie alle vorhandenen Artikel löschen und neu importieren"
+msgstr ""
+
+msgid "Aus EconomyShopGUI importieren"
+msgstr ""
+
+msgid "Zurück zum Shop-Betrieb"
+msgstr ""
+
+msgid ""
+"Prüft Infrastruktur, Velos-Konsistenz (Datenbank ↔ Scoreboard) und Shop-"
+"Katalog."
+msgstr ""
+
+msgid ""
+"Der Shop nutzt velos_spendable aus der Datenbank — das Scoreboard muss per "
+"Worker synchron gehalten werden."
+msgstr ""
+
+msgid "Shop-Betrieb prüfen"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"    %(categories)s Kategorien, %(items)s aktive Artikel.\n"
+"    "
+msgstr ""
+
+msgid "Material, Name, super_pickaxe, page1.items…"
+msgstr ""
+
+msgid ""
+"Durchsucht alle Shop-Artikel global — unabhängig von Kategorie und "
+"Seitenblätterung."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        MCC-Bridge verbunden (%(servers)s).\n"
+"        "
+msgstr ""
+
+msgid "Keine MCC-Bridge-WebSocket-Verbindung — Shop-Push nicht möglich."
+msgstr ""
+
+msgid "Shop-Katalog an Minecraft pushen"
+msgstr ""
+
+msgid ""
+"Überträgt Preise und Aktiv-Status (Kategorie enable / Artikel) nach "
+"EconomyShopGUI."
+msgstr ""
+
+msgid "Deaktivierte Kategorien (z. B. Weapons) erscheinen im Shop nicht mehr."
+msgstr ""
+
+msgid "Shop-Kaufguthaben (Ledger)"
+msgstr ""
+
+msgid ""
+"Verkaufbar sind nur Mengen, die als Kaufguthaben pro Team/Material "
+"gespeichert sind."
+msgstr ""
+
+#, fuzzy
+#| msgid "In Map/Game anzeigen"
+msgid "Ledger anzeigen"
+msgstr "In Map/Game anzeigen"
+
+msgid ""
+"Altbestand: Inventare online eingeloggter Spieler einmalig dem Team-Ledger "
+"gutschreiben (nur Shop-Katalog-Materialien)."
+msgstr ""
+
+msgid "Online-Inventare jetzt dem Ledger gutschreiben?"
+msgstr ""
+
+msgid "Online-Inventare → Ledger gutschreiben"
+msgstr ""
+
+msgid "Artikel ohne Velos-Preis"
+msgstr ""
+
+msgid ""
+"Kostenlose Artikel (0 Velos) sind nicht erlaubt. Hier sehen Sie alle Shop-"
+"Artikel ohne gültigen Kaufpreis."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        %(counter)s Artikel mit 0 Velos gefunden.\n"
+"        "
+msgid_plural ""
+"\n"
+"        %(counter)s Artikel mit 0 Velos gefunden.\n"
+"        "
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "Alle auf mindestens %(min)s Velo setzen"
+msgstr ""
+
+msgid "Item-Key"
+msgstr ""
+
+msgid "Item-Loc"
+msgstr ""
+
+msgid "Preis"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        … und %(counter)s weiterer Artikel (wird beim Setzen ebenfalls "
+"aktualisiert).\n"
+"        "
+msgid_plural ""
+"\n"
+"        … und %(counter)s weitere Artikel (werden beim Setzen ebenfalls "
+"aktualisiert).\n"
+"        "
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Keine Artikel mit 0 Velos — alle Preise sind gesetzt."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Section"
+msgstr "Station"
+
+msgid "Artikel"
+msgstr ""
+
+msgid "Noch keine Shop-Kategorien angelegt."
+msgstr ""
+
+msgid ""
+"Physische PCs für Spiel- und Bau-Sessions. MS-Allowlist steuert, welche "
+"Microsoft-Logins bei der Freigabe gewählt werden dürfen."
+msgstr ""
+
+msgid ""
+"Allowlist ist leer — Freigabe prüft derzeit keine MS-Logins. Bitte Einträge "
+"anlegen (für FEZitty empfohlen)."
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Stationen"
+msgstr "Station"
+
+#, fuzzy
+#| msgid "Gerät nicht gefunden"
+msgid "Nur aktive"
+msgstr "Gerät nicht gefunden"
+
+#, fuzzy
+#| msgid "Keine aktiven Gruppen gefunden."
+msgid "Inaktive einblenden"
+msgstr "Keine aktiven Gruppen gefunden."
+
+#, fuzzy
+#| msgid "Station"
+msgid "Neue Station"
+msgstr "Station"
+
+msgid "Slot"
+msgstr ""
+
+msgid "Belegt"
+msgstr ""
+
+msgid "Frei"
+msgstr ""
+
+msgid "Station wirklich löschen?"
+msgstr ""
+
+msgid "Noch keine Stationen angelegt."
+msgstr ""
+
+msgid ""
+"Nur diese Microsoft-Logins dürfen bei Session-Freigabe gewählt werden. Leer "
+"= global; mit Station = nur für diesen PC."
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclist (Optional)"
+msgid "Station (optional)"
+msgstr "Spieler (Optional)"
+
+msgid "Global"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Hinzufügen"
+msgstr "Zuweisung hinzufügen"
+
+msgid "Geltung"
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Aktivieren"
+msgstr "Spieler"
+
+msgid "Eintrag löschen?"
+msgstr ""
+
+msgid "Noch keine Allowlist-Einträge."
+msgstr ""
+
+msgid "Werkzeuge"
+msgstr ""
+
+msgid ""
+"Gekaufte Modell-ZIPs (z. B. Pixelmine) oder Blockbench-JSON ins bestehende "
+"MCC-Pack mergen."
+msgstr ""
+
+msgid "Blockbench (Web)"
+msgstr ""
+
+msgid "Blockbench Download"
+msgstr ""
+
+msgid "VP Resourcepack Generator (extern, optional)"
+msgstr ""
+
+msgid "Pack-Verzeichnis"
+msgstr ""
+
+msgid "HTTP"
+msgstr ""
+
+msgid "Vorhandene Packs"
+msgstr ""
+
+msgid "Keine ZIP-Dateien im Pack-Verzeichnis."
+msgstr ""
+
+msgid "Fahrzeug exportieren (Sicherung / Re-Import)"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"    Einzelnes Fahrzeug aus dem Plugin-Verzeichnis (%(path)s) als ZIP "
+"herunterladen:\n"
+"    HJSON + Modell/Texturen aus dem gewählten Quell-Pack (falls vorhanden).\n"
+"    "
+msgstr ""
+
+msgid "Fahrzeug"
+msgstr ""
+
+msgid "Pack für Modell/Texturen"
+msgstr ""
+
+msgid "HJSON kommt immer vom Live-Plugin; 3D-Assets aus diesem Pack-ZIP."
+msgstr ""
+
+msgid "ZIP herunterladen"
+msgstr ""
+
+msgid "Keine *.hjson im VehiclesPlus-vehicles-Verzeichnis gefunden."
+msgstr ""
+
+msgid "Ziel-Pack"
+msgstr ""
+
+msgid ""
+"Gilt für ZIP-Import und JSON-Upload: Quell-Pack kopieren, Modell hinzufügen, "
+"unter Zielname speichern."
+msgstr ""
+
+msgid "Quell-Resourcepack"
+msgstr ""
+
+msgid "Name des erweiterten Packs"
+msgstr ""
+
+msgid "Modell-ID (Dateiname im Pack)"
+msgstr ""
+
+msgid "wird aus ZIP übernommen"
+msgstr ""
+
+#, python-format
+msgid ""
+"ZIP-Import: aus Archiv. Zum Ersetzen eine der %(n)s IDs im Quell-Pack wählen."
+msgstr ""
+
+msgid ""
+"ZIP-Import: aus Archiv. Blockbench: selbst vergeben. Leer bei ZIP = Stem des "
+"gewählten Modells."
+msgstr ""
+
+msgid "custom_model_data"
+msgstr ""
+
+msgid ""
+"Ersetzen: leer = bestehendes CMD der Modell-ID behalten. Optional andere "
+"Nummer setzen."
+msgstr ""
+
+#, python-format
+msgid ""
+"Leer = nächste freie Nummer (%(suggested_cmd)s). Vendor-CMD aus dem ZIP wird "
+"nicht übernommen."
+msgstr ""
+
+msgid ""
+"Leer = nächste freie Nummer im Ziel-Pack. Vendor-CMD wird nicht übernommen."
+msgstr ""
+
+msgid "Leder-Item"
+msgstr ""
+
+msgid "— aus ZIP / Standard leather_boots —"
+msgstr ""
+
+msgid "Ziel-Pack überschreiben, falls vorhanden"
+msgstr ""
+
+msgid ""
+"Modell ersetzen erzwingen (CMD beibehalten; bei gleicher ID ohnehin "
+"automatisch)"
+msgstr ""
+
+msgid ""
+"Gleiche Modell-ID wie im Pack → wird automatisch ersetzt (JSON/Texturen neu, "
+"CMD bleibt). Haken nur nötig, wenn die Datei fehlt, aber die CMD-Bindung "
+"getauscht werden soll."
+msgstr ""
+
+msgid "VehiclesPlus-HJSON unter vehicles/bikes/ schreiben (Vorlage Bike)"
+msgstr ""
+
+msgid ""
+"server.properties aktualisieren (resource-pack + SHA1; Backup mit "
+"Zeitstempel)"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"          Schreibt auch VehiclesPlus resourcePackUrl. Datei: %(path)s\n"
+"          "
+msgstr ""
+
+msgid "1) Modell-ZIP importieren"
+msgstr ""
+
+msgid ""
+"Fertiges Modell-ZIP hochladen. Neu: CMD leer = nächste freie Nummer. "
+"Ersetzen: gleiche Modell-ID + Haken „Modell ersetzen“ — CMD bleibt."
+msgstr ""
+
+msgid "Modell- / Resourcepack-ZIP"
+msgstr ""
+
+msgid "ZIP analysieren"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"      Archiv %(name)s: %(n)s Modell(e), %(t)s Textur(en).\n"
+"      "
+msgstr ""
+
+msgid "Gewähltes Modell importieren"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclist (Optional)"
+msgid "2) Blockbench-JSON (optional)"
+msgstr "Spieler (Optional)"
+
+msgid ""
+"Alternativ einzelne Modell-JSON + PNGs — wenn kein ZIP-Import aktiv ist."
+msgstr ""
+
+msgid "Modell-JSON (Blockbench Export)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclist (Optional)"
+msgid "Texturen (optional, PNG)"
+msgstr "Spieler (Optional)"
+
+msgid "JSON ins Pack mergen"
+msgstr ""
+
+msgid "Ergebnis"
+msgstr ""
+
+msgid "Modell"
+msgstr ""
+
+msgid "server.properties wurde geschrieben — Paper neu starten."
+msgstr ""
+
+msgid ""
+"In server.properties resource-pack / resource-pack-sha1 setzen und Paper neu "
+"starten. Python-httpd muss das Pack ausliefern."
+msgstr ""
+
+#, fuzzy
+#| msgid "Logo Vorschau"
+msgid "HJSON-Vorschau"
+msgstr "Logo Vorschau"
+
+msgid "Bitte Ticket-Nummer beachten. Persönliche Daten werden nicht angezeigt."
+msgstr ""
+
+msgid "Operator-Ansicht mit internen Details."
+msgstr ""
+
+msgid "Warteliste verwalten"
+msgstr ""
+
+#, fuzzy
+#| msgid "Station"
+msgid "Spiel-PCs"
+msgstr "Station"
+
+msgid "Keine Spiel-PCs konfiguriert."
+msgstr ""
+
+#, fuzzy
+#| msgid "Spieler"
+msgid "Spiel-Warteliste"
+msgstr "Spieler"
+
+#, fuzzy
+#| msgid "Lade Daten..."
+msgid "Niemand wartet."
+msgstr "Lade Daten..."
+
+msgid "Bau-PCs"
+msgstr ""
+
+msgid "Keine Bau-PCs registriert."
+msgstr ""
+
+msgid "Bau-Warteliste"
+msgstr ""
+
+#, fuzzy
+#| msgid "Aktualisiert am"
+msgid "Aktualisiert:"
+msgstr "Aktualisiert am"
+
+#, python-format
+msgid ""
+"\n"
+"    Spiel-Einlösung: mindestens %(min)s Velos → %(mins)s Min. (%(rate)s "
+"Velos/Min.)\n"
+"    "
+msgstr ""
+
+msgid "Operator-Anzeige (mit Login)"
+msgstr ""
+
+msgid "Öffentliche Anzeige (anonym)"
+msgstr ""
+
+msgid "Öffentliche Anzeige ist deaktiviert (Integration → Warteliste)."
+msgstr ""
+
+msgid "Öffentliche URL-Token in Minecraft → Integration konfigurieren."
+msgstr ""
+
+msgid ""
+"1) Ticket in die Warteliste eintragen → 2) Arena/Team zuweisen → 3) Freigabe "
+"(AuthMe-Login) erst unter"
+msgstr ""
+
+msgid ""
+", wenn der PC bereits mit dem Account verbunden ist (Login-Bildschirm). Die "
+"Warteliste startet keine Session selbst."
+msgstr ""
+
+msgid "Ticketnummer für Flyer"
+msgstr ""
+
+msgid ""
+"Nummer erzeugen und auf den Flyer schreiben. Später dieselbe Nummer beim "
+"Eintragen in die Warteliste verwenden."
+msgstr ""
+
+msgid "Diese Nummer ist ins Formular übernommen."
+msgstr ""
+
+msgid "Bitte die Nummern auf die Flyer schreiben."
+msgstr ""
+
+#, fuzzy
+#| msgid "Details"
+msgid "Anzahl"
+msgstr "Details"
+
+msgid "Nummer(n) erzeugen"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Eintrag hinzufügen (Bau)"
+msgstr "Zuweisung hinzufügen"
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Eintrag hinzufügen (Spiel)"
+msgstr "Zuweisung hinzufügen"
+
+msgid "Ticket-Nummer (vom Flyer)"
+msgstr ""
+
+msgid "Erzeugen"
+msgstr ""
+
+msgid "Interner Name (nur Operator)"
+msgstr ""
+
+msgid "Leere Ticket-Nummer → automatisch beim Hinzufügen erzeugen."
+msgstr ""
+
+msgid "Interner Name / Team (nur Operator)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zur Warteliste hinzufügen"
+msgstr "Zuweisung hinzufügen"
+
+msgid "Freie Slots"
+msgstr ""
+
+msgid "Keine freien Spiel-PCs."
+msgstr ""
+
+msgid "Keine freien Bau-PCs."
+msgstr ""
+
+#, fuzzy
+#| msgid "Karte"
+msgid "Wartende"
+msgstr "Karte"
+
+msgid "Ticket"
+msgstr ""
+
+#, fuzzy
+#| msgid "Filters"
+msgid "Intern"
+msgstr "Filter"
+
+msgid "Arena…"
+msgstr ""
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zuweisen"
+msgstr "Zuweisung hinzufügen"
+
+msgid "Abbruch"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Farbe definiert"
+msgid "Keine wartenden Spieler."
+msgstr "Keine Farbe definiert"
+
+msgid "Bau-PC…"
+msgstr ""
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine wartenden Bau-Teams."
+msgstr "Keine Daten gefunden."
+
+msgid "Zugewiesen — Freigabe in Session-Menü"
+msgstr ""
+
+msgid "Arena"
+msgstr ""
+
+#, fuzzy
+#| msgid "Cyclists - Active Sessions"
+msgid "Zu Spieler-Sessions"
+msgstr "Radler - aktive Sitzungen"
+
+#, fuzzy
+#| msgid "Zuweisung hinzufügen"
+msgid "Zuweisung aufheben"
+msgstr "Zuweisung hinzufügen"
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine zugewiesenen Spieler."
+msgstr "Keine Daten gefunden."
+
+msgid "Bau-PC"
+msgstr ""
+
+#, fuzzy
+#| msgid "2.2 Session Data"
+msgid "Zu Bau-Sessions"
+msgstr "2.2 Sitzungsdaten"
+
+#, fuzzy
+#| msgid "Keine Daten gefunden."
+msgid "Keine zugewiesenen Bau-Teams."
 msgstr "Keine Daten gefunden."
 
 msgid "Language"
@@ -7530,6 +16094,45 @@ msgstr ""
 msgid "Try [blue]'{command_path} {help_option}'[/] for help."
 msgstr ""
 
+#, fuzzy
+#~| msgid "Cyclists - Active Sessions"
+#~ msgid "Luanti-Sessions"
+#~ msgstr "Radler - aktive Sitzungen"
+
+#, fuzzy
+#~| msgid "2.2 Session Data"
+#~ msgid "Luanti-Session"
+#~ msgstr "2.2 Sitzungsdaten"
+
+#~ msgid "Uncheck to show Subgroups with Cyclists"
+#~ msgstr "(Deaktivieren, um Untergruppen mit Radlern anzuzeigen)"
+
+#~ msgid "Total Distance"
+#~ msgstr "Gesamtdistanz"
+
+#~ msgid "Top Groups by Mileage"
+#~ msgstr "Top Gruppen nach Kilometer"
+
+#~ msgid "Top Cyclists by Mileage"
+#~ msgstr "Top Radler nach Kilometer"
+
+#~ msgid "Top Devices by Mileage"
+#~ msgstr "Top Geräte nach Kilometer"
+
+#~ msgid "Export the filtered report data in your preferred format:"
+#~ msgstr ""
+#~ "Exportieren Sie die gefilterten Berichtsdaten in Ihrem bevorzugten Format:"
+
+#, fuzzy
+#~| msgid "No groups found"
+#~ msgid "No backups found."
+#~ msgstr "Keine Gruppen gefunden"
+
+#, fuzzy
+#~| msgid "Loading..."
+#~ msgid "Creating..."
+#~ msgstr "Laden..."
+
 #~ msgid "Gesamt-Coins"
 #~ msgstr "Gesamt-Coins"
 
@@ -7542,61 +16145,23 @@ msgstr ""
 #~ msgid " Konfiguration für Minecraft-Bridge ist unvollständig."
 #~ msgstr " Konfiguration für Minecraft-Bridge ist unvollständig."
 
-#~ msgid "Ungültige oder fehlende Daten."
-#~ msgstr "Ungültige oder fehlende Daten."
-
-#~ msgid "Nicht genug Coins"
-#~ msgstr "Nicht genug Coins"
-
-#~ msgid "Coins abgezogen."
-#~ msgstr "Coins abgezogen."
-
 #~ msgid "Aktuelle Distanz (km)"
 #~ msgstr "Aktuelle Distanz (km)"
 
 #~ msgid "Kilometer-Challenge"
 #~ msgstr "Kilometer-Challenge"
 
-#~ msgid "MCC-Coins"
-#~ msgstr "MCC-Coins"
-
-#~ msgid "Session beenden"
-#~ msgstr "Session beenden"
-
-#~ msgid "MCC Live Karte"
-#~ msgstr "MCC Live Karte"
-
-#~ msgid "Geräte"
-#~ msgstr "Geräte"
-
 #~ msgid "Gruppen-Typ"
 #~ msgstr "Gruppen-Typ"
-
-#~ msgid "Alle"
-#~ msgstr "Alle"
 
 #~ msgid "Suchen nach Name/ID..."
 #~ msgstr "Suchen nach Name/ID..."
 
-#~ msgid "Zurück zu Alle Gruppen"
-#~ msgstr "Zurück zu Alle Gruppen"
-
 #~ msgid "Aktuelle Ansicht"
 #~ msgstr "Aktuelle Ansicht"
-
-#~ msgid "Gesamt-km"
-#~ msgstr "Gesamt-km"
 
 #~ msgid "Coins"
 #~ msgstr "Coins"
 
-#~ msgid "Keine Daten gefunden."
-#~ msgstr "Keine Daten gefunden."
-
 #~ msgid "Distanz (km)"
 #~ msgstr "Distanz (km)"
-
-#, fuzzy
-#~| msgid "Keine Daten gefunden."
-#~ msgid "Keine Minecraft Player gefunden."
-#~ msgstr "Keine Daten gefunden."

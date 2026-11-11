@@ -77,6 +77,7 @@ def apply_velos_earn(
             "[apply_velos_earn] Cyclist %s has no valid single leaf group; Velos balance updated only",
             cyclist.id_tag,
         )
+        _schedule_plan_live_convert_on_earn(delta_velos, earned_group_id=None)
         return delta_velos
 
     leaf_group.add_velos_to_totals(delta_velos)
@@ -97,7 +98,37 @@ def apply_velos_earn(
         cyclist.id_tag,
         leaf_group.name,
     )
+    _schedule_plan_live_convert_on_earn(delta_velos, earned_group_id=leaf_group.pk)
     return delta_velos
+
+
+def _schedule_plan_live_convert_on_earn(
+    delta_velos: int,
+    *,
+    earned_group_id: int | None,
+) -> None:
+    """Run plan live-convert after the Velos earn transaction commits."""
+    from django.conf import settings
+    from django.db import transaction
+
+    if delta_velos <= 0 or not getattr(settings, "LUANTI_PLAN_AUTO_CONVERT_ENABLED", False):
+        return
+
+    def _run() -> None:
+        from luanti.services.plan import tick_plan_live_convert_on_earn
+
+        try:
+            tick_plan_live_convert_on_earn(
+                delta_velos,
+                earned_group_id=earned_group_id,
+            )
+        except Exception:
+            logger.exception(
+                "[apply_velos_earn] plan live convert failed after commit (velos=%s)",
+                delta_velos,
+            )
+
+    transaction.on_commit(_run)
 
 
 def push_group_velos_to_minecraft(

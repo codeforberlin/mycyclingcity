@@ -591,6 +591,74 @@ def sync_preset_auth_groups(project_dir: Path, python_exe: Optional[str] = None)
     return ok
 
 
+def sync_luanti_mod(project_dir: Path) -> bool:
+    """
+    Rsync mod files from NAS dev into <project_dir>/luanti_mod (e.g. /data/appl/mcc/mcc-web/luanti_mod).
+    """
+    script = project_dir / "scripts" / "sync_luanti_mod.sh"
+    if not script.is_file():
+        print_warning(f"Luanti mod sync script missing: {script}")
+        return True
+    env = os.environ.copy()
+    env["MCC_WEB_DIR"] = str(project_dir)
+    try:
+        result = subprocess.run(
+            ["bash", str(script)],
+            cwd=project_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if result.stdout.strip():
+            for line in result.stdout.strip().splitlines():
+                print_info(f"  {line}")
+        if result.returncode == 0:
+            print_success("Luanti mods synced into mcc-web/luanti_mod")
+            return True
+        print_warning(f"Luanti mod sync failed (exit {result.returncode})")
+        if result.stderr.strip():
+            print_warning(result.stderr.strip()[:800])
+        return False
+    except Exception as exc:
+        print_warning(f"Luanti mod sync error: {exc}")
+        return False
+
+
+def link_luanti_mods(project_dir: Path) -> bool:
+    """Create symlinks under /data/games/mcc/luanti/mods -> mcc-web/luanti_mod."""
+    script = project_dir / "scripts" / "link_luanti_mods.sh"
+    if not script.is_file():
+        print_warning(f"Luanti mod linker missing: {script}")
+        return True
+    env = os.environ.copy()
+    env["MCC_WEB_DIR"] = str(project_dir)
+    try:
+        result = subprocess.run(
+            ["bash", str(script)],
+            cwd=project_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if result.stdout.strip():
+            for line in result.stdout.strip().splitlines():
+                print_info(f"  {line}")
+        if result.returncode == 0:
+            print_success("Luanti mods linked into game directory")
+            return True
+        print_warning(f"Luanti mod linking failed (exit {result.returncode})")
+        if result.stderr.strip():
+            print_warning(result.stderr.strip()[:800])
+        return False
+    except Exception as exc:
+        print_warning(f"Luanti mod linking error: {exc}")
+        return False
+
+
 def collect_static_files(project_dir: Path, clear: bool = False, python_exe: Optional[str] = None) -> bool:
     """
     Collect static files using Django's collectstatic command.
@@ -835,7 +903,9 @@ def deploy(
     skip_static: bool = False,
     skip_compilemessages: bool = False,
     clear_static: bool = False,
-    fake_initial: bool = False
+    fake_initial: bool = False,
+    skip_luanti_mods: bool = False,
+    skip_luanti_mod_sync: bool = False,
 ) -> bool:
     """
     Main deployment function.
@@ -973,13 +1043,26 @@ print(settings.DATABASES['default']['NAME'])
     else:
         print_info("Skipping message compilation (--skip-compilemessages flag)")
     
-    # Step 7: Validate deployment
-    print_step(7, 7, "Validating deployment")
+    # Step 7: Luanti mods — files to mcc-web/luanti_mod, symlinks in game mods dir
+    print_step(7, 9, "Syncing Luanti mod files from NAS dev")
+    if skip_luanti_mods or skip_luanti_mod_sync:
+        print_info("Skipping Luanti mod file sync")
+    else:
+        sync_luanti_mod(project_dir)  # non-critical
+
+    print_step(8, 9, "Linking Luanti mods (game symlinks)")
+    if skip_luanti_mods:
+        print_info("Skipping Luanti mod symlinks (--skip-luanti-mods flag)")
+    else:
+        link_luanti_mods(project_dir)  # non-critical
+
+    # Step 9: Validate deployment
+    print_step(9, 9, "Validating deployment")
     if not validate_deployment(project_dir, python_exe=python_exe):
         print_warning("Validation had issues, but deployment completed")
-    
+
     print(f"\n{Colors.GREEN}{Colors.BOLD}=== Deployment completed successfully! ==={Colors.RESET}\n")
-    
+
     # Print summary
     print(f"{Colors.BOLD}Summary:{Colors.RESET}")
     print(f"  - Database: {'Migrated' if db_exists else 'Initialized'}")
@@ -987,6 +1070,8 @@ print(settings.DATABASES['default']['NAME'])
         print(f"  - Static files: Collected")
     if not skip_compilemessages:
         print(f"  - Translations: Compiled")
+    if not skip_luanti_mods:
+        print(f"  - Luanti mods: Files in {project_dir / 'luanti_mod'}; symlinks in game mods dir")
     
     return True
 
@@ -1048,7 +1133,19 @@ Examples:
         action='store_true',
         help='Mark initial migrations as applied without running them'
     )
-    
+
+    parser.add_argument(
+        '--skip-luanti-mods',
+        action='store_true',
+        help='Skip Luanti mod sync and symlinks under /data/games/mcc/luanti/mods',
+    )
+
+    parser.add_argument(
+        '--skip-luanti-mod-sync',
+        action='store_true',
+        help='Skip rsync of luanti_mod from NAS dev (still link symlinks unless --skip-luanti-mods)',
+    )
+
     args = parser.parse_args()
     
     # Default to project root
@@ -1075,7 +1172,9 @@ Examples:
             skip_static=args.skip_static,
             skip_compilemessages=args.skip_compilemessages,
             clear_static=args.clear_static,
-            fake_initial=args.fake_initial
+            fake_initial=args.fake_initial,
+            skip_luanti_mods=args.skip_luanti_mods,
+            skip_luanti_mod_sync=args.skip_luanti_mod_sync,
         )
         return 0 if success else 1
     except KeyboardInterrupt:

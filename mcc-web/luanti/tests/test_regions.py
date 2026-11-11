@@ -287,3 +287,192 @@ def test_push_regions(monkeypatch):
     assert ok is True
     assert calls and calls[0]["type"] == "REGIONS_UPDATE"
     assert calls[0]["regions"][0]["region_id"] == "push_me"
+
+
+@pytest.mark.django_db
+def test_regions_admin_draft_form_has_no_nested_forms(region_staff, top_group):
+    """Plan-Live controls must not sit inside rg-draft-form (invalid HTML breaks Speichern)."""
+    region = LuantiProtectedRegion.objects.create(
+        region_id="tpl_save",
+        world="world",
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        assigned_to_group=top_group,
+    )
+    client = Client()
+    client.force_login(region_staff)
+    load = client.post(
+        reverse("admin:luanti_regions"),
+        {"action": "load", "rg_pk": str(region.pk)},
+    )
+    assert load.status_code == 200
+    html = load.content.decode("utf-8")
+    marker = 'id="rg-draft-form"'
+    start = html.rfind("<form", 0, html.index(marker))
+    assert start >= 0
+    draft_end = html.index("</form>", html.index(marker)) + len("</form>")
+    draft_form_html = html[start:draft_end]
+    assert draft_form_html.count("<form") == 1
+    assert 'name="action" value="save"' in draft_form_html
+    assert 'name="rg_plan_funding_groups"' in draft_form_html
+
+
+@pytest.mark.django_db
+def test_regions_admin_save_plan_funding_groups(region_staff, top_group):
+    extra = Group.objects.create(
+        name="FundExtra",
+        group_type=top_group.group_type,
+        parent=top_group,
+    )
+    region = LuantiProtectedRegion.objects.create(
+        region_id="fund_save",
+        world="world",
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        assigned_to_group=top_group,
+    )
+    client = Client()
+    client.force_login(region_staff)
+    client.post(
+        reverse("admin:luanti_regions"),
+        {"action": "load", "rg_pk": str(region.pk)},
+    )
+    save = client.post(
+        reverse("admin:luanti_regions"),
+        {
+            "action": "save",
+            "rg_pk": str(region.pk),
+            "rg_region_id": region.region_id,
+            "rg_display_name": "",
+            "rg_world": "world",
+            "rg_assigned_to_group": str(top_group.pk),
+            "rg_min_x": "0",
+            "rg_min_y": "0",
+            "rg_min_z": "0",
+            "rg_max_x": "10",
+            "rg_max_y": "10",
+            "rg_max_z": "10",
+            "rg_protect_build": "on",
+            "rg_enabled": "on",
+            "rg_plan_funding_include_master_top": "on",
+            "rg_plan_funding_groups": [str(extra.pk)],
+        },
+    )
+    assert save.status_code == 302
+    assert save.url.endswith(f"?edit={region.pk}")
+    region.refresh_from_db()
+    assert list(
+        region.plan_funding_links.order_by("group_id").values_list("group_id", flat=True)
+    ) == [extra.pk]
+
+
+@pytest.mark.django_db
+def test_regions_admin_save_sub_top_group_override(region_staff, top_group):
+    other_top = Group.objects.create(
+        name="SubInstitutionTOP",
+        group_type=top_group.group_type,
+        parent=None,
+    )
+    master = LuantiProtectedRegion.objects.create(
+        region_id="master_for_sub_top",
+        world="world",
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=50,
+        max_y=50,
+        max_z=50,
+        assigned_to_group=top_group,
+    )
+    sub = LuantiProtectedRegion.objects.create(
+        region_id="master_for_sub_top_a",
+        world="world",
+        parent=master,
+        min_x=5,
+        min_y=0,
+        min_z=5,
+        max_x=15,
+        max_y=20,
+        max_z=15,
+    )
+    client = Client()
+    client.force_login(region_staff)
+    save = client.post(
+        reverse("admin:luanti_regions"),
+        {
+            "action": "save",
+            "rg_pk": str(sub.pk),
+            "rg_region_id": sub.region_id,
+            "rg_display_name": "Klasse A",
+            "rg_world": "world",
+            "rg_parent": str(master.pk),
+            "rg_assigned_to_group": str(other_top.pk),
+            "rg_min_x": "5",
+            "rg_min_y": "0",
+            "rg_min_z": "5",
+            "rg_max_x": "15",
+            "rg_max_y": "20",
+            "rg_max_z": "15",
+            "rg_protect_build": "on",
+            "rg_enabled": "on",
+        },
+    )
+    assert save.status_code == 302
+    sub.refresh_from_db()
+    assert sub.assigned_to_group_id == other_top.pk
+    assert sub.effective_top_group().pk == other_top.pk
+
+
+@pytest.mark.django_db
+def test_regions_admin_save_exclude_master_top_persists(region_staff, top_group):
+    region = LuantiProtectedRegion.objects.create(
+        region_id="no_top_pool",
+        world="world",
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        assigned_to_group=top_group,
+        plan_funding_include_master_top=True,
+    )
+    client = Client()
+    client.force_login(region_staff)
+    save = client.post(
+        reverse("admin:luanti_regions"),
+        {
+            "action": "save",
+            "rg_pk": str(region.pk),
+            "rg_region_id": region.region_id,
+            "rg_display_name": "",
+            "rg_world": "world",
+            "rg_assigned_to_group": str(top_group.pk),
+            "rg_min_x": "0",
+            "rg_min_y": "0",
+            "rg_min_z": "0",
+            "rg_max_x": "10",
+            "rg_max_y": "10",
+            "rg_max_z": "10",
+            "rg_protect_build": "on",
+            "rg_enabled": "on",
+        },
+    )
+    assert save.status_code == 302
+    region.refresh_from_db()
+    assert region.plan_funding_include_master_top is False
+    follow = client.get(save.url)
+    assert follow.status_code == 200
+    import re
+
+    html = follow.content.decode("utf-8")
+    m = re.search(r'name="rg_plan_funding_include_master_top"[^>]*>', html)
+    assert m is not None and "checked" not in m.group(0)

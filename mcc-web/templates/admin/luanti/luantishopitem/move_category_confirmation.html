@@ -1,0 +1,52 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+  {% blocktrans count counter=selected_count %}
+  Ein Artikel wird verschoben.
+  {% plural %}
+  {{ counter }} Artikel werden verschoben.
+  {% endblocktrans %}
+</p>
+
+{% if queryset %}
+<ul style="max-height: 14rem; overflow: auto; margin: 1rem 0; padding-left: 1.25rem;">
+  {% for obj in queryset %}
+  <li><code>{{ obj.item_name }}</code> — {{ obj.category }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="post" value="yes">
+  <input type="hidden" name="action" value="{{ admin_action_name }}">
+  <input type="hidden" name="select_across" value="{{ select_across }}">
+  <input type="hidden" name="index" value="{{ index }}">
+  {% for obj in queryset %}
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+  {% endfor %}
+
+  <fieldset class="module aligned" style="margin: 1rem 0;">
+    <div class="form-row">
+      <label for="id_target_category">{% trans "Ziel-Kategorie" %}:</label>
+      <select name="target_category_pk" id="id_target_category" required>
+        <option value="">— {% trans "Bitte wählen" %} —</option>
+        {% for cat in categories %}
+        <option value="{{ cat.pk }}">{{ cat.name }} ({{ cat.slug }})</option>
+        {% endfor %}
+      </select>
+    </div>
+  </fieldset>
+
+  <div class="submit-row" style="margin-top: 1rem;">
+    <input type="submit" class="default" value="{% trans "Verschieben" %}">
+    <a href="{{ cancel_url }}" class="button cancel-link" style="margin-left: 0.5rem;">{% trans "Abbrechen" %}</a>
+  </div>
+</form>
+{% endblock %}

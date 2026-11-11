@@ -31,6 +31,7 @@ PIDFILE="$TMP_DIR/mcc-web.pid"
 LOG_FILE="$LOG_DIR/mcc-web-script.log"
 MINECRAFT_SCRIPT="$PROJECT_DIR/scripts/minecraft.sh"
 MINECRAFT_WS_SCRIPT="$PROJECT_DIR/scripts/minecraft_ws.sh"
+LUANTI_SERVER_SCRIPT="$PROJECT_DIR/scripts/luanti_server.sh"
 
 if [[ "$PROJECT_DIR" == *"/data/appl/mcc"* ]]; then
     ENV_FILE="/data/appl/mcc/.env"
@@ -280,17 +281,28 @@ stop_minecraft_ws() {
     fi
 }
 
-# Start bridge, snapshot, session, and arena motion workers (each call is idempotent).
-start_minecraft_workers() {
-    if [ ! -x "$MINECRAFT_SCRIPT" ]; then
-        log_line "WARN" "minecraft.sh not found or not executable: $MINECRAFT_SCRIPT"
+# Stop Luanti dedicated server (sessions/inventories prepared while Gunicorn is still up).
+stop_luanti_server() {
+    if [ ! -x "$LUANTI_SERVER_SCRIPT" ]; then
+        log_line "WARN" "luanti_server.sh not found or not executable: $LUANTI_SERVER_SCRIPT"
         return 0
     fi
-    "$MINECRAFT_SCRIPT" start >/dev/null 2>&1 || true
-    "$MINECRAFT_SCRIPT" snapshot-start >/dev/null 2>&1 || true
-    "$MINECRAFT_SCRIPT" session-start >/dev/null 2>&1 || true
-    "$MINECRAFT_SCRIPT" arena-start >/dev/null 2>&1 || true
-    log_line "INFO" "Started Minecraft workers (bridge, snapshot, session, arena)"
+    echo -e "${BLUE}Stopping Luanti server...${NC}"
+    log_line "INFO" "Stopping Luanti server via luanti_server.sh stop"
+    if "$LUANTI_SERVER_SCRIPT" stop; then
+        echo -e "${GREEN}✓ Luanti server stopped${NC}"
+        log_line "INFO" "Luanti server stopped"
+    else
+        echo -e "${YELLOW}⚠ Luanti stop finished with errors (see output above)${NC}"
+        log_line "WARN" "luanti_server.sh stop returned non-zero"
+    fi
+}
+
+# Minecraft workers / Paper / WS are not started with Gunicorn (Luanti is the game stack).
+# Manual start remains: scripts/minecraft.sh, scripts/minecraft_paper.sh, scripts/minecraft_ws.sh
+start_minecraft_workers() {
+    log_line "INFO" "Minecraft worker autostart is disabled; skipping start"
+    return 0
 }
 
 # Graceful worker shutdown via minecraft.sh, with per-worker fallback.
@@ -454,10 +466,12 @@ start() {
         PID=$(get_pid)
         echo -e "${GREEN}✓ Server started successfully (PID: $PID)${NC}"
         log_line "INFO" "Server started successfully (PID: $PID)"
-        if [ -x "$MINECRAFT_SCRIPT" ]; then
-            start_minecraft_workers
-        fi
-        start_minecraft_ws
+        # Do not start Minecraft; also stop leftovers from a previous run / Admin start.
+        echo -e "${YELLOW}Minecraft workers/server are not auto-started; stopping leftovers (Luanti is the game stack).${NC}"
+        log_line "INFO" "Stopping leftover Minecraft workers/WS (autostart disabled)"
+        stop_minecraft_workers_scripts
+        kill_all_worker_processes
+        stop_minecraft_ws
         return 0
     else
         echo -e "${RED}✗ Failed to start server${NC}"
@@ -470,6 +484,11 @@ start() {
 # Stop the server
 stop() {
     check_user stop
+
+    # Luanti first while Gunicorn is still running (luanti_prepare_shutdown needs Django).
+    if is_running; then
+        stop_luanti_server
+    fi
     
     if ! is_running; then
         echo -e "${YELLOW}Server is not running${NC}"
@@ -490,6 +509,7 @@ stop() {
         # ALWAYS kill by name - this is the most reliable method
         # This ensures all workers are terminated even if minecraft.sh fails
         kill_all_worker_processes
+        stop_luanti_server
         
         return 0
     fi
@@ -620,6 +640,8 @@ status() {
             echo ""
             ps -p "$PID" -o pid,ppid,user,start,time,cmd 2>/dev/null || true
         fi
+        echo ""
+        echo -e "${YELLOW}Minecraft is not auto-started with Gunicorn (legacy; start manually via scripts/minecraft.sh if needed).${NC}"
         if [ -x "$MINECRAFT_WS_SCRIPT" ]; then
             echo ""
             echo -e "${BLUE}Minecraft WebSocket:${NC}"

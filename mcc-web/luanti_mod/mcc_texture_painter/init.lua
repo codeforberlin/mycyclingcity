@@ -85,7 +85,18 @@ end
 
 -- Paint target: allow unknown/legacy node names still stored in the map (conversion fixes).
 local function can_paint_onto(name)
+	if core.get_item_group(name, "mcc_plan_holo") > 0 or name == "mcc_plan:hologram" then
+		return false
+	end
 	return not is_airlike_node_name(name)
+end
+
+local function set_player_wield_index(player, slot)
+	if player.set_wield_index then
+		player:set_wield_index(slot)
+		return true
+	end
+	return false
 end
 
 -- Hotbar slot to the right of the wielded wand (wrap within 1..HOTBAR_SIZE).
@@ -136,7 +147,7 @@ local function ensure_hotbar_reference(player, node_name)
 		slot = find_stack_slot(inv, node_name, false)
 	end
 	if slot then
-		player:set_wield_index(slot)
+		set_player_wield_index(player, slot)
 		return true
 	end
 
@@ -150,7 +161,7 @@ local function ensure_hotbar_reference(player, node_name)
 	end
 
 	inv:set_stack("main", target, ItemStack(node_name .. " 1"))
-	player:set_wield_index(target)
+	set_player_wield_index(player, target)
 	return true
 end
 

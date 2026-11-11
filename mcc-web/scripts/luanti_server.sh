@@ -75,6 +75,22 @@ find_bin() {
     return 1
 }
 
+# Luanti loads game mods only when load_mod_<name> is set in world.mt.
+ensure_world_mod_enabled() {
+    local mod_name="$1"
+    local world_mt="$SERVER_DIR/worlds/$WORLD_NAME/world.mt"
+    local key="load_mod_${mod_name}"
+    if [ ! -f "$world_mt" ]; then
+        echo "Warning: world.mt missing ($world_mt); cannot enable mod $mod_name" >&2
+        return 1
+    fi
+    if grep -q "^${key} =" "$world_mt" 2>/dev/null; then
+        sed -i "s/^${key} =.*/${key} = true/" "$world_mt"
+    else
+        echo "${key} = true" >> "$world_mt"
+    fi
+}
+
 find_orphan_pids() {
     local pid cmdline cwd work_dir_norm
     work_dir_norm=$(readlink -f "$SERVER_DIR" 2>/dev/null || echo "$SERVER_DIR")
@@ -94,6 +110,15 @@ find_orphan_pids() {
             esac
         fi
     done
+}
+
+link_game_mods_from_deploy() {
+    local linker="$PROJECT_DIR/scripts/link_luanti_mods.sh"
+    if [ -f "$linker" ]; then
+        MCC_WEB_DIR="$PROJECT_DIR" bash "$linker" || {
+            echo "Warning: Luanti mod symlinks not updated (see link_luanti_mods.sh)" >&2
+        }
+    fi
 }
 
 start_server() {
@@ -121,6 +146,12 @@ start_server() {
         echo "Config missing: $CONFIG_FILE"
         return 1
     fi
+
+    link_game_mods_from_deploy
+
+    ensure_world_mod_enabled mcc_bridge
+    ensure_world_mod_enabled mcc_plan
+    ensure_world_mod_enabled mcc_texture_painter
 
     cd "$SERVER_DIR" || return 1
     : > "$LOG_FILE"

@@ -11,7 +11,7 @@ from django.db.models import Max, Prefetch, QuerySet
 from django.utils.translation import gettext as _
 
 from api.models import Group
-from luanti.models import LuantiAccount, LuantiProtectedRegion
+from luanti.models import LuantiAccount, LuantiProtectedRegion, LuantiRegionPlanFunding
 from luanti.services.region_ops import (
     default_region_max_y,
     default_region_min_y,
@@ -151,6 +151,8 @@ def empty_region_draft() -> dict:
         "enabled": True,
         "notes": "",
         "member_ids": [],
+        "plan_funding_group_ids": [],
+        "plan_funding_include_master_top": True,
         "player": "",
         "sub_slug": "",
     }
@@ -177,6 +179,14 @@ def region_to_draft(region: LuantiProtectedRegion, *, player: str = "") -> dict:
         "enabled": region.enabled,
         "notes": region.notes,
         "member_ids": list(region.members.values_list("pk", flat=True)),
+        "plan_funding_group_ids": list(
+            region.plan_funding_links.order_by("sort_order", "group_id").values_list(
+                "group_id", flat=True
+            )
+        ),
+        "plan_funding_include_master_top": region.plan_funding_include_master_top,
+        "plan_live_active": bool(region.plan_live_convert_active),
+        "plan_summary": None,
         "player": player,
         "sub_slug": "",
     }
@@ -215,6 +225,10 @@ def draft_from_post(post, *, keep_y_defaults: bool = False) -> dict:
         "enabled": post.get("rg_enabled") == "on",
         "notes": (post.get("rg_notes") or "").strip(),
         "member_ids": [int(v) for v in post.getlist("rg_members") if str(v).isdigit()],
+        "plan_funding_group_ids": [
+            int(v) for v in post.getlist("rg_plan_funding_groups") if str(v).isdigit()
+        ],
+        "plan_funding_include_master_top": post.get("rg_plan_funding_include_master_top") == "on",
         "player": (post.get("rg_player") or "").strip(),
         "sub_slug": (post.get("rg_sub_slug") or "").strip(),
     }
@@ -268,15 +282,21 @@ def save_region_from_post(post, *, user) -> LuantiProtectedRegion:
 
     assigned_group = None
     assigned_raw = (post.get("rg_assigned_to_group") or "").strip()
-    if assigned_raw and not parent:
+    if assigned_raw:
         assigned_group = top_groups_queryset().filter(pk=int(assigned_raw)).first()
         if assigned_group is None:
             raise ValueError(_("Ungültige TOP-Gruppe."))
 
     if pk_raw:
-        region = LuantiProtectedRegion.objects.filter(pk=int(pk_raw)).first()
+        region = (
+            LuantiProtectedRegion.objects.filter(pk=int(pk_raw))
+            .select_related("parent")
+            .first()
+        )
         if region is None:
             raise ValueError(_("Region nicht gefunden."))
+        if region.parent_id and parent is None:
+            parent = region.parent
         region_id = region.region_id
         if parent and not region.parent_id:
             raise ValueError(_("Eine bestehende Master-Region kann nicht zur Subregion werden."))
@@ -299,7 +319,7 @@ def save_region_from_post(post, *, user) -> LuantiProtectedRegion:
     region.display_name = display_name
     region.world = world if not parent else parent.world
     region.parent = parent
-    region.assigned_to_group = None if parent else assigned_group
+    region.assigned_to_group = assigned_group
     region.min_x = min_x
     region.min_y = min_y
     region.min_z = min_z
@@ -312,6 +332,9 @@ def save_region_from_post(post, *, user) -> LuantiProtectedRegion:
     region.protect_build = protect_build
     region.enabled = enabled
     region.notes = notes
+    region.plan_funding_include_master_top = (
+        post.get("rg_plan_funding_include_master_top") == "on"
+    )
     if getattr(user, "is_authenticated", False):
         region.updated_by = user
     if not region.pk:
@@ -322,6 +345,12 @@ def save_region_from_post(post, *, user) -> LuantiProtectedRegion:
     region.members.set(
         LuantiAccount.objects.filter(pk__in=member_ids, is_active=True)
     )
+    funding_ids = [int(v) for v in post.getlist("rg_plan_funding_groups") if str(v).isdigit()]
+    region.plan_funding_links.all().delete()
+    for idx, gid in enumerate(funding_ids):
+        LuantiRegionPlanFunding.objects.create(
+            region=region, group_id=gid, sort_order=(idx + 1) * 10
+        )
     return region
 
 

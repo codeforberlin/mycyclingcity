@@ -532,6 +532,30 @@ def expire_due_sessions() -> list[LuantiSession]:
     return kicked
 
 
+def _reconcile_grace_seconds() -> int:
+    return max(
+        0,
+        int(getattr(settings, "LUANTI_SESSION_RECONCILE_GRACE_SECONDS", 45) or 45),
+    )
+
+
+def _push_session_revoked_to_bridge(login_name: str) -> None:
+    """Re-lock client when Django ended a session without a normal leave/kick."""
+    try:
+        from luanti.consumers import LuantiEventConsumer
+
+        LuantiEventConsumer.push_to_all_sync(
+            {
+                "type": "SET_MODE",
+                "player": (login_name or "").strip(),
+                "mode": "",
+                "paused": False,
+            }
+        )
+    except Exception:
+        pass
+
+
 def reconcile_sessions_with_online_players(players: list | None) -> list[LuantiSession]:
     """
     End open sessions whose login is not currently connected in Luanti.
@@ -548,6 +572,8 @@ def reconcile_sessions_with_online_players(players: list | None) -> list[LuantiS
         if name is not None and str(name).strip()
     }
     ended: list[LuantiSession] = []
+    now = timezone.now()
+    grace = timedelta(seconds=_reconcile_grace_seconds())
     open_sessions = list(
         LuantiSession.objects.filter(status__in=LuantiSession.OPEN_STATUSES).select_related(
             "account"
@@ -556,6 +582,14 @@ def reconcile_sessions_with_online_players(players: list | None) -> list[LuantiS
     for session in open_sessions:
         if session.login_name.lower() in online:
             continue
+        if (
+            grace.total_seconds() > 0
+            and session.status == LuantiSession.STATUS_ACTIVE
+            and session.timestamp_start
+            and now - session.timestamp_start < grace
+        ):
+            continue
+        _push_session_revoked_to_bridge(session.login_name)
         end_session(session, inventory_payload=None)
         ended.append(session)
     return ended

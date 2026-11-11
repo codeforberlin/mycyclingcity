@@ -277,8 +277,8 @@ class LuantiAccount(models.Model):
 
     class Meta:
         ordering = ["sort_order", "login_name"]
-        verbose_name = _("Luanti-Account")
-        verbose_name_plural = _("Luanti-Accounts")
+        verbose_name = _("Account (Mgmt)")
+        verbose_name_plural = _("Accounts (Mgmt)")
 
     def __str__(self):
         return self.display_name or self.login_name
@@ -424,8 +424,8 @@ class LuantiSession(models.Model):
 
     class Meta:
         ordering = ["-timestamp_start"]
-        verbose_name = _("Luanti-Session")
-        verbose_name_plural = _("Luanti-Sessions")
+        verbose_name = _("Session-Historie")
+        verbose_name_plural = _("Sessions-Historie")
 
     def __str__(self):
         return f"{self.login_name} ({self.mode}/{self.status})"
@@ -538,7 +538,13 @@ class LuantiShopItem(models.Model):
         validators=[MinValueValidator(1)],
         verbose_name=_("Kaufpreis (Velos)"),
     )
-    stack_size = models.PositiveIntegerField(default=1, verbose_name=_("Stack-Größe"))
+    stack_size = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_("Stack-Größe"),
+        help_text=_(
+            "Max. Stapel im Inventar; Shop-Menge pro Kauf ist höchstens dieser Wert (max. 64)."
+        ),
+    )
     sort_order = models.PositiveIntegerField(default=0, verbose_name=_("Sortierung"))
     enabled = models.BooleanField(default=True, verbose_name=_("Aktiv"))
 
@@ -612,7 +618,12 @@ class LuantiShopPurchaseCredit(models.Model):
 class LuantiShopTransaction(models.Model):
     SIDE_BUY = "buy"
     SIDE_SELL = "sell"
-    SIDE_CHOICES = [(SIDE_BUY, _("Kauf")), (SIDE_SELL, _("Verkauf"))]
+    SIDE_PLAN_BUY = "plan_buy"
+    SIDE_CHOICES = [
+        (SIDE_BUY, _("Kauf")),
+        (SIDE_SELL, _("Verkauf")),
+        (SIDE_PLAN_BUY, _("Plan-Kauf")),
+    ]
 
     client_tx_id = models.CharField(max_length=64, unique=True, verbose_name=_("Client-Tx-ID"))
     side = models.CharField(max_length=8, choices=SIDE_CHOICES)
@@ -652,12 +663,32 @@ class LuantiRegisteredItem(models.Model):
         default=False,
         verbose_name=_("Nicht im Kreativ-Inventar"),
     )
+    plan_ghost_status = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        verbose_name=_("Plan-Hologramm-Status"),
+        help_text=_(
+            "Vom Luanti-Server: shape = Form-Klon, fallback = Glaswürfel, na = kein Node."
+        ),
+    )
+    plan_ghost_detail = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        verbose_name=_("Plan-Hologramm-Detail"),
+    )
+    plan_ghost_checked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Plan-Hologramm geprüft am"),
+    )
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Aktualisiert"))
 
     class Meta:
         ordering = ["item_name"]
-        verbose_name = _("Registriertes Luanti-Item")
-        verbose_name_plural = _("Registrierte Luanti-Items")
+        verbose_name = _("Registry")
+        verbose_name_plural = _("Registry")
 
     def __str__(self):
         return self.item_name
@@ -760,8 +791,8 @@ class LuantiProtectedRegion(models.Model):
         related_name="luanti_regions",
         verbose_name=_("TOP-Gruppe"),
         help_text=_(
-            "Nur bei Master-Regionen: permanente Zuordnung zur TOP-Gruppe. "
-            "Subregionen erben über die Master-Region."
+            "Master: Einrichtungs-TOP der Zone. Sub optional: eigene TOP für Plan/Verkauf; "
+            "leer = TOP der Master-Region."
         ),
     )
     sort_order = models.PositiveIntegerField(
@@ -802,8 +833,43 @@ class LuantiProtectedRegion(models.Model):
         verbose_name=_("Mitglieder (Accounts)"),
         help_text=_("Accounts, die im Build-Modus in dieser Region bauen dürfen."),
     )
+    plan_funding_include_master_top = models.BooleanField(
+        default=True,
+        verbose_name=_("TOP der Master-Region für Plan-Velos"),
+        help_text=_(
+            "Spendable Velos der Master-TOP-Gruppe fließen in den Umwandlungs-Pool dieser Zone."
+        ),
+    )
+    plan_live_convert_active = models.BooleanField(
+        default=False,
+        verbose_name=_("Live-Umwandlung aktiv"),
+        help_text=_(
+            "Server wandelt Hologramme fortlaufend um, sobald Plan-Pool-Velos "
+            "(z. B. durch Radfahren) verfügbar sind — ohne /mccplan autoconvert ingame."
+        ),
+    )
+    plan_live_convert_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Live-Umwandlung gestartet am"),
+    )
+    plan_live_convert_started_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name=_("Live-Umwandlung gestartet von"),
+    )
     notes = models.CharField(max_length=255, blank=True, verbose_name=_("Notiz"))
-    enabled = models.BooleanField(default=True, verbose_name=_("Aktiv"))
+    enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Im Spiel wirksam"),
+        help_text=_(
+            "An: Region wird an Luanti übertragen (Bauschutz, Markierung, Plan, Spawn-Auswahl). "
+            "Aus: nur in dieser Admin-Liste — nicht im Spiel."
+        ),
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         django_settings.AUTH_USER_MODEL,
@@ -831,9 +897,13 @@ class LuantiProtectedRegion(models.Model):
         return self.parent_id is None
 
     def effective_top_group(self):
+        if self.assigned_to_group_id:
+            return self.assigned_to_group
         if self.parent_id:
-            return self.parent.assigned_to_group
-        return self.assigned_to_group
+            parent = self.parent
+            if parent is not None:
+                return parent.assigned_to_group
+        return None
 
     def normalized_bounds(self) -> tuple[int, int, int, int, int, int]:
         return (
@@ -929,11 +999,6 @@ class LuantiProtectedRegion(models.Model):
                     )
                 if self.pk and parent.pk == self.pk:
                     errors["parent"] = _("Eine Region kann nicht ihr eigener Parent sein.")
-                if self.assigned_to_group_id:
-                    errors["assigned_to_group"] = _(
-                        "TOP-Zuordnung nur bei Master-Regionen; "
-                        "Subregionen erben über den Parent."
-                    )
                 if parent.world and self.world and parent.world != self.world:
                     errors["world"] = _(
                         "Subregion muss in derselben Welt wie die Master-Region liegen."
@@ -942,7 +1007,7 @@ class LuantiProtectedRegion(models.Model):
                     errors["min_x"] = _(
                         "Subregion muss vollständig innerhalb der Master-Region liegen."
                     )
-        elif self.assigned_to_group_id:
+        if self.assigned_to_group_id:
             group = self.assigned_to_group
             if group is not None and group.parent_id is not None:
                 errors["assigned_to_group"] = _(
@@ -983,6 +1048,122 @@ class LuantiProtectedRegion(models.Model):
 
         if errors:
             raise ValidationError(errors)
+
+
+class LuantiRegionPlanFunding(models.Model):
+    """Ordered Group wallet entry for hologram materialization in a region."""
+
+    region = models.ForeignKey(
+        LuantiProtectedRegion,
+        on_delete=models.CASCADE,
+        related_name="plan_funding_links",
+        verbose_name=_("Region"),
+    )
+    group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.CASCADE,
+        related_name="luanti_plan_funding_regions",
+        verbose_name=_("Gruppe"),
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name=_("Sortierung"))
+
+    class Meta:
+        ordering = ["sort_order", "group_id"]
+        verbose_name = _("Plan-Velos Gruppe")
+        verbose_name_plural = _("Plan-Velos Gruppen")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["region", "group"],
+                name="luanti_region_plan_funding_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.region_id} ← {self.group_id}"
+
+
+class LuantiPlanBlock(models.Model):
+    STATUS_PLANNED = "planned"
+    STATUS_MATERIALIZED = "materialized"
+    STATUS_CHOICES = [
+        (STATUS_PLANNED, _("Geplant")),
+        (STATUS_MATERIALIZED, _("Umgewandelt")),
+    ]
+
+    region = models.ForeignKey(
+        LuantiProtectedRegion,
+        on_delete=models.CASCADE,
+        related_name="plan_blocks",
+        verbose_name=_("Region"),
+    )
+    world = models.CharField(max_length=64, default="world", verbose_name=_("Welt"))
+    x = models.IntegerField(verbose_name=_("X"))
+    y = models.IntegerField(verbose_name=_("Y"))
+    z = models.IntegerField(verbose_name=_("Z"))
+    shop_item_id = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Shop-Artikel-ID"))
+    target_name = models.CharField(max_length=128, verbose_name=_("Ziel-Item"))
+    buy_price_velos = models.PositiveIntegerField(verbose_name=_("Umwandlungspreis (Velos)"))
+    param2 = models.PositiveSmallIntegerField(default=0, verbose_name=_("Param2"))
+    placed_by = models.CharField(max_length=32, blank=True, verbose_name=_("Platziert von"))
+    purchase_credit_granted = models.BooleanField(
+        default=False,
+        verbose_name=_("Kaufguthaben nach Umwandlung gebucht"),
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_PLANNED,
+        db_index=True,
+        verbose_name=_("Status"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Plan-Block")
+        verbose_name_plural = _("Plan-Blöcke")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["world", "x", "y", "z"],
+                name="luanti_plan_block_pos_unique",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["region", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.target_name} @ {self.x},{self.y},{self.z} ({self.status})"
+
+
+class LuantiPlanMaterializeTransaction(models.Model):
+    client_tx_id = models.CharField(max_length=64, unique=True, verbose_name=_("Client-Tx-ID"))
+    region = models.ForeignKey(
+        LuantiProtectedRegion,
+        on_delete=models.CASCADE,
+        related_name="plan_materialize_txs",
+        verbose_name=_("Region"),
+    )
+    group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="luanti_plan_materialize_txs",
+        verbose_name=_("Gruppe"),
+    )
+    world = models.CharField(max_length=64, default="world")
+    x = models.IntegerField()
+    y = models.IntegerField()
+    z = models.IntegerField()
+    velos_delta = models.IntegerField(verbose_name=_("Velos-Delta"))
+    login_name = models.CharField(max_length=32, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("Plan-Umwandlungs-Transaktion")
+        verbose_name_plural = _("Plan-Umwandlungs-Transaktionen")
 
 
 class LuantiArenaMotionSettings(models.Model):
@@ -1098,8 +1279,8 @@ class LuantiStation(models.Model):
 
     class Meta:
         ordering = ["sort_order", "name"]
-        verbose_name = _("Station (PC)")
-        verbose_name_plural = _("Stationen (PCs)")
+        verbose_name = _("Spiel-PC (Mgmt)")
+        verbose_name_plural = _("Spiel-PCs (Mgmt)")
 
     def __str__(self):
         return self.name

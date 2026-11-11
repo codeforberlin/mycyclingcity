@@ -124,6 +124,23 @@ def test_parse_tr_and_en_import(tmp_path):
 
 
 @pytest.mark.django_db
+def test_catalog_categories_sorted_by_localized_name_not_sort_order():
+    wood = LuantiShopCategory.objects.create(slug="wood", name="Wood", sort_order=1, enabled=True)
+    armor = LuantiShopCategory.objects.create(slug="armor", name="Armor", sort_order=2, enabled=True)
+    blocks = LuantiShopCategory.objects.create(slug="blocks", name="Blocks", sort_order=99, enabled=True)
+    set_category_label(wood, "de", "Holz", overwrite=True, sync_legacy_de=False)
+    set_category_label(wood, "en", "Wood", overwrite=True, sync_legacy_de=False)
+    set_category_label(armor, "de", "Rüstung", overwrite=True, sync_legacy_de=False)
+    set_category_label(armor, "en", "Armor", overwrite=True, sync_legacy_de=False)
+    set_category_label(blocks, "de", "Blöcke", overwrite=True, sync_legacy_de=False)
+    set_category_label(blocks, "en", "Blocks", overwrite=True, sync_legacy_de=False)
+    de_names = [c["name"] for c in build_catalog_payload(lang="de")["categories"]]
+    en_names = [c["name"] for c in build_catalog_payload(lang="en")["categories"]]
+    assert de_names == ["Blöcke", "Holz", "Rüstung"]
+    assert en_names == ["Armor", "Blocks", "Wood"]
+
+
+@pytest.mark.django_db
 def test_category_labels_in_catalog():
     cat = LuantiShopCategory.objects.create(slug="blocks", name="Blocks", enabled=True)
     set_category_label(cat, "de", "Blöcke", overwrite=True)

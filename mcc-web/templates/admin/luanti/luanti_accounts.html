@@ -22,13 +22,25 @@
     empty.value = '';
     empty.textContent = leaves.length ? '—' : '— {% trans "keine Leaf-Gruppen" %}';
     select.appendChild(empty);
+    var found = false;
     leaves.forEach(function (g) {
       var opt = document.createElement('option');
       opt.value = String(g.id);
       opt.textContent = g.name + ' (' + g.velos_spendable + ')';
-      if (keep && keep === String(g.id)) opt.selected = true;
+      if (keep && keep === String(g.id)) {
+        opt.selected = true;
+        found = true;
+      }
       select.appendChild(opt);
     });
+    if (keep && !found) {
+      var orphanLabel = select.getAttribute('data-selected-label') || ('#' + keep);
+      var orphan = document.createElement('option');
+      orphan.value = keep;
+      orphan.textContent = orphanLabel;
+      orphan.selected = true;
+      select.appendChild(orphan);
+    }
   }
   document.addEventListener('DOMContentLoaded', function () {
     var homeSel = document.getElementById('create-home');

@@ -24,6 +24,75 @@ local CFG = {
     heartbeat_seconds = tonumber(settings_get("heartbeat_seconds", "5")) or 5,
 }
 
+local bridge_dbg = dofile(modpath .. "/debug.lua")
+bridge_dbg.setup(
+    bridge_dbg.parse_channels(settings_get("debug", "")),
+    { debug_heartbeat = tostring(settings_get("debug_heartbeat", "false")):lower() == "true" }
+)
+
+local function http_path_logs_as_heartbeat(path)
+    return path == "/api/luanti/heartbeat/"
+end
+
+local function http_debug_should_log(path)
+    if not bridge_dbg.debug_enabled("http") then
+        return false
+    end
+    if http_path_logs_as_heartbeat(path) and not bridge_dbg.http_heartbeat_enabled() then
+        return false
+    end
+    return true
+end
+
+local function http_debug_request(path, body)
+    if not http_debug_should_log(path) then
+        return
+    end
+    local who = ""
+    if type(body) == "table" then
+        who = tostring(body.player or body.login_name or "")
+    end
+    bridge_dbg.logf("http", "req path=%s player=%s", path, who)
+end
+
+local function http_debug_response(path, code, data, ok_cb)
+    if not http_debug_should_log(path) then
+        return
+    end
+    local extra = ""
+    if type(data) == "table" then
+        if path:find("/session/join", 1, true) then
+            extra = string.format(
+                " join_ok=%s wait=%s mode=%s err=%s",
+                tostring(data.ok),
+                tostring(data.wait),
+                tostring(data.mode or ""),
+                tostring(data.error or "")
+            )
+        elseif data.error then
+            extra = " err=" .. tostring(data.error)
+        else
+            extra = " ok=" .. tostring(data.ok)
+        end
+    end
+    bridge_dbg.logf("http", "res path=%s code=%s cb_ok=%s%s", path, tostring(code), tostring(ok_cb), extra)
+end
+
+local function mcc_world_name()
+    local override = settings_get("world_name", "")
+    if override ~= "" then
+        return override
+    end
+    local wp = core.get_worldpath and core.get_worldpath() or ""
+    if type(wp) == "string" and wp ~= "" then
+        local base = wp:match("([^/\\]+)[/\\]?$")
+        if base and base ~= "" then
+            return base
+        end
+    end
+    return "mycyclingcity"
+end
+
 local function json_encode(tbl)
     return core.write_json(tbl)
 end
@@ -53,6 +122,7 @@ local function api_post(path, body, callback)
     -- Django accepts auth_token == shared_secret (HMAC optional for Lua).
     body.auth_token = CFG.shared_secret
     body.signature = ""
+    http_debug_request(path, body)
     http.fetch({
         url = CFG.base_url .. path,
         method = "POST",
@@ -64,17 +134,54 @@ local function api_post(path, body, callback)
     }, function(result)
         if not result or not result.succeeded then
             core.log("warning", "[mcc_bridge] HTTP failed " .. path)
-            if callback then callback(false, nil) end
+            http_debug_response(path, 0, { ok = false, error = "http_unreachable" }, false)
+            if callback then callback(false, { ok = false, error = "http_unreachable" }) end
             return
         end
+        local code = tonumber(result.code) or 0
         local data = json_decode(result.data)
-        if callback then callback(true, data) end
+        if not data or type(data) ~= "table" then
+            core.log(
+                "warning",
+                "[mcc_bridge] HTTP " .. tostring(code) .. " non-JSON " .. path
+            )
+            if callback then
+                callback(false, {
+                    ok = false,
+                    error = code >= 500 and "server_error" or ("http_" .. tostring(code)),
+                })
+            end
+            return
+        end
+        if code >= 400 and data.error == nil then
+            data.ok = false
+            data.error = "http_" .. tostring(code)
+        end
+        local ok_cb = code < 400
+        http_debug_response(path, code, data, ok_cb)
+        if callback then callback(ok_cb, data) end
     end)
 end
 
 -- Shared bridge API table (used by heartbeat command dispatch + shop GUI).
 local mcc_bridge = rawget(_G, "mcc_bridge") or {}
 rawset(_G, "mcc_bridge", mcc_bridge)
+mcc_bridge.mcc_world_name = mcc_world_name
+mcc_bridge.debug_log = function(channel, msg)
+    bridge_dbg.log(channel, msg)
+end
+mcc_bridge.debug_logf = function(channel, fmt, ...)
+    bridge_dbg.logf(channel, fmt, ...)
+end
+
+local mod_availability = dofile(modpath .. "/mod_availability.lua")
+mcc_bridge.has_plan_mod = mod_availability.has_plan_mod
+mcc_bridge.has_texture_painter_mod = mod_availability.has_texture_painter_mod
+mcc_bridge.plan_api = mod_availability.plan_api
+
+local function mcc_plan_api()
+    return mod_availability.plan_api()
+end
 
 dofile(modpath .. "/shop_gui.lua")
 mcc_bridge.init_shop_gui(api_post)
@@ -130,6 +237,9 @@ local waiting_poll = {} -- name -> true
 local pending_auth = {} -- name -> true
 -- Monotonic join request id per player (ignore stale async HTTP responses).
 local join_seq = {}
+-- One session/join HTTP per player; parallel polls + SESSION_STARTED used to bump seq and drop grants.
+local join_in_flight = {}
+local join_resync_after = {} -- name -> opts (run one extra join after in-flight completes)
 -- Avoid repeating the waiting-room chat on every poll.
 local waiting_intro_sent = {}
 local clear_player_inventories -- forward decl (defined below)
@@ -158,6 +268,17 @@ local function set_player_frozen(player, frozen)
             new_move = true,
         })
     end
+end
+
+local function session_id_storage_key(name)
+    return "mcc_session_id_" .. tostring(name or "")
+end
+
+local function clear_stored_session_id(name)
+    if not name or name == "" then
+        return
+    end
+    storage:set_string(session_id_storage_key(name), "")
 end
 
 local function should_freeze_movement(name)
@@ -479,6 +600,29 @@ local function teleport_player_to_world_spawn(player)
     teleport_player_to_pos(player, parse_static_spawnpoint(), "Welt-Spawn / world spawn")
 end
 
+local function stack_to_inventory_entry(stack, slot_index)
+    if not stack or stack:is_empty() then
+        return nil
+    end
+    local entry = {
+        slot = slot_index,
+        name = stack:get_name(),
+        count = stack:get_count(),
+        wear = stack:get_wear(),
+    }
+    local im = stack:get_meta()
+    if im and im:get_string("mcc_plan") == "1" then
+        entry.meta = {
+            mcc_plan = im:get_string("mcc_plan"),
+            mcc_shop_item_id = im:get_string("mcc_shop_item_id"),
+            mcc_purchase_velos = im:get_string("mcc_purchase_velos"),
+            mcc_buy_price_velos = im:get_string("mcc_buy_price_velos"),
+            mcc_target_name = im:get_string("mcc_target_name"),
+        }
+    end
+    return entry
+end
+
 local function collect_main_inventory(player)
     local payload = {}
     if not player then
@@ -488,17 +632,44 @@ local function collect_main_inventory(player)
     if not inv then
         return payload
     end
-    local list = inv:get_list("main") or {}
-    for _, stack in ipairs(list) do
-        if not stack:is_empty() then
-            payload[#payload + 1] = {
-                name = stack:get_name(),
-                count = stack:get_count(),
-                wear = stack:get_wear(),
-            }
+    local size = inv:get_size("main") or 0
+    for i = 1, size do
+        local entry = stack_to_inventory_entry(inv:get_stack("main", i), i)
+        if entry then
+            payload[#payload + 1] = entry
         end
     end
     return payload
+end
+
+local function apply_inventory_list(player, stacks)
+    local inv = player:get_inventory()
+    if not inv then
+        return
+    end
+    clear_player_inventories(player)
+    if type(stacks) ~= "table" then
+        return
+    end
+    local legacy_slot = 1
+    for _, stack in ipairs(stacks) do
+        if type(stack) == "table" and stack.name then
+            local item = ItemStack(stack.name .. " " .. tostring(stack.count or 1))
+            if stack.wear then
+                item:set_wear(stack.wear)
+            end
+            local mp_inv = mcc_plan_api()
+            if type(stack.meta) == "table" and mp_inv and mp_inv.apply_meta_to_stack then
+                item = mp_inv.apply_meta_to_stack(item, stack.meta)
+            end
+            local idx = tonumber(stack.slot)
+            if not idx or idx < 1 or idx > inv:get_size("main") then
+                idx = legacy_slot
+            end
+            inv:set_stack("main", idx, item)
+            legacy_slot = legacy_slot + 1
+        end
+    end
 end
 
 -- core.write_json encodes empty Lua {} as JSON object {}; Django expects [].
@@ -509,6 +680,63 @@ local function inventory_body_fields(player)
         inventory = items,
         inventory_count = #items,
     }
+end
+
+local inv_sync_after = {}
+local INV_SYNC_DEBOUNCE = 2.0
+
+local function player_may_sync_inventory(name)
+    if pending_auth[name] then
+        return false
+    end
+    if storage:get_string("paused_" .. name) == "1" then
+        return false
+    end
+    local mode = storage:get_string("mode_" .. name)
+    if mode == "" or mode == "paused" then
+        return false
+    end
+    return true
+end
+
+local function schedule_inventory_sync(player)
+    if not player or not player:is_player() then
+        return
+    end
+    local name = player:get_player_name()
+    if not player_may_sync_inventory(name) then
+        return
+    end
+    if inv_sync_after[name] then
+        return
+    end
+    inv_sync_after[name] = true
+    core.after(INV_SYNC_DEBOUNCE, function()
+        inv_sync_after[name] = nil
+        local p = core.get_player_by_name(name)
+        if not p or not player_may_sync_inventory(name) then
+            return
+        end
+        local body = inventory_body_fields(p)
+        body.player = name
+        body.mode = storage:get_string("mode_" .. name)
+        api_post("/api/luanti/inventory/sync/", body)
+    end)
+end
+
+function mcc_bridge.sync_player_inventory_now(player)
+    if not player or not player:is_player() then
+        return false
+    end
+    local name = player:get_player_name()
+    if not player_may_sync_inventory(name) then
+        return false
+    end
+    local body = inventory_body_fields(player)
+    body.player = name
+    body.mode = storage:get_string("mode_" .. name)
+    api_post("/api/luanti/inventory/sync/", body)
+    return true
 end
 
 -- Loud session-end notice for kids: colored chat banner + HUD + sound + echo.
@@ -575,12 +803,29 @@ local function apply_bridge_commands(commands)
     for _, cmd in ipairs(commands) do
         if type(cmd) == "table" then
             local t = tostring(cmd.type or "")
+            if bridge_dbg.debug_enabled("command") then
+                bridge_dbg.logf(
+                    "command",
+                    "dispatch type=%s player=%s mode=%s",
+                    t,
+                    tostring(cmd.player or ""),
+                    tostring(cmd.mode or "")
+                )
+            end
             if t == "RUN_CITY_PRESET" then
                 mcc_bridge.apply_city_steps(cmd.steps)
                 core.log("action", "[mcc_bridge] city preset " .. tostring(cmd.slug or "?"))
             elseif t == "SESSION_STARTED" and cmd.player then
+                -- Do not lock_waiting here: a stale queued SESSION_STARTED after join
+                -- would freeze the player while mode/HUD already show build/plan.
                 local pname = tostring(cmd.player)
-                lock_waiting_player(core.get_player_by_name(pname), pname)
+                core.log(
+                    "action",
+                    "[mcc_bridge] SESSION_STARTED player="
+                        .. pname
+                        .. " mode="
+                        .. tostring(cmd.mode or "?")
+                )
                 request_session_join(pname, { granted_chat = true })
             elseif t == "SET_MODE" and cmd.player then
                 local pname = tostring(cmd.player)
@@ -599,6 +844,10 @@ local function apply_bridge_commands(commands)
                     end
                     storage:set_string("paused_" .. pname, "1")
                     storage:set_string("mode_" .. pname, "paused")
+                    local mp_pause = rawget(_G, "mcc_plan")
+                    if mp_pause and mp_pause.refresh_hud then
+                        mp_pause.refresh_hud(pname)
+                    end
                     waiting_poll[pname] = nil
                     pending_auth[pname] = nil
                     if player then
@@ -645,6 +894,48 @@ local function apply_bridge_commands(commands)
                 if msg ~= "" then
                     core.chat_send_player(pname, msg)
                 end
+            elseif t == "VERIFY_PLAN_GHOST_SHOP" then
+                local names = cmd.item_names
+                if type(names) ~= "table" or #names == 0 then
+                    core.log("warning", "[mcc_bridge] VERIFY_PLAN_GHOST_SHOP: empty item_names")
+                else
+                    local batch = {}
+                    local batch_size = 200
+                    local mp = rawget(_G, "mcc_plan")
+                    local function flush_plan_ghost()
+                        if #batch == 0 then
+                            return
+                        end
+                        api_post("/api/luanti/shop/plan-ghost/", { items = batch })
+                        batch = {}
+                    end
+                    for _, raw_name in ipairs(names) do
+                        local name = tostring(raw_name or "")
+                        if name:find(":", 1, true) then
+                            local status = "unknown"
+                            local detail = "mcc_plan_offline"
+                            if mp and mp.verify_clone_tier then
+                                status, detail = mp.verify_clone_tier(name)
+                            elseif mp and mp.preview_clone_tier then
+                                status = tostring(mp.preview_clone_tier(name))
+                                detail = "preview_only"
+                            end
+                            batch[#batch + 1] = {
+                                item_name = name,
+                                plan_ghost_status = status,
+                                plan_ghost_detail = detail,
+                            }
+                            if #batch >= batch_size then
+                                flush_plan_ghost()
+                            end
+                        end
+                    end
+                    flush_plan_ghost()
+                    core.log(
+                        "action",
+                        "[mcc_bridge] VERIFY_PLAN_GHOST_SHOP items=" .. tostring(#names)
+                    )
+                end
             elseif t == "DUMP_ITEM_REGISTRY" then
                 -- Push registered itemstrings to Django for shop import / picker.
                 local batch = {}
@@ -661,6 +952,20 @@ local function apply_bridge_commands(commands)
                     })
                     first_chunk = false
                     batch = {}
+                end
+                local function plan_ghost_for_kind(nodename, kind)
+                    if kind ~= "node" then
+                        return "na", ""
+                    end
+                    local mp = rawget(_G, "mcc_plan")
+                    if mp and mp.preview_clone_tier then
+                        local tier = tostring(mp.preview_clone_tier(nodename))
+                        if tier == "shape" then
+                            tier = "preview_shape"
+                        end
+                        return tier, "registry_preview"
+                    end
+                    return "unknown", "mcc_plan_offline"
                 end
                 for name, def in pairs(core.registered_items or {}) do
                     if type(name) == "string" and name:find(":", 1, true) and name:sub(1, 1) ~= ":" then
@@ -698,6 +1003,7 @@ local function apply_bridge_commands(commands)
                                 end
                             end
                         end
+                        local plan_ghost_status, plan_ghost_detail = plan_ghost_for_kind(name, kind)
                         batch[#batch + 1] = {
                             name = name,
                             description = desc,
@@ -706,6 +1012,8 @@ local function apply_bridge_commands(commands)
                             inventory_image = inventory_image,
                             wield_image = wield_image,
                             not_in_creative_inventory = not_in_creative,
+                            plan_ghost_status = plan_ghost_status,
+                            plan_ghost_detail = plan_ghost_detail,
                         }
                         total = total + 1
                         if #batch >= batch_size then
@@ -759,6 +1067,33 @@ local function apply_bridge_commands(commands)
                             .. " req="
                             .. request_id
                     )
+                end
+            elseif t == "PLAN_MATERIALIZE" then
+                local mp_mat = mcc_plan_api()
+                if mp_mat and mp_mat.materialize_blocks_staggered then
+                    mp_mat.materialize_blocks_staggered(cmd.blocks or {}, {
+                        layer_delay = cmd.layer_delay,
+                        block_delay = cmd.block_delay,
+                        fx_stagger = cmd.fx_stagger,
+                    })
+                elseif mp_mat and mp_mat.materialize_block then
+                    for _, block in ipairs(cmd.blocks or {}) do
+                        mp_mat.materialize_block(block)
+                    end
+                end
+            elseif t == "PLAN_CLEAR" then
+                local mp_clr = mcc_plan_api()
+                if mp_clr and mp_clr.clear_hologram_at then
+                    for _, block in ipairs(cmd.blocks or {}) do
+                        local pos = {
+                            x = tonumber(block.x),
+                            y = tonumber(block.y),
+                            z = tonumber(block.z),
+                        }
+                        if pos.x and pos.y and pos.z then
+                            mp_clr.clear_hologram_at(pos)
+                        end
+                    end
                 end
             elseif t == "REGIONS_UPDATE" then
                 -- Apply push immediately (outline spawners are deleted+rebuilt inside
@@ -850,6 +1185,7 @@ local function post_session_leave(player, name)
     local leave_body = inventory_body_fields(player)
     leave_body.player = name
     storage:set_string("paused_" .. name, "")
+    clear_stored_session_id(name)
     if player then
         set_player_frozen(player, false)
     end
@@ -921,6 +1257,8 @@ local function get_stored_mode(name)
     return mode
 end
 
+mcc_bridge.get_stored_mode = get_stored_mode
+
 local function mode_protects_world(name)
     if is_player_paused(name) then
         return true
@@ -989,28 +1327,112 @@ clear_player_inventories = function(player)
     end
 end
 
--- Singlenode/void: MCL dig drops spawn as entities and fall off the world before
--- the item-magnet can collect them. Put drops into the digger inventory first.
+local VOID_SAFE_DIG_SCOOP_RADIUS = 0.45
+
+local function void_safe_dig_enabled()
+    local v = tostring(settings_get("void_safe_dig", "true")):lower()
+    return v == "true" or v == "1" or v == "yes"
+end
+
+-- Singlenode/void: MCL may spawn dig drops as entities that fall into the void.
+-- When enabled, route drops into the digger inventory during this dig only (no wide scoop).
 local function install_direct_dig_to_inventory()
     local orig = core.handle_node_drops
     if type(orig) ~= "function" then
         return
     end
-    function core.handle_node_drops(pos, drops, digger)
-        orig(pos, drops, digger)
-        if not digger or not digger:is_player() or not pos then
+    if not void_safe_dig_enabled() then
+        core.log("action", "[mcc_bridge] dig drops: Luanti default (mcc_bridge.void_safe_dig=false)")
+        return
+    end
+
+    local dig_drop_receiver = nil
+    local dig_drop_hooked = 0
+    local dug_oldnode_by_pos = {}
+
+    local function dig_pos_key(p)
+        return string.format("%d,%d,%d", p.x, p.y, p.z)
+    end
+
+    core.register_on_dignode(function(pos, oldnode)
+        if not pos then
             return
         end
-        local inv = digger:get_inventory()
-        if not inv then
+        local key = dig_pos_key(pos)
+        if oldnode and oldnode.name then
+            dug_oldnode_by_pos[key] = oldnode
+        end
+    end)
+
+    local function take_dug_oldnode(pos)
+        local key = dig_pos_key(pos)
+        local oldnode = dug_oldnode_by_pos[key]
+        dug_oldnode_by_pos[key] = nil
+        return oldnode
+    end
+
+    local function mcl_node_harvestable_by_digger(digger, oldnode)
+        local ag = rawget(_G, "mcl_autogroup")
+        if not ag or type(ag.can_harvest) ~= "function" or not digger then
+            return true
+        end
+        local nodename = oldnode and oldnode.name
+        if not nodename or nodename == "air" then
+            return true
+        end
+        local tool = digger:get_wielded_item()
+        local toolname = tool and tool:get_name() or ""
+        return ag.can_harvest(nodename, toolname) == true
+    end
+
+    local function drops_match_dug_node(oldnode, drops)
+        if not oldnode or not oldnode.name or type(drops) ~= "table" or #drops == 0 then
+            return false
+        end
+        local def = core.registered_nodes[oldnode.name]
+        if not def then
+            return true
+        end
+        local expected = def.drop
+        if expected == nil then
+            return false
+        end
+        if expected == "" then
+            return false
+        end
+        if type(expected) ~= "string" then
+            return true
+        end
+        local got = ItemStack(drops[1])
+        local want = ItemStack(expected)
+        if got:is_empty() or want:is_empty() then
+            return false
+        end
+        return got:get_name() == want:get_name()
+    end
+
+    local function give_drop_list_to_inv(inv, drops, pos, old_add_item)
+        if type(drops) ~= "table" or not inv then
             return
         end
-        if inv:get_size("main") < 36 then
-            inv:set_size("main", 36)
+        for _, item in ipairs(drops) do
+            local stack = ItemStack(item)
+            if not stack:is_empty() then
+                local leftover = inv:add_item("main", stack)
+                if old_add_item and pos and not leftover:is_empty() then
+                    old_add_item(pos, leftover)
+                end
+            end
         end
-        for _, obj in ipairs(core.get_objects_inside_radius(pos, 2.5) or {}) do
+    end
+
+    local function scoop_item_entities_at_dig_pos(pos, inv)
+        if not pos or not inv then
+            return
+        end
+        for _, obj in ipairs(core.get_objects_inside_radius(pos, VOID_SAFE_DIG_SCOOP_RADIUS) or {}) do
             local ent = obj:get_luaentity()
-            if ent and ent.name == "__builtin:item" and ent.itemstring and ent.itemstring ~= "" and not ent._removed then
+            if ent and ent.itemstring and ent.itemstring ~= "" and not ent._removed then
                 local leftover = inv:add_item("main", ItemStack(ent.itemstring))
                 if leftover:is_empty() then
                     ent._removed = true
@@ -1021,18 +1443,105 @@ local function install_direct_dig_to_inventory()
             end
         end
     end
-    core.log("action", "[mcc_bridge] dig drops → inventory (void-safe)")
+
+    function core.handle_node_drops(pos, drops, digger)
+        if not digger or not digger:is_player() then
+            orig(pos, drops, digger)
+            return
+        end
+        local inv = digger:get_inventory()
+        if not inv then
+            orig(pos, drops, digger)
+            return
+        end
+        if inv:get_size("main") < 36 then
+            inv:set_size("main", 36)
+        end
+
+        local dug_oldnode = take_dug_oldnode(pos)
+        local pname = digger:get_player_name()
+        local harvest_ok = mcl_node_harvestable_by_digger(digger, dug_oldnode)
+
+        dig_drop_receiver = digger
+        dig_drop_hooked = 0
+        local dig_drop_pos = vector.new(pos)
+        local old_add_item = core.add_item
+        core.add_item = function(p, stack)
+            if dig_drop_receiver and dig_drop_pos and p and stack and not stack:is_empty() then
+                if vector.distance(vector.new(p), dig_drop_pos) > VOID_SAFE_DIG_SCOOP_RADIUS + 0.1 then
+                    return old_add_item(p, stack)
+                end
+                local receiver_inv = dig_drop_receiver:get_inventory()
+                if receiver_inv then
+                    if receiver_inv:get_size("main") < 36 then
+                        receiver_inv:set_size("main", 36)
+                    end
+                    local leftover = receiver_inv:add_item("main", stack)
+                    dig_drop_hooked = dig_drop_hooked + 1
+                    if leftover:is_empty() then
+                        return nil
+                    end
+                    return old_add_item(p, leftover)
+                end
+            end
+            return old_add_item(p, stack)
+        end
+        local ok, err = pcall(orig, pos, drops, digger)
+        core.add_item = old_add_item
+        dig_drop_receiver = nil
+        if not ok then
+            error(err)
+        end
+
+        if dig_drop_hooked == 0 then
+            scoop_item_entities_at_dig_pos(pos, inv)
+        end
+
+        if get_stored_mode(pname) == "build"
+            and not core.is_creative_enabled(pname)
+            and not harvest_ok
+            and dig_drop_hooked == 0
+            and drops_match_dug_node(dug_oldnode, drops)
+        then
+            give_drop_list_to_inv(inv, drops, pos, old_add_item)
+        end
+    end
+    core.log(
+        "action",
+        "[mcc_bridge] dig drops → inventory (void-safe, scoop_r="
+            .. tostring(VOID_SAFE_DIG_SCOOP_RADIUS)
+            .. ")"
+    )
 end
 
 apply_join_result = function(name, join)
     local player = core.get_player_by_name(name)
     if not player or not join then
+        bridge_dbg.logf(
+            "session",
+            "apply_join_result noop player=%s has_player=%s has_join=%s",
+            tostring(name),
+            tostring(player ~= nil),
+            tostring(join ~= nil)
+        )
         return
     end
     if join.ok == false then
+        bridge_dbg.logf("session", "apply_join_result denied player=%s err=%s", name, tostring(join.error or "?"))
         return
     end
     if join.wait then
+        local sid = storage:get_string(session_id_storage_key(name))
+        if sid and sid ~= "" then
+            core.log(
+                "action",
+                "[mcc_bridge] session/join drop wait (already granted session_id="
+                    .. sid
+                    .. ") player="
+                    .. name
+            )
+            return
+        end
         lock_waiting_player(player, name)
         storage:set_string("paused_" .. name, "")
         clear_player_inventories(player)
@@ -1045,6 +1554,7 @@ apply_join_result = function(name, join)
         end
         core.set_player_privs(name, { shout = true })
         storage:set_string("mode_" .. name, "play")
+        bridge_dbg.logf("session", "apply_join_result wait_room player=%s", name)
         return
     end
     waiting_intro_sent[name] = nil
@@ -1060,9 +1570,11 @@ apply_join_result = function(name, join)
             name,
             "Session pausiert — keine Bewegung. / Session paused — no movement."
         )
+        bridge_dbg.logf("session", "apply_join_result paused player=%s", name)
         return
     end
     storage:set_string("paused_" .. name, "")
+    storage:set_string(session_id_storage_key(name), tostring(join.session_id or ""))
     set_player_frozen(player, false)
     local privs = {}
     local want_fly = false
@@ -1078,27 +1590,22 @@ apply_join_result = function(name, join)
     core.set_player_privs(name, privs)
     local mode = join.mode or "play"
     storage:set_string("mode_" .. name, mode)
+    local mp = rawget(_G, "mcc_plan")
+    if mp and mp.refresh_hud then
+        mp.refresh_hud(name)
+    end
     local restore_fly = want_fly or mode == "build" or mode == "watch"
     force_exit_fly_mode(player, restore_fly)
-    local inv = player:get_inventory()
-    if inv then
-        clear_player_inventories(player)
-        -- Apply Django inventory only (empty for new players — shop buys fill it).
-        if type(join.inventory) == "table" then
-            for i, stack in ipairs(join.inventory) do
-                if type(stack) == "table" and stack.name then
-                    local item = ItemStack(stack.name .. " " .. tostring(stack.count or 1))
-                    if stack.wear then
-                        item:set_wear(stack.wear)
-                    end
-                    inv:set_stack("main", i, item)
-                end
-            end
-        end
+    if player:get_inventory() then
+        apply_inventory_list(player, join.inventory)
     end
     if join.mode then
         core.chat_send_player(name, "Modus / Mode: " .. tostring(join.mode))
     end
+    core.chat_send_player(
+        name,
+        "Session aktiv — Bewegung freigegeben. / Session active — movement enabled."
+    )
     if type(join.spawn) == "table" and join.spawn.x ~= nil then
         local label = "Region"
         if join.spawn.region_id then
@@ -1108,6 +1615,14 @@ apply_join_result = function(name, join)
     elseif join.teleport_to_spawn then
         teleport_player_to_world_spawn(player)
     end
+    bridge_dbg.logf(
+        "session",
+        "apply_join_result granted player=%s mode=%s session_id=%s inv=%s",
+        name,
+        tostring(join.mode or "?"),
+        tostring(join.session_id or ""),
+        tostring(type(join.inventory) == "table" and #join.inventory or 0)
+    )
 end
 
 handle_join_response = function(name, seq, ok, join, opts)
@@ -1115,22 +1630,65 @@ handle_join_response = function(name, seq, ok, join, opts)
         return
     end
     if seq ~= join_seq[name] then
+        core.log("action", "[mcc_bridge] session/join stale seq player=" .. name .. " seq=" .. tostring(seq))
+        bridge_dbg.logf(
+            "session",
+            "handle_join_response stale seq player=%s seq=%s current=%s wait_poll=%s pending_auth=%s",
+            name,
+            tostring(seq),
+            tostring(join_seq[name]),
+            tostring(waiting_poll[name] ~= nil),
+            tostring(pending_auth[name] ~= nil)
+        )
         return
     end
     opts = opts or {}
     if not ok or not join then
+        core.log("warning", "[mcc_bridge] session/join failed player=" .. name)
         lock_waiting_player(core.get_player_by_name(name), name)
         return
     end
     if join.ok == false then
+        core.log(
+            "warning",
+            "[mcc_bridge] session/join denied player=" .. name .. " err=" .. tostring(join.error or "?")
+        )
         lock_waiting_player(core.get_player_by_name(name), name)
         return
     end
     if join.wait then
+        local sid = storage:get_string(session_id_storage_key(name))
+        if sid and sid ~= "" then
+            core.log(
+                "action",
+                "[mcc_bridge] session/join ignore wait (session_id=" .. sid .. ") player=" .. name
+            )
+            return
+        end
+        core.log("action", "[mcc_bridge] session/join waiting player=" .. name)
         apply_join_result(name, join)
         return
     end
+    -- Grant path: clear wait flags before apply (apply needs player object).
+    waiting_poll[name] = nil
+    pending_auth[name] = nil
     apply_join_result(name, join)
+    core.log(
+        "action",
+        "[mcc_bridge] session/join granted+applied player="
+            .. name
+            .. " mode="
+            .. tostring(join.mode or "?")
+            .. " session_id="
+            .. tostring(join.session_id or "?")
+    )
+    local player = core.get_player_by_name(name)
+    if player and should_freeze_movement(name) then
+        set_player_frozen(player, false)
+        core.after(0.35, function()
+            request_session_join(name, opts or {})
+        end)
+    end
     if opts.granted_chat then
         core.chat_send_player(name, "Session freigegeben! / Session granted!")
     end
@@ -1143,11 +1701,36 @@ request_session_join = function(name, opts)
     if not core.get_player_by_name(name) then
         return
     end
+    opts = opts or {}
+    if join_in_flight[name] then
+        join_resync_after[name] = opts
+        bridge_dbg.logf("session", "request_session_join coalesce player=%s", name)
+        return
+    end
+    join_in_flight[name] = true
     local seq = bump_join_seq(name)
+    bridge_dbg.logf(
+        "session",
+        "request_session_join start player=%s seq=%s wait_poll=%s pending_auth=%s",
+        name,
+        tostring(seq),
+        tostring(waiting_poll[name] ~= nil),
+        tostring(pending_auth[name] ~= nil)
+    )
     api_post("/api/luanti/session/join/", { player = name }, function(ok, join)
+        join_in_flight[name] = nil
         handle_join_response(name, seq, ok, join, opts)
+        local again = join_resync_after[name]
+        join_resync_after[name] = nil
+        if again ~= nil and core.get_player_by_name(name) then
+            if waiting_poll[name] or pending_auth[name] then
+                request_session_join(name, again)
+            end
+        end
     end)
 end
+
+mcc_bridge.request_session_join = request_session_join
 
 local function poll_waiting_sessions()
     for name, _ in pairs(waiting_poll) do
@@ -1157,6 +1740,7 @@ local function poll_waiting_sessions()
             join_seq[name] = nil
             waiting_intro_sent[name] = nil
         else
+            bridge_dbg.logf("session", "poll_waiting_sessions player=%s", name)
             request_session_join(name, { granted_chat = true })
         end
     end
@@ -1228,6 +1812,7 @@ local function ensure_spawn_platform()
 end
 
 core.register_on_mods_loaded(function()
+    mod_availability.log_partner_mods()
     install_play_mode_world_protection()
     install_direct_dig_to_inventory()
     -- Always ensure void worlds have a landing pad (independent of HTTP).
@@ -1269,9 +1854,17 @@ core.register_on_mods_loaded(function()
         core.after(20, regions_loop)
     end)
     core.after(5, poll_waiting_sessions)
+    local mp_boot = mcc_plan_api()
+    if mp_boot and mp_boot.set_api_post then
+        mp_boot.set_api_post(api_post)
+    end
     core.log(
         "action",
-        "[mcc_bridge] loaded server_id=" .. CFG.server_id .. " mod_version=4 shop_ui=hardcoded_de"
+        "[mcc_bridge] loaded server_id="
+            .. CFG.server_id
+            .. " mod_version=5 shop_ui=hardcoded_de"
+            .. " debug="
+            .. bridge_dbg.channel_summary()
     )
 end)
 
@@ -1287,6 +1880,7 @@ end)
 
 core.register_on_joinplayer(function(player)
     local name = player:get_player_name()
+    bridge_dbg.logf("session", "on_joinplayer player=%s pending_auth=true", name)
     -- Strip world-file leftovers immediately; Django inventory is applied only
     -- after session freigabe (wait=false).
     clear_player_inventories(player)
@@ -1304,19 +1898,41 @@ core.register_on_joinplayer(function(player)
     api_post("/api/luanti/auth/check/", { player = name }, function(ok, data)
         if not ok or not data or not data.allowed then
             pending_auth[name] = nil
+            bridge_dbg.logf(
+                "session",
+                "auth/check denied player=%s ok=%s allowed=%s",
+                name,
+                tostring(ok),
+                tostring(data and data.allowed)
+            )
             core.kick_player(name, mcc_auth.MSG_NOT_AUTHORIZED)
             return
         end
+        bridge_dbg.logf("session", "auth/check ok player=%s → session/join", name)
         request_session_join(name)
     end)
 end)
 
+core.register_on_player_inventory_action(function(player, action, inventory, info)
+    if not player or not inventory then
+        return
+    end
+    if type(info) == "table" and info.listname and info.listname ~= "main" then
+        return
+    end
+    schedule_inventory_sync(player)
+end)
+
 core.register_on_leaveplayer(function(player)
     local name = player:get_player_name()
+    inv_sync_after[name] = nil
     waiting_poll[name] = nil
     pending_auth[name] = nil
     join_seq[name] = nil
+    join_in_flight[name] = nil
+    join_resync_after[name] = nil
     waiting_intro_sent[name] = nil
+    clear_stored_session_id(name)
     if region_outline and region_outline.clear_player then
         region_outline.clear_player(name)
     end
@@ -1338,6 +1954,16 @@ core.register_on_shutdown(function()
         post_session_leave(player, name)
     end
 end)
+
+-- Re-fetch session/join from Django (fix desync after Admin freigabe).
+core.register_chatcommand("mccsession", {
+    description = "MCC Session-Join neu anfordern",
+    func = function(name)
+        waiting_intro_sent[name] = nil
+        request_session_join(name, { granted_chat = true })
+        return true
+    end,
+})
 
 -- Open graphical shop (Buy / Sell formspec).
 core.register_chatcommand("mccshop", {
@@ -1392,21 +2018,29 @@ core.register_chatcommand("mccbuy", {
             return false, "Usage: /mccbuy <id> [qty]"
         end
         local tx = name .. "-" .. tostring(os.time()) .. "-" .. tostring(id)
+        local mp = mcc_plan_api()
+        local planning = mp and mp.is_active and mp.is_active(name) or false
         api_post("/api/luanti/shop/buy/", {
             player = name,
             item_id = id,
             quantity = qty,
             client_tx_id = tx,
+            planning = planning,
         }, function(ok, data)
             if not ok or not data or not data.ok then
-                core.chat_send_player(name, "Kauf fehlgeschlagen / buy failed")
+                local err = (data and data.error) or "buy_failed"
+                core.chat_send_player(name, "Kauf fehlgeschlagen / buy failed: " .. tostring(err))
                 return
             end
             local player = core.get_player_by_name(name)
             if player and data.grant then
                 local inv = player:get_inventory()
                 for _, g in ipairs(data.grant) do
-                    inv:add_item("main", ItemStack((g.item_name or "") .. " " .. tostring(g.count or 1)))
+                    local stack = ItemStack((g.item_name or "") .. " " .. tostring(g.count or 1))
+                    if type(g.meta) == "table" and mp and mp.apply_meta_to_stack then
+                        stack = mp.apply_meta_to_stack(stack, g.meta)
+                    end
+                    inv:add_item("main", stack)
                 end
             end
             core.chat_send_player(name, "Velos: " .. tostring(data.velos_spendable or "?"))
@@ -1475,12 +2109,10 @@ core.register_chatcommand("mccsell", {
                 return
             end
             local item_name = nil
-            local stack_size = 1
             for _, c in ipairs(cat.categories or {}) do
                 for _, item in ipairs(c.items or {}) do
                     if tonumber(item.id) == id then
                         item_name = item.item_name
-                        stack_size = tonumber(item.stack_size) or 1
                         break
                     end
                 end
@@ -1492,7 +2124,7 @@ core.register_chatcommand("mccsell", {
                 core.chat_send_player(name, "Unbekannte ID / unknown id")
                 return
             end
-            local need = qty * math.max(1, stack_size)
+            local need = math.max(1, qty)
             if count_item_in_main(inv, item_name) < need then
                 core.chat_send_player(name, "Nicht genug Items im Inventar / not enough items")
                 return

@@ -27,7 +27,14 @@ from luanti.services.session_control import (
     set_session_mode,
     start_session,
 )
-from luanti.services.shop import ShopError, build_catalog_payload, shop_buy, shop_sell, shop_sell_batch
+from luanti.services.shop import (
+    ShopError,
+    build_catalog_payload,
+    parse_planning_flag,
+    shop_buy,
+    shop_sell,
+    shop_sell_batch,
+)
 from luanti.services.shop_registry import replace_registry_items
 from luanti.services.wallet import WalletError, withdraw_velos, wallet_payload
 from luanti.services.city import build_regions_payload
@@ -260,6 +267,23 @@ def luanti_shop_registry(request):
 
 
 @csrf_exempt
+@require_POST
+def luanti_shop_plan_ghost(request):
+    """Receive plan hologram clone audit from mcc_bridge (VERIFY_PLAN_GHOST_SHOP)."""
+    from luanti.services.shop_registry import update_plan_ghost_status
+
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    items = data.get("items")
+    if not isinstance(items, list):
+        return JsonResponse({"ok": False, "error": "invalid_items"}, status=400)
+    saved = update_plan_ghost_status(items)
+    return JsonResponse({"ok": True, "saved": saved})
+
+
+@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def luanti_shop_catalog(request):
     from luanti.services.shop_labels import normalize_language_code
@@ -278,17 +302,29 @@ def luanti_shop_catalog(request):
         if login:
             from luanti.models import LuantiAccount
 
-            account = LuantiAccount.objects.filter(login_name__iexact=login).first()
-            session = get_active_session(login)
-            wp = wallet_payload(account, session=session)
-            payload["velos_spendable"] = wp.get("velos_spendable", 0)
-            payload["wallet_group_name"] = wp.get("wallet_group_name") or ""
-            if session:
-                payload["session_ok"] = True
-                payload["session_paused"] = bool(session.is_paused)
-            else:
-                payload["session_ok"] = False
-                payload["session_paused"] = False
+            try:
+                account = LuantiAccount.objects.filter(login_name__iexact=login).first()
+                session = get_active_session(login)
+                wp = wallet_payload(account, session=session)
+                payload["velos_spendable"] = wp.get("velos_spendable", 0)
+                payload["wallet_group_name"] = wp.get("wallet_group_name") or ""
+                if session:
+                    payload["session_ok"] = True
+                    payload["session_paused"] = bool(session.is_paused)
+                    payload["session_mode"] = session.mode
+                else:
+                    payload["session_ok"] = False
+                    payload["session_paused"] = False
+                logger.info(
+                    "[luanti] shop catalog player=%s session_ok=%s mode=%s velos=%s",
+                    login,
+                    payload.get("session_ok"),
+                    payload.get("session_mode"),
+                    payload.get("velos_spendable"),
+                )
+            except Exception:
+                logger.exception("[luanti] shop catalog failed player=%s", login)
+                return JsonResponse({"ok": False, "error": "catalog_player_error"}, status=500)
         return JsonResponse(payload)
     lang = normalize_language_code(request.GET.get("lang") or lang)
     return JsonResponse(build_catalog_payload(lang=lang))
@@ -303,12 +339,27 @@ def luanti_shop_buy(request):
         return err
     if not data.get("client_tx_id"):
         return JsonResponse({"ok": False, "error": "missing_client_tx_id"}, status=400)
+    planning = parse_planning_flag(data.get("planning"))
+    login_name = str(data.get("player") or "")
+    try:
+        item_id = int(data.get("item_id"))
+        quantity = int(data.get("quantity") or 1)
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    logger.info(
+        "[luanti] shop buy request player=%s item_id=%s qty=%s planning=%s",
+        login_name,
+        item_id,
+        quantity,
+        planning,
+    )
     try:
         result = shop_buy(
-            login_name=str(data.get("player") or ""),
-            item_id=int(data.get("item_id")),
-            quantity=int(data.get("quantity") or 1),
+            login_name=login_name,
+            item_id=item_id,
+            quantity=quantity,
             client_tx_id=str(data.get("client_tx_id") or ""),
+            planning=planning,
         )
     except (TypeError, ValueError):
         return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
@@ -537,3 +588,143 @@ def luanti_station_config(request):
     else:
         touch_station(station)
     return JsonResponse(station_desired_payload(station))
+
+
+@csrf_exempt
+@require_POST
+def luanti_plan_placed(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    from luanti.services.plan import PlanError, register_placed_block
+
+    try:
+        result = register_placed_block(
+            login_name=str(data.get("player") or ""),
+            world=str(data.get("world") or "world"),
+            x=int(data.get("x")),
+            y=int(data.get("y")),
+            z=int(data.get("z")),
+            target_name=str(data.get("target_name") or ""),
+            buy_price_velos=int(data.get("buy_price_velos") or 1),
+            shop_item_id=int(data["shop_item_id"]) if data.get("shop_item_id") else None,
+            param2=int(data.get("param2") or 0),
+            region_id=str(data.get("region_id") or "").strip() or None,
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except PlanError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_plan_removed(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    from luanti.services.plan import PlanError, unregister_removed_block
+
+    try:
+        result = unregister_removed_block(
+            world=str(data.get("world") or "world"),
+            x=int(data.get("x")),
+            y=int(data.get("y")),
+            z=int(data.get("z")),
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except PlanError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_plan_summary(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    from luanti.services.plan import PlanError, summary_for_player
+
+    try:
+        result = summary_for_player(
+            login_name=str(data.get("player") or ""),
+            region_id=str(data.get("region_id") or "").strip() or None,
+            world=str(data.get("world") or "world"),
+            x=int(data["x"]) if data.get("x") is not None else None,
+            y=int(data["y"]) if data.get("y") is not None else None,
+            z=int(data["z"]) if data.get("z") is not None else None,
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except PlanError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_plan_convert(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    if not data.get("client_tx_id"):
+        return JsonResponse({"ok": False, "error": "missing_client_tx_id"}, status=400)
+    from luanti.services.plan import PlanError, materialize_blocks
+
+    try:
+        result = materialize_blocks(
+            login_name=str(data.get("player") or ""),
+            region_id=str(data.get("region_id") or ""),
+            client_tx_id=str(data.get("client_tx_id") or ""),
+            max_count=int(data.get("max_count") or 1),
+            mode=str(data.get("mode") or "manual"),
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except PlanError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_plan_clear(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    from luanti.services.plan import PlanError, remove_planned_blocks
+    from django.conf import settings as django_settings
+
+    default_batch = int(getattr(django_settings, "LUANTI_PLAN_CLEAR_DEFAULT_BATCH", 32) or 32)
+    max_cap = int(getattr(django_settings, "LUANTI_PLAN_CLEAR_MAX_BATCH", 512) or 512)
+    raw_max = data.get("max_count")
+    max_count = default_batch
+    if raw_max is not None:
+        max_count = int(raw_max)
+        if max_count <= 0:
+            max_count = max_cap
+
+    try:
+        result = remove_planned_blocks(
+            login_name=str(data.get("player") or ""),
+            region_id=str(data.get("region_id") or ""),
+            max_count=max_count,
+            mode=str(data.get("mode") or "manual"),
+            world=str(data.get("world") or "world"),
+            x=int(data["x"]) if data.get("x") is not None else None,
+            y=int(data["y"]) if data.get("y") is not None else None,
+            z=int(data["z"]) if data.get("z") is not None else None,
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+    except PlanError as exc:
+        return JsonResponse({"ok": False, "error": exc.code}, status=400)
+    return JsonResponse(result)

@@ -28,12 +28,29 @@ class Command(BaseCommand):
         
         # Task 2: Clean up inactive sessions
         self.cleanup_expired_sessions()
+
+        # Task 3: Luanti plan live conversion (admin-started regions)
+        self.tick_plan_live_convert()
         
         # HERE additional tasks can be called in the future:
         # self.generate_daily_reports()
         # self.sync_external_data()
 
         self.stdout.write(self.style.NOTICE("--- MCC Worker beendet ---"))
+
+    def tick_plan_live_convert(self):
+        if not getattr(settings, "LUANTI_PLAN_AUTO_CONVERT_ENABLED", False):
+            return
+        try:
+            from luanti.services.plan import tick_plan_live_convert_regions
+
+            converted = tick_plan_live_convert_regions()
+            if converted:
+                self.stdout.write(
+                    f"Plan live convert: {converted} block(s) materialized."
+                )
+        except Exception as exc:
+            logger.warning("[mcc_worker] plan live convert tick failed: %s", exc)
 
     def cleanup_expired_sessions(self):
         """Deletes sessions that have exceeded the inactivity limit."""

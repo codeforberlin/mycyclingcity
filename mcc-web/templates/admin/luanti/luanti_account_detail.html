@@ -22,13 +22,25 @@
     empty.value = '';
     empty.textContent = '—';
     select.appendChild(empty);
+    var found = false;
     leaves.forEach(function (g) {
       var opt = document.createElement('option');
       opt.value = String(g.id);
       opt.textContent = g.name + ' (' + g.velos_spendable + ')';
-      if (keep && keep === String(g.id)) opt.selected = true;
+      if (keep && keep === String(g.id)) {
+        opt.selected = true;
+        found = true;
+      }
       select.appendChild(opt);
     });
+    if (keep && !found) {
+      var orphanLabel = select.getAttribute('data-selected-label') || ('#' + keep);
+      var orphan = document.createElement('option');
+      orphan.value = keep;
+      orphan.textContent = orphanLabel;
+      orphan.selected = true;
+      select.appendChild(orphan);
+    }
   }
   function bindPair(homeSel, walletSel, selectedWallet) {
     if (!homeSel || !walletSel) return;
@@ -90,7 +102,7 @@
 {% block content %}
 <div class="luanti-admin">
   <p class="muted" style="margin-bottom:1rem;">
-    <a href="{% url 'admin:luanti_accounts' %}">{% trans "Luanti-Accounts" %}</a>
+    <a href="{% url 'admin:luanti_accounts' %}">{% trans "Accounts" %}</a>
     → {{ account.login_name }}
   </p>
   <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 1rem;">{{ title }}</h1>
@@ -181,7 +193,9 @@
           {% endfor %}
         </select>
         <label for="wallet-detail">{% trans "Aktives Wallet (Leaf)" %}</label>
-        <select id="wallet-detail" name="active_wallet" data-selected="{% if account.active_wallet_id %}{{ account.active_wallet_id }}{% endif %}">
+        <select id="wallet-detail" name="active_wallet"
+                data-selected="{% if account.active_wallet_id %}{{ account.active_wallet_id }}{% endif %}"
+                data-selected-label="{% if account.active_wallet %}{{ account.active_wallet.name }} ({{ account.active_wallet.velos_spendable }}){% endif %}">
           <option value="">—</option>
           {% for g in wallet_choices %}
           <option value="{{ g.pk }}"{% if account.active_wallet_id == g.pk %} selected{% endif %}>{{ g.name }} ({{ g.velos_spendable }})</option>

@@ -24,11 +24,17 @@ from luanti.api_views import (
     luanti_shop_buy,
     luanti_shop_catalog,
     luanti_shop_registry,
+    luanti_shop_plan_ghost,
     luanti_shop_sell,
     luanti_shop_sell_batch,
     luanti_wallet_balance,
     luanti_wallet_withdraw,
     luanti_station_config,
+    luanti_plan_placed,
+    luanti_plan_removed,
+    luanti_plan_summary,
+    luanti_plan_convert,
+    luanti_plan_clear,
 )
 
 from . import views
@@ -55,6 +61,7 @@ urlpatterns = [
     path('luanti/inventory/sync/', luanti_inventory_sync, name='luanti_inventory_sync'),
     path('luanti/shop/catalog/', luanti_shop_catalog, name='luanti_shop_catalog'),
     path('luanti/shop/registry/', luanti_shop_registry, name='luanti_shop_registry'),
+    path('luanti/shop/plan-ghost/', luanti_shop_plan_ghost, name='luanti_shop_plan_ghost'),
     path('luanti/shop/buy/', luanti_shop_buy, name='luanti_shop_buy'),
     path('luanti/shop/sell/', luanti_shop_sell, name='luanti_shop_sell'),
     path('luanti/shop/sell_batch/', luanti_shop_sell_batch, name='luanti_shop_sell_batch'),
@@ -65,6 +72,11 @@ urlpatterns = [
     path('luanti/arena/state/', luanti_arena_state, name='luanti_arena_state'),
     path('luanti/counter/scan/', luanti_counter_scan, name='luanti_counter_scan'),
     path('luanti/station/config/', luanti_station_config, name='luanti_station_config'),
+    path('luanti/plan/placed/', luanti_plan_placed, name='luanti_plan_placed'),
+    path('luanti/plan/removed/', luanti_plan_removed, name='luanti_plan_removed'),
+    path('luanti/plan/summary/', luanti_plan_summary, name='luanti_plan_summary'),
+    path('luanti/plan/convert/', luanti_plan_convert, name='luanti_plan_convert'),
+    path('luanti/plan/clear/', luanti_plan_clear, name='luanti_plan_clear'),
 
     # New endpoints for the map system
     path('get-travel-locations', views.get_travel_locations, name='get_travel_locations'),

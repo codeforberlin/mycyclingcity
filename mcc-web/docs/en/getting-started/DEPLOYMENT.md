@@ -220,11 +220,35 @@ source /data/appl/mcc/venv/bin/activate
 # 6. Install/update dependencies (if needed)
 pip install -r requirements.txt
 
-# 7. Run deployment script
+# 7. Run deployment script (includes Luanti mod symlinks)
 python utils/deploy_production.py
 
 # 8. Start application server (script)
+# Minecraft workers/server are no longer started here (game runtime: Luanti).
 /data/appl/mcc/mcc-web/scripts/mcc-web.sh start
+
+# 9. Luanti (after mod changes in the archive): restart game server
+# `mcc-web.sh stop` also stops Luanti (session save); start remains separate:
+/data/appl/mcc/mcc-web/scripts/luanti_server.sh restart
+```
+
+### Luanti mods
+
+| Location | Content |
+|----------|---------|
+| NAS dev (Git) | `mcc-web/luanti_mod/` — Cursor development |
+| PROD | **`/data/appl/mcc/mcc-web/luanti_mod/`** — mod files (rsync on deploy) |
+| Luanti | **`/data/games/mcc/luanti/mods/`** — symlinks only → `…/mcc-web/luanti_mod/mcc_*` |
+
+`deploy_production.py` runs `sync_luanti_mod.sh` then `link_luanti_mods.sh`. `luanti_server.sh` refreshes symlinks on start only.
+
+Override source: `MCC_LUANTI_MODS_SYNC_SRC=/path/to/nas/.../luanti_mod`
+
+Manual:
+
+```bash
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/sync_luanti_mod.sh
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/link_luanti_mods.sh
 ```
 
 ## Important Notes

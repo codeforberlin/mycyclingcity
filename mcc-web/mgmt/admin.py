@@ -40,7 +40,7 @@ import math
 
 logger = logging.getLogger(__name__)
 
-from api.velos import format_velos_de, get_fkm_factor, calculate_session_velos
+from api.velos import format_velos_de, get_fkm_factor, calculate_session_velos, get_cyclist_leaf_group
 from api.travel_velos import get_track_goal_velos, refresh_milestone_position_velos, refresh_track_goal_velos
 
 User = get_user_model()
@@ -52,6 +52,95 @@ def format_km_de(value):
     if value is None: return "0,00 km"
     formatted = f"{float(value):,.2f}"
     return formatted.replace(',', '[TEMP]').replace('.', ',').replace('[TEMP]', '.') + " km"
+
+
+class AdminNavSelect(forms.Select):
+    """Select with inline link to open the chosen related object in admin (JS updates on change)."""
+
+    def __init__(
+        self,
+        attrs=None,
+        choices=(),
+        *,
+        nav_link_id: str = "",
+        nav_label: str = "",
+        nav_object_id=None,
+        url_pattern: str = "",
+        change_url_name: str = "admin:api_group_change",
+    ):
+        super().__init__(attrs, choices)
+        self.nav_link_id = nav_link_id
+        self.nav_label = nav_label
+        self.nav_object_id = nav_object_id
+        self.url_pattern = url_pattern
+        self.change_url_name = change_url_name
+
+    def render(self, name, value, attrs=None, renderer=None):
+        if attrs is None:
+            attrs = {}
+        attrs = {**self.attrs, **attrs}
+        if self.url_pattern:
+            attrs.setdefault("data-mcc-group-url-pattern", self.url_pattern)
+        if self.nav_label:
+            attrs.setdefault("data-mcc-group-link-label", self.nav_label)
+        if self.nav_link_id:
+            attrs.setdefault("data-mcc-nav-link-id", self.nav_link_id)
+
+        select_html = super().render(name, value, attrs, renderer)
+        selected_id = value if value not in (None, "") else self.nav_object_id
+        if selected_id:
+            link_href = reverse(self.change_url_name, args=[selected_id])
+            link_style = ""
+        else:
+            link_href = "#"
+            link_style = "display:none"
+        link_html = format_html(
+            '<a href="{}" id="{}" class="cyclist-group-admin-link" style="{}" '
+            'target="_blank" rel="noopener noreferrer">{}</a>',
+            link_href,
+            self.nav_link_id,
+            link_style,
+            self.nav_label,
+        )
+        return format_html(
+            '<span class="mcc-group-nav-inline">{}</span>',
+            format_html("{}{}", mark_safe(select_html), link_html),
+        )
+
+
+def _mcc_attach_admin_nav_link(
+    field,
+    object_id,
+    *,
+    label: str,
+    link_id: str,
+    change_url_name: str,
+) -> None:
+    """Inline nav link right of a model choice select (+ JS updates on change)."""
+    url_pattern = reverse(change_url_name, args=[0]).replace("/0/", "/{id}/")
+    old_widget = field.widget
+    attrs = dict(getattr(old_widget, "attrs", None) or {})
+    widget = AdminNavSelect(
+        attrs=attrs,
+        nav_link_id=link_id,
+        nav_label=str(label),
+        nav_object_id=object_id,
+        url_pattern=url_pattern,
+        change_url_name=change_url_name,
+    )
+    if hasattr(old_widget, "choices"):
+        widget.choices = old_widget.choices
+    field.widget = widget
+
+
+def _mcc_attach_group_admin_nav_link(field, group_id, *, label: str, link_id: str) -> None:
+    _mcc_attach_admin_nav_link(
+        field,
+        group_id,
+        label=label,
+        link_id=link_id,
+        change_url_name="admin:api_group_change",
+    )
 
 
 def _get_top_parent_group(group):
@@ -476,6 +565,11 @@ class GroupTravelStatusInline(admin.TabularInline):
     fields = ('group', 'current_travel_distance_display', 'abort_trip_action')
     readonly_fields = ('current_travel_distance_display', 'abort_trip_action')
 
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
     def get_extra(self, request, obj=None, **kwargs):
         """Always show one empty row for adding groups."""
         return 1
@@ -525,9 +619,21 @@ class GroupTravelStatusInline(admin.TabularInline):
         class GroupTravelStatusFormSet(formset):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-                for form in self.forms:
-                    if 'group' in form.fields:
-                        form.fields['group'].required = False
+                for form_index, form in enumerate(self.forms):
+                    if 'group' not in form.fields:
+                        continue
+                    form.fields['group'].required = False
+                    group_id = None
+                    if form.instance and form.instance.pk and form.instance.group_id:
+                        group_id = form.instance.group_id
+                    prefix = form.prefix or f"row-{form_index}"
+                    safe_id = prefix.replace("-", "_")
+                    _mcc_attach_group_admin_nav_link(
+                        form.fields["group"],
+                        group_id,
+                        label=_("Gruppe öffnen →"),
+                        link_id=f"mcc-nav-link-gts-{safe_id}",
+                    )
 
             def clean(self):
                 """Validate deletions and ignore empty add rows (zero groups allowed)."""
@@ -643,11 +749,21 @@ class GroupTravelStatusInline(admin.TabularInline):
                 return obj.name
 
             field.label_from_instance = label_from_instance
+            _mcc_attach_group_admin_nav_link(
+                field,
+                None,
+                label=_("Gruppe öffnen →"),
+                link_id="mcc-nav-link-gts-empty",
+            )
             return field
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     class Media:
-        js = ('admin/js/grouptravelstatus_inline.js',)
+        css = {"all": ("admin/css/group_admin.css",)}
+        js = (
+            "admin/js/cyclist_group_link.js",
+            "admin/js/grouptravelstatus_inline.js",
+        )
 
 class LeafGroupTravelContributionInline(admin.TabularInline):
     """
@@ -1906,7 +2022,7 @@ if admin.site.is_registered(User):
 
 
 @admin.register(User)
-class MCCUserAdmin(BaseUserAdmin):
+class MCCUserAdmin(RetryOnDbLockMixin, BaseUserAdmin):
     """User admin with assigned TOP groups (via api.Group.managers)."""
 
     list_display = BaseUserAdmin.list_display + ("managed_top_groups_display",)
@@ -2029,6 +2145,15 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
         }),
     )
 
+    class Media:
+        js = ("admin/js/cyclist_group_link.js",)
+        css = {"all": ("admin/css/group_admin.css",)}
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
     def get_queryset(self, request):
         """Filter groups based on operator permissions."""
         qs = super().get_queryset(request)
@@ -2141,6 +2266,25 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
             form.base_fields['parent'].queryset = Group.objects.filter(
                 id__in=managed_group_ids
             )
+
+        if "parent" in form.base_fields:
+            parent_id = obj.parent_id if obj else None
+            _mcc_attach_group_admin_nav_link(
+                form.base_fields["parent"],
+                parent_id,
+                label=_("Übergeordnete Gruppe öffnen →"),
+                link_id="mcc-nav-link-parent",
+            )
+
+        if "group_type" in form.base_fields:
+            group_type_id = obj.group_type_id if obj else None
+            _mcc_attach_admin_nav_link(
+                form.base_fields["group_type"],
+                group_type_id,
+                label=_("Gruppentyp öffnen →"),
+                link_id="mcc-nav-link-group-type",
+                change_url_name="admin:api_grouptype_change",
+            )
         
         # WICHTIG: managers-Feld wird nicht mehr hier gefiltert,
         # sondern in formfield_for_manytomany() gehandhabt
@@ -2192,11 +2336,6 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
         return mark_safe(f'{_("Keine Farbe definiert")}<br><small style="margin-top: 5px; display: block;">{color_picker_links}</small>')
     color_preview.short_description = _("Farbvorschau")
 
-    class Media:
-        css = {
-            'all': ('admin/css/group_admin.css',)
-        }
-
 class CyclistAdminForm(forms.ModelForm):
     """Custom form for Cyclist admin with single group selection."""
     
@@ -2207,6 +2346,9 @@ class CyclistAdminForm(forms.ModelForm):
         label=_("Gruppe"),
         help_text=_("Wählen Sie eine Gruppe aus. Ein Radler muss immer einer Gruppe zugeordnet werden. Ein Radler darf nur einer Gruppe zugeordnet werden.")
     )
+
+    class Media:
+        js = ("admin/js/cyclist_group_link.js",)
     
     class Meta:
         model = Cyclist
@@ -2241,6 +2383,21 @@ class CyclistAdminForm(forms.ModelForm):
             except Exception:
                 # If instance is not yet saved, groups might not be accessible
                 pass
+
+        group_id = None
+        if "group" in self.initial and self.initial.get("group"):
+            group_id = self.initial.get("group")
+        elif self.instance and self.instance.pk:
+            first = self.instance.groups.first()
+            if first:
+                group_id = first.pk
+        if "group" in self.fields:
+            _mcc_attach_group_admin_nav_link(
+                self.fields["group"],
+                group_id,
+                label=_("Gruppe öffnen →"),
+                link_id="mcc-nav-link-cyclist-group",
+            )
         
     def clean(self):
         """Validate cyclist data."""
@@ -2271,6 +2428,10 @@ class CyclistAdminForm(forms.ModelForm):
 @admin.register(Cyclist)
 class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
     form = CyclistAdminForm
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
     list_display = (
         'user_id', 'id_tag', 'groups_display', 'velos_balance_display',
         'distance_total_display', 'last_active', 'is_visible', 'is_km_collection_enabled',
@@ -2284,6 +2445,12 @@ class CyclistAdmin(RetryOnDbLockMixin, BaseAdmin):
         'is_visible', 'is_km_collection_enabled', 'is_arena_sim_allowed', 'last_active',
     )
     actions = ['redeem_velos_action']
+
+    class Media:
+        css = {
+            "all": ("admin/css/group_admin.css",),
+        }
+        js = ("admin/js/cyclist_group_link.js",)
 
     def has_module_permission(self, request):
         if request.user.is_superuser:
@@ -2468,6 +2635,7 @@ class CyclistVelosRedemptionAdmin(BaseAdmin):
 class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
     list_display = (
         'cyclist_link',
+        'leaf_group_display',
         'top_group_display',
         'device_link',
         'cumulative_mileage_display',
@@ -2501,7 +2669,10 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
         from django.db.models.functions import Coalesce
         
         qs = super().get_queryset(request)
-        qs = qs.select_related('cyclist', 'device', 'device__configuration').prefetch_related('cyclist__groups__parent')
+        qs = qs.select_related('cyclist', 'device', 'device__configuration').prefetch_related(
+            'cyclist__groups__parent',
+            'cyclist__groups__children',
+        )
         
         # Annotate with first group name for sorting
         # This allows sorting by the first group's name (as a proxy for top group sorting)
@@ -2561,7 +2732,19 @@ class CyclistDeviceCurrentMileageAdmin(BaseAdmin):
         return format_html('<a href="{}">{}</a>', url, obj.device)
     device_link.short_description = _("Gerät")
     device_link.admin_order_field = 'device__name'
-    
+
+    def leaf_group_display(self, obj):
+        """Leaf group for Velos ledger (single true leaf assignment)."""
+        if not obj or not obj.cyclist:
+            return "-"
+        leaf = get_cyclist_leaf_group(obj.cyclist)
+        if not leaf:
+            return "-"
+        url = reverse('admin:api_group_change', args=[leaf.pk])
+        return format_html('<a href="{}">{}</a>', url, leaf.name)
+
+    leaf_group_display.short_description = _("Leaf-Gruppe")
+
     def top_group_display(self, obj):
         """Display the top parent group of the cyclist with admin link."""
         if not obj or not obj.cyclist:
@@ -2611,7 +2794,16 @@ class GroupEventStatusInline(admin.TabularInline):
     # Exclude fields that are not shown but have defaults - they will be set automatically
     exclude = ('current_velos', 'start_velos_offset')
     template = 'admin/eventboard/groupeventstatus_inline.html'
-    
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
+    class Media:
+        css = {"all": ("admin/css/group_admin.css",)}
+        js = ("admin/js/cyclist_group_link.js",)
+
     def has_view_permission(self, request, obj=None):
         """Operator kann Gruppen-Event-Status anzeigen, wenn das Event bearbeitet werden kann."""
         if request.user.is_superuser:
@@ -2710,6 +2902,12 @@ class GroupEventStatusInline(admin.TabularInline):
                 return f"{obj.name} ({obj.group_type})"
             
             field.label_from_instance = label_from_instance
+            _mcc_attach_group_admin_nav_link(
+                field,
+                None,
+                label=_("Gruppe öffnen →"),
+                link_id="mcc-nav-link-ges-empty",
+            )
             return field
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
@@ -2760,66 +2958,59 @@ class GroupEventStatusInline(admin.TabularInline):
                                     # group_id ist möglicherweise kein gültiger Integer
                                     logger.debug(f"[GroupEventStatusFormSet.__init__] Invalid group_id={group_id}")
                 
-                # WICHTIG: Setze group.required = False für ALLE Formulare (auch bestehende)
+                # Saved rows keep a required group so they can be changed.
+                # The empty extra row stays optional; removal uses the delete checkbox.
                 for form in self.forms:
                     if 'group' in form.fields:
-                        form.fields['group'].required = False
-                
-                # Get available groups for selection
+                        form.fields['group'].required = bool(
+                            form.instance and form.instance.pk
+                        )
+
                 if obj and obj.pk:
-                    # Exclude groups that already participate in this event
                     existing_group_ids = obj.group_statuses.values_list('group_id', flat=True)
                     available_groups = Group.objects.exclude(
                         id__in=existing_group_ids
                     ).filter(
                         is_visible=True
                     )
-                    
-                    # Filter for operators (use formset_managed_group_ids from local variable)
                     if formset_managed_group_ids is not None:
                         available_groups = available_groups.filter(id__in=formset_managed_group_ids)
-                    
-                    available_groups = available_groups.order_by('name')
-                    
-                    # Für bestehende Einträge: Gruppe-Feld komplett deaktivieren (nicht editierbar)
-                    for form in self.forms:
-                        if form.instance and form.instance.pk:
-                            if 'group' in form.fields:
-                                # Für bestehende Einträge: Nur die zugewiesene Gruppe im Queryset
-                                if form.instance.group_id:
-                                    assigned_group = Group.objects.filter(id=form.instance.group_id).first()
-                                    if assigned_group:
-                                        form.fields['group'].queryset = Group.objects.filter(id=assigned_group.id)
-                                    else:
-                                        form.fields['group'].queryset = Group.objects.none()
-                                else:
-                                    form.fields['group'].queryset = Group.objects.none()
-                                
-                                # Feld komplett deaktivieren - nicht editierbar
-                                form.fields['group'].widget.attrs['disabled'] = 'disabled'
-                                form.fields['group'].widget.attrs['readonly'] = 'readonly'
-                                form.fields['group'].widget.attrs['style'] = 'pointer-events: none; background-color: #e9ecef; color: #6c757d; cursor: not-allowed;'
-                                form.fields['group'].widget.attrs['class'] = 'readonly-group-field'
-                                # WICHTIG: Speichere die group-Instanz für später in clean()
-                                form._group_instance = form.instance.group
+                elif formset_managed_group_ids is not None:
+                    available_groups = Group.objects.filter(
+                        id__in=formset_managed_group_ids,
+                        is_visible=True,
+                    )
                 else:
-                    # Für neue Events: Alle verwalteten Gruppen anzeigen
-                    if formset_managed_group_ids is not None:
-                        available_groups = Group.objects.filter(
-                            id__in=formset_managed_group_ids,
-                            is_visible=True
-                        ).order_by('name')
-                    else:
-                        available_groups = Group.objects.filter(is_visible=True).order_by('name')
-                    
-                    # Für neue Einträge: Gruppenauswahl konfigurieren
-                    for form in self.forms:
-                        if not form.instance.pk:
-                            if 'group' in form.fields:
-                                # Filter the queryset to only show available groups
-                                form.fields['group'].queryset = available_groups
-                                # Use label_from_instance to show group name and type
-                                form.fields['group'].label_from_instance = lambda obj: f"{obj.name} ({obj.group_type})"
+                    available_groups = Group.objects.filter(is_visible=True)
+
+                available_groups = available_groups.order_by('name')
+
+                def group_label(group):
+                    return f"{group.name} ({group.group_type})"
+
+                for form_index, form in enumerate(self.forms):
+                    if "group" not in form.fields:
+                        continue
+                    group_id = None
+                    queryset = available_groups
+                    if form.instance and form.instance.pk and form.instance.group_id:
+                        group_id = form.instance.group_id
+                        # Keep the assigned group selectable together with groups
+                        # that are not on this event yet.
+                        queryset = (
+                            available_groups | Group.objects.filter(pk=group_id)
+                        ).distinct().order_by('name')
+                        form.fields['group'].required = True
+                    form.fields['group'].queryset = queryset
+                    form.fields['group'].label_from_instance = group_label
+                    prefix = form.prefix or f"row-{form_index}"
+                    safe_id = prefix.replace("-", "_")
+                    _mcc_attach_group_admin_nav_link(
+                        form.fields["group"],
+                        group_id,
+                        label=_("Gruppe öffnen →"),
+                        link_id=f"mcc-nav-link-ges-{safe_id}",
+                    )
             
             def clean(self):
                 """Validate formset and handle empty forms and excluded fields."""
@@ -2882,50 +3073,35 @@ class GroupEventStatusInline(admin.TabularInline):
                         form.errors.pop('id', None)
                         logger.debug(f"[GroupEventStatusFormSet.clean] Removed id error for form {i}, set id={form.instance.pk}")
                     
-                    # Handle forms with errors first (before cleaned_data is available)
-                    if form.errors:
-                        # Check if form is empty (no group selected, not deleted)
-                        group_value = form.data.get(form.add_prefix('group'), '') if hasattr(form, 'data') else None
-                        delete_value = form.data.get(form.add_prefix('DELETE'), False) if hasattr(form, 'data') else False
-                        
-                        logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} has errors. group_value={group_value}, delete_value={delete_value}")
-                        
-                        # If form is empty (no group, not deleted), mark it for deletion and clear errors
-                        if not group_value and not delete_value:
-                            logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} is empty - marking for deletion and clearing errors")
-                            form.errors.clear()
-                            # Set DELETE in form data so Django knows to skip this form
-                            if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
-                                delete_key = form.add_prefix('DELETE')
-                                # Create a mutable copy of form.data if needed
-                                if hasattr(form.data, '_mutable'):
-                                    form.data._mutable = True
-                                form.data[delete_key] = True
-                    
-                    # Handle empty forms in cleaned_data (after validation)
+                    posted_id = ''
+                    group_value = None
+                    delete_value = False
+                    if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
+                        posted_id = form.data.get(form.add_prefix('id'), '') or ''
+                        group_value = form.data.get(form.add_prefix('group'), '')
+                        delete_value = form.data.get(form.add_prefix('DELETE'), False)
+                    is_existing = bool((form.instance and form.instance.pk) or posted_id)
+
+                    # Ignore the empty extra row. Never drop a saved row just
+                    # because the group value is missing from the POST body.
+                    if form.errors and not group_value and not delete_value and not is_existing:
+                        logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} is empty - marking for deletion and clearing errors")
+                        form.errors.clear()
+                        if hasattr(form, 'data') and hasattr(form, 'add_prefix'):
+                            delete_key = form.add_prefix('DELETE')
+                            if hasattr(form.data, '_mutable'):
+                                form.data._mutable = True
+                            form.data[delete_key] = True
+
                     if form.cleaned_data:
                         group = form.cleaned_data.get('group')
                         delete = form.cleaned_data.get('DELETE', False)
-                        
                         logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} cleaned_data: group={group}, DELETE={delete}")
-                        
-                        # If form is empty (no group, not deleted), mark it for deletion to skip validation
-                        if not group and not delete:
+                        if not group and not delete and not is_existing:
                             logger.debug(f"[GroupEventStatusFormSet.clean] Form {i} is empty in cleaned_data - marking for deletion")
                             form.cleaned_data['DELETE'] = True
-                            # Clear any errors for empty forms
                             if form.errors:
                                 form.errors.clear()
-                    
-                    # WICHTIG: Für disabled group-Felder den Wert aus der Instanz setzen
-                    # Django sendet disabled Felder nicht mit, daher müssen wir den Wert manuell setzen
-                    if form.instance and form.instance.pk and form.cleaned_data:
-                        # Wenn group-Feld disabled ist, setze den Wert aus der Instanz
-                        if hasattr(form, '_group_instance'):
-                            # Setze group aus der Instanz, wenn es nicht in cleaned_data ist
-                            if 'group' not in form.cleaned_data or form.cleaned_data.get('group') is None:
-                                form.cleaned_data['group'] = form._group_instance
-                                logger.debug(f"[GroupEventStatusFormSet.clean] Set group from instance for form {i}: {form._group_instance}")
                     
                     # Set default values for excluded fields if they're missing
                     if form.instance and form.instance.pk and form.cleaned_data:
@@ -3114,7 +3290,21 @@ class TravelTrackAdminForm(forms.ModelForm):
             ).order_by('name')
             # Für Superuser ist es optional (kann später gesetzt werden)
             self.fields['assigned_to_group'].required = False
-    
+
+        if "assigned_to_group" in self.fields:
+            top_group_id = None
+            if self.instance and self.instance.pk and self.instance.assigned_to_group_id:
+                top_group_id = self.instance.assigned_to_group_id
+            _mcc_attach_group_admin_nav_link(
+                self.fields["assigned_to_group"],
+                top_group_id,
+                label=_("TOP-Gruppe öffnen →"),
+                link_id="mcc-nav-link-traveltrack-top-group",
+            )
+
+    class Media:
+        js = ("admin/js/cyclist_group_link.js",)
+
     def clean(self):
         """Validate travel track data and convert timezone-aware datetimes."""
         cleaned_data = super().clean()
@@ -3189,6 +3379,15 @@ class TravelTrackAdmin(admin.ModelAdmin):
     inlines = [MilestoneInline, GroupTravelStatusInline, LeafGroupTravelContributionInline]
     fields = ('name', 'assigned_to_group', 'track_file', 'total_length_km', 'is_active', 'is_visible_on_map', 'auto_start', 'start_time', 'end_time', 'geojson_data', 'top_groups_ranking_display')
     readonly_fields = ('total_length_km', 'top_groups_ranking_display')
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
+    class Media:
+        css = {"all": ("admin/css/group_admin.css",)}
+        js = ("admin/js/cyclist_group_link.js",)
 
     def get_inlines(self, request, obj):
         """New routes: milestones + participating groups; leaf contributions only after save."""
@@ -3882,23 +4081,55 @@ class MilestoneAdmin(admin.ModelAdmin):
         """assigned_to_group ist nur für Superuser editierbar."""
         readonly = list(self.readonly_fields)
         if not request.user.is_superuser:
-            readonly.append('assigned_to_group')
+            readonly.append('assigned_to_group_link_display')
         return readonly
-    
-    def get_form(self, request, obj=None, **kwargs):
-        """Filter assigned_to_group auf TOP-Gruppen für Superuser."""
-        form = super().get_form(request, obj, **kwargs)
-        
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
         if request.user.is_superuser:
-            # Für Superuser: Nur TOP-Gruppen anzeigen (Gruppen ohne Parent)
-            from api.models import Group
-            if 'assigned_to_group' in form.base_fields:
-                form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
-                    parent__isnull=True,
-                    is_visible=True
-                ).order_by('name')
-        
-        return form
+            return fieldsets
+        adjusted = []
+        for title, options in fieldsets:
+            options = dict(options)
+            if 'fields' in options:
+                fields = list(options['fields'])
+                if 'assigned_to_group' in fields:
+                    fields[fields.index('assigned_to_group')] = 'assigned_to_group_link_display'
+                options['fields'] = tuple(fields)
+            adjusted.append((title, options))
+        return adjusted
+
+    @admin.display(description=_("Zugewiesene TOP-Gruppe"))
+    def assigned_to_group_link_display(self, obj):
+        if not obj:
+            return "—"
+        group = obj.assigned_to_group
+        if not group and obj.track_id and obj.track.assigned_to_group_id:
+            group = obj.track.assigned_to_group
+        if not group:
+            return format_html(
+                '<span class="quiet">{}</span>',
+                _("Keine TOP-Gruppe zugewiesen"),
+            )
+        url = reverse("admin:api_group_change", args=[group.pk])
+        return format_html(
+            '{}&nbsp;<a href="{}" class="cyclist-group-admin-link" target="_blank" '
+            'rel="noopener noreferrer">{}</a>',
+            group.name,
+            url,
+            _("TOP-Gruppe öffnen →"),
+        )
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
+    class Media:
+        css = {
+            "all": ("admin/css/group_admin.css",),
+        }
+        js = ("admin/js/cyclist_group_link.js",)
     
     def get_queryset(self, request):
         """Filter milestones based on operator permissions."""
@@ -3953,13 +4184,44 @@ class MilestoneAdmin(admin.ModelAdmin):
         return obj.track.group_statuses.filter(group__id__in=managed_group_ids).exists()
     
     def get_form(self, request, obj=None, **kwargs):
-        """Filter track field for operators."""
+        """Filter track/assigned_to_group and attach inline admin nav links."""
         form = super().get_form(request, obj, **kwargs)
+
+        if request.user.is_superuser and 'assigned_to_group' in form.base_fields:
+            form.base_fields['assigned_to_group'].queryset = Group.objects.filter(
+                parent__isnull=True,
+                is_visible=True,
+            ).order_by('name')
+
         if not request.user.is_superuser and 'track' in form.base_fields:
             managed_group_ids = get_operator_managed_group_ids(request.user)
             form.base_fields['track'].queryset = TravelTrack.objects.filter(
                 group_statuses__group__id__in=managed_group_ids
             ).distinct()
+
+        if 'track' in form.base_fields:
+            track_id = obj.track_id if obj else None
+            _mcc_attach_admin_nav_link(
+                form.base_fields['track'],
+                track_id,
+                label=_("Route öffnen →"),
+                link_id="mcc-nav-link-milestone-track",
+                change_url_name="admin:api_traveltrack_change",
+            )
+
+        if 'assigned_to_group' in form.base_fields:
+            top_group_id = None
+            if obj:
+                top_group_id = obj.assigned_to_group_id
+                if not top_group_id and obj.track_id and obj.track.assigned_to_group_id:
+                    top_group_id = obj.track.assigned_to_group_id
+            _mcc_attach_group_admin_nav_link(
+                form.base_fields['assigned_to_group'],
+                top_group_id,
+                label=_("TOP-Gruppe öffnen →"),
+                link_id="mcc-nav-link-milestone-top-group",
+            )
+
         return form
     
     def get_urls(self):
@@ -4113,6 +4375,15 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
     search_fields = ('group__name', 'track__name')
     actions = ['abort_trip_bulk_action']
     readonly_fields = ('leaf_groups_contributions_display',)
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
+    class Media:
+        css = {"all": ("admin/css/group_admin.css",)}
+        js = ("admin/js/cyclist_group_link.js",)
     
     def group_display(self, obj):
         """Display only the group name without group type."""
@@ -4164,7 +4435,7 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
         return obj.group.id in managed_group_ids
     
     def get_form(self, request, obj=None, **kwargs):
-        """Filter group and track fields for operators."""
+        """Filter group and track fields for operators; inline admin nav links."""
         form = super().get_form(request, obj, **kwargs)
         if not request.user.is_superuser:
             managed_group_ids = get_operator_managed_group_ids(request.user)
@@ -4176,6 +4447,26 @@ class GroupTravelStatusAdmin(admin.ModelAdmin):
                 form.base_fields['track'].queryset = TravelTrack.objects.filter(
                     group_statuses__group__id__in=managed_group_ids
                 ).distinct()
+
+        if 'group' in form.base_fields:
+            group_id = obj.group_id if obj else None
+            _mcc_attach_group_admin_nav_link(
+                form.base_fields['group'],
+                group_id,
+                label=_("Gruppe öffnen →"),
+                link_id="mcc-nav-link-gts-group",
+            )
+
+        if 'track' in form.base_fields:
+            track_id = obj.track_id if obj else None
+            _mcc_attach_admin_nav_link(
+                form.base_fields['track'],
+                track_id,
+                label=_("Route öffnen →"),
+                link_id="mcc-nav-link-gts-track",
+                change_url_name="admin:api_traveltrack_change",
+            )
+
         return form
     
     def leaf_groups_contributions_display(self, obj):
@@ -4804,7 +5095,21 @@ class EventAdminForm(forms.ModelForm):
                     queryset = queryset | Group.objects.filter(id=instance.top_group_id)
             self.fields['top_group'].queryset = queryset
             self.fields['top_group'].required = True
-    
+
+        if "top_group" in self.fields:
+            top_group_id = None
+            if self.instance and self.instance.pk:
+                top_group_id = self.instance.top_group_id
+            _mcc_attach_group_admin_nav_link(
+                self.fields["top_group"],
+                top_group_id,
+                label=_("TOP-Gruppe öffnen →"),
+                link_id="mcc-nav-link-event-top-group",
+            )
+
+    class Media:
+        js = ("admin/js/cyclist_group_link.js",)
+
     def clean(self):
         """Validate event data."""
         cleaned_data = super().clean()
@@ -4841,6 +5146,15 @@ class EventAdmin(RetryOnDbLockMixin, admin.ModelAdmin):
     search_fields = ('name', 'description')
     actions = ['restart_event', 'save_event_to_history']
     change_form_template = 'admin/eventboard/event/change_form.html'
+
+    can_view_related = False
+    can_change_related = False
+    can_add_related = False
+    can_delete_related = False
+
+    class Media:
+        css = {"all": ("admin/css/group_admin.css",)}
+        js = ("admin/js/cyclist_group_link.js",)
     
     def get_form(self, request, obj=None, **kwargs):
         """Override get_form to pass request to form."""
@@ -6349,12 +6663,17 @@ class ExternalDisplaySettingsAdmin(admin.ModelAdmin):
     """Singleton admin for km display in public GUIs."""
 
     list_display = (
+        'settings_changelist_label',
         'show_km_in_leaderboard_footer',
         'show_km_in_ranking_headers',
         'show_km_in_eventboard',
         'km_display_decimals',
         'updated_at',
     )
+    list_display_links = ('settings_changelist_label',)
+
+    class Media:
+        css = {"all": ("admin/css/external_display_settings_admin.css",)}
 
     fieldsets = (
         (_('Kilometer-Anzeige'), {
@@ -6377,6 +6696,10 @@ class ExternalDisplaySettingsAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('updated_at',)
+
+    @admin.display(description=_("Konfiguration"))
+    def settings_changelist_label(self, obj):
+        return _("Einstellungen bearbeiten — Kilometer in externen GUIs")
 
     def has_add_permission(self, request):
         return not ExternalDisplaySettings.objects.exists()
@@ -7846,17 +8169,16 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'view_only': True,
                 }
             )
+        luanti_shop_ops_tile = None
         if user_can_access_luanti_shop(request.user):
-            luanti_tiles.append(
-                {
-                    'name': _('Shop'),
-                    'object_name': 'Luanti Shop Ops',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:luanti_shop_ops'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
+            luanti_shop_ops_tile = {
+                'name': _('Shop'),
+                'object_name': 'Luanti Shop Ops',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:luanti_shop_ops'),
+                'add_url': None,
+                'view_only': True,
+            }
         if user_can_access_luanti_city(request.user):
             luanti_tiles.append(
                 {
@@ -7864,17 +8186,6 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'object_name': 'Luanti City',
                     'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
                     'admin_url': reverse('admin:luanti_city'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
-        if user_can_manage_luanti_regions(request.user):
-            luanti_tiles.append(
-                {
-                    'name': _('Geschützte Regionen'),
-                    'object_name': 'Luanti Protected Regions',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:luanti_regions'),
                     'add_url': None,
                     'view_only': True,
                 }
@@ -7890,30 +8201,97 @@ def get_app_list_with_custom_ordering(self, request, app_label=None):
                     'view_only': True,
                 }
             )
+        if user_can_manage_luanti_regions(request.user):
+            luanti_tiles.append(
+                {
+                    'name': _('Geschützte Regionen'),
+                    'object_name': 'Luanti Protected Regions',
+                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                    'admin_url': reverse('admin:luanti_regions'),
+                    'add_url': None,
+                    'view_only': True,
+                }
+            )
+        luanti_arena_tile = None
         if user_can_access_luanti_arena(request.user):
-            luanti_tiles.append(
-                {
-                    'name': _('Arena / Loren'),
-                    'object_name': 'Luanti Arena',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:luanti_arena'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
+            luanti_arena_tile = {
+                'name': _('Arena / Loren'),
+                'object_name': 'Luanti Arena',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:luanti_arena'),
+                'add_url': None,
+                'view_only': True,
+            }
+        luanti_stations_tile = None
         if user_can_manage_luanti_stations(request.user):
-            luanti_tiles.append(
-                {
-                    'name': _('Stationen'),
-                    'object_name': 'Luanti Stations',
-                    'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
-                    'admin_url': reverse('admin:luanti_stations'),
-                    'add_url': None,
-                    'view_only': True,
-                }
-            )
+            luanti_stations_tile = {
+                'name': _('Spiel-PCs (Operator)'),
+                'object_name': 'Luanti Stations',
+                'perms': {'add': False, 'change': False, 'delete': False, 'view': True},
+                'admin_url': reverse('admin:luanti_stations'),
+                'add_url': None,
+                'view_only': True,
+            }
         default_luanti = list(app_dict['luanti'].get('models') or [])
-        app_dict['luanti']['models'] = luanti_tiles + default_luanti
+        luanti_shop_model_order = (
+            'LuantiShopCategory',
+            'LuantiShopItem',
+            'LuantiShopPurchaseCredit',
+            'LuantiShopTransaction',
+            'LuantiPlanMaterializeTransaction',
+        )
+        models_by_object = {
+            m.get('object_name'): m for m in default_luanti if m.get('object_name')
+        }
+        luanti_shop_section = []
+        if luanti_shop_ops_tile:
+            luanti_shop_section.append(luanti_shop_ops_tile)
+        for object_name in luanti_shop_model_order:
+            entry = models_by_object.get(object_name)
+            if entry:
+                luanti_shop_section.append(entry)
+        hidden_luanti_shop = frozenset(luanti_shop_model_order)
+        luanti_arena_model_order = (
+            'LuantiArenaLane',
+            'LuantiArenaMotionSettings',
+        )
+        hidden_luanti_arena = frozenset(luanti_arena_model_order)
+        luanti_arena_section = []
+        if luanti_arena_tile:
+            luanti_arena_section.append(luanti_arena_tile)
+        for object_name in luanti_arena_model_order:
+            entry = models_by_object.get(object_name)
+            if entry:
+                luanti_arena_section.append(entry)
+        hidden_luanti_stations = frozenset({'LuantiStation'})
+        luanti_stations_section = []
+        if luanti_stations_tile:
+            luanti_stations_section.append(luanti_stations_tile)
+        station_mgmt = models_by_object.get('LuantiStation')
+        if station_mgmt:
+            luanti_stations_section.append(station_mgmt)
+        hidden_luanti_registry = frozenset({'LuantiRegisteredItem'})
+        registry_entry = models_by_object.get('LuantiRegisteredItem')
+        other_luanti_models = [
+            m
+            for m in default_luanti
+            if m.get('object_name') not in hidden_luanti_shop
+            and m.get('object_name') not in hidden_luanti_arena
+            and m.get('object_name') not in hidden_luanti_stations
+            and m.get('object_name') not in hidden_luanti_registry
+        ]
+        merged_luanti = []
+        for tile in luanti_tiles:
+            merged_luanti.append(tile)
+        merged_luanti.extend(luanti_arena_section)
+        luanti_menu_tail = []
+        if registry_entry:
+            luanti_menu_tail.append(registry_entry)
+        if luanti_shop_section:
+            luanti_menu_tail.extend(luanti_shop_section)
+        app_dict['luanti']['models'] = (
+            merged_luanti + other_luanti_models + luanti_menu_tail + luanti_stations_section
+        )
     
     app_list = list(app_dict.values())
     

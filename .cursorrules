@@ -82,6 +82,12 @@ This is a **Mono-Repo** containing two main sub-projects:
   - Production: `/data/appl/mcc/.env`
   - Development: `mcc-web/.env`
 
+### Deployment hosts & agent access
+
+- **cbm-srv1**: Public production **Wirkplattform** for `mycyclingcity.net` (Apache in front of Gunicorn). Behavior can differ from a local PROD-like setup without Apache.
+- **Cursor agent: no SSH access to cbm-srv1** — do **not** attempt `ssh cbm-srv1` or assume remote shell, log files, or on-server commands there. For cbm-srv1-only issues, use code/tests/docs locally and ask the user to paste **Gunicorn error logs** (`gunicorn_error.log` / `django.log`), Apache access/error lines, or command output they run on the server.
+- A local tree such as `/data/appl/mcc/mcc-web` on the dev workstation is **not** cbm-srv1 unless the user says so.
+
 ### Configuration Placement (CRITICAL)
 
 **Normal application configuration belongs in Django settings** (`mcc-web/config/settings.py`), with sensible defaults in code. Do **not** put ordinary config in `.env`.
@@ -166,6 +172,6 @@ After syncing or deploying **`mcc-web`** to production (e.g. `/data/appl/mcc/mcc
 
 Use `status` to verify afterward. Optional: run `utils/deploy_production.py` from the production tree before restart (migrate, backup).
 
-**Luanti Lua/mod changes** (`mcc-web/luanti_mod/`, symlinked into the game) require a separate **`luanti_server.sh restart`**, not Gunicorn.
+**Luanti Lua/mod changes** (`mcc-web/luanti_mod/` in NAS dev; PROD: rsync to `/data/appl/mcc/mcc-web/luanti_mod` via `scripts/sync_luanti_mod.sh` / `deploy_production.py`; game dir `/data/games/mcc/luanti/mods/` symlinks only via `link_luanti_mods.sh`) require **`luanti_server.sh restart`**, not Gunicorn.
 
 When the user asks to **deploy** web changes, include this restart in the same turn unless they explicitly forbid it.

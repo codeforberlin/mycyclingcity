@@ -27,15 +27,19 @@
     var data = {};
     new FormData(form).forEach(function (v, k) {
       if (k === 'csrfmiddlewaretoken' || k === 'action' || k === 'rg_corner') return;
-      if (k === 'rg_members') {
+      if (k === 'rg_members' || k === 'rg_plan_funding_groups') {
         if (!data[k]) data[k] = [];
         data[k].push(v);
       } else {
         data[k] = v;
       }
     });
-    data.rg_protect_build = form.querySelector('[name=rg_protect_build]')?.checked ? 'on' : '';
-    data.rg_enabled = form.querySelector('[name=rg_enabled]')?.checked ? 'on' : '';
+    ['rg_protect_build', 'rg_enabled', 'rg_clear_spawn', 'rg_plan_funding_include_master_top'].forEach(function (name) {
+      var el = form.querySelector('[name=' + name + ']');
+      if (el && el.type === 'checkbox') {
+        data[name] = el.checked ? 'on' : '';
+      }
+    });
     return data;
   }
   function apply(form, data) {
@@ -50,9 +54,11 @@
         el.value = data[k] == null ? '' : data[k];
       }
     });
-    var members = data.rg_members || [];
-    form.querySelectorAll('[name=rg_members]').forEach(function (cb) {
-      cb.checked = members.indexOf(cb.value) >= 0;
+    ['rg_members', 'rg_plan_funding_groups'].forEach(function (field) {
+      var picked = data[field] || [];
+      form.querySelectorAll('[name=' + field + ']').forEach(function (cb) {
+        cb.checked = picked.indexOf(cb.value) >= 0;
+      });
     });
   }
   document.addEventListener('DOMContentLoaded', function () {
@@ -64,7 +70,9 @@
         /* keep server draft when loading a region; restore only empty/new drafts after refresh */
       }
       var saved = raw ? JSON.parse(raw) : null;
-      if (saved && form.getAttribute('data-has-server-draft') !== '1') {
+      if (form.getAttribute('data-has-server-draft') === '1') {
+        try { sessionStorage.removeItem(KEY); } catch (e) {}
+      } else if (saved) {
         apply(form, saved);
       }
     } catch (e) {}
@@ -137,6 +145,7 @@
         <th>{% trans "Typ / TOP" %}</th>
         <th>{% trans "Bereich" %}</th>
         <th>{% trans "Members" %}</th>
+        <th>{% trans "Plan / Live" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -146,15 +155,20 @@
         <td>
           <strong>{{ region.region_id }}</strong>
           {% if region.display_name %}<br><span class="wb-hint">{{ region.display_name }}</span>{% endif %}
-          {% if not region.enabled %}<br><span class="wb-hint">{% trans "deaktiviert" %}</span>{% endif %}
+          {% if not region.enabled %}<br><span class="wb-hint">{% trans "nicht wirksam" %}</span>{% endif %}
         </td>
         <td>
           {% if region.parent_id %}
             {% trans "Sub" %} → {{ region.parent.region_id }}
+            {% if region.assigned_to_group %}
+              <br><span class="wb-hint">TOP: {{ region.assigned_to_group.name }}</span>
+            {% elif region.parent.assigned_to_group %}
+              <br><span class="wb-hint">TOP: {{ region.parent.assigned_to_group.name }} ({% trans "Master" %})</span>
+            {% endif %}
           {% else %}
             {% trans "Master" %}
             {% if region.assigned_to_group %}
-              <br><span class="wb-hint">{{ region.assigned_to_group.name }}</span>
+              <br><span class="wb-hint">TOP: {{ region.assigned_to_group.name }}</span>
             {% endif %}
           {% endif %}
         </td>
@@ -169,6 +183,28 @@
           {% empty %}
             <span class="wb-hint">—</span>
           {% endfor %}
+        </td>
+        <td>
+          {% with ps=region.plan_admin_summary %}
+            <span class="wb-hint">{% trans "Hologramme" %}: {{ ps.planned_count|default:0 }} · {% trans "Pool" %}: {{ ps.available_velos|default:0 }}</span>
+            {% if ps.live_active %}
+              <br><strong style="color:#15803d;">{% trans "Live-Umwandlung AN" %}</strong>
+            {% else %}
+              <br><span class="wb-hint">{% trans "Live-Umwandlung AUS" %}</span>
+            {% endif %}
+          {% endwith %}
+          <form method="post" style="margin-top:0.35rem; display:flex; flex-wrap:wrap; gap:0.25rem;">
+            {% csrf_token %}
+            <input type="hidden" name="rg_pk" value="{{ region.pk }}">
+            <button type="submit" class="button small" name="action" value="plan_live_start"
+                    {% if region.plan_live_convert_active %}disabled{% endif %}>
+              {% trans "Live start" %}
+            </button>
+            <button type="submit" class="button small" name="action" value="plan_live_stop"
+                    {% if not region.plan_live_convert_active %}disabled{% endif %}>
+              {% trans "Live stop" %}
+            </button>
+          </form>
         </td>
         <td>
           <form method="post" style="display:inline-flex; gap:0.25rem; flex-wrap:wrap; align-items:center;">
@@ -221,6 +257,14 @@
       </div>
       <div>
         <label for="id_rg_parent">{% trans "Master-Region (für Sub)" %}</label>
+        {% if rg_draft.pk and rg_draft.parent_id %}
+        <input type="hidden" name="rg_parent" value="{{ rg_draft.parent_id }}">
+        <select id="id_rg_parent" disabled aria-disabled="true">
+          <option value="{{ rg_draft.parent_id }}" selected>
+            {% for m in rg_masters %}{% if rg_draft.parent_id == m.pk|stringformat:"s" %}{{ m.region_id }}{% endif %}{% endfor %}
+          </option>
+        </select>
+        {% else %}
         <select id="id_rg_parent" name="rg_parent" {% if rg_draft.pk and not rg_draft.parent_id %}disabled{% endif %}>
           <option value="">— {% trans "Master (keine)" %}</option>
           {% for m in rg_masters %}
@@ -229,6 +273,7 @@
           </option>
           {% endfor %}
         </select>
+        {% endif %}
       </div>
       <div>
         <label for="id_rg_sub_slug">{% trans "Sub-Slug (neu)" %}</label>
@@ -236,15 +281,18 @@
                value="{{ rg_draft.sub_slug }}" placeholder="zone_a">
       </div>
       <div>
-        <label for="id_rg_assigned_to_group">{% trans "TOP-Gruppe (Master)" %}</label>
+        <label for="id_rg_assigned_to_group">{% trans "TOP-Gruppe" %}</label>
         <select id="id_rg_assigned_to_group" name="rg_assigned_to_group">
-          <option value="">—</option>
+          <option value="">{% if rg_draft.parent_id %}{% trans "— (TOP der Master)" %}{% else %}—{% endif %}</option>
           {% for g in rg_top_groups %}
           <option value="{{ g.pk }}"{% if rg_draft.assigned_to_group_id == g.pk|stringformat:"s" %} selected{% endif %}>
             {{ g.name }}
           </option>
           {% endfor %}
         </select>
+        {% if rg_draft.parent_id %}
+        <p class="wb-hint" style="margin:0.25rem 0 0;">{% trans "Sub: eigene TOP für Plan-Velos und Kaufguthaben nach Umwandlung. Leer = TOP der Master-Region." %}</p>
+        {% endif %}
       </div>
     </div>
 
@@ -294,12 +342,38 @@
       </label>
       <label>
         <input type="checkbox" name="rg_enabled" {% if rg_draft.enabled %}checked{% endif %}>
-        {% trans "Aktiv" %}
+        {% trans "Im Spiel wirksam" %}
       </label>
+      <p class="wb-hint" style="grid-column:1/-1;margin:0;">
+        {% trans "Aus: nur Admin-Entwurf — keine Übertragung an Luanti (kein Bauschutz, keine Partikel-Markierung, kein Plan-Pool)." %}
+      </p>
       <label>
         <input type="checkbox" name="rg_clear_spawn">
         {% trans "Spawn löschen" %}
       </label>
+    </div>
+
+    <div class="wb-grid" style="margin-top:0.5rem;">
+      <label>
+        <input type="checkbox" name="rg_plan_funding_include_master_top"
+               {% if rg_draft.plan_funding_include_master_top %}checked{% endif %}>
+        {% trans "TOP der Master-Region für Plan-Velos einbeziehen" %}
+      </label>
+    </div>
+    <div>
+      <label style="font-size:0.78rem;font-weight:700;">{% trans "Plan-Velos (zusätzliche Gruppen)" %}</label>
+      <p class="wb-hint">{% trans "Radler dieser Gruppen finanzieren die Umwandlung von Hologrammen in dieser Zone." %}</p>
+      <div class="wb-members">
+        {% for g in rg_funding_group_choices %}
+        <label>
+          <input type="checkbox" name="rg_plan_funding_groups" value="{{ g.pk }}"
+                 {% if g.pk in rg_draft.plan_funding_group_ids %}checked{% endif %}>
+          {{ g.name }}
+        </label>
+        {% empty %}
+        <span class="wb-hint">{% trans "Keine Gruppen." %}</span>
+        {% endfor %}
+      </div>
     </div>
 
     <div>
@@ -361,5 +435,50 @@
       {% endif %}
     </div>
   </form>
+
+  {% if rg_draft.pk %}
+  <div class="rg-plan-live-panel" style="margin-top:0.85rem; padding:0.75rem; border:1px solid #bbf7d0; border-radius:10px; background:#f0fdf4;">
+    <h3 style="margin:0 0 0.4rem; font-size:1rem;">{% trans "Live-Umwandlung (Plan)" %}</h3>
+    <p class="wb-hint" style="margin:0 0 0.5rem;">
+      {% trans "Für Vorführungen: Kinder planen Hologramme, Betreuer starten hier die Umwandlung — Großeltern strampeln Velos in den Plan-Pool und schauen in Spiel/Flugmodus zu. Kein /mccplan autoconvert nötig." %}
+    </p>
+    {% if rg_draft.plan_summary %}
+      <p style="margin:0 0 0.5rem;">
+        {% trans "Hologramme" %}: <strong>{{ rg_draft.plan_summary.planned_count }}</strong> ·
+        {% trans "Pool" %}: <strong>{{ rg_draft.plan_summary.available_velos }}</strong> Velos ·
+        {% trans "Umgewandelt" %}: {{ rg_draft.plan_summary.materialized_count }}
+        {% if rg_draft.plan_live_active %}
+          · <strong>{% trans "Live AN" %}</strong>
+          {% if rg_draft.plan_summary.live_started_at %}
+            <span class="wb-hint">({{ rg_draft.plan_summary.live_started_at }})</span>
+          {% endif %}
+        {% else %}
+          · <span class="wb-hint">{% trans "Live AUS" %}</span>
+        {% endif %}
+      </p>
+    {% endif %}
+    <div class="wb-actions">
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+        <button type="submit" class="button default" name="action" value="plan_live_start"
+                {% if rg_draft.plan_live_active %}disabled{% endif %}>{% trans "Live-Umwandlung starten" %}</button>
+      </form>
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+        <button type="submit" class="button" name="action" value="plan_live_stop"
+                {% if not rg_draft.plan_live_active %}disabled{% endif %}>{% trans "Live-Umwandlung stoppen" %}</button>
+      </form>
+      <form method="post" style="display:inline-flex; align-items:center; gap:0.35rem;">
+        {% csrf_token %}
+        <input type="hidden" name="rg_pk" value="{{ rg_draft.pk }}">
+        <label for="plan_live_max" class="wb-hint">{% trans "Einmalig" %}</label>
+        <input id="plan_live_max" type="number" min="1" max="256" name="plan_live_max" value="4" style="width:4rem;">
+        <button type="submit" class="button" name="action" value="plan_live_convert_once">{% trans "Blöcke umwandeln" %}</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

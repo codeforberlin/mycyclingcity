@@ -103,11 +103,39 @@ In-game: **Luanti client language** drives menu strings (`mcc_bridge` `.tr`), **
 
 **Category tabs:** `LuantiShopCategoryLabel` (de/en). Shop Ops: **Category titles DE/EN (slug presets)** or `python manage.py sync_luanti_shop_labels --categories`. Common slugs map to German child-friendly titles (e.g. blocks → Blöcke); edit via Shop categories → inline translations.
 
+**Tab order in `/mccshop`:** categories are sorted alphabetically by **localized tab title** (client language / catalog `lang`), not by DB `sort_order`. `sort_order` still applies to Admin lists and Shop Ops.
+
 **`/mccshop` search:** with a filter text, all categories are searched (display name, all labels, `item_name`).
 
 Nodes (`kind=node`) default to stack size 64.
 
 Optional first step: **Import Minecraft shop** (mirrors MC categories/prices; does not cover every Mineclonia mod).
+
+## Plan mode (holograms / convert)
+
+- **Shop wallet** (`Velos:` in `/mccshop`) = personal spendable Velos.
+- **Materialization** (`/mccplan convert`, auto-convert) debits the region **plan Velo pool** (Admin: protected region → plan funding groups). Cycling must credit Velos to one of those groups, not only the shop wallet.
+- `/mccplan on` — plan buys (0 Velos at purchase); place holograms.
+- `/mccplan convert [n]` — manual convert (max 256 per call) when the pool has Velos.
+- **`/mccplan autoconvert on`** — in build mode, polls every 5s (configurable) and converts up to 4 blocks when pool Velos arrive (cycling).
+- **`/mccplan autoconvert off`** — stop the loop.
+- **`/mccplan autoconvert`** — status on/off (also shown in `summary`).
+- HUD (build mode): pool; prefix `Auto-Umw. ·` when auto-convert is on.
+- **All `/mccplan` commands (except `autoconvert off`) require build mode** — spectators in play/watch cannot run manual convert.
+- **Live conversion (Admin):** `Admin → Luanti → Protected regions` → **start/stop live conversion** per zone. The server materializes holograms as plan-pool Velos arrive (cycling). Use when children planned in build and grandparents pedal while others watch in play/watch — **no** ingame `/mccplan autoconvert on`.
+- Tick: on `apply_velos_earn` and in **`mcc_worker`** / optional `python manage.py luanti_plan_live_convert_tick` (cron). Master switch `LUANTI_PLAN_AUTO_CONVERT_ENABLED`; batch size `LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_TICK` (default 4).
+- Without Admin **START**, no server-side auto conversion for that zone (only manual `/mccplan convert` in build or ingame autoconvert).
+
+### Diagnosing Velo deductions (plan buy vs. convert)
+
+If Velos leave the wallet when buying in plan mode:
+
+1. **Admin → Luanti → Shop transactions** — filter by player (`login_name`) and time.
+   - **Plan buy** (`plan_buy`) with `velos_delta=0`: purchase was correct; the debit came from **materialization** or the **plan Velo pool**.
+   - **Buy** (`buy`) with a negative delta: the client did not send `planning` (checkbox off, `/mccbuy` without plan mode, or `mcc_plan` not loaded).
+2. **Admin → Luanti → Plan materialize transactions**: each row is one converted hologram; a negative `velos_delta` debits the pool.
+3. **Admin → Luanti → Protected regions** → **plan funding groups**: if the session wallet is in that pool, shop `Velos:` drops on convert — configuration, not a plan-buy bug.
+4. In-game: `/mccplan` (on/off), build-mode session, `mcc_plan` mod loaded.
 
 ## Bridge (Lua)
 
@@ -115,8 +143,17 @@ Repo path: `mcc-web/luanti_mod/mcc_bridge/`
 
 Deploy:
 
+Production: mod **files** at `/data/appl/mcc/mcc-web/luanti_mod/` (`sync_luanti_mod.sh`). Game dir: symlinks only (`link_luanti_mods.sh`).
+
 ```bash
-ln -sfn /path/to/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/mods/mcc_bridge
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/sync_luanti_mod.sh
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/link_luanti_mods.sh
+```
+
+Manual (only if needed):
+
+```bash
+ln -sfn /data/appl/mcc/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/mods/mcc_bridge
 ```
 
 In `minetest.conf`:
@@ -127,6 +164,15 @@ mcc_bridge.base_url = http://127.0.0.1:8000
 mcc_bridge.server_id = luanti-1
 mcc_bridge.shared_secret = <same as MCC_LUANTI_HTTP_SHARED_SECRET>
 ```
+
+Optional debug trace (server `luanti-server.log`; default off):
+
+```
+mcc_bridge.debug = session,shop
+mcc_bridge.debug_heartbeat = false
+```
+
+Restart Luanti after changing these settings. Filter: `grep mcc_bridge:debug luanti-server.log`.
 
 ## Settings
 

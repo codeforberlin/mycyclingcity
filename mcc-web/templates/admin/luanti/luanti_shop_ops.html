@@ -111,6 +111,10 @@
   .shop-icon-ok { color: #15803d; font-size: 0.78rem; font-weight: 600; }
   .shop-icon-uncertain { color: #b45309; font-size: 0.78rem; font-weight: 600; }
   .shop-icon-missing { color: #b91c1c; font-size: 0.78rem; font-weight: 600; }
+  .shop-plan-shape { color: #15803d; font-size: 0.78rem; font-weight: 600; }
+  .shop-plan-fallback { color: #b45309; font-size: 0.78rem; font-weight: 600; }
+  .shop-plan-na { color: #64748b; font-size: 0.78rem; font-weight: 600; }
+  .shop-plan-unknown { color: #b91c1c; font-size: 0.78rem; font-weight: 600; }
   .shop-icon-legend { font-size: 0.82rem; margin: 0.35rem 0 0.75rem; }
 </style>
 <script>
@@ -214,6 +218,7 @@
         <span class="muted">{% trans "Registry-Vorschlag:" %} {{ row.registry_plain|truncatechars:48 }}</span>
         {% endif %}
         <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+        <span class="shop-plan-{{ row.plan_ghost_status }}" title="{{ row.plan_ghost_detail }}">{{ row.plan_ghost_label }}</span>
         {% if not row.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
       </div>
       {% endfor %}
@@ -271,6 +276,14 @@
       <span class="shop-icon-missing">{% trans "fehlt (nicht in Registry)" %}</span>
       — {% trans "Stichprobe im Spiel (/mccshop) bleibt maßgeblich." %}
     </p>
+    <p class="shop-icon-legend muted">
+      {% trans "Plan-Hologramm (Planungsmodus):" %}
+      <span class="shop-plan-shape">{% trans "Form-Klon (Server-Test)" %}</span> ·
+      <span class="shop-plan-preview_shape">{% trans "Form-Klon (Vorschau)" %}</span> ·
+      <span class="shop-plan-fallback">{% trans "Glaswürfel" %}</span> ·
+      <span class="shop-plan-unknown">{% trans "nicht geprüft" %}</span>
+      — {% trans "Vorschau im Registry-Dump; exakter Test über „Plan-Hologramme prüfen“." %}
+    </p>
   </div>
 
   <div class="card" style="margin-bottom:16px;">
@@ -311,6 +324,7 @@
         — <span class="muted">{{ row.category_name }} ({{ row.category_slug }})</span>
         — {{ row.buy_price_velos }} {% trans "Velos" %}
         <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+        <span class="shop-plan-{{ row.plan_ghost_status }}" title="{{ row.plan_ghost_detail }}">{{ row.plan_ghost_label }}</span>
         {% if not row.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
       </div>
       {% endfor %}
@@ -345,6 +359,14 @@
       <input type="hidden" name="mod" value="{{ registry_mod }}">
       <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
       <button type="submit">{% trans "Registry vom Server aktualisieren" %}</button>
+    </form>
+    <form method="post" style="margin-bottom:12px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="verify_plan_ghost_shop">
+      <input type="hidden" name="q" value="{{ registry_query }}">
+      <input type="hidden" name="mod" value="{{ registry_mod }}">
+      <input type="hidden" name="only_missing" value="{% if registry_only_missing %}1{% else %}0{% endif %}">
+      <button type="submit">{% trans "Plan-Hologramme für Shop-Artikel prüfen" %}</button>
     </form>
 
     <form method="get" class="reg-bulk-toolbar" id="reg-filter-form">
@@ -425,6 +447,7 @@
             {% if row.in_shop %}<span class="in-shop">({% trans "schon im Shop" %})</span>{% endif %}
             {% if row.description %}<div class="desc">{{ row.description }}</div>{% endif %}
             <div class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</div>
+            <div class="shop-plan-{{ row.plan_ghost_status }}" title="{{ row.plan_ghost_detail }}">{{ row.plan_ghost_label }}</div>
           </span>
         </label>
         {% empty %}
@@ -529,6 +552,7 @@
               — <code>{{ row.item.item_name }}</code>
               — {{ row.item.buy_price_velos }} {% trans "Velos" %}
               <span class="shop-icon-{{ row.icon_status }}" title="{{ row.icon_detail }}">{{ row.icon_label }}</span>
+              <span class="shop-plan-{{ row.plan_ghost_status }}" title="{{ row.plan_ghost_detail }}">{{ row.plan_ghost_label }}</span>
               {% if not row.item.enabled %}<span class="muted">({% trans "aus" %})</span>{% endif %}
             </li>
           {% empty %}

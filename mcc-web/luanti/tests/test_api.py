@@ -71,6 +71,32 @@ def test_heartbeat_drains_queued_city_preset(api_client, settings):
     MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
+def test_heartbeat_reconcile_skips_fresh_session_grace(api_client, settings):
+    """Do not end a session immediately after freigabe when heartbeat list lags."""
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    settings.LUANTI_SESSION_RECONCILE_GRACE_SECONDS = 60
+    account = LuantiAccount.objects.create(
+        login_name="FreshFreigabe",
+        id_tag="FreshFreigabe",
+        is_active=True,
+    )
+    session = start_session(account=account, duration=20)
+    resp = api_client.post(
+        "/api/luanti/heartbeat/",
+        data=json.dumps(_signed({"players": [], "player_count": 0})),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ended_offline"] == 0
+    session.refresh_from_db()
+    assert session.status == LuantiSession.STATUS_ACTIVE
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
 def test_heartbeat_reconciles_offline_paused_session(api_client, settings):
     settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
     account = LuantiAccount.objects.create(login_name="Orphan1", id_tag="Orphan1", is_active=True)
@@ -277,6 +303,46 @@ def test_inventory_sync_accepts_lua_empty_object(api_client, settings):
     assert resp.status_code == 200
     inv.refresh_from_db()
     assert inv.payload == []
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_inventory_sync_preserves_slot_field(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.services.session_control import get_or_create_inventory
+
+    account = LuantiAccount.objects.create(
+        login_name="SlotSync1",
+        id_tag="rfid-slot",
+        allowed_modes=["play"],
+        default_mode="play",
+    )
+    start_session(account=account, mode="play")
+    slots = [
+        {"slot": 1, "name": "mcl_core:dirt", "count": 1},
+        {"slot": 9, "name": "mcl_core:stone", "count": 4},
+    ]
+    resp = api_client.post(
+        "/api/luanti/inventory/sync/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "SlotSync1",
+                    "mode": "play",
+                    "inventory": slots,
+                    "inventory_count": len(slots),
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    inv = get_or_create_inventory(account, "play")
+    inv.refresh_from_db()
+    assert inv.payload == slots
 
 
 @pytest.mark.django_db
@@ -526,6 +592,180 @@ def test_shop_sell_batch_partial_credit(api_client, settings):
     assert resp2.json()["idempotent"] is True
     group.refresh_from_db()
     assert group.velos_spendable == 60
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_shop_sell_batch_cobble_uses_stone_purchase_credit(api_client, settings):
+    """Stone in shop credits mcl_core:stone; dig drop is cobble — sell must match."""
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiShopPurchaseCredit
+    from luanti.services.session_control import start_session
+
+    gtype, _ = GroupType.objects.get_or_create(name="SellStoneType")
+    group = Group.objects.create(
+        name="SellStoneGroup",
+        group_type=gtype,
+        luanti_username="StonSeller",
+        velos_spendable=0,
+    )
+    account = LuantiAccount.objects.create(
+        login_name="StonSeller",
+        id_tag="rfid-stone",
+        assigned_to_group=group,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    cat = LuantiShopCategory.objects.create(slug="rock", name="Rock")
+    stone = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:stone",
+        buy_price_velos=4,
+        stack_size=64,
+    )
+    LuantiShopPurchaseCredit.objects.create(
+        group=group, item_name=stone.item_name, quantity=3
+    )
+    resp = api_client.post(
+        "/api/luanti/shop/sell_batch/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "StonSeller",
+                    "client_tx_id": "batch-cobble-stone",
+                    "items": [{"item_name": "mcl_core:cobble", "quantity": 2}],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["refunded_total"] == 8
+    assert len(data["consumed"]) == 1
+    assert data["consumed"][0]["item_name"] == stone.item_name
+    assert data["consumed"][0]["physical_count"] == 2
+    group.refresh_from_db()
+    assert group.velos_spendable == 8
+    credit = LuantiShopPurchaseCredit.objects.get(group=group, item_name=stone.item_name)
+    assert credit.quantity == 1
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_shop_sell_batch_deletes_purchase_credit_at_zero(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiShopPurchaseCredit
+    from luanti.services.session_control import start_session
+
+    gtype, _ = GroupType.objects.get_or_create(name="PruneCreditType")
+    group = Group.objects.create(
+        name="PruneCreditGroup",
+        group_type=gtype,
+        luanti_username="PruneSeller",
+        velos_spendable=0,
+    )
+    account = LuantiAccount.objects.create(
+        login_name="PruneSeller",
+        id_tag="rfid-prune",
+        assigned_to_group=group,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    cat = LuantiShopCategory.objects.create(slug="prune", name="Prune")
+    stone = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:dirt",
+        buy_price_velos=1,
+        stack_size=64,
+    )
+    LuantiShopPurchaseCredit.objects.create(group=group, item_name=stone.item_name, quantity=1)
+    resp = api_client.post(
+        "/api/luanti/shop/sell_batch/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "PruneSeller",
+                    "client_tx_id": "batch-prune-credit",
+                    "items": [{"item_name": "mcl_core:dirt", "quantity": 1}],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+    assert not LuantiShopPurchaseCredit.objects.filter(
+        group=group, item_name=stone.item_name
+    ).exists()
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_shop_sell_batch_cobble_prefers_stone_credit_when_both_in_shop(api_client, settings):
+    """Shop lists stone and cobble; credit only on stone — sell dug cobble."""
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiShopPurchaseCredit
+    from luanti.services.session_control import start_session
+
+    gtype, _ = GroupType.objects.get_or_create(name="SellBothType")
+    group = Group.objects.create(
+        name="SellBothGroup",
+        group_type=gtype,
+        luanti_username="BothSeller",
+        velos_spendable=0,
+    )
+    account = LuantiAccount.objects.create(
+        login_name="BothSeller",
+        id_tag="rfid-both",
+        assigned_to_group=group,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    cat = LuantiShopCategory.objects.create(slug="rock2", name="Rock2")
+    stone = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:stone",
+        buy_price_velos=5,
+        stack_size=64,
+    )
+    LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:cobble",
+        buy_price_velos=3,
+        stack_size=64,
+    )
+    LuantiShopPurchaseCredit.objects.create(group=group, item_name=stone.item_name, quantity=1)
+    resp = api_client.post(
+        "/api/luanti/shop/sell_batch/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "BothSeller",
+                    "client_tx_id": "batch-both-stone-credit",
+                    "items": [{"item_name": "mcl_core:cobble", "quantity": 1}],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["refunded_total"] == 5
+    assert data["consumed"][0]["item_name"] == stone.item_name
+    group.refresh_from_db()
+    assert group.velos_spendable == 5
 
 
 @pytest.mark.django_db

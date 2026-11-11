@@ -103,11 +103,41 @@ Im Spiel: **Luanti-Client-Sprache** steuert Menü (`mcc_bridge` `.tr`), **Katego
 
 **Kategorie-Titel (Tabs):** `LuantiShopCategoryLabel` (de/en). Shop Ops: **Kategorie-Titel DE/EN (Slug-Vorschläge)** oder `python manage.py sync_luanti_shop_labels --categories`. Gängige Slugs (`blocks`, `tools`, …) werden automatisch deutsch benannt (z. B. „Blöcke“, „Werkzeuge“); Anpassung im Admin unter Shop-Kategorien → Inline Übersetzungen.
 
+**Tab-Reihenfolge im `/mccshop`:** Kategorien alphabetisch nach **lokalisiertem Tab-Titel** (Client-Sprache / Katalog-`lang`), nicht nach DB-`sort_order`. `sort_order` gilt weiter für Admin-Listen und Shop Ops.
+
 **Suche im `/mccshop`:** mit gesetztem Suchtext alle Kategorien; Treffer in Anzeigename, allen Labels und `item_name`.
 
 Knoten (`kind=node`) erhalten standardmäßig Stack 64.
 
 Optional vorher: **Minecraft-Shop importieren** (spiegelt MC-Kategorien/Preise; deckt nicht alle Mineclonia-Mods ab).
+
+## Planmodus (Hologramme / Umwandlung)
+
+- **Shop-Wallet** (`Velos:` im `/mccshop`) = persönliche spendbare Velos.
+- **Umwandlung** (`/mccplan convert`, Auto-Umwandlung) belastet den **Plan-Velos-Pool** der Bauzone (Admin: geschützte Region → Plan-Velos-Gruppen). Strampeln muss Velos auf eine dieser Gruppen buchen, nicht nur auf die Shop-Wallet.
+- **Verkauf nach Umwandlung:** Purchase Credit liegt auf der **effektiven TOP** der Zone — bei **Master** die dort gewählte TOP; bei **Sub** optional **eigene TOP** (Admin: TOP-Gruppe), sonst TOP der Master. Kinder/Enkel mit Leaf-Wallet können über die Parent-Kette verkaufen; die **Velos-Gutschrift** geht auf die **aktuelle Session-Wallet** des Verkäufers (z. B. Omas Velos finanzieren Umwandeln, die Klasse verkauft wieder und füllt ihr Konto).
+- `/mccplan on` — Plan-Käufe (0 Velo beim Kauf); Hologramme setzen.
+- `/mccplan convert [n]` — manuelle Umwandlung (max. 256 pro Aufruf), nur wenn der Pool Velos hat.
+- **`/mccplan autoconvert on`** — Wartet im Build-Modus auf Pool-Velos (Radfahren) und wandelt fortlaufend Hologramme um (Standard bis 4 Blöcke alle 5 s, `minetest.conf`: `mcc_plan.autoconvert_interval`, `mcc_plan.autoconvert_max_blocks`).
+- **`/mccplan autoconvert off`** — stoppt die Schleife.
+- **`/mccplan autoconvert`** — Status AN/AUS (auch in `summary`).
+- HUD (Build-Modus): Pool und bei Auto-Umw. der Prefix `Auto-Umw. ·`.
+- **Alle `/mccplan`-Befehle (außer `autoconvert off`) nur im Build-Modus** — Zuschauer in Spiel/Flugmodus führen kein manuelles Convert aus.
+- **Live-Umwandlung (Admin):** `Admin → Luanti → Geschützte Regionen` → **Live-Umwandlung starten/stoppen** pro Zone. Server wandelt Hologramme um, sobald Plan-Pool-Velos ankommen (Radfahren). Ideal wenn Kinder geplant haben und Großeltern strampeln, während andere in Spiel/Flugmodus zuschauen — **ohne** `/mccplan autoconvert on` ingame.
+- Beim **Live-Start** im Admin: sofort ein Umwandlungs-Schub, wenn der Plan-Pool bereits Velos hat (ohne auf IoT/Cron zu warten).
+- Takt: **primär am Geräte-Sendeintervall** (`update_data` → `apply_velos_earn`, typ. 10 s; künftig MQTT gleicher Hook): bei neuen Velos sofort Live-Tick für alle gestarteten Zonen. **`mcc_worker`** (z. B. 60 s) nur Fallback. Settings in `config/settings.py`: `LUANTI_PLAN_AUTO_CONVERT_ENABLED`, `LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_EARN` (pro Impuls, skaliert mit `velos_added`), `LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_TICK` (Worker), kürzere FX: `LUANTI_PLAN_LIVE_CONVERT_LAYER_DELAY` (Default 0,1 s).
+- Ohne Admin-**START** keine serverseitige Auto-Umwandlung für die Zone (nur manuelles `/mccplan convert` im Build oder ingame `autoconvert`).
+
+### Velos-Abzug prüfen (Plan-Kauf vs. Umwandlung)
+
+Wenn beim Kaufen im Planungsmodus Velos vom Konto verschwinden:
+
+1. **Admin → Luanti → Shop-Transaktionen** nach Spieler (`login_name`) und Zeit filtern.
+   - **Plan-Kauf** (`plan_buy`) mit `velos_delta=0`: Kauf war korrekt; Abzug kommt von **Umwandlung** oder vom **Plan-Velos-Pool**.
+   - **Kauf** (`buy`) mit negativem Delta: der Client hat `planning` nicht gesendet (Plan-Häkchen aus, `/mccbuy` ohne Plan-Modus, oder `mcc_plan` nicht geladen).
+2. **Admin → Luanti → Plan-Umwandlungs-Transaktionen**: jede Zeile ist ein umgewandelter Hologramm-Block; `velos_delta` negativ belastet den Pool.
+3. **Admin → Luanti → Geschützte Regionen** → **Plan-Velos-Gruppen**: hängt die Session-Wallet in diesem Pool, sinkt `Velos:` im Shop bei der Umwandlung — das ist Konfiguration, kein Plan-Kauf-Bug.
+4. Im Spiel: `/mccplan` (AN/AUS), Build-Modus-Session, Mod `mcc_plan` geladen.
 
 ## Bridge (Lua)
 
@@ -115,8 +145,17 @@ Mod-Pfad im Repo: `mcc-web/luanti_mod/mcc_bridge/`
 
 Deploy:
 
+Produktion: Mod-**Dateien** unter `/data/appl/mcc/mcc-web/luanti_mod/` (rsync via `scripts/sync_luanti_mod.sh`). Spielverzeichnis: nur Symlinks (`link_luanti_mods.sh`).
+
 ```bash
-ln -sfn /path/to/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/mods/mcc_bridge
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/sync_luanti_mod.sh
+MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/link_luanti_mods.sh
+```
+
+Manuell (nur falls nötig):
+
+```bash
+ln -sfn /data/appl/mcc/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/mods/mcc_bridge
 ```
 
 In `minetest.conf`:

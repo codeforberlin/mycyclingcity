@@ -597,7 +597,7 @@ def luanti_accounts(request):
         request,
         "admin/luanti/luanti_accounts.html",
         {
-            "title": _("Luanti-Accounts"),
+            "title": _("Accounts"),
             "account_rows": account_rows,
             "page_obj": page_obj,
             "top_groups": top_groups,
@@ -941,7 +941,7 @@ def luanti_sessions(request):
         request,
         "admin/luanti/luanti_sessions.html",
         {
-            "title": _("Luanti-Sessions"),
+            "title": _("Sessions"),
             "session_cards": session_cards,
             "top_groups": top_groups,
             "selected_top_id": selected_top_id,
@@ -1042,7 +1042,11 @@ def luanti_shop_ops(request):
         registry_item_names_query,
     )
     from luanti.services.shop_labels import locale_root_configured
-    from luanti.services.shop_registry import registry_count, request_registry_dump
+    from luanti.services.shop_registry import (
+        registry_count,
+        request_plan_ghost_verify_shop,
+        request_registry_dump,
+    )
 
     bulk_cap = max(1, int(getattr(settings, "LUANTI_SHOP_BULK_MOD_MAX", 500)))
 
@@ -1085,6 +1089,25 @@ def luanti_shop_ops(request):
                 )
             else:
                 messages.warning(request, _("Bridge nicht erreichbar / kein Dump eingeordnet."))
+            return _luanti_shop_ops_redirect(request)
+        if action == "verify_plan_ghost_shop":
+            sent, n_items = request_plan_ghost_verify_shop()
+            if sent:
+                messages.success(
+                    request,
+                    _(
+                        "Plan-Hologramm-Prüfung für %(n)s Shop-Artikel an Bridge "
+                        "gesendet (echter Klon-Test auf dem Server)."
+                    )
+                    % {"n": n_items},
+                )
+            elif n_items == 0:
+                messages.warning(request, _("Keine aktiven Shop-Artikel zum Prüfen."))
+            else:
+                messages.warning(
+                    request,
+                    _("Bridge nicht erreichbar / Plan-Prüfung nicht eingeordnet."),
+                )
             return _luanti_shop_ops_redirect(request)
         if action == "sync_labels_de":
             from luanti.services.shop_labels import sync_labels_from_registry
@@ -1382,19 +1405,26 @@ def luanti_shop_ops(request):
     shop_categories_admin = build_shop_categories_for_admin(categories_qs, shop_q=shop_q)
     label_stats = shop_de_label_stats()
     from luanti.services.shop_icon import icon_hint_for_item_name, registry_item_map_full
+    from luanti.services.shop_plan_ghost import plan_ghost_hint_for_item_name
 
     reg_icon_map = registry_item_map_full()
+
+    def _shop_row_hints(item_name: str) -> dict:
+        name = str(item_name)
+        return {
+            **icon_hint_for_item_name(name, reg_icon_map),
+            **plan_ghost_hint_for_item_name(name, reg_icon_map),
+        }
+
     shop_missing_de_labels = shop_items_missing_de_label()
     for row in shop_missing_de_labels:
-        row.update(icon_hint_for_item_name(str(row["item_name"]), reg_icon_map))
+        row.update(_shop_row_hints(str(row["item_name"])))
     shop_search_hits = shop_item_search_hits(shop_q) if shop_q else []
     for row in shop_search_hits:
-        row.update(icon_hint_for_item_name(str(row["item_name"]), reg_icon_map))
+        row.update(_shop_row_hints(str(row["item_name"])))
     for block in shop_categories_admin:
         for row in block["items"]:
-            row.update(
-                icon_hint_for_item_name(str(row["item"].item_name), reg_icon_map)
-            )
+            row.update(_shop_row_hints(str(row["item"].item_name)))
 
     q = (request.GET.get("q") or "").strip()
     mod_filter = (request.GET.get("mod") or "").strip()
@@ -1421,12 +1451,14 @@ def luanti_shop_ops(request):
     registry_hits = []
     for reg in registry_objs:
         hint = icon_hint_for_item_name(reg.item_name, {reg.item_name: reg})
+        plan_hint = plan_ghost_hint_for_item_name(reg.item_name, {reg.item_name: reg})
         registry_hits.append(
             {
                 "item_name": reg.item_name,
                 "description": reg.description or "",
                 "in_shop": reg.item_name in shop_names,
                 **hint,
+                **plan_hint,
             }
         )
 
@@ -1596,5 +1628,5 @@ def luanti_stations(request):
     return render(
         request,
         "admin/luanti/luanti_stations.html",
-        {"title": _("Luanti-Stationen"), "stations": stations},
+        {"title": _("Spiel-PCs (Operator)"), "stations": stations},
     )
