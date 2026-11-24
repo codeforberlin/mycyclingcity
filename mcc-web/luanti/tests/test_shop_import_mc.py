@@ -16,8 +16,8 @@ from minecraft.models import MinecraftShopCategory, MinecraftShopItem
 def test_resolve_material_tools_and_overrides():
     assert resolve_material("DIAMOND_PICKAXE") == "mcl_tools:pick_diamond"
     assert resolve_material("IRON_CHESTPLATE") == "mcl_armor:chestplate_iron"
-    assert resolve_material("COBBLESTONE") == "mcl_core:cobble"
-    assert resolve_material("OAK_PLANKS") == "mcl_core:wood"
+    assert resolve_material("COBBLESTONE") == "default:cobble"
+    assert resolve_material("OAK_PLANKS") == "default:wood"
     assert resolve_material("POWERED_RAIL") == "mcl_minecarts:golden_rail"
     assert resolve_material("MINECART") == "mcl_minecarts:minecart"
     assert resolve_material("REDSTONE_TORCH") == "mesecons_torch:mesecon_torch_on"
@@ -54,10 +54,11 @@ def test_import_minecraft_shop_catalog_maps_items():
         buy_price_velos=9,
         enabled=True,
     )
-    # Without registry: heuristic maps STONE; fake still gets a candidate and is imported.
+    # Empty registry: nothing is imported until a dump contains the target name.
     result = import_minecraft_shop_catalog()
     assert result.categories_created == 1
-    assert LuantiShopItem.objects.filter(item_name="mcl_core:stone").exists()
+    assert not LuantiShopItem.objects.filter(item_name="mcl_core:stone").exists()
+    assert "STONE" in result.unmapped
 
     LuantiShopItem.objects.all().delete()
     LuantiShopCategory.objects.all().delete()

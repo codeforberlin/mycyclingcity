@@ -32,7 +32,7 @@ Skript: `scripts/luanti_server.sh` (PID unter `/data/var/mcc/tmp/luanti-server.p
 - **Zweistufiger Zugang:** (1) Luanti-Client-Login mit **Benutzername + Passwort** aus MCC, (2) danach **Session-Freigabe** (Spieler bleibt eingefroren bis RFID/Admin eine Session startet).
 - Keine Self-Registration am Server: Accounts nur in der Admin-GUI anlegen; Passwortänderung nur in MCC (nicht im Luanti-Client).
 - Session-Start per Admin oder RFID: `POST /api/luanti/counter/scan/`
-- Modi: `play` / `build` / `watch` (Privs + getrenntes Inventar play/build)
+- Modi: `play` / `plan` / `build` / `watch` (Privs + getrenntes Inventar pro Modus: play, plan, build)
 
 ### Betrieb vor Ort: Passwort vs. Session-Freigabe
 
@@ -41,7 +41,7 @@ Das Login-Passwort ist ein **technisches Hilfsmittel** (Anmeldung am Server, kei
 | Stufe | Bedeutung |
 |-------|-----------|
 | **Login** (Name + Passwort aus MCC) | Spieler ist auf dem Server, aber ohne Session **eingefroren** (Warte modus). |
-| **Session-Freigabe** | Spielen/Bauen/Zeit/Modus — nur nach Start durch Betreuer. |
+| **Session-Freigabe** | Spielen/Planung/Bauen/Zeit/Modus — nur nach Start durch Betreuer. |
 
 Nach dem Start (Admin **Start** oder RFID) sendet Django **`SESSION_STARTED`** an die Bridge; der Mod fordert sofort `/api/luanti/session/join/` an (veraltete HTTP-Antworten werden ignoriert). Der Spieler sollte **ohne Reconnect** innerhalb von Sekundenbruchteilen freigegeben werden, sobald die Bridge erreichbar ist.
 
@@ -111,18 +111,27 @@ Knoten (`kind=node`) erhalten standardmäßig Stack 64.
 
 Optional vorher: **Minecraft-Shop importieren** (spiegelt MC-Kategorien/Preise; deckt nicht alle Mineclonia-Mods ab).
 
+**Shop und Session-Modus:**
+
+| Modus | `/mccshop` |
+|-------|------------|
+| **Spielen** / **Zuschauen** | Katalog nur ansehen (kein Kauf/Verkauf) |
+| **Planung** | Plan-Käufe (0 Velo); Tabs **Planen** / **Entfernen** (unbenutzte Plan-Items aus Inventar, ohne Velos) |
+| **Bauen** | Reale Käufe + Verkauf (Purchase Credit) |
+
 ## Planmodus (Hologramme / Umwandlung)
 
-- **Shop-Wallet** (`Velos:` im `/mccshop`) = persönliche spendbare Velos.
+- **Shop ingame (Kinder-UI):** Plan-Session erklärt Geister-Blöcke/0 Velos; Wallet-Zeile **Kauf später von:** (keine sofortige Abbuchung). Stöbern ohne Freigabe: Hinweis statt technischer Session-Meldung.
+- **Shop-Wallet** (`Velos:` im `/mccshop`) = spendbare Velos der aufgelösten Gruppe. Im **Bau**-Modus rechts vom Tab **Verkaufen** **Abbuchung:** bzw. **Gutschrift:** mit Wallet-Gruppenname je nach Tab (dieselbe Gruppe). Optional setzt die aktive **Session** ein festes `wallet_group` (Admin Session-Kontrolle).
 - **Umwandlung** (`/mccplan convert`, Auto-Umwandlung) belastet den **Plan-Velos-Pool** der Bauzone (Admin: geschützte Region → Plan-Velos-Gruppen). Strampeln muss Velos auf eine dieser Gruppen buchen, nicht nur auf die Shop-Wallet.
 - **Verkauf nach Umwandlung:** Purchase Credit liegt auf der **effektiven TOP** der Zone — bei **Master** die dort gewählte TOP; bei **Sub** optional **eigene TOP** (Admin: TOP-Gruppe), sonst TOP der Master. Kinder/Enkel mit Leaf-Wallet können über die Parent-Kette verkaufen; die **Velos-Gutschrift** geht auf die **aktuelle Session-Wallet** des Verkäufers (z. B. Omas Velos finanzieren Umwandeln, die Klasse verkauft wieder und füllt ihr Konto).
-- `/mccplan on` — Plan-Käufe (0 Velo beim Kauf); Hologramme setzen.
-- `/mccplan convert [n]` — manuelle Umwandlung (max. 256 pro Aufruf), nur wenn der Pool Velos hat.
-- **`/mccplan autoconvert on`** — Wartet im Build-Modus auf Pool-Velos (Radfahren) und wandelt fortlaufend Hologramme um (Standard bis 4 Blöcke alle 5 s, `minetest.conf`: `mcc_plan.autoconvert_interval`, `mcc_plan.autoconvert_max_blocks`).
+- Session **Planung**: Shop liefert Hologramm-Items; Platzierung nur in zugewiesenen Bauzonen. Unplatzierte Plan-Items: **`/mccshop` → Tab Entfernen** (Kind-UI); alternativ `/mccplan discard hand|all`. Platzierte Hologramme: abbauen, `/mccplan remove`, `/mccplan clear`.
+- `/mccplan convert [n]` — manuelle Umwandlung (max. 256 pro Aufruf), **nur Session Bauen**, wenn der Pool Velos hat.
+- **`/mccplan autoconvert on`** — Wartet im **Bau**-Modus auf Pool-Velos (Radfahren) und wandelt fortlaufend Hologramme um (Standard bis 4 Blöcke alle 5 s, `minetest.conf`: `mcc_plan.autoconvert_interval`, `mcc_plan.autoconvert_max_blocks`).
 - **`/mccplan autoconvert off`** — stoppt die Schleife.
 - **`/mccplan autoconvert`** — Status AN/AUS (auch in `summary`).
 - HUD (Build-Modus): Pool und bei Auto-Umw. der Prefix `Auto-Umw. ·`.
-- **Alle `/mccplan`-Befehle (außer `autoconvert off`) nur im Build-Modus** — Zuschauer in Spiel/Flugmodus führen kein manuelles Convert aus.
+- **Planung ingame** (`/mccplan on|off|remove|clear|…`) — nur Session **Planung**; **Umwandlung** (`convert`, `autoconvert on`) nur Session **Bauen** (`autoconvert off` jederzeit).
 - **Live-Umwandlung (Admin):** `Admin → Luanti → Geschützte Regionen` → **Live-Umwandlung starten/stoppen** pro Zone. Server wandelt Hologramme um, sobald Plan-Pool-Velos ankommen (Radfahren). Ideal wenn Kinder geplant haben und Großeltern strampeln, während andere in Spiel/Flugmodus zuschauen — **ohne** `/mccplan autoconvert on` ingame.
 - Beim **Live-Start** im Admin: sofort ein Umwandlungs-Schub, wenn der Plan-Pool bereits Velos hat (ohne auf IoT/Cron zu warten).
 - Takt: **primär am Geräte-Sendeintervall** (`update_data` → `apply_velos_earn`, typ. 10 s; künftig MQTT gleicher Hook): bei neuen Velos sofort Live-Tick für alle gestarteten Zonen. **`mcc_worker`** (z. B. 60 s) nur Fallback. Settings in `config/settings.py`: `LUANTI_PLAN_AUTO_CONVERT_ENABLED`, `LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_EARN` (pro Impuls, skaliert mit `velos_added`), `LUANTI_PLAN_LIVE_CONVERT_MAX_BLOCKS_PER_TICK` (Worker), kürzere FX: `LUANTI_PLAN_LIVE_CONVERT_LAYER_DELAY` (Default 0,1 s).
@@ -137,7 +146,7 @@ Wenn beim Kaufen im Planungsmodus Velos vom Konto verschwinden:
    - **Kauf** (`buy`) mit negativem Delta: der Client hat `planning` nicht gesendet (Plan-Häkchen aus, `/mccbuy` ohne Plan-Modus, oder `mcc_plan` nicht geladen).
 2. **Admin → Luanti → Plan-Umwandlungs-Transaktionen**: jede Zeile ist ein umgewandelter Hologramm-Block; `velos_delta` negativ belastet den Pool.
 3. **Admin → Luanti → Geschützte Regionen** → **Plan-Velos-Gruppen**: hängt die Session-Wallet in diesem Pool, sinkt `Velos:` im Shop bei der Umwandlung — das ist Konfiguration, kein Plan-Kauf-Bug.
-4. Im Spiel: `/mccplan` (AN/AUS), Build-Modus-Session, Mod `mcc_plan` geladen.
+4. Im Spiel: Planungs- vs. Bau-Session prüfen, Mod `mcc_plan` geladen.
 
 ## Bridge (Lua)
 
@@ -155,7 +164,7 @@ MCC_WEB_DIR=/data/appl/mcc/mcc-web /data/appl/mcc/mcc-web/scripts/link_luanti_mo
 Manuell (nur falls nötig):
 
 ```bash
-ln -sfn /data/appl/mcc/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/mods/mcc_bridge
+ln -sfn /data/appl/mcc/mcc-web/luanti_mod/mcc_bridge /data/games/mcc/luanti/games/mycyclingcity/mods/mcc_bridge
 ```
 
 In `minetest.conf`:
@@ -183,3 +192,34 @@ MCC_LUANTI_ALLOWED_SERVER_IDS=luanti-1
 
 Linux-Agent: `mcc-web/scripts/luanti_station/agent.py`  
 Config-Pull: `GET/POST /api/luanti/station/config/` mit Header `X-Station-Key`.
+
+## Spiel mycyclingcity
+
+Das Spiel liegt unter `/data/games/mcc/luanti/games/mycyclingcity`, nicht im Git. Basis-Mods (`default`, `stairs`, `wool`, `doors`, `walls`, `beds`, `vessels`, `xpanes`, `worldedit`, `areas`) sind Kopien. `mcc_bridge`, `mcc_plan` und `mcc_texture_painter` sind Symlinks auf `mcc-web/luanti_mod/` (`link_luanti_mods.sh`). `mcc_migrator` liegt nur während der Umstellung unter `worlds/<kopie>/worldmods/` (nicht im Spiel `mycyclingcity`).
+
+Die Zielwelt ist `/data/games/mcc/luanti/worlds/mycyclingcity_prod`. Anlegen einmalig: `world.mt` wie unten, dann kurz `luantiserver --world …/mycyclingcity_prod --config …/scripts/minetest_prod.conf` starten (legt `map.sqlite` an). Start im Betrieb:
+
+```bash
+MCC_LUANTI_WORLD=mycyclingcity_prod \
+MCC_LUANTI_CONFIG=/data/appl/mcc/mcc-web/scripts/minetest_prod.conf \
+/data/appl/mcc/mcc-web/scripts/luanti_server.sh restart
+```
+
+In ihrer `world.mt`:
+
+```
+gameid = mycyclingcity
+mg_name = singlenode
+mg_flags = nocaves, nodungeons, light, nodecorations, nobiomes, noores
+```
+
+DEV und cbm-srv1 haben verschiedene Maps und Django-Daten. Derselbe Ablauf, jeweils auf dem Host, ohne die Mapping-Datei zu kopieren:
+
+1. Backup von Welt und Datenbank.
+2. Arbeitskopie `worlds/mycyclingcity_migrate` mit `gameid = mineclonia` in `world.mt` (MCC-Mods aus). In `worldmods/` nur Symlink `mcc_migrator` — **kein** MTG-Modpack neben Mineclonia (sonst Server-Absturz durch Alias-/ABM-Kollision). Zielknoten registriert `mcc_migrator` intern als Platzhalter. `worldmods/__mc2mt` entfernen. Nach fehlgeschlagenen Versuchen Welt **neu aus Backup kopieren**.
+3. `/scan_mcl x1 y1 z1 x2 y2 z2`. Unbekannte Namen blockieren, bis `luanti/services/mcl_map.py` und `mcc_migrator/map.lua` dieselbe Regel haben.
+4. `/convert_mcl x1 y1 z1 x2 y2 z2` (VoxelManip, kein LBM/`/emergeblocks`). Danach `/scan_mcl` wiederholen. Erst bei null `mcl_*` im Bereich weiter. **In dieser Welt sieht danach alles wie Stein aus** — `mcc_migrator` registriert MTG-Zielnamen nur als grafische Platzhalter, weil Mineclonia kein echtes MTG lädt. In `map.sqlite` stehen trotzdem die Ziel-Itemstrings (`default:wood`, `wool:red`, …). Sichtprüfung erst nach Schritt 6 in `mycyclingcity_prod`.
+5. `worldmods/mcc_migrator` **erst nach erfolgreichem WorldEdit-Export** entfernen. `mcc_migrator_map.json` behalten.
+6. WorldEdit in `mycyclingcity_migrate`: Symlink `worldmods/worldedit` → Spiel-Modpack, `load_mod_worldedit(_commands)` in `world.mt`, Ordner `schems/`. Server mit **`minetest.conf`** (nicht `minetest_prod.conf`) und Welt `mycyclingcity_migrate` starten. `luanti_server.sh` schaltet dort **MCC-Mods aus** (`mcc_bridge` blockiert sonst Login ohne Django-Provisionierung); Anmeldung über **`auth.txt`** und Welt-Passwort von `admin`. **`//wand`**, **`//pos1` / `//pos2`** exakt wie bei `/scan_mcl` und `/convert_mcl`, dann **`//save mauer_stadt`** (Datei: `worlds/mycyclingcity_migrate/schems/mauer_stadt.we`). In Prod dieselbe Box mit `//pos1` an derselben Ecke, **`//load mauer_stadt`**, danach **`//fixlight`**.
+7. `python manage.py luanti_convert_from_mineclonia --world mycyclingcity_prod`, dann mit `--apply`.
+8. `MCC_LUANTI_WORLD=mycyclingcity_prod` erst nach der Sichtprüfung. Die alte Welt bleibt Archiv.

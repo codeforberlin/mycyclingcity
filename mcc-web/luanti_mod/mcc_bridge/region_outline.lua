@@ -35,7 +35,7 @@ local function rgb_hex(r, g, b)
 end
 
 local function particle_texture(r, g, b)
-    return "mcl_particles_crit.png^[colorize:" .. rgb_hex(r, g, b) .. ":220"
+    return "default_stone.png^[colorize:" .. rgb_hex(r, g, b) .. ":220"
 end
 
 local function dist2_horizontal(ax, az, bx, bz)

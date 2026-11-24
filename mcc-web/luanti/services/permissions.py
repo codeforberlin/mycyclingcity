@@ -111,6 +111,14 @@ def user_can_manage_luanti_stations(user: UserLike) -> bool:
     return user.has_perm("luanti.manage_luanti_stations")
 
 
+def user_can_change_luanti_player_inventory(user: UserLike) -> bool:
+    if not _ok(user):
+        return False
+    if user.is_superuser:
+        return True
+    return user.has_perm("luanti.change_luantiplayerinventory")
+
+
 def operator_session_top_ids(user: UserLike) -> set[int] | None:
     """
     TOP group PKs the staff user may see on Luanti session tiles.

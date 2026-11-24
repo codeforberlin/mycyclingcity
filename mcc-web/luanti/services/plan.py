@@ -352,6 +352,13 @@ def materialize_blocks(
     region = LuantiProtectedRegion.objects.filter(region_id=region_id, enabled=True).first()
     if region is None:
         raise PlanError("no_region")
+    if mode == "manual" and (login_name or "").strip():
+        from luanti.models import LuantiAccount
+        from luanti.services.session_control import get_active_session
+
+        session = get_active_session(login_name.strip())
+        if session is None or session.mode != LuantiAccount.MODE_BUILD:
+            raise PlanError("convert_requires_build")
     if mode != "auto" and not account_is_region_member(login_name, region):
         raise PlanError("not_member")
 

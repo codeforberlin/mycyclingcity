@@ -30,6 +30,7 @@ from luanti.services.session_control import (
 from luanti.services.shop import (
     ShopError,
     build_catalog_payload,
+    build_sell_hints,
     parse_planning_flag,
     shop_buy,
     shop_sell,
@@ -461,6 +462,22 @@ def luanti_shop_sell_batch(request):
     except ShopError as exc:
         return JsonResponse({"ok": False, "error": exc.code}, status=400)
     return JsonResponse(result)
+
+
+@csrf_exempt
+@require_POST
+def luanti_shop_sell_hints(request):
+    data = _parse_json(request)
+    data, err = _auth_or_error(data)
+    if err:
+        return err
+    login = str(data.get("player") or "").strip()
+    if not login:
+        return JsonResponse({"ok": False, "error": "missing_player"}, status=400)
+    raw_names = data.get("item_names") or data.get("items") or []
+    if not isinstance(raw_names, list):
+        return JsonResponse({"ok": False, "error": "invalid_item_names"}, status=400)
+    return JsonResponse(build_sell_hints(login_name=login, item_names=raw_names))
 
 
 @csrf_exempt

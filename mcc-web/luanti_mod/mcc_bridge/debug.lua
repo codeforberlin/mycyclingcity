@@ -10,6 +10,7 @@ local ALL_CHANNELS = {
     shop = true,
     http = true,
     command = true,
+    place = true,
 }
 
 local function normalize_token(s)

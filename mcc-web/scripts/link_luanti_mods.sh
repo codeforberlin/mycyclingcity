@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Symlink Luanti game mods -> /data/appl/mcc/mcc-web/luanti_mod (real files on deploy).
-# Does not copy mod content into /data/games/mcc/luanti/mods.
+# Does not copy mod content into games/mycyclingcity/mods. mcc_migrator stays out.
 
 set -euo pipefail
 
@@ -18,7 +18,7 @@ resolve_abs() {
 MCC_WEB_LINK="${MCC_WEB_DIR}"
 LUANTI_MODS_SRC="${MCC_LUANTI_MODS_DIR:-$MCC_WEB_LINK/luanti_mod}"
 LUANTI_MODS_SRC_DEPLOYED="$(resolve_abs "$LUANTI_MODS_SRC")"
-GAME_MODS_DIR="${MCC_LUANTI_GAME_MODS_DIR:-/data/games/mcc/luanti/mods}"
+GAME_MODS_DIR="${MCC_LUANTI_GAME_MODS_DIR:-/data/games/mcc/luanti/games/mycyclingcity/mods}"
 
 MCC_LUANTI_MOD_NAMES="${MCC_LUANTI_MOD_NAMES:-mcc_bridge mcc_plan mcc_texture_painter}"
 

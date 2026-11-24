@@ -10,6 +10,7 @@ from api.models import Group, GroupType
 from luanti.models import (
     LuantiAccount,
     LuantiPlanBlock,
+    LuantiRegisteredItem,
     LuantiProtectedRegion,
     LuantiRegionPlanFunding,
     LuantiShopCategory,
@@ -31,7 +32,7 @@ from luanti.services.plan import (
     try_auto_materialize_for_group,
     try_auto_materialize_for_region,
 )
-from luanti.services.session_control import start_session
+from luanti.services.session_control import get_active_session, set_session_mode, start_session
 from luanti.services.shop import (
     effective_max_buy_quantity,
     parse_planning_flag,
@@ -59,7 +60,7 @@ def plan_setup(db):
         login_name="Builder1",
         id_tag="rfid-plan-1",
         assigned_to_group=top,
-        allowed_modes=["play", "build"],
+        allowed_modes=["play", "plan", "build"],
     )
     start_session(account=account, mode="build", duration=30)
     region = LuantiProtectedRegion.objects.create(
@@ -160,7 +161,7 @@ def test_materialize_grants_purchase_credit_to_placer(plan_setup):
         max_count=1,
     )
     assert result["converted"] == 1
-    credit = LuantiShopPurchaseCredit.objects.get(group=top, item_name="mcl_core:dirt")
+    credit = LuantiShopPurchaseCredit.objects.get(group=top, item_name="default:dirt")
     assert credit.quantity == 1
 
 
@@ -220,10 +221,10 @@ def test_materialize_purchase_credit_on_region_top_not_leaf_wallet(db):
         max_count=1,
     )
     assert LuantiShopPurchaseCredit.objects.filter(
-        group=class_leaf, item_name="mcl_core:dirt"
+        group=class_leaf, item_name="default:dirt"
     ).exists() is False
     credit = LuantiShopPurchaseCredit.objects.get(
-        group=school_top, item_name="mcl_core:dirt"
+        group=school_top, item_name="default:dirt"
     )
     assert credit.quantity == 1
 
@@ -295,10 +296,10 @@ def test_materialize_purchase_credit_sub_top_override(db):
     )
     assert sub.effective_top_group().pk == sub_top.pk
     assert LuantiShopPurchaseCredit.objects.filter(
-        group=master_top, item_name="mcl_core:dirt"
+        group=master_top, item_name="default:dirt"
     ).exists() is False
     assert LuantiShopPurchaseCredit.objects.get(
-        group=sub_top, item_name="mcl_core:dirt"
+        group=sub_top, item_name="default:dirt"
     ).quantity == 1
 
 
@@ -368,7 +369,7 @@ def test_materialize_stair_inner_node_grants_base_purchase_credit(plan_setup):
         max_count=1,
     )
     credit = LuantiShopPurchaseCredit.objects.get(
-        group=top, item_name="mcl_stairs:stair_acaciawood"
+        group=top, item_name="stairs:stair_inner_acacia_wood"
     )
     assert credit.quantity == 1
 
@@ -398,7 +399,7 @@ def test_replan_at_same_cell_grants_purchase_credit_again(plan_setup):
         max_count=1,
     )
     credit = LuantiShopPurchaseCredit.objects.get(
-        group=top, item_name="mcl_stairs:stair_acaciawood"
+        group=top, item_name="stairs:stair_acacia_wood"
     )
     assert credit.quantity == 1
     block = LuantiPlanBlock.objects.get(world="world", x=x, y=y, z=z)
@@ -429,7 +430,7 @@ def test_replan_at_same_cell_grants_purchase_credit_again(plan_setup):
     block.refresh_from_db()
     assert block.purchase_credit_granted is True
     credit_stair = LuantiShopPurchaseCredit.objects.get(
-        group=top, item_name="mcl_stairs:stair_acaciawood"
+        group=top, item_name="stairs:stair_acacia_wood"
     )
     assert credit_stair.quantity == 1
     credit_slab = LuantiShopPurchaseCredit.objects.get(
@@ -487,11 +488,13 @@ def test_remove_planned_blocks(plan_setup):
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
 def test_shop_planning_buy_zero_velo(client, plan_setup):
+    set_session_mode(get_active_session("Builder1"), "plan")
     cat = LuantiShopCategory.objects.create(slug="blocks", name="Blocks")
     item = LuantiShopItem.objects.create(
         category=cat,
         item_name="mcl_core:stone",
         buy_price_velos=7,
+        stack_size=64,
     )
     group = plan_setup["top"]
     resp = client.post(
@@ -552,6 +555,7 @@ def test_parse_planning_flag(value, expected):
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
 def test_shop_planning_buy_accepts_string_true(client, plan_setup):
+    set_session_mode(get_active_session("Builder1"), "plan")
     cat = LuantiShopCategory.objects.create(slug="blocks-str", name="BlocksStr")
     item = LuantiShopItem.objects.create(
         category=cat,
@@ -593,6 +597,7 @@ def test_shop_buy_without_planning_still_charges(client, plan_setup):
         category=cat,
         item_name="mcl_core:cobble",
         buy_price_velos=9,
+        stack_size=64,
     )
     group = plan_setup["top"]
     resp = client.post(
@@ -631,6 +636,7 @@ def test_effective_max_buy_quantity_stone_stack_size_one(db):
         buy_price_velos=2,
         stack_size=1,
     )
+    LuantiRegisteredItem.objects.create(item_name="mcl_core:stone", kind="node")
     assert effective_max_buy_quantity(item) == 64
 
 
@@ -640,6 +646,7 @@ def test_effective_max_buy_quantity_stone_stack_size_one(db):
     MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
 )
 def test_shop_buy_stone_quantity_with_stack_size_one(client, plan_setup):
+    set_session_mode(get_active_session("Builder1"), "plan")
     cat = LuantiShopCategory.objects.create(slug="blocks2", name="Blocks2")
     item = LuantiShopItem.objects.create(
         category=cat,
@@ -647,6 +654,7 @@ def test_shop_buy_stone_quantity_with_stack_size_one(client, plan_setup):
         buy_price_velos=2,
         stack_size=1,
     )
+    LuantiRegisteredItem.objects.create(item_name="mcl_core:stone", kind="node")
     resp = client.post(
         "/api/luanti/shop/buy/",
         data=json.dumps(
@@ -673,6 +681,7 @@ def test_shop_buy_stone_quantity_with_stack_size_one(client, plan_setup):
 )
 def test_shop_buy_quantity_is_physical_not_stack_size(client, plan_setup):
     """Treppen/Blöcke mit stack_size=64: Menge 1 im Shop = 1 Item, nicht 64."""
+    set_session_mode(get_active_session("Builder1"), "plan")
     cat = LuantiShopCategory.objects.create(slug="stairs", name="Stairs")
     item = LuantiShopItem.objects.create(
         category=cat,
@@ -701,6 +710,7 @@ def test_shop_buy_quantity_is_physical_not_stack_size(client, plan_setup):
 
 @pytest.mark.django_db
 def test_shop_buy_quantity_exceeds_stack_size(plan_setup):
+    set_session_mode(get_active_session("Builder1"), "plan")
     cat = LuantiShopCategory.objects.create(slug="tools", name="Tools")
     item = LuantiShopItem.objects.create(
         category=cat,
@@ -720,14 +730,14 @@ def test_shop_buy_quantity_exceeds_stack_size(plan_setup):
 
 
 @pytest.mark.django_db
-def test_shop_planning_requires_build(db):
+def test_shop_planning_requires_plan_session(db):
     gtype, _ = GroupType.objects.get_or_create(name="PlanType2")
     group = Group.objects.create(name="T2", group_type=gtype, velos_spendable=10)
     LuantiAccount.objects.create(
         login_name="Player2",
         id_tag="rfid-2",
         assigned_to_group=group,
-        allowed_modes=["play", "build"],
+        allowed_modes=["play", "plan", "build"],
     )
     start_session(
         account=LuantiAccount.objects.get(login_name="Player2"),
@@ -748,7 +758,86 @@ def test_shop_planning_requires_build(db):
             client_tx_id="pb-1",
             planning=True,
         )
-    assert exc.value.code == "planning_requires_build"
+    assert exc.value.code == "shop_plan_requires_plan"
+
+
+@pytest.mark.django_db
+def test_shop_real_buy_requires_build_session(db):
+    gtype, _ = GroupType.objects.get_or_create(name="PlanType3")
+    group = Group.objects.create(name="T3", group_type=gtype, velos_spendable=50)
+    LuantiAccount.objects.create(
+        login_name="Player3",
+        id_tag="rfid-3",
+        assigned_to_group=group,
+        allowed_modes=["play", "plan", "build"],
+    )
+    start_session(
+        account=LuantiAccount.objects.get(login_name="Player3"),
+        mode="plan",
+        duration=10,
+    )
+    cat = LuantiShopCategory.objects.create(slug="b3", name="B3")
+    item = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:dirt",
+        buy_price_velos=2,
+    )
+    with pytest.raises(ShopError) as exc:
+        shop_buy(
+            login_name="Player3",
+            item_id=item.pk,
+            quantity=1,
+            client_tx_id="rb-1",
+            planning=False,
+        )
+    assert exc.value.code == "shop_requires_build"
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_materialize_manual_requires_build_session(plan_setup):
+    set_session_mode(get_active_session("Builder1"), "plan")
+    with pytest.raises(PlanError) as exc:
+        materialize_blocks(
+            login_name="Builder1",
+            region_id=plan_setup["region"].region_id,
+            client_tx_id="conv-plan-1",
+            max_count=1,
+            mode="manual",
+        )
+    assert exc.value.code == "convert_requires_build"
+
+
+@pytest.mark.django_db
+def test_shop_plan_buy_rejects_build_session(db):
+    gtype, _ = GroupType.objects.get_or_create(name="PlanType4")
+    group = Group.objects.create(name="T4", group_type=gtype, velos_spendable=50)
+    LuantiAccount.objects.create(
+        login_name="Player4",
+        id_tag="rfid-4",
+        assigned_to_group=group,
+        allowed_modes=["play", "plan", "build"],
+    )
+    start_session(
+        account=LuantiAccount.objects.get(login_name="Player4"),
+        mode="build",
+        duration=10,
+    )
+    cat = LuantiShopCategory.objects.create(slug="b4", name="B4")
+    item = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:sand",
+        buy_price_velos=1,
+    )
+    with pytest.raises(ShopError) as exc:
+        shop_buy(
+            login_name="Player4",
+            item_id=item.pk,
+            quantity=1,
+            client_tx_id="pb-build-1",
+            planning=True,
+        )
+    assert exc.value.code == "shop_plan_requires_plan"
 
 
 @pytest.mark.django_db

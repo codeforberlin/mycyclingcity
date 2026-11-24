@@ -140,8 +140,6 @@ def import_minecraft_shop_catalog(*, only_enabled: bool = True) -> McShopImportR
     """
     result = McShopImportResult()
     registry = registry_name_set()
-    # Empty registry → optimistic heuristic (still useful before first dump).
-    registry_or_none = registry or None
 
     cat_qs = MinecraftShopCategory.objects.all().order_by("sort_order", "slug")
     if only_enabled:
@@ -180,7 +178,7 @@ def import_minecraft_shop_catalog(*, only_enabled: bool = True) -> McShopImportR
             item_qs = item_qs.filter(enabled=True)
 
         for mc_item in item_qs:
-            mapped = resolve_material(mc_item.material, registry=registry_or_none)
+            mapped = resolve_material(mc_item.material, registry=registry)
             if not mapped:
                 result.items_skipped += 1
                 key = f"{mc_item.material}"

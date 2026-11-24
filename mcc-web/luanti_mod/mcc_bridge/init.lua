@@ -215,12 +215,7 @@ mcc_bridge.apply_city_steps = function(steps)
             if w == "clear" then
                 w = "none"
             end
-            if core.global_exists("mcl_weather") and mcl_weather.change_weather then
-                local ok = mcl_weather.change_weather(w)
-                core.log("action", "[mcc_bridge] weather=" .. w .. " ok=" .. tostring(ok))
-            else
-                core.log("warning", "[mcc_bridge] mcl_weather unavailable")
-            end
+            core.log("action", "[mcc_bridge] weather step skipped (" .. w .. ")")
         elseif op == "chat" and step.message then
             core.chat_send_all(tostring(step.message))
         end
@@ -359,7 +354,7 @@ local function force_exit_fly_mode(player, restore_fly)
             end
             local mode_now = storage:get_string("mode_" .. name)
             -- Only restore when the session still wants fly (build/watch).
-            if mode_now ~= "build" and mode_now ~= "watch" then
+            if mode_now ~= "build" and mode_now ~= "plan" and mode_now ~= "watch" then
                 return
             end
             local pr = core.get_player_privs(name) or {}
@@ -570,7 +565,7 @@ local function teleport_player_to_pos(player, pos, label)
         local safe = find_safe_standing_pos(target)
         player:set_pos(safe)
         local mode_now = storage:get_string("mode_" .. player:get_player_name())
-        local restore_fly = (mode_now == "build" or mode_now == "watch")
+        local restore_fly = (mode_now == "build" or mode_now == "plan" or mode_now == "watch")
         force_exit_fly_mode(player, restore_fly)
         local msg = label or "Spawn"
         core.chat_send_player(player:get_player_name(), "Teleport: " .. tostring(msg))
@@ -758,12 +753,6 @@ local function show_session_end_warning(name, minutes)
 
     local player = core.get_player_by_name(name)
     if player then
-        -- Level-up sound is loud and familiar from Mineclonia.
-        core.sound_play("level_up", { to_player = name, gain = 1.0 }, true)
-        core.after(0.35, function()
-            core.sound_play("level_up", { to_player = name, gain = 0.8 }, true)
-        end)
-
         local hud_text = "⚠ SESSION ENDET BALD ⚠\nnoch ca. " .. tostring(mins) .. " Minuten"
         local hid = player:hud_add({
             type = "text",
@@ -790,7 +779,6 @@ local function show_session_end_warning(name, minutes)
     core.after(4, function()
         if core.get_player_by_name(name) then
             core.chat_send_player(name, colorize("#FFEE00", line))
-            core.sound_play("experience", { to_player = name, gain = 0.9 }, true)
         end
     end)
     core.log("action", "[mcc_bridge] SESSION_END_WARNING player=" .. name .. " min=" .. tostring(mins))
@@ -1132,6 +1120,42 @@ local function apply_bridge_commands(commands)
                     core.chat_send_player(pname, "Inventar geleert. / Inventory cleared.")
                     core.log("action", "[mcc_bridge] CLEAR_INVENTORY player=" .. pname)
                 end
+            elseif t == "SET_INVENTORY" and cmd.player then
+                local pname = tostring(cmd.player)
+                local want_mode = tostring(cmd.mode or "")
+                local player = core.get_player_by_name(pname)
+                if player then
+                    local mode_now = storage:get_string("mode_" .. pname) or "play"
+                    if mode_now == "paused" then
+                        mode_now = "play"
+                    end
+                    if want_mode == "" or want_mode == mode_now then
+                        apply_inventory_list(player, cmd.inventory)
+                        core.chat_send_player(
+                            pname,
+                            "Inventar aktualisiert (Admin). / Inventory updated (admin)."
+                        )
+                        core.log(
+                            "action",
+                            "[mcc_bridge] SET_INVENTORY player="
+                                .. pname
+                                .. " mode="
+                                .. mode_now
+                                .. " rev="
+                                .. tostring(cmd.revision or "?")
+                        )
+                    else
+                        core.log(
+                            "warning",
+                            "[mcc_bridge] SET_INVENTORY skipped mode mismatch player="
+                                .. pname
+                                .. " want="
+                                .. want_mode
+                                .. " now="
+                                .. mode_now
+                        )
+                    end
+                end
             elseif t == "KICK_PLAYER" and cmd.player then
                 -- Keep Django session active until leave (with inventory) or
                 -- offline leave below. Admin must not end_session before kick.
@@ -1273,7 +1297,8 @@ local function install_play_mode_world_protection()
         if name and mode_protects_world(name) then
             return true
         end
-        if name and pos and get_stored_mode(name) == "build" then
+        local mode_here = name and get_stored_mode(name) or ""
+        if name and pos and (mode_here == "build" or mode_here == "plan") then
             if build_mode_is_protected(pos, name) then
                 return true
             end
@@ -1292,11 +1317,13 @@ local function install_play_mode_world_protection()
             )
             return
         end
-        if get_stored_mode(name) == "build" and build_mode_is_protected(pos, name) then
-            core.chat_send_player(
-                name,
-                "Hier darfst du nicht bauen (keine Bauzone / kein Member). / Build zone required."
-            )
+        local mode_v = get_stored_mode(name)
+        if (mode_v == "build" or mode_v == "plan") and build_mode_is_protected(pos, name) then
+            local hint = "Hier darfst du nicht bauen (keine Bauzone / kein Member). / Build zone required."
+            if mode_v == "plan" then
+                hint = "Hier darfst du nicht planen (keine Bauzone / kein Member). / Plan zone required."
+            end
+            core.chat_send_player(name, hint)
         end
     end)
 end
@@ -1371,18 +1398,8 @@ local function install_direct_dig_to_inventory()
         return oldnode
     end
 
-    local function mcl_node_harvestable_by_digger(digger, oldnode)
-        local ag = rawget(_G, "mcl_autogroup")
-        if not ag or type(ag.can_harvest) ~= "function" or not digger then
-            return true
-        end
-        local nodename = oldnode and oldnode.name
-        if not nodename or nodename == "air" then
-            return true
-        end
-        local tool = digger:get_wielded_item()
-        local toolname = tool and tool:get_name() or ""
-        return ag.can_harvest(nodename, toolname) == true
+    local function node_harvestable_by_digger(_digger, _oldnode)
+        return true
     end
 
     local function drops_match_dug_node(oldnode, drops)
@@ -1460,7 +1477,7 @@ local function install_direct_dig_to_inventory()
 
         local dug_oldnode = take_dug_oldnode(pos)
         local pname = digger:get_player_name()
-        local harvest_ok = mcl_node_harvestable_by_digger(digger, dug_oldnode)
+        local harvest_ok = node_harvestable_by_digger(digger, dug_oldnode)
 
         dig_drop_receiver = digger
         dig_drop_hooked = 0
@@ -1594,8 +1611,19 @@ apply_join_result = function(name, join)
     if mp and mp.refresh_hud then
         mp.refresh_hud(name)
     end
-    local restore_fly = want_fly or mode == "build" or mode == "watch"
+    local restore_fly = want_fly or mode == "build" or mode == "plan" or mode == "watch"
     force_exit_fly_mode(player, restore_fly)
+    if mode == "plan" then
+        local mp = rawget(_G, "mcc_plan")
+        if mp and mp.set_active then
+            mp.set_active(name, true)
+        end
+    elseif mode == "build" then
+        local mp = rawget(_G, "mcc_plan")
+        if mp and mp.set_active then
+            mp.set_active(name, false)
+        end
+    end
     if player:get_inventory() then
         apply_inventory_list(player, join.inventory)
     end
@@ -1750,6 +1778,9 @@ end
 -- Solid spawn pad for singlenode/void worlds — created once, never rebuilt.
 -- Re-placing every restart wiped player builds around spawn (stone pad + air column).
 local function ensure_spawn_platform()
+    if core.settings:get_bool("mcc_bridge.spawn_platform") ~= true then
+        return
+    end
     local marker = storage:get_string("spawn_platform_v1")
     if marker and marker ~= "" then
         core.log(
@@ -1764,12 +1795,11 @@ local function ensure_spawn_platform()
     local radius = 8
     local minp = { x = -radius, y = y_floor, z = -radius }
     local maxp = { x = radius, y = y_floor + 1, z = radius }
-    local node_name = "mcl_core:stone"
+    local node_name = "default:stone"
     if not core.registered_nodes[node_name] then
         node_name = "mapgen_stone"
     end
-    -- Keep a thin bedrock rim under the pad so the void stays sealed if stone is removed.
-    local rim_name = "mcl_core:bedrock"
+    local rim_name = "default:obsidian"
     if not core.registered_nodes[rim_name] then
         rim_name = node_name
     end
@@ -1811,9 +1841,78 @@ local function ensure_spawn_platform()
     end)
 end
 
+local PLAN_HOLO_GROUP = "mcc_plan_holo"
+
+local function node_was_plan_hologram(nodename)
+    if not nodename or nodename == "" or nodename == "air" then
+        return false
+    end
+    return core.get_item_group(nodename, PLAN_HOLO_GROUP) > 0
+        or nodename:sub(1, 9) == "mcc_plan:"
+end
+
+local function install_cart_place_audit()
+    core.register_on_placenode(function(pos, newnode, _placer, oldnode, itemstack, _)
+        if not _placer or not _placer:is_player() or not pos then
+            return
+        end
+        local newname = (newnode and newnode.name) or ""
+        local wield = (itemstack and itemstack:get_name()) or ""
+        if wield:sub(1, 6) ~= "carts:" and newname:sub(1, 6) ~= "carts:" then
+            return
+        end
+        local name = _placer:get_player_name()
+        local oldname = (oldnode and oldnode.name) or "?"
+        local on_holo = node_was_plan_hologram(oldname)
+        local px = math.floor(pos.x + 0.5)
+        local py = math.floor(pos.y + 0.5)
+        local pz = math.floor(pos.z + 0.5)
+        local mode = get_stored_mode(name)
+        local member_in_build = false
+        if mode == "build" or mode == "plan" then
+            member_in_build = not build_mode_is_protected(pos, name)
+        end
+        core.log(
+            "action",
+            "[mcc_bridge] place_cart player="
+                .. name
+                .. " mode="
+                .. mode
+                .. " pos="
+                .. tostring(px)
+                .. ","
+                .. tostring(py)
+                .. ","
+                .. tostring(pz)
+                .. " old="
+                .. oldname
+                .. " new="
+                .. newname
+                .. " wield="
+                .. wield
+                .. " on_holo="
+                .. tostring(on_holo)
+                .. " build_allowed="
+                .. tostring(member_in_build)
+                .. " p2="
+                .. tostring(newnode and newnode.param2 or 0)
+        )
+        if bridge_dbg.debug_enabled("place") then
+            bridge_dbg.logf(
+                "place",
+                "place_cart detail wield_wear=%s wield_count=%s old_p2=%s",
+                tostring(itemstack and itemstack:get_wear() or 0),
+                tostring(itemstack and itemstack:get_count() or 0),
+                tostring(oldnode and oldnode.param2 or 0)
+            )
+        end
+    end)
+end
+
 core.register_on_mods_loaded(function()
     mod_availability.log_partner_mods()
     install_play_mode_world_protection()
+    install_cart_place_audit()
     install_direct_dig_to_inventory()
     -- Always ensure void worlds have a landing pad (independent of HTTP).
     --RR disabled    core.after(1, ensure_spawn_platform)
@@ -1944,6 +2043,11 @@ end)
 
 -- Hard stop/restart: attempt leave before process exit (best-effort HTTP).
 core.register_on_shutdown(function()
+    core.log(
+        "action",
+        "[mcc_bridge] server_shutdown players="
+            .. tostring(#core.get_connected_players())
+    )
     for _, player in ipairs(core.get_connected_players()) do
         local name = player:get_player_name()
         waiting_poll[name] = nil
@@ -2018,8 +2122,7 @@ core.register_chatcommand("mccbuy", {
             return false, "Usage: /mccbuy <id> [qty]"
         end
         local tx = name .. "-" .. tostring(os.time()) .. "-" .. tostring(id)
-        local mp = mcc_plan_api()
-        local planning = mp and mp.is_active and mp.is_active(name) or false
+        local planning = get_stored_mode(name) == "plan"
         api_post("/api/luanti/shop/buy/", {
             player = name,
             item_id = id,

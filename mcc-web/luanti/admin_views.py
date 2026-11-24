@@ -48,6 +48,7 @@ from luanti.services.permissions import (
     user_can_access_luanti_arena,
     user_can_access_luanti_city,
     user_can_access_luanti_shop,
+    user_can_change_luanti_player_inventory,
     user_can_manage_luanti_accounts,
     user_can_manage_luanti_sessions,
     user_can_manage_luanti_stations,
@@ -56,12 +57,24 @@ from luanti.services.permissions import (
     user_can_view_luanti_account_password,
     user_can_view_luanti_account_password_for,
 )
+from luanti.services.inventory_admin import (
+    INVENTORY_ERROR_MESSAGES,
+    InventoryAdminError,
+    editor_rows_from_payload,
+    format_inventory_table_html,
+    inventory_summaries_for_account,
+    live_push_status_message,
+    normalize_mode,
+    parse_inventory_post,
+    save_player_inventory,
+)
 from luanti.services.session_control import (
     SessionError,
     account_duration_bounds,
     account_time_step_minutes,
     expire_due_sessions,
     extend_session,
+    get_or_create_inventory,
     pause_session,
     reduce_session,
     resolve_duration_minutes,
@@ -497,7 +510,7 @@ def luanti_accounts(request):
                     return _luanti_accounts_list_redirect(request)
                 defaults = {
                     "id_tag": id_tag or login_name,
-                    "allowed_modes": ["play", "build", "watch"],
+                    "allowed_modes": ["play", "plan", "build", "watch"],
                     "default_mode": "play",
                     "is_active": request.POST.get("is_active") == "1",
                     "server_op": request.POST.get("server_op") == "1",
@@ -635,6 +648,7 @@ def luanti_account_detail(request, account_id: int):
 
     top_groups, _allowed_tops = _luanti_top_groups_for_user(request.user)
     wp = wallet_payload(account)
+    can_edit_inventory = user_can_change_luanti_player_inventory(request.user)
     return render(
         request,
         "admin/luanti/luanti_account_detail.html",
@@ -653,6 +667,54 @@ def luanti_account_detail(request, account_id: int):
                 request.user, account
             ),
             "require_home_top": operator_session_top_ids(request.user) is not None,
+            "inventory_summaries": inventory_summaries_for_account(account),
+            "can_edit_inventory": can_edit_inventory,
+        },
+    )
+
+
+@user_passes_test(user_can_change_luanti_player_inventory)
+@staff_member_required
+def luanti_account_inventory_edit(request, account_id: int, mode: str):
+    account = _get_luanti_account_for_operator(request.user, account_id)
+    try:
+        mode = normalize_mode(mode)
+    except InventoryAdminError:
+        raise Http404 from None
+
+    inv = get_or_create_inventory(account, mode)
+    labels = dict(inv._meta.get_field("mode").choices)
+    mode_label = str(labels.get(mode, mode))
+
+    if request.method == "POST":
+        try:
+            rows = parse_inventory_post(request.POST)
+            inv, pushed = save_player_inventory(inv, rows)
+            messages.success(request, live_push_status_message(pushed, inv))
+            return redirect(
+                "admin:luanti_account_inventory_edit",
+                account_id=account.pk,
+                mode=mode,
+            )
+        except InventoryAdminError as exc:
+            messages.error(
+                request,
+                INVENTORY_ERROR_MESSAGES.get(exc.code, str(exc)),
+            )
+
+    editor_rows = editor_rows_from_payload(inv.payload)
+    return render(
+        request,
+        "admin/luanti/luanti_account_inventory_edit.html",
+        {
+            "title": _("Inventar %(mode)s — %(account)s")
+            % {"mode": mode_label, "account": account.login_name},
+            "account": account,
+            "mode": mode,
+            "mode_label": mode_label,
+            "inv": inv,
+            "editor_rows": editor_rows,
+            "preview_table": format_inventory_table_html(inv.payload, account=account),
         },
     )
 

@@ -37,6 +37,10 @@ from luanti.models import (
     LuantiStation,
     LuantiWaitingPlayer,
 )
+from luanti.services.inventory_admin import (
+    format_inventory_table_html,
+    inventory_item_count,
+)
 from luanti.services.session_control import clear_account_inventory
 
 
@@ -158,11 +162,28 @@ class LuantiSessionAdmin(admin.ModelAdmin):
 
 @admin.register(LuantiPlayerInventory)
 class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
-    list_display = ("account_admin_link", "mode", "revision", "updated_at")
+    list_display = (
+        "account_admin_link",
+        "mode",
+        "item_count",
+        "revision",
+        "updated_at",
+    )
     list_display_links = ("mode",)
     list_filter = ("mode",)
     actions = ("action_clear_inventory",)
     search_fields = ("account__login_name",)
+    readonly_fields = (
+        "account",
+        "mode",
+        "revision",
+        "updated_at",
+        "last_server_id",
+        "items_table",
+        "payload",
+        "editor_link",
+    )
+    fields = readonly_fields
 
     class Media:
         css = {"all": ("admin/css/group_admin.css",)}
@@ -178,23 +199,44 @@ class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
                 obj.account_id if obj else None,
                 label=_("Account öffnen →"),
                 link_id="luanti-player-inventory-account-link",
-                change_url_name="admin:luanti_luantiaccount_change",
+                change_url_name="admin:luanti_account_detail",
             )
         return form
+
+    @admin.display(description=_("Items"), ordering="revision")
+    def item_count(self, obj):
+        return inventory_item_count(obj.payload)
+
+    @admin.display(description=_("Inventar (Tabelle)"))
+    def items_table(self, obj):
+        return format_inventory_table_html(obj.payload, account=obj.account)
+
+    @admin.display(description=_("Bearbeiten"))
+    def editor_link(self, obj):
+        if not obj or not obj.pk:
+            return "—"
+        url = reverse(
+            "admin:luanti_account_inventory_edit",
+            args=[obj.account_id, obj.mode],
+        )
+        return format_html('<a class="button" href="{}">{}</a>', url, _("Tabellen-Editor"))
 
     @admin.display(description=_("Account"), ordering="account__login_name")
     def account_admin_link(self, obj):
         account = obj.account
         if not account:
             return "—"
-        url = reverse("admin:luanti_luantiaccount_change", args=[account.pk])
+        url = reverse("admin:luanti_account_detail", args=[account.pk])
         label = account.display_name or account.login_name
         return format_html(
-            '<a href="{}" class="cyclist-group-admin-link" target="_blank" '
+            '<a href="{}" class="cyclist-group-admin-link" '
             'rel="noopener noreferrer">{}</a>',
             url,
             label,
         )
+
+    def has_add_permission(self, request):
+        return False
 
     @admin.action(description=_("Inventar leeren (DB + online)"))
     def action_clear_inventory(self, request, queryset):

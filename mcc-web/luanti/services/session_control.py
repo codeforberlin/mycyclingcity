@@ -27,6 +27,7 @@ PRIVS_BY_MODE = {
     # Mineclonia: do NOT grant "creative" unless world creative_mode is on —
     # otherwise inventory code expects creative.lua (not loaded) and crashes the server.
     LuantiAccount.MODE_PLAY: ["shout", "fast", "interact"],
+    LuantiAccount.MODE_PLAN: ["shout", "fast", "interact", "fly", "painter"],
     LuantiAccount.MODE_BUILD: ["shout", "fast", "interact", "fly", "painter"],
     LuantiAccount.MODE_WATCH: ["shout", "fly", "noclip"],
 }
@@ -225,18 +226,44 @@ def clear_account_inventory(inv: LuantiPlayerInventory, *, push_live: bool = Tru
     inv.revision = int(inv.revision or 0) + 1
     inv.save(update_fields=["payload", "revision", "updated_at"])
     if push_live:
-        session = get_active_session(inv.account.login_name)
-        if session and session.mode == inv.mode:
-            from luanti.consumers import LuantiEventConsumer
-
-            LuantiEventConsumer.push_to_all_sync(
-                {
-                    "type": "CLEAR_INVENTORY",
-                    "player": inv.account.login_name,
-                    "mode": inv.mode,
-                }
-            )
+        push_account_inventory_clear(inv)
     return inv
+
+
+def push_account_inventory_clear(inv: LuantiPlayerInventory) -> bool:
+    """Push CLEAR_INVENTORY when an open, non-paused session matches inventory mode."""
+    session = get_active_session(inv.account.login_name)
+    if not session or session.is_paused or session.mode != inv.mode:
+        return False
+    from luanti.consumers import LuantiEventConsumer
+
+    LuantiEventConsumer.push_to_all_sync(
+        {
+            "type": "CLEAR_INVENTORY",
+            "player": inv.account.login_name,
+            "mode": inv.mode,
+        }
+    )
+    return True
+
+
+def push_account_inventory(inv: LuantiPlayerInventory) -> bool:
+    """Push SET_INVENTORY when an open, non-paused session matches inventory mode."""
+    session = get_active_session(inv.account.login_name)
+    if not session or session.is_paused or session.mode != inv.mode:
+        return False
+    from luanti.consumers import LuantiEventConsumer
+
+    LuantiEventConsumer.push_to_all_sync(
+        {
+            "type": "SET_INVENTORY",
+            "player": inv.account.login_name,
+            "mode": inv.mode,
+            "inventory": inv.payload,
+            "revision": int(inv.revision or 0),
+        }
+    )
+    return True
 
 
 @transaction.atomic

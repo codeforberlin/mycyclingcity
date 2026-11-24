@@ -244,6 +244,39 @@
         </div>
       </form>
     </div>
+
+    <div class="card-actions">
+      <h3 style="margin:0 0 8px;">{% trans "Inventare" %}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;">{% trans "Modus" %}</th>
+            <th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ddd;">{% trans "Items" %}</th>
+            <th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ddd;">{% trans "Rev." %}</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in inventory_summaries %}
+          <tr>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">{{ s.mode_label }}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">{{ s.item_count }}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">{{ s.revision }}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">
+              {% if can_edit_inventory %}
+              <a href="{% url 'admin:luanti_account_inventory_edit' account.pk s.mode %}">{% trans "Bearbeiten" %}</a>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px;">
+        <a href="{% url 'admin:luanti_luantiplayerinventory_changelist' %}?account__id__exact={{ account.pk }}">{% trans "Alle Inventar-Datensätze im Admin" %}</a>
+      </p>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -7,16 +7,15 @@ from __future__ import annotations
 
 from api.models import Group
 from luanti.models import LuantiShopItem, LuantiShopPurchaseCredit
+from luanti.services.mcl_map import resolve_name
 
-# Inventory item when selling → extra shop item_name(s) that may hold purchase credit.
+# Dug block → shop row that may hold the purchase credit.
+# Mineclonia names stay until luanti_convert_from_mineclonia has renamed the shop.
 INVENTORY_TO_SHOP_CREDIT_ALIASES: dict[str, tuple[str, ...]] = {
+    "default:cobble": ("default:stone",),
+    "default:dirt": ("default:dirt_with_grass",),
     "mcl_core:cobble": ("mcl_core:stone",),
-    "mcl_core:dirt": (
-        "mcl_core:dirt_with_grass",
-        "mcl_core:grass_path",
-        "mcl_core:podzol",
-        "mcl_core:mycelium",
-    ),
+    "mcl_core:dirt": ("mcl_core:dirt_with_grass",),
 }
 
 _ENABLED_SHOP_QS = LuantiShopItem.objects.filter(
@@ -25,57 +24,38 @@ _ENABLED_SHOP_QS = LuantiShopItem.objects.filter(
 
 
 def stair_shop_credit_item_name(item_name: str) -> str:
-    """Mineclonia stair nodes (_inner/_outer) map to one shop/credit item (base stair)."""
-    name = (item_name or "").strip()
-    base = _mcl_stair_base_name(name)
-    return base if base else name
+    """Stair corners resolve through mcl_map to the standard stair node."""
+    return shop_credit_item_name(item_name)
 
 
 def door_shop_credit_item_name(item_name: str) -> str:
-    """Door world nodes (_b_# / _t_#) map to the shop craft item (mcl_doors:… without suffix)."""
-    name = (item_name or "").strip()
-    if not name.startswith("mcl_doors:"):
-        return name
-    for sep in ("_b_", "_t_"):
-        idx = name.rfind(sep)
-        if idx > len("mcl_doors:") and name[idx + len(sep) :].isdigit():
-            return name[:idx]
-    return name
+    """Door halves resolve through mcl_map to the standard door node."""
+    return shop_credit_item_name(item_name)
 
 
 def shop_credit_item_name(item_name: str) -> str:
-    return door_shop_credit_item_name(stair_shop_credit_item_name(item_name))
-
-
-def _mcl_stair_base_name(item_name: str) -> str | None:
-    if not item_name.startswith("mcl_stairs:stair_"):
-        return None
-    if item_name.endswith("_inner"):
-        return item_name[: -len("_inner")]
-    if item_name.endswith("_outer"):
-        return item_name[: -len("_outer")]
-    return item_name
-
-
-def _mcl_stair_shape_aliases(item_name: str) -> tuple[str, ...]:
-    base = _mcl_stair_base_name(item_name)
-    if not base:
-        return ()
-    variants = (base, f"{base}_inner", f"{base}_outer")
-    return tuple(v for v in variants if v != item_name)
+    name = (item_name or "").strip()
+    resolved = resolve_name(name)
+    return resolved or name
 
 
 def credit_item_name_candidates(inventory_name: str) -> list[str]:
-    name = (inventory_name or "").strip()
-    if not name:
+    raw = (inventory_name or "").strip()
+    if not raw:
         return []
-    names = [name]
-    for alias in INVENTORY_TO_SHOP_CREDIT_ALIASES.get(name, ()):
-        if alias not in names:
-            names.append(alias)
-    for alias in _mcl_stair_shape_aliases(name):
-        if alias not in names:
-            names.append(alias)
+    resolved = shop_credit_item_name(raw)
+    names: list[str] = []
+
+    def add(name: str) -> None:
+        if name and name not in names:
+            names.append(name)
+
+    add(raw)
+    add(resolved)
+    for key in (raw, resolved):
+        for alias in INVENTORY_TO_SHOP_CREDIT_ALIASES.get(key, ()):
+            add(alias)
+            add(shop_credit_item_name(alias))
     return names
 
 

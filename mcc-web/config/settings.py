@@ -732,11 +732,10 @@ LUANTI_PLAN_LIVE_CONVERT_FX_STAGGER = True
 LUANTI_PLAN_AUTO_REQUIRE_SPECTATOR = False
 LUANTI_PLAN_CLEAR_MAX_BATCH = 512
 LUANTI_PLAN_CLEAR_DEFAULT_BATCH = 32
-# Mineclonia mod tree for shop label import (*.de.tr under …/mods/**/locale/).
-# Override via .env only when Luanti/Mineclonia is installed elsewhere.
+# Mod tree for shop label import (*.de.tr under …/mods/**/locale/).
 MCC_LUANTI_LOCALE_ROOT = config(
     'MCC_LUANTI_LOCALE_ROOT',
-    default=str(Path(MCC_LUANTI_SERVER_DIR) / 'games' / 'mineclonia' / 'mods'),
+    default=str(Path(MCC_LUANTI_SERVER_DIR) / 'games' / 'mycyclingcity' / 'mods'),
 )
 MCC_MINECRAFT_LP_SYNC_ENABLED = config('MCC_MINECRAFT_LP_SYNC_ENABLED', default=False, cast=bool)
 MCC_MINECRAFT_LP_GROUP_PREFIX = config('MCC_MINECRAFT_LP_GROUP_PREFIX', default='team_')

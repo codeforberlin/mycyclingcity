@@ -18,7 +18,7 @@ end
 local function deny_priv(player)
 	core.chat_send_player(
 		player:get_player_name(),
-		core.colorize("#FF5555", "You need the worldedit or painter privilege to use this tool.")
+		core.colorize("#FF5555", "Du brauchst das Privileg worldedit oder painter, um dieses Werkzeug zu benutzen.")
 	)
 end
 
@@ -38,7 +38,7 @@ local function player_can_build_at(player, pos)
 	end
 	core.chat_send_player(
 		name,
-		core.colorize("#FF5555", "This area is protected. You cannot modify blocks here.")
+		core.colorize("#FF5555", "Dieses Gebiet ist geschützt. Du kannst hier keine Blöcke ändern.")
 	)
 	return false
 end

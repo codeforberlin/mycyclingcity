@@ -233,17 +233,29 @@ def resolve_material(
     registry: set[str] | None = None,
 ) -> str | None:
     """
-    Pick best Mineclonia itemstring.
+    Pick an itemstring for a Bukkit material.
 
+    A standard-mod name from mcl_map is preferred when it is present.
     With a registry set, only return names that exist in-game.
-    Without registry, return the first heuristic candidate (optimistic).
+    Without a registry, return the first candidate (unit tests and previews).
+    Shop import always passes the live registry, including an empty set.
     """
+    from luanti.services.mcl_map import resolve_name
+
     cands = candidates_for_material(material)
-    if not cands:
-        return None
-    if not registry:
-        return cands[0]
+    expanded: list[str] = []
+    seen: set[str] = set()
     for name in cands:
+        mapped = resolve_name(name)
+        for candidate in (mapped, name):
+            if candidate and candidate not in seen:
+                seen.add(candidate)
+                expanded.append(candidate)
+    if not expanded:
+        return None
+    if registry is None:
+        return expanded[0]
+    for name in expanded:
         if name in registry:
             return name
     # Fuzzy: any registry item whose local name equals snake material

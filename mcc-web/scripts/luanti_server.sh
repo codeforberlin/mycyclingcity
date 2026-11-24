@@ -87,7 +87,49 @@ ensure_world_mod_enabled() {
     if grep -q "^${key} =" "$world_mt" 2>/dev/null; then
         sed -i "s/^${key} =.*/${key} = true/" "$world_mt"
     else
-        echo "${key} = true" >> "$world_mt"
+        echo "${key} = true" >> "$world.mt"
+    fi
+}
+
+ensure_world_mod_disabled() {
+    local mod_name="$1"
+    local world_mt="$SERVER_DIR/worlds/$WORLD_NAME/world.mt"
+    local key="load_mod_${mod_name}"
+    if [ ! -f "$world_mt" ]; then
+        return 1
+    fi
+    if grep -q "^${key} =" "$world_mt" 2>/dev/null; then
+        sed -i "s/^${key} =.*/${key} = false/" "$world_mt"
+    else
+        echo "${key} = false" >> "$world_mt"
+    fi
+}
+
+mcc_bridge_disabled_for_world() {
+    local world_path="$SERVER_DIR/worlds/$WORLD_NAME"
+    if [ "$WORLD_NAME" = "mycyclingcity_migrate" ]; then
+        return 0
+    fi
+    if [ -f "$world_path/.mcc_disable_bridge" ]; then
+        return 0
+    fi
+    if [ "${MCC_LUANTI_DISABLE_BRIDGE:-}" = "1" ]; then
+        return 0
+    fi
+    return 1
+}
+
+ensure_world_mod_disabled() {
+    local mod_name="$1"
+    local world_mt="$SERVER_DIR/worlds/$WORLD_NAME/world.mt"
+    local key="load_mod_${mod_name}"
+    if [ ! -f "$world_mt" ]; then
+        return 1
+    fi
+    if grep -q "^${key} =" "$world_mt" 2>/dev/null; then
+        sed -i "s/^${key} =.*/${key} = false/" "$world_mt"
+    else
+        echo "${key} = false" >> "$world_mt"
     fi
 }
 
@@ -149,12 +191,29 @@ start_server() {
 
     link_game_mods_from_deploy
 
-    ensure_world_mod_enabled mcc_bridge
-    ensure_world_mod_enabled mcc_plan
-    ensure_world_mod_enabled mcc_texture_painter
+    if [ "$WORLD_NAME" = "mycyclingcity_migrate" ]; then
+        # Mineclonia migration: local auth.txt login; mcc_bridge blocks non-provisioned users.
+        ensure_world_mod_disabled mcc_bridge
+        ensure_world_mod_disabled mcc_plan
+        ensure_world_mod_disabled mcc_texture_painter
+    else
+        ensure_world_mod_enabled mcc_bridge
+        ensure_world_mod_enabled mcc_plan
+        ensure_world_mod_enabled mcc_texture_painter
+    fi
 
     cd "$SERVER_DIR" || return 1
-    : > "$LOG_FILE"
+    # Append (default) so crash lines before restart stay in luanti-server.log for analysis.
+    # Set MCC_LUANTI_LOG_TRUNCATE=1 to restore wipe-on-start behaviour.
+    if [ "${MCC_LUANTI_LOG_TRUNCATE:-0}" = "1" ]; then
+        : > "$LOG_FILE"
+    else
+        {
+            echo ""
+            echo "========== Luanti server start $(date '+%Y-%m-%d %H:%M:%S') =========="
+            echo "world=$WORLD_NAME config=$CONFIG_FILE"
+        } >> "$LOG_FILE"
+    fi
     nohup "$bin" --world "$world_path" --config "$CONFIG_FILE" \
         < /dev/null >> "$LOG_FILE" 2>&1 &
     echo $! > "$PIDFILE"

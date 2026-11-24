@@ -1,6 +1,6 @@
 # Deploy (production): Git/NAS dev `luanti_mod/` → rsync to `/data/appl/mcc/mcc-web/luanti_mod/`
 # (`scripts/sync_luanti_mod.sh`, `deploy_production.py`). Game loads via symlinks only:
-# `/data/games/mcc/luanti/mods/mcc_*` → `…/mcc-web/luanti_mod/mcc_*` (`link_luanti_mods.sh`).
+# `/data/games/mcc/luanti/games/mycyclingcity/mods/mcc_*` → `…/mcc-web/luanti_mod/mcc_*` (`link_luanti_mods.sh`).
 # Manual dev symlink example:
 # After shop/locale changes: bump `version` in mcc_bridge/mod.conf so clients refresh mod media.
 # Client translation cache: delete `~/.minetest/client/mod_storage.sqlite` (and/or
@@ -11,9 +11,9 @@
 #   mcc_bridge.debug = session,shop,http,command   # or true / all
 #   mcc_bridge.debug_heartbeat = false              # set true to log /heartbeat/ (very noisy)
 # After change: luanti_server.sh restart; tail -f luanti-server.log | grep 'mcc_bridge:debug'
-#   ln -sfn "$(pwd)/mcc_bridge" /data/games/mcc/luanti/mods/mcc_bridge
-#   ln -sfn "$(pwd)/mcc_texture_painter" /data/games/mcc/luanti/mods/mcc_texture_painter
-#   ln -sfn "$(pwd)/mcc_plan" /data/games/mcc/luanti/mods/mcc_plan
+#   ln -sfn "$(pwd)/mcc_bridge" /data/games/mcc/luanti/games/mycyclingcity/mods/mcc_bridge
+#   ln -sfn "$(pwd)/mcc_texture_painter" /data/games/mcc/luanti/games/mycyclingcity/mods/mcc_texture_painter
+#   ln -sfn "$(pwd)/mcc_plan" /data/games/mcc/luanti/games/mycyclingcity/mods/mcc_plan
 # World: load_mod_mcc_plan = true for Plan-Shop (/mccplan, Hologramme). Optional for isolating
 # mcc_bridge: set load_mod_mcc_plan = false and remove broken symlink — Shop Kaufen/Verkauf still works;
 # server logs once [mcc_bridge] partner_mods plan=missing; first Shop in build shows a one-time chat hint.

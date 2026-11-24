@@ -21,12 +21,6 @@ local itemdefs_registration_open = true
 local META_ORIGINAL = "mccplan_original"
 local META_SHOP_TARGET = "mcc_shop_target_name"
 local PLAN_STAIR_PLACE_DELAY = 0.12
-local GHOST_SOURCE_PREFIXES = {
-    "mcl_core:",
-    "mcl_stairs:",
-    "mcl_fences:",
-    "mcl_doors:",
-}
 -- target_itemstring -> registered hologram nodename (shape clone)
 local holo_variant_cache = {}
 -- Must be captured at mod load; get_mod_storage() is not reliable in globalstep/shutdown.
@@ -58,6 +52,7 @@ local PLAN_ERROR_CHAT = {
     insufficient_velos = "Nicht genug Velos im Pool.",
     missing_client_tx_id = "Interner Fehler (Transaktion).",
     http_unreachable = "Web-App nicht erreichbar.",
+    convert_requires_build = "Umwandlung nur im Bau-Modus (Session).",
 }
 
 local function plan_error_message(data)
@@ -81,6 +76,11 @@ local function get_stored_mode(name)
         return bridge.get_stored_mode(name)
     end
     return "play"
+end
+
+--- Used from register_on_placenode below; must be defined before that callback is registered.
+local function plan_placement_session(name)
+    return get_stored_mode(name) == "plan"
 end
 
 mcc_plan = rawget(_G, "mcc_plan") or {}
@@ -206,48 +206,13 @@ function mcc_plan.stack_is_zero_velo_plan(stack)
     return tonumber(purchase) == 0
 end
 
-local function mcl_stair_base_item_name(item_name)
-    item_name = tostring(item_name or "")
-    if item_name:sub(1, 12) ~= "mcl_stairs:" then
-        return item_name
-    end
-    if item_name:match("_inner$") then
-        return item_name:sub(1, -7)
-    end
-    if item_name:match("_outer$") then
-        return item_name:sub(1, -7)
-    end
-    return item_name
-end
-
---- Mineclonia door craft items place as paired bottom/top world nodes (_b_# / _t_#).
-local function mcl_door_base_item_name(item_name)
-    item_name = tostring(item_name or "")
-    if item_name:sub(1, 10) ~= "mcl_doors:" then
-        return item_name
-    end
-    local base = item_name:match("^(.+)_[bt]_%d+$")
-    if base then
-        return base
-    end
-    return item_name
-end
-
-local function mcl_shop_credit_item_name(item_name)
-    return mcl_door_base_item_name(mcl_stair_base_item_name(item_name))
-end
-
-local function mcl_door_top_from_bottom(bottom_name)
-    bottom_name = tostring(bottom_name or "")
-    if bottom_name:match("_b_%d+$") then
-        return bottom_name:gsub("_b_", "_t_", 1)
-    end
-    return nil
+local function shop_target_item_name(item_name)
+    return tostring(item_name or "")
 end
 
 local function holo_meta_table(fields, target_name, param2)
     local shop_target = (fields and fields.target_name or "") ~= "" and fields.target_name
-        or mcl_shop_credit_item_name(target_name)
+        or shop_target_item_name(target_name)
     return {
         target_name = target_name,
         [META_ORIGINAL] = target_name,
@@ -497,7 +462,6 @@ local VISUAL_CLONE_KEYS = {
 local function apply_holo_dig_policy(def)
     def.groups = def.groups or {}
     def.groups.dig_immediate = 3
-    def._mcl_hardness = 0
     return def
 end
 
@@ -552,7 +516,6 @@ local function clone_minimal_holo_def(base, holo_can_dig_fn, holo_on_dig_fn)
     def.pointable = true
     def.is_ground_content = false
     def.groups = { [HOLO_GROUP] = 1, handy = 1, building_block = 1 }
-    def._mcl_blast_resistance = base._mcl_blast_resistance or 0.3
     def.can_dig = holo_can_dig_fn
     def.on_dig = holo_on_dig_fn
     return apply_holo_walk_policy(apply_holo_dig_policy(def))
@@ -599,7 +562,6 @@ local function clone_nodedef_for_holo_preview(base, holo_can_dig_fn, holo_on_dig
     def.groups = g
     def.description = "Planung (Vorschau)"
     def.drop = ""
-    def._mcl_blast_resistance = base._mcl_blast_resistance or 0.3
     if def.sunlight_propagates == nil then
         def.sunlight_propagates = true
     end
@@ -642,15 +604,20 @@ local function ghost_node_is_registered(stored_name)
 end
 
 local function should_mirror_as_ghost(nodename)
-    if not nodename or nodename:sub(1, 9) == "mcc_plan:" then
+    if not nodename or nodename == "" or nodename:sub(1, 9) == "mcc_plan:" then
         return false
     end
-    for _, prefix in ipairs(GHOST_SOURCE_PREFIXES) do
-        if nodename:sub(1, #prefix) == prefix then
-            return true
-        end
+    if nodename:sub(1, #GHOST_ID_PREFIX) == GHOST_ID_PREFIX then
+        return false
     end
-    return false
+    if nodename == "air" or nodename == "ignore" or nodename == "unknown" then
+        return false
+    end
+    local def = core.registered_nodes[nodename]
+    if not def or def.drawtype == "airlike" then
+        return false
+    end
+    return true
 end
 
 local function node_def_exists(nodename)
@@ -665,12 +632,6 @@ local function resolve_plan_shape_name(fields, newnode)
         return (meta_target ~= "" and meta_target) or placed
     end
     if meta_target == "" then
-        return placed
-    end
-    if placed:match("^mcl_stairs:stair_.+_(inner|outer)$") then
-        return placed
-    end
-    if placed:sub(1, 10) == "mcl_doors:" and node_def_exists(placed) then
         return placed
     end
     if placed ~= meta_target and should_mirror_as_ghost(placed) then
@@ -700,7 +661,7 @@ end
 local function plan_refund_stack(fields, fallback_node_name)
     local shop_target = fields and fields.target_name or ""
     if shop_target == "" then
-        shop_target = mcl_shop_credit_item_name(fallback_node_name or "")
+        shop_target = shop_target_item_name(fallback_node_name or "")
     end
     if shop_target == "" or shop_target == "air" then
         return nil
@@ -883,10 +844,10 @@ function mcc_plan.remove_hologram_at(pos, digger, opts)
     if give_item and digger and digger:is_player() then
         local shop_target = meta:get_string(META_SHOP_TARGET)
         if shop_target == "" then
-            shop_target = mcl_shop_credit_item_name(shape)
+            shop_target = shop_target_item_name(shape)
         end
         if shop_target == "" then
-            shop_target = "mcl_core:stone"
+            shop_target = "default:stone"
         end
         local fields = {
             shop_item_id = meta:get_string("shop_item_id"),
@@ -917,25 +878,6 @@ function mcc_plan.remove_hologram_at(pos, digger, opts)
         register_removed_api(pos, pname)
     end
     core.set_node(pos, { name = "air" })
-    if shape and shape:match("^mcl_doors:.+_b_%d+$") then
-        local top_pos = { x = pos.x, y = pos.y + 1, z = pos.z }
-        local top_node = core.get_node(top_pos)
-        if is_plan_hologram(top_node.name) then
-            mcc_plan.remove_hologram_at(top_pos, digger, {
-                give_item = false,
-                register_api = false,
-            })
-        end
-    elseif shape and shape:match("^mcl_doors:.+_t_%d+$") then
-        local bot_pos = { x = pos.x, y = pos.y - 1, z = pos.z }
-        local bot_node = core.get_node(bot_pos)
-        if is_plan_hologram(bot_node.name) then
-            mcc_plan.remove_hologram_at(bot_pos, digger, {
-                give_item = false,
-                register_api = false,
-            })
-        end
-    end
     return true
 end
 
@@ -1042,9 +984,7 @@ function mcc_plan.finalize_node(pos, opts)
         meta_shape = meta:get_string("target_name")
     end
     local target = tostring(opts.target_name or "")
-    if meta_shape ~= "" and meta_shape:sub(1, 12) == "mcl_stairs:" then
-        target = meta_shape
-    elseif target == "" then
+    if target == "" then
         target = meta_shape
     end
     if target == "" then
@@ -1102,8 +1042,6 @@ core.register_node(HOLO_NAME, {
     collision_box = HOLO_FULL_COLLISION,
     pointable = true,
     groups = { [HOLO_GROUP] = 1, handy = 1, glass = 1, building_block = 1, dig_immediate = 3 },
-    _mcl_hardness = 0,
-    _mcl_blast_resistance = 0.3,
     can_dig = hologram_can_dig,
     on_dig = hologram_on_dig,
 })
@@ -1152,16 +1090,13 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
         return
     end
     local name = placer:get_player_name()
-    local active = mcc_plan.is_active(name)
+    local plan_place = plan_placement_session(name)
     local had_plan = mcc_plan.stack_has_plan_meta(itemstack)
-    if not had_plan and active then
+    if not had_plan and plan_place then
         local fields = plan_fields_from_place(name, itemstack)
         had_plan = (fields.target_name or "") ~= ""
     end
-    if not active then
-        had_plan = mcc_plan.stack_has_plan_meta(itemstack)
-    end
-    if active and had_plan then
+    if plan_place and had_plan then
         local fields = plan_fields_from_place(name, itemstack)
         local saved_old = oldnode
         plan_wield_snapshot[name] = nil
@@ -1173,11 +1108,6 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
             if is_plan_hologram(cur.name) then
                 return
             end
-            -- Door top half: paired hologram is created from the bottom callback only.
-            if cur.name:match("^mcl_doors:.+_t_%d+$") then
-                return
-            end
-            -- Corner stairs swap to _inner/_outer in after_place_node; read node after that runs.
             local shape_name = resolve_plan_shape_name(fields, cur)
             if not node_def_exists(shape_name) then
                 core.log(
@@ -1193,22 +1123,10 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
                 return
             end
             local p2 = cur.param2 or 0
-            if shape_name:match("^mcl_doors:.+_b_%d+$") then
-                local top_name = mcl_door_top_from_bottom(shape_name)
-                local top_pos = { x = pos.x, y = pos.y + 1, z = pos.z }
-                mcc_plan.set_hologram_node(pos, shape_name, p2, fields)
-                if top_name and node_def_exists(top_name) then
-                    local top_cur = core.get_node(top_pos)
-                    local tp2 = top_cur.param2 or p2
-                    mcc_plan.set_hologram_node(top_pos, top_name, tp2, fields)
-                end
-                register_placed_api(name, pos, shape_name, p2, fields)
-                return
-            end
             mcc_plan.set_hologram_node(pos, shape_name, p2, fields)
             register_placed_api(name, pos, shape_name, p2, fields)
         end)
-    elseif not active and had_plan then
+    elseif not plan_place and had_plan then
         local fields = plan_fields_from_place(name, itemstack)
         core.after(0, function()
             core.set_node(pos, oldnode)
@@ -1218,7 +1136,10 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
             )
             core.chat_send_player(
                 name,
-                core.colorize("#FFEE55", "Planung einschalten (/mccplan on), um Hologramme zu setzen.")
+                core.colorize(
+                    "#FFEE55",
+                    "Hologramme nur im Planungs-Modus (Session) setzen."
+                )
             )
         end)
     end
@@ -1252,7 +1173,7 @@ core.register_on_mods_loaded(function()
     end)
 end)
 
--- Second pass after init.lua of all mods (mcl_stairs etc.) while register_node is still allowed.
+-- Second pass after every mod's init.lua, while register_node is still allowed.
 mcc_plan.register_all_ghost_mirrors()
 
 local materialize_job_id = 0
@@ -1377,21 +1298,6 @@ function mcc_plan.materialize_block(entry)
     if not ok then
         return
     end
-    if target:match("^mcl_doors:.+_b_%d+$") then
-        local top_name = mcl_door_top_from_bottom(target)
-        if top_name and node_def_exists(top_name) then
-            local top_pos = { x = pos.x, y = pos.y + 1, z = pos.z }
-            local top_node = core.get_node(top_pos)
-            if is_plan_hologram(top_node.name) then
-                mcc_plan.finalize_node(top_pos, {
-                    target_name = top_name,
-                    param2 = top_node.param2 or p2,
-                })
-            elseif top_node.name == "air" then
-                core.set_node(top_pos, { name = top_name, param2 = p2 or 0 })
-            end
-        end
-    end
     if core.add_particlespawner then
         core.add_particlespawner({
             amount = 12,
@@ -1405,8 +1311,7 @@ function mcc_plan.materialize_block(entry)
             minsize = 0.5,
             maxsize = 1.2,
             collisiondetection = false,
-            -- mcl_particles_spark.png does not ship with Mineclonia; crit is in CORE/mcl_particles.
-            texture = "mcl_particles_crit.png^[colorize:#55EEAA:200",
+            texture = "default_stone.png^[colorize:#55EEAA:200",
         })
     end
 end
@@ -1436,14 +1341,23 @@ local function player_feet_pos(player)
 end
 
 local function should_show_zone_hud(name)
-    return get_stored_mode(name) == "build"
+    local m = get_stored_mode(name)
+    return m == "build" or m == "plan"
 end
 
 local BUILD_MODE_MSG = "Nur im Bau-Modus (Session)."
+local PLAN_MODE_MSG = "Nur im Planungs-Modus (Session)."
 
 local function require_build_session(name)
     if get_stored_mode(name) ~= "build" then
         return false, BUILD_MODE_MSG
+    end
+    return true
+end
+
+local function require_plan_session(name)
+    if get_stored_mode(name) ~= "plan" then
+        return false, PLAN_MODE_MSG
     end
     return true
 end
@@ -1560,6 +1474,9 @@ end
 
 local function run_autoconvert_tick(name)
     if not api_post or not mcc_plan.is_autoconvert_on(name) then
+        return
+    end
+    if get_stored_mode(name) ~= "build" then
         return
     end
     if not should_show_zone_hud(name) then
@@ -1844,9 +1761,28 @@ core.register_chatcommand("mccplan", {
             local st = mcc_plan.is_autoconvert_on(name) and "AN" or "AUS"
             return true, "Auto-Umwandlung: " .. st .. " (/mccplan autoconvert on|off)"
         end
-        local ok_build, err_build = require_build_session(name)
-        if not ok_build then
-            return false, err_build
+        if p == "convert" then
+            local ok_build, err_build = require_build_session(name)
+            if not ok_build then
+                return false, err_build
+            end
+        elseif p ~= "autoconvert" then
+            local plan_cmds = {
+                discard = true,
+                on = true,
+                off = true,
+                status = true,
+                summary = true,
+                look = true,
+                remove = true,
+                clear = true,
+            }
+            if plan_cmds[p] then
+                local ok_plan, err_plan = require_plan_session(name)
+                if not ok_plan then
+                    return false, err_plan
+                end
+            end
         end
         if p == "discard" then
             local player = core.get_player_by_name(name)
@@ -1907,6 +1843,7 @@ core.register_chatcommand("mccplan", {
             end
             return run_plan_clear_from_feet(name, max_n)
         elseif p == "convert" then
+            -- require_build_session checked above
             local n = tonumber((param or ""):match("convert%s+(%d+)")) or 1
             if not api_post then
                 return false, "Bridge offline."

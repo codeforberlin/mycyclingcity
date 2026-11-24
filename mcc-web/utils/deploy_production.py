@@ -627,7 +627,7 @@ def sync_luanti_mod(project_dir: Path) -> bool:
 
 
 def link_luanti_mods(project_dir: Path) -> bool:
-    """Create symlinks under /data/games/mcc/luanti/mods -> mcc-web/luanti_mod."""
+    """Create symlinks under games/mycyclingcity/mods -> mcc-web/luanti_mod."""
     script = project_dir / "scripts" / "link_luanti_mods.sh"
     if not script.is_file():
         print_warning(f"Luanti mod linker missing: {script}")
@@ -1137,7 +1137,7 @@ Examples:
     parser.add_argument(
         '--skip-luanti-mods',
         action='store_true',
-        help='Skip Luanti mod sync and symlinks under /data/games/mcc/luanti/mods',
+        help='Skip Luanti mod sync and symlinks under games/mycyclingcity/mods',
     )
 
     parser.add_argument(

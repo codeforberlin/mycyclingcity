@@ -466,18 +466,31 @@ def test_shop_buy_sell(api_client, settings):
         luanti_username="Schule1",
         velos_spendable=100,
     )
-    LuantiAccount.objects.create(
+    account = LuantiAccount.objects.create(
         login_name="Schule1",
         id_tag="rfid-1",
         assigned_to_group=group,
+        allowed_modes=["play", "plan", "build"],
     )
+    from luanti.services.session_control import start_session
+
+    start_session(account=account, mode="build", duration=30)
     cat = LuantiShopCategory.objects.create(slug="tools", name="Tools")
     item = LuantiShopItem.objects.create(
         category=cat,
         item_name="mcl_core:diamond",
         buy_price_velos=10,
-        stack_size=1,
+        stack_size=64,
     )
+    catalog_resp = api_client.post(
+        "/api/luanti/shop/catalog/",
+        data=json.dumps(_signed({"player": "Schule1", "lang": "de"})),
+        content_type="application/json",
+    )
+    catalog_data = catalog_resp.json()
+    assert catalog_data["ok"] is True
+    assert catalog_data["wallet_group_name"] == "TeamL1"
+    assert catalog_data["velos_spendable"] == 100
     resp = api_client.post(
         "/api/luanti/shop/buy/",
         data=json.dumps(
@@ -495,6 +508,7 @@ def test_shop_buy_sell(api_client, settings):
     assert resp.status_code == 200
     data = resp.json()
     assert data["ok"] is True
+    assert data["wallet_group_name"] == "TeamL1"
     group.refresh_from_db()
     assert group.velos_spendable == 80
 
@@ -540,7 +554,7 @@ def test_shop_sell_batch_partial_credit(api_client, settings):
         assigned_to_group=group,
         allowed_modes=["play", "build"],
     )
-    start_session(account=account, mode="play", duration=30)
+    start_session(account=account, mode="build", duration=30)
     cat = LuantiShopCategory.objects.create(slug="misc", name="Misc")
     LuantiShopItem.objects.create(
         category=cat,
@@ -592,6 +606,66 @@ def test_shop_sell_batch_partial_credit(api_client, settings):
     assert resp2.json()["idempotent"] is True
     group.refresh_from_db()
     assert group.velos_spendable == 60
+
+
+@pytest.mark.django_db
+@override_settings(
+    MCC_LUANTI_HTTP_SHARED_SECRET="test-secret",
+    MCC_LUANTI_ALLOWED_SERVER_IDS=["luanti-1"],
+)
+def test_shop_sell_hints_credit_and_foreign(api_client, settings):
+    settings.MCC_LUANTI_HTTP_SHARED_SECRET = "test-secret"
+    from luanti.models import LuantiShopPurchaseCredit
+    from luanti.services.session_control import start_session
+
+    gtype, _ = GroupType.objects.get_or_create(name="HintType")
+    wallet = Group.objects.create(
+        name="HintWallet",
+        group_type=gtype,
+        luanti_username="HintPlayer",
+        velos_spendable=0,
+    )
+    other = Group.objects.create(
+        name="OtherClass",
+        group_type=gtype,
+        velos_spendable=0,
+    )
+    account = LuantiAccount.objects.create(
+        login_name="HintPlayer",
+        id_tag="rfid-hint",
+        assigned_to_group=wallet,
+        allowed_modes=["build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    cat = LuantiShopCategory.objects.create(slug="h", name="H")
+    item = LuantiShopItem.objects.create(
+        category=cat,
+        item_name="mcl_core:dirt",
+        buy_price_velos=1,
+        stack_size=64,
+    )
+    LuantiShopPurchaseCredit.objects.create(group=wallet, item_name=item.item_name, quantity=2)
+    LuantiShopPurchaseCredit.objects.create(group=other, item_name=item.item_name, quantity=5)
+    resp = api_client.post(
+        "/api/luanti/shop/sell_hints/",
+        data=json.dumps(
+            _signed(
+                {
+                    "player": "HintPlayer",
+                    "item_names": ["mcl_core:dirt", "mcl_core:unknown"],
+                }
+            )
+        ),
+        content_type="application/json",
+    )
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["wallet_group_name"] == "HintWallet"
+    assert data["hints"]["mcl_core:dirt"]["sellable"] is True
+    assert data["hints"]["mcl_core:dirt"]["credit_available"] == 2
+    assert data["hints"]["mcl_core:dirt"]["buy_price_velos"] == 1
+    assert data["hints"]["mcl_core:unknown"]["sellable"] is False
+    assert data["hints"]["mcl_core:unknown"]["reason"] == "not_in_shop"
 
 
 @pytest.mark.django_db

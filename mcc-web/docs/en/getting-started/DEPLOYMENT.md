@@ -238,7 +238,7 @@ python utils/deploy_production.py
 |----------|---------|
 | NAS dev (Git) | `mcc-web/luanti_mod/` — Cursor development |
 | PROD | **`/data/appl/mcc/mcc-web/luanti_mod/`** — mod files (rsync on deploy) |
-| Luanti | **`/data/games/mcc/luanti/mods/`** — symlinks only → `…/mcc-web/luanti_mod/mcc_*` |
+| Luanti | **`/data/games/mcc/luanti/games/mycyclingcity/mods/`** — `mcc_*` symlinks only → `…/mcc-web/luanti_mod/mcc_*` |
 
 `deploy_production.py` runs `sync_luanti_mod.sh` then `link_luanti_mods.sh`. `luanti_server.sh` refreshes symlinks on start only.
 

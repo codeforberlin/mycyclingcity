@@ -11,8 +11,24 @@ local FORMNAME = "mcc_bridge:shop"
 local UI = {
     title = "MCC-Shop",
     velos = "Velos",
+    wallet_buy_prefix = "Abbuchung:",
+    wallet_sell_prefix = "Gutschrift:",
+    wallet_plan_buy_prefix = "Kauf später von:",
+    wallet_play_buy_prefix = "Dein Velos-Konto:",
+    wallet_play_sell_note = "Verkauf erst im Bau-Modus",
+    wallet_unknown = "Kein Wallet",
     buy = "Kaufen",
+    plan_buy_tab = "Planen",
+    plan_buy_action = "Planen",
     sell = "Verkaufen",
+    discard_tab = "Entfernen",
+    discard_zone = "Auswahl zum Entfernen",
+    discard_hint = "Plan-Blöcke hierher ziehen",
+    discard_all = "Auswahl entfernen",
+    discard_move_denied = "Nur Plan-Blöcke aus dem Shop hierher legen.",
+    nothing_to_discard = "Nichts zum Entfernen.",
+    discard_done = "Plan-Items entfernt: %d Stück.",
+    wallet_plan_discard_note = "Plan-Items wegwerfen (0 Velos)",
     close = "Schließen",
     categories = "Kategorien",
     search = "Suchbegriff",
@@ -23,6 +39,7 @@ local UI = {
     none_selected = "Nichts ausgewählt",
     price = "Preis",
     total = "Gesamt",
+    total_conversion = "Gesamtumwandlungspreis",
     qty = "Menge",
     sell_hint = "Shop-Käufe in die Auswahl ziehen",
     sell_zone = "Verkaufsauswahl",
@@ -35,7 +52,12 @@ local UI = {
     buy_failed = "Kauf fehlgeschlagen",
     err_server_error = "Server-Fehler (Web-App neu starten?)",
     err_http_unreachable = "Keine Verbindung zum MCC-Server",
-    err_planning_requires_build = "Planung nur im Bau-Modus (Session)",
+    err_shop_plan_requires_plan = "Plan-Kauf nur im Planungs-Modus (Session)",
+    err_shop_requires_build = "Kauf/Verkauf realer Items nur im Bau-Modus (Session)",
+    play_browse_note = "Nur Stöbern. Zum Planen oder Kaufen muss ein Betreuer den Modus freigeben.",
+    shop_mode_buy_denied = "Hier kannst du noch nichts kaufen. Bitte „Planen“ oder „Bauen“ freigeben lassen.",
+    shop_mode_sell_denied = "Verkauf nur im Bau-Modus (Session)",
+    plan_session_note = "Du planst: Geister-Blöcke (0 Velos). Echte Steine kommen später beim Bauen und Radfahren.",
     err_session_paused = "Session ist pausiert",
     err_item_not_found = "Artikel nicht im Shop",
     err_insufficient_velos = "Nicht genug Velos",
@@ -49,10 +71,19 @@ local UI = {
     nothing_to_sell = "Nichts zu verkaufen",
     sold = "Verkauft",
     not_sellable = "Nicht verkaufbar (kein Kauf-Guthaben)",
+    sell_tip_ok = "Verkaufbar · Shop-Guthaben (%d) bei %s",
+    sell_tip_ok_wallet = "Verkaufbar · Guthaben deiner Wallet %s",
+    sell_tip_other = "Nicht verkaufbar: Shop-Kauf bei Gruppe %s — aktuelle Wallet: %s",
+    sell_tip_no_credit = "Nicht verkaufbar: kein Shop-Kaufguthaben für diese Wallet",
+    sell_tip_not_shop = "Nicht verkaufbar: kein Shop-Artikel",
+    sell_tip_refund_total = "Gesamtsumme: %d Velos",
+    sell_tip_refund_detail = "(%d × %d Velos pro Stück)",
+    sell_tip_refund_capped = "Hinweis: nur %d von %d Stück verkaufbar",
+    sell_move_denied = "Nur verkaufbare Shop-Käufe in die Verkaufsauswahl legen.",
     plan_toggle = "Planung (0 Velo, Hologramme)",
     plan_hint = "Kauf 0 Velo · Umwandlung je Block laut Preis",
     plan_sell_disabled = "Im Planungsmodus kein Verkaufen — Planung im Shop ausschalten.",
-    plan_note = "Planung: Kauf 0 Velo · Bau kostet Velos je Block",
+    plan_note = "Nur in der Bauzone platzierbar",
     build_only = "Planung nur im Bau-Modus",
     plan_mod_missing = "Planungsmodus nicht verfügbar (Mod mcc_plan nicht geladen) — Kauf/Verkauf wie gewohnt. / Planning unavailable (mcc_plan not loaded) — buy/sell works normally.",
 }
@@ -85,6 +116,8 @@ local PAGE_H = 4
 local PAGE_SIZE = PAGE_W * PAGE_H
 local SELL_LIST = "mcc_sell"
 local SELL_SIZE = 27
+local SELL_HINT_META_SAVED = "mcc_shop_desc_saved"
+local SELL_HINT_META_MARK = "mcc_shop_sell_ann"
 
 local api_post -- injected
 local player_state = {} -- name -> state table
@@ -106,14 +139,6 @@ end
 
 local shop_mod_storage -- lazy
 
-local function plan_world_name()
-    local bridge = rawget(_G, "mcc_bridge")
-    if bridge and bridge.mcc_world_name then
-        return bridge.mcc_world_name()
-    end
-    return "mycyclingcity"
-end
-
 local function player_planning_shop(name)
     local mp = mcc_plan_mod()
     if mp and mp.is_active then
@@ -130,16 +155,76 @@ local function shop_buy_error_message(code)
     return tostring(code or "buy_failed")
 end
 
-local function shop_session_build_mode(name)
+local function shop_get_session_mode(name)
 	local bridge = rawget(_G, "mcc_bridge")
 	if bridge and bridge.get_stored_mode then
-		return bridge.get_stored_mode(name) == "build"
+		return bridge.get_stored_mode(name) or "play"
+	end
+	return "play"
+end
+
+local function shop_session_build_mode(name)
+	return shop_get_session_mode(name) == "build"
+end
+
+local function shop_session_plan_mode(name)
+	return shop_get_session_mode(name) == "plan"
+end
+
+local function shop_session_allows_trade(name)
+	local m = shop_get_session_mode(name)
+	return m == "build" or m == "plan"
+end
+
+local TAB_BUY_X = 0.3
+local TAB_BUY_W = 2.2
+
+local function shop_show_sell_tab(name)
+	return shop_session_build_mode(name)
+end
+
+local function shop_show_discard_tab(name)
+	return shop_session_plan_mode(name)
+end
+
+local function shop_show_secondary_tab(name)
+	if shop_show_sell_tab(name) or shop_show_discard_tab(name) then
+		return true
+	end
+	-- Play/watch: keep Verkaufen tab visible; click shows shop_mode_sell_denied.
+	if not shop_session_allows_trade(name) then
+		return true
 	end
 	return false
 end
 
+local function shop_secondary_tab_label(name)
+	if shop_show_discard_tab(name) then
+		return UI.discard_tab
+	end
+	return UI.sell
+end
+
+local function plan_discard_stack_allowed(stack)
+	if stack:is_empty() then
+		return true
+	end
+	local mp = mcc_plan_mod()
+	if mp and mp.stack_has_plan_meta then
+		return mp.stack_has_plan_meta(stack)
+	end
+	return false
+end
+
+local function bridge_sync_inventory_now(player)
+	local bridge = rawget(_G, "mcc_bridge")
+	if bridge and bridge.sync_player_inventory_now then
+		bridge.sync_player_inventory_now(player)
+	end
+end
+
 local function maybe_plan_mod_missing_hint(name)
-    if not shop_session_build_mode(name) then
+    if not shop_session_plan_mode(name) then
         return
     end
     if mcc_plan_mod() then
@@ -158,7 +243,10 @@ local function maybe_plan_mod_missing_hint(name)
 end
 
 local function shop_plan_on(name, _st)
-	return player_planning_shop(name)
+	if shop_session_plan_mode(name) then
+		return true
+	end
+	return false
 end
 
 local function apply_shop_plan_toggle(name, st, on)
@@ -171,18 +259,12 @@ local function apply_shop_plan_toggle(name, st, on)
 	end
 end
 
--- Honor the checkbox in the same submit as Kaufen (toggle+buy race).
 local function resolve_planning_for_buy(name, st, fields)
-	if fields and fields.plan_toggle ~= nil and shop_session_build_mode(name) and mcc_plan_mod() then
-		local on = fields.plan_toggle == "true"
-		apply_shop_plan_toggle(name, st, on)
-		return on
+	if shop_session_plan_mode(name) then
+		apply_shop_plan_toggle(name, st, true)
+		return true
 	end
-	return shop_plan_on(name, st)
-end
-
-local function shop_show_plan_info(name, st)
-	return shop_session_build_mode(name) and mcc_plan_mod() and shop_plan_on(name, st)
+	return false
 end
 
 local function sync_shop_plan_state(name, st)
@@ -190,58 +272,6 @@ local function sync_shop_plan_state(name, st)
 		return
 	end
 	st.plan_active = player_planning_shop(name)
-end
-
-local function set_plan_summary_line(st, data)
-	if not st then
-		return
-	end
-	if not data or not data.ok then
-		st.plan_summary_line = nil
-		return
-	end
-	st.plan_summary_line = string.format(
-		"%s · %d Hologramme · Umwandlung %d Velos",
-		tostring(data.display_name or "?"),
-		tonumber(data.planned_count) or 0,
-		tonumber(data.total_velos_planned) or 0
-	)
-end
-
-local function fetch_shop_plan_summary(name, st, on_done)
-	if not api_post or not shop_show_plan_info(name, st) then
-		if st then
-			st.plan_summary_line = nil
-		end
-		if on_done then
-			on_done()
-		end
-		return
-	end
-	local player = core.get_player_by_name(name)
-	if not player or not player:get_pos() then
-		if on_done then
-			on_done()
-		end
-		return
-	end
-	local pos = player:get_pos()
-	api_post("/api/luanti/plan/summary/", {
-		player = name,
-		world = plan_world_name(),
-		x = math.floor(pos.x + 0.5),
-		y = math.floor(pos.y + 0.5),
-		z = math.floor(pos.z + 0.5),
-	}, function(ok, data)
-		if ok and data and data.ok then
-			set_plan_summary_line(st, data)
-		elseif st then
-			st.plan_summary_line = nil
-		end
-		if on_done then
-			on_done()
-		end
-	end)
 end
 
 -- Checkbox value is echoed on many submits (e.g. item grid); only apply on real toggle.
@@ -253,7 +283,8 @@ local function should_apply_plan_toggle(fields, st, player_name)
 	if want == player_planning_shop(player_name) then
 		return false
 	end
-	if fields.do_buy or fields.do_sell or fields.sell_all or fields.tab_buy or fields.tab_sell or fields.page_prev
+	if fields.do_buy or fields.do_sell or fields.sell_all or fields.plan_discard or fields.tab_buy or fields.tab_sell
+		or fields.page_prev
 		or fields.page_next or fields.do_filter or fields.clear_filter or fields.return_sell
 		or fields.qty_dec or fields.qty_inc or fields.close or fields.quit then
 		return false
@@ -281,13 +312,29 @@ local function esc(s)
     return F(tostring(s or ""))
 end
 
+local function wallet_display_name(st)
+    local n = st and st.wallet_group_name
+    if type(n) == "string" then
+        n = n:match("^%s*(.-)%s*$")
+    end
+    if n and n ~= "" then
+        return n
+    end
+    return UI.wallet_unknown
+end
+
+local function apply_wallet_from_response(st, data)
+    if st and data and data.wallet_group_name ~= nil then
+        st.wallet_group_name = tostring(data.wallet_group_name or "")
+    end
+end
+
 local SHOP_SEARCH_HITS_SUFFIX_DE = "Treffer im gesamten Shop"
 -- Layout in one table (Lua limit: max 60 upvalues per function).
 local G = {
 	FORMSPEC_W = 12.8,
 	TITLE_APPROX_W = 2.35,
 	HEADER_Y = 0.28,
-	PLAN_SUMMARY_Y = 1.38,
 	CAT_LABEL_Y = 1.63,
 	FILTER_ROW_Y = 1.82,
 	CAT_LIST_X = 0.3,
@@ -335,8 +382,15 @@ G.SELL_LIST_X = 0.35
 G.SELL_LIST_Y = 1.58
 G.SELL_LIST_W = 9
 G.SELL_LIST_H = 3
-G.INV_ZONE_LABEL_Y = 4.72
+-- Match style_type[list;size=0.95;spacing=0.08] for centered section titles.
+G.SELL_LIST_PANEL_W = G.SELL_LIST_W * 0.95 + (G.SELL_LIST_W - 1) * 0.08
+G.SELL_ZONE_LABEL_H = 0.38
+-- Manual X nudge for simple labels (client font metrics differ from estimate).
+G.SELL_HDR_LABEL_X_SHIFT = -0.42
+G.INV_LABEL_X_SHIFT = -0.15
 G.SELL_MAIN_Y = 4.92
+-- Center "Inventar" label in gap between sell slots and main inventory (label Y = top of text).
+G.INV_ZONE_LABEL_Y = (G.SELL_LIST_Y + G.SELL_LIST_H + G.SELL_MAIN_Y) * 0.5 + 0.03
 G.SELL_HOTBAR_Y = 7.82
 G.SELL_BTN_W = 4.2
 G.PAGE_PREV_X = G.BUY_PANEL_X
@@ -344,9 +398,138 @@ G.PAGE_NEXT_X = G.BUY_PANEL_X + G.PAGE_BTN_W
 G.PAGE_TEXT_X = G.PAGE_NEXT_X + G.PAGE_BTN_W + 0.12
 G.PAGE_TEXT_Y_OFFSET = 0.26
 G.TAB_SELL_END = G.TAB_SELL_X + G.TAB_SELL_W
-G.PLAN_CHECKBOX_X = G.TAB_SELL_END + 0.12
-G.PLAN_CHECKBOX_Y = G.TAB_ROW_Y + (G.TAB_ROW_H - 0.35) * 0.5 + 0.16
+G.TAB_WALLET_HINT_X = G.TAB_SELL_END + 0.15
+-- Vertically align caption labels with centered text on tab row buttons (Kaufen/Verkaufen height).
+G.TAB_ROW_CAPTION_Y = G.TAB_ROW_Y + (G.TAB_ROW_H - 0.35) * 0.5 + 0.16
+G.TAB_WALLET_HINT_Y = G.TAB_ROW_CAPTION_Y
+-- Plan / mode hints sit on a second row so they do not overlap wallet captions beside tab_sell.
+G.TAB_STATUS_LINE_X = 0.3
+G.TAB_STATUS_LINE_Y = G.TAB_ROW_Y + G.TAB_ROW_H + 0.16
 G.TITLE_X = (G.FORMSPEC_W - G.TITLE_APPROX_W) * 0.5
+
+local function shop_wallet_hint_x(name, _tab)
+	if shop_session_plan_mode(name) and shop_show_secondary_tab(name) then
+		return G.TAB_WALLET_HINT_X
+	end
+	if not shop_show_secondary_tab(name) then
+		return TAB_BUY_X + TAB_BUY_W + 0.15
+	end
+	return G.TAB_WALLET_HINT_X
+end
+
+local function shop_wallet_caption(name, tab, st)
+	if shop_session_plan_mode(name) then
+		return UI.wallet_plan_buy_prefix .. " " .. wallet_display_name(st)
+	end
+	if tab == "sell" then
+		if shop_session_build_mode(name) then
+			return UI.wallet_sell_prefix .. " " .. wallet_display_name(st)
+		end
+		return UI.wallet_play_sell_note
+	end
+	if shop_session_allows_trade(name) then
+		return UI.wallet_buy_prefix .. " " .. wallet_display_name(st)
+	end
+	return UI.wallet_play_buy_prefix .. " " .. wallet_display_name(st)
+end
+
+local function shop_status_line_text(name)
+	if shop_session_plan_mode(name) then
+		return UI.plan_session_note
+	end
+	if not shop_session_allows_trade(name) then
+		return UI.play_browse_note
+	end
+	return nil
+end
+
+local function shop_buy_tab_label(name)
+	if shop_session_plan_mode(name) then
+		return UI.plan_buy_tab
+	end
+	return UI.buy
+end
+
+local function shop_primary_buy_button_label(name)
+	if shop_session_plan_mode(name) then
+		return UI.plan_buy_action
+	end
+	return UI.buy
+end
+
+-- Area labels (w,h) are unsupported on some Luanti builds; center via approximate text width.
+local function approx_sell_label_width(text)
+    local n = #tostring(text)
+    local scale = n > 42 and 0.1 or 0.088
+    return n * scale
+end
+
+local function append_sell_area_label(fs, y, text, x_shift)
+    x_shift = tonumber(x_shift) or 0
+    local tw = approx_sell_label_width(text)
+    local x = G.SELL_LIST_X + math.max(0, (G.SELL_LIST_PANEL_W - tw) * 0.5) + x_shift
+    fs[#fs + 1] = string.format("label[%f,%f;%s]", x, y, esc(text))
+end
+
+local SELL_BTN_READY_BG = "#16e34a"
+local SELL_BTN_READY_TEXT = "#ffffff"
+
+-- Upper verkaufsauswahl grid only (9x3 in formspec), not player main/hotbar below.
+local function sell_selection_slot_limit()
+    return G.SELL_LIST_W * G.SELL_LIST_H
+end
+
+local function sell_list_has_items(name)
+    local player = core.get_player_by_name(name)
+    if not player then
+        return false
+    end
+    local inv = player:get_inventory()
+    if not inv or inv:get_size(SELL_LIST) <= 0 then
+        return false
+    end
+    local limit = math.min(inv:get_size(SELL_LIST), sell_selection_slot_limit())
+    for i = 1, limit do
+        if not inv:get_stack(SELL_LIST, i):is_empty() then
+            return true
+        end
+    end
+    return false
+end
+
+local function sell_selection_inventory_touched(action, info)
+    if type(info) ~= "table" then
+        return false
+    end
+    if info.listname == SELL_LIST or info.from_list == SELL_LIST or info.to_list == SELL_LIST then
+        return true
+    end
+    if type(action) == "table" then
+        if action.from_list == SELL_LIST or action.to_list == SELL_LIST then
+            return true
+        end
+    end
+    return false
+end
+
+local function append_sell_action_button_styles(fs, ready, button_name)
+    button_name = button_name or "sell_all"
+    if ready then
+        fs[#fs + 1] = string.format(
+            "style[%s;bgcolor=%s;textcolor=%s;border=true]",
+            button_name,
+            SELL_BTN_READY_BG,
+            SELL_BTN_READY_TEXT
+        )
+        fs[#fs + 1] = string.format(
+            "style[%s:pressed;bgcolor=#15803d;textcolor=%s;border=true]",
+            button_name,
+            SELL_BTN_READY_TEXT
+        )
+    else
+        fs[#fs + 1] = string.format("style[%s;bgcolor=;textcolor=;border=]", button_name)
+    end
+end
 
 local function shop_search_hits_label(count)
     return tostring(count) .. " " .. SHOP_SEARCH_HITS_SUFFIX_DE
@@ -563,6 +746,227 @@ local function return_sell_slots_to_player(name)
     end
 end
 
+local function inventory_sell_hint_item_names(player)
+    local inv = player:get_inventory()
+    if not inv then
+        return {}
+    end
+    if inv:get_size("main") < 36 then
+        inv:set_size("main", 36)
+    end
+    local names = {}
+    local seen = {}
+    for i = 1, 36 do
+        local stack = inv:get_stack("main", i)
+        if not stack:is_empty() then
+            local n = stack:get_name()
+            if n and n ~= "" and not seen[n] then
+                seen[n] = true
+                names[#names + 1] = n
+            end
+        end
+    end
+    return names
+end
+
+local function sell_refund_velos_line(hint, stack_count)
+    local price = tonumber(hint.buy_price_velos) or 0
+    if price <= 0 then
+        return ""
+    end
+    local count = math.max(1, tonumber(stack_count) or 1)
+    local credit = tonumber(hint.credit_available) or 0
+    local sell_count = count
+    if hint.sellable and credit > 0 then
+        sell_count = math.min(count, credit)
+    elseif not hint.sellable then
+        return ""
+    end
+    local total = price * sell_count
+    local parts = { string.format(UI.sell_tip_refund_total, total) }
+    if sell_count > 1 then
+        parts[#parts + 1] = string.format(UI.sell_tip_refund_detail, sell_count, price)
+    end
+    if hint.sellable and count > sell_count then
+        parts[#parts + 1] = string.format(UI.sell_tip_refund_capped, sell_count, count)
+    end
+    return table.concat(parts, "\n")
+end
+
+local function sell_hint_tooltip_line(hint, stack_count)
+    if type(hint) ~= "table" then
+        return UI.sell_tip_no_credit
+    end
+    local lines = {}
+    if hint.sellable then
+        local wallet = tostring(hint.wallet_group_name or "?")
+        local credit = tostring(hint.credit_group_name or wallet)
+        local avail = tonumber(hint.credit_available) or 0
+        if credit == wallet then
+            if avail > 0 then
+                lines[#lines + 1] = string.format(UI.sell_tip_ok, avail, wallet)
+            else
+                lines[#lines + 1] = string.format(UI.sell_tip_ok_wallet, wallet)
+            end
+        else
+            lines[#lines + 1] = string.format(UI.sell_tip_ok, avail, credit)
+        end
+        local refund = sell_refund_velos_line(hint, stack_count)
+        if refund ~= "" then
+            lines[#lines + 1] = refund
+        end
+        return table.concat(lines, "\n")
+    end
+    if hint.reason == "other_group" then
+        local other = tostring(hint.credit_group_name or "?")
+        local wallet = tostring(hint.wallet_group_name or "?")
+        return string.format(UI.sell_tip_other, other, wallet)
+    end
+    if hint.reason == "not_in_shop" then
+        return UI.sell_tip_not_shop
+    end
+    return UI.sell_tip_no_credit
+end
+
+local function clear_sell_inventory_tooltips(player)
+    local inv = player:get_inventory()
+    if not inv or inv:get_size("main") < 1 then
+        return
+    end
+    for i = 1, 36 do
+        local stack = inv:get_stack("main", i)
+        if not stack:is_empty() then
+            local meta = stack:get_meta()
+            if meta:get_string(SELL_HINT_META_MARK) == "1" then
+                local saved = meta:get_string(SELL_HINT_META_SAVED)
+                if saved ~= "" then
+                    meta:set_string("description", saved)
+                else
+                    meta:set_string("description", "")
+                end
+                meta:set_string(SELL_HINT_META_SAVED, "")
+                meta:set_string(SELL_HINT_META_MARK, "")
+                inv:set_stack("main", i, stack)
+            end
+        end
+    end
+end
+
+local function ensure_shop_tab_for_session(name, st)
+	if not st or shop_show_secondary_tab(name) then
+		return
+	end
+	if (st.tab or "buy") ~= "sell" then
+		return
+	end
+	st.tab = "buy"
+	local player = core.get_player_by_name(name)
+	if player then
+		clear_sell_inventory_tooltips(player)
+	end
+	return_sell_slots_to_player(name)
+end
+
+local function apply_sell_inventory_tooltips(player, hints)
+    if not player or type(hints) ~= "table" then
+        return
+    end
+    local inv = player:get_inventory()
+    if not inv then
+        return
+    end
+    for i = 1, 36 do
+        local stack = inv:get_stack("main", i)
+        if not stack:is_empty() then
+            local iname = stack:get_name()
+            local hint = hints[iname]
+            if hint then
+                local meta = stack:get_meta()
+                if meta:get_string(SELL_HINT_META_MARK) ~= "1" then
+                    meta:set_string(SELL_HINT_META_SAVED, meta:get_string("description") or "")
+                    meta:set_string(SELL_HINT_META_MARK, "1")
+                end
+                local saved = meta:get_string(SELL_HINT_META_SAVED)
+                local ann = sell_hint_tooltip_line(hint, stack:get_count())
+                if saved ~= "" then
+                    meta:set_string("description", saved .. "\n" .. ann)
+                else
+                    meta:set_string("description", ann)
+                end
+                inv:set_stack("main", i, stack)
+            end
+        end
+    end
+end
+
+local function sell_stack_allowed(name, stack)
+    if stack:is_empty() then
+        return true
+    end
+    local st = player_state[name]
+    if not st or not st.sell_hints_ready or type(st.sell_hints) ~= "table" then
+        return true
+    end
+    local hint = st.sell_hints[stack:get_name()]
+    return type(hint) == "table" and hint.sellable == true
+end
+
+local function sync_sell_hints_for_player(name, after_fn)
+    local st = player_state[name]
+    if not st then
+        if after_fn then
+            after_fn()
+        end
+        return
+    end
+    local player = core.get_player_by_name(name)
+    if not player or not api_post then
+        st.sell_hints_ready = false
+        if after_fn then
+            after_fn()
+        end
+        return
+    end
+    local item_names = inventory_sell_hint_item_names(player)
+    if #item_names == 0 then
+        st.sell_hints = {}
+        st.sell_hints_ready = true
+        clear_sell_inventory_tooltips(player)
+        if after_fn then
+            after_fn()
+        end
+        return
+    end
+    api_post("/api/luanti/shop/sell_hints/", {
+        player = name,
+        item_names = item_names,
+    }, function(ok, data)
+        if not st or player_state[name] ~= st then
+            if after_fn then
+                after_fn()
+            end
+            return
+        end
+        if ok and data and data.ok then
+            st.sell_hints = data.hints or {}
+            if data.wallet_group_name then
+                st.wallet_group_name = tostring(data.wallet_group_name)
+            end
+            st.sell_hints_ready = true
+            local p = core.get_player_by_name(name)
+            if p then
+                clear_sell_inventory_tooltips(p)
+                apply_sell_inventory_tooltips(p, st.sell_hints)
+            end
+        else
+            st.sell_hints_ready = false
+        end
+        if after_fn then
+            after_fn()
+        end
+    end)
+end
+
 local function destroy_sell_inv(name)
     return_sell_slots_to_player(name)
     local player = core.get_player_by_name(name)
@@ -694,13 +1098,41 @@ local function clear_shop_selection(st)
     end
 end
 
+-- Tab buttons: active tab vivid; idle tab darker but still clearly a button (border on).
+local TAB_BTN_ACTIVE_BG = "#1e9bff"
+local TAB_BTN_ACTIVE_TEXT = "#ffffff"
+local TAB_BTN_IDLE_BG = "#1a2638"
+local TAB_BTN_IDLE_TEXT = "#8ab4d8"
+
+local function append_shop_tab_button_styles(fs, tab, show_secondary_tab)
+    local buy_active = tab ~= "sell" or not show_secondary_tab
+    local function tab_style(name, active)
+        local bg = active and TAB_BTN_ACTIVE_BG or TAB_BTN_IDLE_BG
+        local fg = active and TAB_BTN_ACTIVE_TEXT or TAB_BTN_IDLE_TEXT
+        fs[#fs + 1] = string.format("style[%s;bgcolor=%s;textcolor=%s;border=true]", name, bg, fg)
+        fs[#fs + 1] = string.format(
+            "style[%s:pressed;bgcolor=%s;textcolor=%s;border=true]",
+            name,
+            active and "#0d7fd9" or "#243246",
+            active and TAB_BTN_ACTIVE_TEXT or TAB_BTN_IDLE_TEXT
+        )
+    end
+    tab_style("tab_buy", buy_active)
+    if show_secondary_tab then
+        tab_style("tab_sell", not buy_active)
+    end
+end
+
 local function build_formspec(name)
     local st = get_state(name)
     if not st then
         return ""
     end
+    ensure_shop_tab_for_session(name, st)
     local velos = tonumber(st.velos) or 0
     local tab = st.tab or "buy"
+    local show_secondary_tab = shop_show_secondary_tab(name)
+    local plan_discard_tab = shop_session_plan_mode(name)
     local fs = {
         "formspec_version[6]",
         "size[" .. tostring(G.FORMSPEC_W) .. "," .. tostring(G.FORMSPEC_H) .. "]",
@@ -717,50 +1149,51 @@ local function build_formspec(name)
             G.HEADER_Y,
             esc(UI.velos .. ": " .. tostring(velos))
         ),
-        string.format(
-            "button[0.3,%f;2.2,%f;tab_buy;%s]",
-            G.TAB_ROW_Y,
-            G.TAB_ROW_H,
-            esc(UI.buy)
-        ),
-        string.format(
+    }
+    append_shop_tab_button_styles(fs, tab, show_secondary_tab)
+    fs[#fs + 1] = string.format(
+        "button[%f,%f;%f,%f;tab_buy;%s]",
+        TAB_BUY_X,
+        G.TAB_ROW_Y,
+        TAB_BUY_W,
+        G.TAB_ROW_H,
+        esc(shop_buy_tab_label(name))
+    )
+    if show_secondary_tab then
+        fs[#fs + 1] = string.format(
             "button[%f,%f;%f,%f;tab_sell;%s]",
             G.TAB_SELL_X,
             G.TAB_ROW_Y,
             G.TAB_SELL_W,
             G.TAB_ROW_H,
-            esc(UI.sell)
-        ),
-        string.format(
-            "button_exit[10.8,%f;1.7,%f;close;%s]",
-            G.TAB_ROW_Y,
-            G.TAB_ROW_H,
-            esc(UI.close)
-        ),
-    }
-
-    local plan_on = shop_plan_on(name, st)
-    local plan_info = shop_show_plan_info(name, st)
+            esc(shop_secondary_tab_label(name))
+        )
+    end
+    fs[#fs + 1] = string.format(
+        "button_exit[10.8,%f;1.7,%f;close;%s]",
+        G.TAB_ROW_Y,
+        G.TAB_ROW_H,
+        esc(UI.close)
+    )
+    local wallet_hint = shop_wallet_caption(name, tab, st)
+    fs[#fs + 1] = string.format(
+        "label[%f,%f;%s]",
+        shop_wallet_hint_x(name, tab),
+        G.TAB_WALLET_HINT_Y,
+        esc(wallet_hint)
+    )
 
     if tab == "buy" then
-        if shop_session_build_mode(name) and mcc_plan_mod() then
+        local status_line = shop_status_line_text(name)
+        if status_line then
             fs[#fs + 1] = string.format(
-                "checkbox[%f,%f;plan_toggle;%s;%s]",
-                G.PLAN_CHECKBOX_X,
-                G.PLAN_CHECKBOX_Y,
-                esc(UI.plan_toggle),
-                plan_on and "true" or "false"
+                "label[%f,%f;%s]",
+                G.TAB_STATUS_LINE_X,
+                G.TAB_STATUS_LINE_Y,
+                esc(status_line)
             )
         end
-        if plan_info then
-            if st.plan_summary_line then
-                fs[#fs + 1] = string.format(
-                    "label[0.3,%f;%s]",
-                    G.PLAN_SUMMARY_Y,
-                    esc(st.plan_summary_line)
-                )
-            end
-        end
+        -- Plan region stats (e.g. "Planungs-Sub …") only in mcc_plan HUD, not in shop UI.
         -- Full category list (all categories, including empty).
         local cat_count = #(st.cats or {})
         if st.cat_idx < 1 then
@@ -881,9 +1314,6 @@ local function build_formspec(name)
         local qty = clamp_shop_qty(st.qty, sel)
         st.qty = qty
         local total = price * qty
-        if shop_plan_on(name, st) then
-            total = 0
-        end
         local plan_on_buy = shop_plan_on(name, st)
         local buy_selected_y = plan_on_buy and G.BUY_SELECTED_Y_PLAN or G.BUY_SELECTED_Y
         if sel then
@@ -907,7 +1337,7 @@ local function build_formspec(name)
                 esc(UI.selected .. ": " .. UI.none_selected)
             )
         end
-        if shop_session_build_mode(name) and plan_on_buy then
+        if shop_session_plan_mode(name) and plan_on_buy then
             fs[#fs + 1] = string.format(
                 "label[%f,%f;%s]",
                 G.BUY_PANEL_X,
@@ -915,7 +1345,8 @@ local function build_formspec(name)
                 esc(UI.plan_note)
             )
         end
-        local price_line = UI.price .. ": " .. tostring(price) .. "  |  " .. UI.total .. ": " .. tostring(total)
+        local total_label = plan_on_buy and UI.total_conversion or UI.total
+        local price_line = UI.price .. ": " .. tostring(price) .. "  |  " .. total_label .. ": " .. tostring(total)
         fs[#fs + 1] = string.format(
             "label[%f,%f;%s]",
             G.BUY_PANEL_X,
@@ -948,16 +1379,20 @@ local function build_formspec(name)
             G.QTY_BUY_X,
             G.BUY_QTY_ROW_Y,
             G.BUY_ROW_H,
-            esc(UI.buy)
+            esc(shop_primary_buy_button_label(name))
         )
         -- Buy tab: no player inventory row (items are delivered via API after "Kaufen").
     else
-        -- Sell tab: sell slots (top) + player inventory (bottom), grid styling.
+        -- Sell tab (build) or discard tab (plan): same slot grid layout.
         ensure_sell_inv(name)
-        fs[#fs + 1] = string.format(
-            "label[0.3,%f;%s]",
+        local zone_title = plan_discard_tab
+            and (UI.discard_zone .. " - " .. UI.discard_hint)
+            or (UI.sell_zone .. " - " .. UI.sell_hint)
+        append_sell_area_label(
+            fs,
             G.SELL_ZONE_LABEL_Y,
-            esc(UI.sell_zone .. " - " .. UI.sell_hint)
+            zone_title,
+            G.SELL_HDR_LABEL_X_SHIFT
         )
         fs[#fs + 1] = "listcolors[#1e2d3acc;#2d4566cc;#8ab4d8ff]"
         fs[#fs + 1] = "style_type[list;size=0.95;spacing=0.08]"
@@ -969,11 +1404,7 @@ local function build_formspec(name)
             G.SELL_LIST_W,
             G.SELL_LIST_H
         )
-        fs[#fs + 1] = string.format(
-            "label[0.3,%f;%s]",
-            G.INV_ZONE_LABEL_Y,
-            esc(UI.inv_zone)
-        )
+        append_sell_area_label(fs, G.INV_ZONE_LABEL_Y, UI.inv_zone, G.INV_LABEL_X_SHIFT)
         fs[#fs + 1] = string.format(
             "list[current_player;main;%f,%f;9,3;9]",
             G.SELL_LIST_X,
@@ -986,12 +1417,27 @@ local function build_formspec(name)
         )
         fs[#fs + 1] = "listring[current_player;" .. SELL_LIST .. "]"
         fs[#fs + 1] = "listring[current_player;main]"
-        fs[#fs + 1] = string.format(
-            "button[0.3,%f;%f,0.55;sell_all;%s]",
-            G.SELL_BTN_Y,
-            G.SELL_BTN_W,
-            esc(UI.sell_all)
-        )
+        local sell_ready = sell_list_has_items(name)
+        if st then
+            st.sell_slots_ready = sell_ready
+        end
+        local action_btn = plan_discard_tab and "plan_discard" or "sell_all"
+        append_sell_action_button_styles(fs, sell_ready, action_btn)
+        if plan_discard_tab then
+            fs[#fs + 1] = string.format(
+                "button[0.3,%f;%f,0.55;plan_discard;%s]",
+                G.SELL_BTN_Y,
+                G.SELL_BTN_W,
+                esc(UI.discard_all)
+            )
+        else
+            fs[#fs + 1] = string.format(
+                "button[0.3,%f;%f,0.55;sell_all;%s]",
+                G.SELL_BTN_Y,
+                G.SELL_BTN_W,
+                esc(UI.sell_all)
+            )
+        end
         fs[#fs + 1] = string.format(
             "button[%f,%f;3.5,0.55;return_sell;%s]",
             0.3 + G.SELL_BTN_W + 0.15,
@@ -1002,8 +1448,6 @@ local function build_formspec(name)
 
     return table.concat(fs, "")
 end
-
-local plan_summary_fetch_pending = {}
 
 local function show_shop(name)
     local st = get_state(name)
@@ -1020,25 +1464,18 @@ local function show_shop(name)
     end
     shop_debugf("show_shop player=%s form_len=%s", name, tostring(#fs))
     core.show_formspec(name, FORMNAME, fs)
-    if not st or plan_summary_fetch_pending[name] then
+end
+
+local function refresh_sell_button_if_needed(name)
+    local st = player_state[name]
+    if not st or (st.tab or "buy") ~= "sell" then
         return
     end
-    if (st.tab or "buy") ~= "buy"
-        or not shop_show_plan_info(name, st)
-        or st.plan_summary_line then
-        return
+    local now = sell_list_has_items(name)
+    if st.sell_slots_ready ~= now then
+        st.sell_slots_ready = now
+        show_shop(name)
     end
-    plan_summary_fetch_pending[name] = true
-    fetch_shop_plan_summary(name, st, function()
-        plan_summary_fetch_pending[name] = nil
-        if not st.plan_summary_line then
-            return
-        end
-        local fs2 = build_formspec(name)
-        if fs2 ~= "" then
-            core.show_formspec(name, FORMNAME, fs2)
-        end
-    end)
 end
 
 local function refresh_after_catalog(name, data)
@@ -1047,6 +1484,7 @@ local function refresh_after_catalog(name, data)
     st.cats = cats
     st.by_id = by_id
     st.velos = tonumber(data.velos_spendable) or st.velos or 0
+    st.wallet_group_name = tostring(data.wallet_group_name or st.wallet_group_name or "")
     st.tab = st.tab or "buy"
     st.cat_idx = st.cat_idx or 1
     if st.cat_idx > #cats then
@@ -1079,9 +1517,7 @@ local function refresh_after_catalog(name, data)
         )
     end
     sync_shop_plan_state(name, st)
-    if not shop_session_build_mode(name) then
-        st.plan_summary_line = nil
-    end
+    ensure_shop_tab_for_session(name, st)
     local function safe_show_shop()
         local ok, err = pcall(show_shop, name)
         if not ok then
@@ -1099,7 +1535,6 @@ local function refresh_after_catalog(name, data)
     -- Open immediately after catalog; do not block on /plan/summary/ (HTTP can lag).
     safe_show_shop()
     maybe_plan_mod_missing_hint(name)
-    fetch_shop_plan_summary(name, st, safe_show_shop)
 end
 
 local function open_shop_gui(name, resync_attempted)
@@ -1229,6 +1664,59 @@ local function shop_wants_sell(fields)
     return shop_field_pressed(fields, "do_sell") or shop_field_pressed(fields, "sell_all")
 end
 
+local function shop_wants_plan_discard(fields)
+    return shop_field_pressed(fields, "plan_discard")
+end
+
+local function run_shop_plan_discard(name, st)
+    if not shop_session_plan_mode(name) then
+        core.chat_send_player(name, UI.shop_mode_sell_denied)
+        return
+    end
+    if st.busy then
+        core.chat_send_player(name, UI.sell_busy)
+        return
+    end
+    local player = core.get_player_by_name(name)
+    if not player then
+        return
+    end
+    local inv = player:get_inventory()
+    if not inv or inv:get_size(SELL_LIST) <= 0 then
+        core.chat_send_player(name, UI.nothing_to_discard)
+        return
+    end
+    local limit = math.min(inv:get_size(SELL_LIST), sell_selection_slot_limit())
+    local removed = 0
+    for i = 1, limit do
+        local stack = inv:get_stack(SELL_LIST, i)
+        if not stack:is_empty() then
+            if plan_discard_stack_allowed(stack) then
+                removed = removed + stack:get_count()
+                inv:set_stack(SELL_LIST, i, ItemStack(""))
+            else
+                local leftover = inv:add_item("main", stack)
+                inv:set_stack(SELL_LIST, i, ItemStack(""))
+                if not leftover:is_empty() then
+                    local pos = player:get_pos()
+                    if pos then
+                        core.add_item(pos, leftover)
+                    end
+                end
+            end
+        end
+    end
+    if removed <= 0 then
+        core.chat_send_player(name, UI.nothing_to_discard)
+        show_shop(name)
+        return
+    end
+    bridge_sync_inventory_now(player)
+    core.chat_send_player(name, string.format(UI.discard_done, removed))
+    shop_debugf("plan_discard player=%s removed=%s", name, tostring(removed))
+    show_shop(name)
+end
+
 local function shop_fields_key_summary(fields)
     local keys = {}
     for k in pairs(fields) do
@@ -1239,6 +1727,10 @@ local function shop_fields_key_summary(fields)
 end
 
 local function run_shop_sell(name, st)
+    if not shop_session_build_mode(name) then
+        core.chat_send_player(name, UI.shop_mode_sell_denied)
+        return
+    end
     if st.busy then
         core.chat_send_player(name, UI.sell_busy)
         return
@@ -1285,6 +1777,7 @@ local function run_shop_sell(name, st)
         end
         apply_sell_result(name, data)
         st.velos = tonumber(data.velos_spendable) or st.velos
+        apply_wallet_from_response(st, data)
         local refunded = tonumber(data.refunded_total) or 0
         if refunded > 0 then
             core.chat_send_player(name, UI.sold .. " +" .. tostring(refunded) .. " " .. UI.velos)
@@ -1298,7 +1791,9 @@ local function run_shop_sell(name, st)
                 core.chat_send_player(name, UI.not_sellable)
             end
         end
-        show_shop(name)
+        sync_sell_hints_for_player(name, function()
+            show_shop(name)
+        end)
     end)
 end
 
@@ -1345,6 +1840,11 @@ core.register_on_player_receive_fields(function(player, formname, fields)
     end
 
     -- Primary actions first (clients echo qty/filter/catlist on sell tab).
+    if shop_wants_plan_discard(fields) then
+        core.log("action", "[mcc_bridge shop] plan_discard player=" .. name)
+        run_shop_plan_discard(name, st)
+        return true
+    end
     if shop_wants_sell(fields) then
         core.log("action", "[mcc_bridge shop] sell button player=" .. name)
         run_shop_sell(name, st)
@@ -1352,6 +1852,10 @@ core.register_on_player_receive_fields(function(player, formname, fields)
     end
 
     if fields.do_buy then
+        if not shop_session_build_mode(name) and not shop_session_plan_mode(name) then
+            core.chat_send_player(name, UI.shop_mode_buy_denied)
+            return true
+        end
         if st.busy then
             core.chat_send_player(name, UI.buy_busy)
             return true
@@ -1406,6 +1910,7 @@ core.register_on_player_receive_fields(function(player, formname, fields)
                 end
             end
             st.velos = tonumber(data.velos_spendable) or st.velos
+            apply_wallet_from_response(st, data)
             core.chat_send_player(name, UI.velos .. ": " .. tostring(st.velos))
             show_shop(name)
         end)
@@ -1459,50 +1964,61 @@ core.register_on_player_receive_fields(function(player, formname, fields)
             return true
         end
         clear_shop_selection(st)
+        local p = core.get_player_by_name(name)
+        if p then
+            clear_sell_inventory_tooltips(p)
+        end
         return_sell_slots_to_player(name)
         player_state[name] = nil
         return true
     end
     if fields.tab_sell and (st.tab or "buy") ~= "sell" then
-        if player_planning_shop(name) then
-            core.chat_send_player(name, UI.plan_sell_disabled)
-            st.tab = "buy"
-        else
+        if shop_show_discard_tab(name) then
             st.tab = "sell"
             ensure_sell_inv(name)
+            local p = core.get_player_by_name(name)
+            if p then
+                clear_sell_inventory_tooltips(p)
+            end
+            st.sell_hints_ready = false
+            st.sell_hints = nil
+            st.sell_slots_ready = sell_list_has_items(name)
+            show_shop(name)
+        elseif shop_show_sell_tab(name) then
+            st.tab = "sell"
+            ensure_sell_inv(name)
+            st.sell_slots_ready = sell_list_has_items(name)
+            st.sell_hints_ready = false
+            sync_sell_hints_for_player(name, function()
+                show_shop(name)
+            end)
+        else
+            core.chat_send_player(name, UI.shop_mode_sell_denied)
+            st.tab = "buy"
+            show_shop(name)
         end
-        show_shop(name)
         return true
     end
     if fields.tab_buy and (st.tab or "buy") == "sell" then
+        local p = core.get_player_by_name(name)
+        if p then
+            clear_sell_inventory_tooltips(p)
+        end
+        st.sell_hints_ready = false
+        st.sell_hints = nil
         st.tab = "buy"
         show_shop(name)
         return true
     end
-    if buy_tab and should_apply_plan_toggle(fields, st, name) then
-        if not shop_session_build_mode(name) then
-            st.plan_summary_line = nil
-            show_shop(name)
-            return true
-        end
-        local on = fields.plan_toggle == "true"
-        apply_shop_plan_toggle(name, st, on)
-        if on then
-            if st.tab == "sell" then
-                st.tab = "buy"
-            end
-            fetch_shop_plan_summary(name, st, function()
+    if fields.return_sell then
+        return_sell_slots_to_player(name)
+        if shop_session_build_mode(name) and (st.tab or "buy") == "sell" then
+            sync_sell_hints_for_player(name, function()
                 show_shop(name)
             end)
         else
-            st.plan_summary_line = nil
             show_shop(name)
         end
-        return true
-    end
-    if fields.return_sell then
-        return_sell_slots_to_player(name)
-        show_shop(name)
         return true
     end
     if buy_tab and fields.page_prev then
@@ -1561,6 +2077,14 @@ core.register_on_player_receive_fields(function(player, formname, fields)
         end
     end
 
+    if (st.tab or "buy") == "sell" then
+        local now = sell_list_has_items(name)
+        if st.sell_slots_ready ~= now then
+            st.sell_slots_ready = now
+            show_shop(name)
+        end
+    end
+
     return true
 end)
 
@@ -1574,6 +2098,66 @@ end)
 mcc_bridge = rawget(_G, "mcc_bridge") or {}
 rawset(_G, "mcc_bridge", mcc_bridge)
 
+core.register_on_player_inventory_action(function(player, action, inventory, info)
+    if not player or not player_state[player:get_player_name()] then
+        return
+    end
+    if not sell_selection_inventory_touched(action, info) then
+        return
+    end
+    local pname = player:get_player_name()
+    core.after(0, function()
+        refresh_sell_button_if_needed(pname)
+    end)
+end)
+
+core.register_allow_player_inventory_action(function(player, action, inv, info)
+    if not player or type(info) ~= "table" then
+        return
+    end
+    local pname = player:get_player_name()
+    local st = player_state[pname]
+    if not st or (st.tab or "buy") ~= "sell" then
+        return
+    end
+    local to_sell = false
+    local stack = ItemStack("")
+    if action == "move" and info.to_list == SELL_LIST then
+        to_sell = true
+        if type(info.from_list) == "string" and type(info.from_index) == "number" then
+            stack = inv:get_stack(info.from_list, info.from_index)
+            local count = tonumber(info.count) or stack:get_count()
+            if count > 0 and count < stack:get_count() then
+                stack = stack:peek_item(count)
+            end
+        end
+    elseif action == "put" and info.listname == SELL_LIST and info.stack then
+        to_sell = true
+        stack = info.stack
+    end
+    if not to_sell then
+        return
+    end
+    if shop_session_plan_mode(pname) then
+        if plan_discard_stack_allowed(stack) then
+            return
+        end
+        core.after(0, function()
+            core.chat_send_player(pname, UI.discard_move_denied)
+        end)
+        return 0
+    end
+    if sell_stack_allowed(pname, stack) then
+        return
+    end
+    local hint = st.sell_hints and st.sell_hints[stack:get_name()]
+    local msg = type(hint) == "table" and sell_hint_tooltip_line(hint) or UI.sell_move_denied
+    core.after(0, function()
+        core.chat_send_player(pname, msg)
+    end)
+    return 0
+end)
+
 function mcc_bridge.init_shop_gui(post_fn)
     api_post = post_fn
 end
@@ -1583,6 +2167,10 @@ function mcc_bridge.open_shop_gui(name)
 end
 
 function mcc_bridge.shop_gui_on_leave(name)
+    local p = core.get_player_by_name(name)
+    if p then
+        clear_sell_inventory_tooltips(p)
+    end
     destroy_sell_inv(name)
     player_state[name] = nil
 end

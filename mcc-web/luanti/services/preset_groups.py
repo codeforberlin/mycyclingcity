@@ -43,6 +43,9 @@ LUANTI_ADMIN_PERMISSION_CODENAMES: tuple[str, ...] = (
     "add_luantistation",
     "change_luantistation",
     "delete_luantistation",
+    "view_luantiplayerinventory",
+    "change_luantiplayerinventory",
+    "delete_luantiplayerinventory",
 )
 
 LUANTI_MODERATOR_PERMISSION_CODENAMES: tuple[str, ...] = (

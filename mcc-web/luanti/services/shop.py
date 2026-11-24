@@ -26,6 +26,32 @@ class ShopError(Exception):
         super().__init__(message or code)
 
 
+def _wallet_group_name(group: Group | None) -> str:
+    return (group.name if group else "") or ""
+
+
+def _active_shop_session(login_name: str):
+    from luanti.models import LuantiSession
+    from luanti.services.session_control import get_active_session
+
+    session = get_active_session(login_name)
+    if session is None:
+        raise ShopError("no_session")
+    if session.status == LuantiSession.STATUS_PAUSED:
+        raise ShopError("session_paused")
+    return session
+
+
+def _assert_shop_real_session(session) -> None:
+    if session.mode != LuantiAccount.MODE_BUILD:
+        raise ShopError("shop_requires_build")
+
+
+def _assert_shop_plan_session(session) -> None:
+    if session.mode != LuantiAccount.MODE_PLAN:
+        raise ShopError("shop_plan_requires_plan")
+
+
 def purchase_credit_holder_chain(wallet: Group) -> list[Group]:
     """Wallet first, then parents — institution pooled sell-back credit."""
     chain: list[Group] = []
@@ -54,6 +80,73 @@ def find_purchase_credit(
         if credit is not None and int(credit.quantity or 0) > 0:
             return credit, holder
     return None, None
+
+
+def foreign_purchase_credit_group(*, wallet: Group | None, shop_item_name: str) -> str:
+    """Credit holder outside wallet chain (for sell tooltip when not sellable)."""
+    if wallet is None or not (shop_item_name or "").strip():
+        return ""
+    chain_ids = {g.pk for g in purchase_credit_holder_chain(wallet)}
+    row = (
+        LuantiShopPurchaseCredit.objects.filter(item_name=shop_item_name, quantity__gt=0)
+        .exclude(group_id__in=chain_ids)
+        .select_related("group")
+        .order_by("-quantity")
+        .first()
+    )
+    return (row.group.name if row and row.group else "") or ""
+
+
+def sell_hint_for_inventory_name(*, login_name: str, inventory_name: str) -> dict:
+    wallet = resolve_group_for_player(login_name)
+    wallet_name = (wallet.name if wallet else "") or ""
+    item = resolve_shop_item_for_inventory_name(inventory_name, group=wallet)
+    if item is None:
+        return {
+            "sellable": False,
+            "reason": "not_in_shop",
+            "wallet_group_name": wallet_name,
+        }
+    buy_price = int(item.buy_price_velos or 0)
+    credit, holder = find_purchase_credit(wallet=wallet, item_name=item.item_name)
+    if credit is not None and int(credit.quantity or 0) > 0:
+        credit_name = (holder.name if holder else wallet_name) or wallet_name
+        return {
+            "sellable": True,
+            "reason": "ok",
+            "wallet_group_name": wallet_name,
+            "credit_group_name": credit_name,
+            "credit_available": int(credit.quantity),
+            "shop_item_name": item.item_name,
+            "buy_price_velos": buy_price,
+        }
+    foreign = foreign_purchase_credit_group(wallet=wallet, shop_item_name=item.item_name)
+    reason = "other_group" if foreign else "no_credit"
+    return {
+        "sellable": False,
+        "reason": reason,
+        "wallet_group_name": wallet_name,
+        "credit_group_name": foreign,
+        "shop_item_name": item.item_name,
+        "buy_price_velos": buy_price,
+    }
+
+
+def build_sell_hints(*, login_name: str, item_names: list) -> dict:
+    hints: dict[str, dict] = {}
+    seen: set[str] = set()
+    for raw in item_names:
+        name = str(raw or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        hints[name] = sell_hint_for_inventory_name(login_name=login_name, inventory_name=name)
+    wallet = resolve_group_for_player(login_name)
+    return {
+        "ok": True,
+        "wallet_group_name": (wallet.name if wallet else "") or "",
+        "hints": hints,
+    }
 
 
 def prune_empty_purchase_credit(credit: LuantiShopPurchaseCredit) -> None:
@@ -144,16 +237,6 @@ def build_catalog_payload(*, lang: str | None = None) -> dict:
 
 SHOP_QUANTITY_HARD_MAX = 64
 
-_STACKABLE_NAME_PREFIXES = (
-    "mcl_core:",
-    "mcl_stairs:",
-    "mcl_fences:",
-    "mcl_wool:",
-    "mcl_flowers:",
-    "mcl_trees:",
-    "mcl_ocean:",
-)
-
 _TOOL_NAME_MARKERS = (
     "_pick",
     "_axe",
@@ -177,7 +260,7 @@ def max_buy_quantity(stack_size: int) -> int:
 
 
 def effective_max_buy_quantity(item: LuantiShopItem) -> int:
-    """Shop buy cap: stack_size when set >1; else infer stackables (e.g. stone) up to 64."""
+    """Shop buy cap: stack_size when set >1; else 64 when the registry kind is node."""
     ss = int(item.stack_size or 1)
     if ss > 1:
         return max_buy_quantity(ss)
@@ -192,8 +275,6 @@ def effective_max_buy_quantity(item: LuantiShopItem) -> int:
         .first()
     )
     if reg is not None and (reg.kind or "").strip() == "node":
-        return SHOP_QUANTITY_HARD_MAX
-    if any(name.startswith(prefix) for prefix in _STACKABLE_NAME_PREFIXES):
         return SHOP_QUANTITY_HARD_MAX
     return max_buy_quantity(ss)
 
@@ -299,20 +380,16 @@ def shop_buy(
             "ok": True,
             "idempotent": True,
             "velos_spendable": int(group.velos_spendable) if group else 0,
+            "wallet_group_name": _wallet_group_name(group),
             "grant": [grant_entry],
         }
     item = LuantiShopItem.objects.select_related("category").filter(pk=item_id, enabled=True).first()
     if not item or not item.category.enabled:
         raise ShopError("item_not_found")
     quantity = validate_shop_quantity(quantity, item)
-    from luanti.services.session_control import get_active_session
-
-    session = get_active_session(login_name)
-    if session and session.is_paused:
-        raise ShopError("session_paused")
+    session = _active_shop_session(login_name)
     if planning:
-        if session is None or session.mode != LuantiAccount.MODE_BUILD:
-            raise ShopError("planning_requires_build")
+        _assert_shop_plan_session(session)
         group = resolve_group_for_player(login_name)
         LuantiShopTransaction.objects.create(
             client_tx_id=client_tx_id,
@@ -336,6 +413,7 @@ def shop_buy(
             "ok": True,
             "planning": True,
             "velos_spendable": int(group.velos_spendable) if group else 0,
+            "wallet_group_name": _wallet_group_name(group),
             "grant": [
                 {
                     "item_name": item.item_name,
@@ -345,6 +423,7 @@ def shop_buy(
             ],
         }
 
+    _assert_shop_real_session(session)
     group = resolve_group_for_player(login_name)
     if group is None:
         raise ShopError("no_group")
@@ -383,6 +462,7 @@ def shop_buy(
     return {
         "ok": True,
         "velos_spendable": int(group.velos_spendable),
+        "wallet_group_name": _wallet_group_name(group),
         "grant": [{"item_name": item.item_name, "count": physical_grant_count(quantity)}],
     }
 
@@ -403,14 +483,12 @@ def shop_sell(
             "ok": True,
             "idempotent": True,
             "velos_spendable": int(group.velos_spendable) if group else 0,
+            "wallet_group_name": _wallet_group_name(group),
             "refunded": int(tx.velos_delta),
             "take": [{"item_name": tx.item_name, "count": tx.quantity}],
         }
-    from luanti.services.session_control import get_active_session
-
-    session = get_active_session(login_name)
-    if session and session.is_paused:
-        raise ShopError("session_paused")
+    session = _active_shop_session(login_name)
+    _assert_shop_real_session(session)
     item = None
     if item_id is not None:
         item = (
@@ -452,6 +530,7 @@ def shop_sell(
     return {
         "ok": True,
         "velos_spendable": int(group.velos_spendable),
+        "wallet_group_name": _wallet_group_name(group),
         "refunded": refund,
         "take": [{"item_name": item.item_name, "count": take_count}],
     }
@@ -490,18 +569,14 @@ def shop_sell_batch(
             "ok": True,
             "idempotent": True,
             "velos_spendable": int(group.velos_spendable) if group else 0,
+            "wallet_group_name": _wallet_group_name(group),
             "refunded_total": sum(c["refunded"] for c in consumed),
             "consumed": consumed,
             "rejected": [],
         }
 
-    from luanti.services.session_control import get_active_session
-
-    session = get_active_session(login_name)
-    if not session:
-        raise ShopError("no_session")
-    if session.is_paused:
-        raise ShopError("session_paused")
+    session = _active_shop_session(login_name)
+    _assert_shop_real_session(session)
     group = resolve_group_for_player(login_name)
     if group is None:
         raise ShopError("no_group")
@@ -591,6 +666,7 @@ def shop_sell_batch(
         return {
             "ok": True,
             "velos_spendable": int(group.velos_spendable),
+            "wallet_group_name": _wallet_group_name(group),
             "refunded_total": 0,
             "consumed": [],
             "rejected": rejected,
@@ -600,6 +676,7 @@ def shop_sell_batch(
     return {
         "ok": True,
         "velos_spendable": int(group.velos_spendable),
+        "wallet_group_name": _wallet_group_name(group),
         "refunded_total": refunded_total,
         "consumed": consumed,
         "rejected": rejected,

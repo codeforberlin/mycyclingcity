@@ -1,0 +1,109 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "admin/luanti/_luanti_admin_assets.html" %}
+<style>
+  .mcc-inv-editor-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  .mcc-inv-editor-table th, .mcc-inv-editor-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+  .mcc-inv-editor-table input[type="text"],
+  .mcc-inv-editor-table input[type="number"] { width: 100%; max-width: 100%; box-sizing: border-box; padding: 8px; font-size: 14px; }
+  .mcc-inv-editor-table col.slot { width: 4.5rem; }
+  .mcc-inv-editor-table col.count { width: 4.5rem; }
+  .mcc-inv-editor-table col.wear { width: 6rem; }
+</style>
+<script>
+(function () {
+  var rowIndex = {{ editor_rows|length }};
+  function addRow() {
+    var tbody = document.getElementById('inv-editor-body');
+    if (!tbody) return;
+  var tr = document.createElement('tr');
+  tr.setAttribute('data-row-index', String(rowIndex));
+  tr.innerHTML = ''
+    + '<td><input type="number" name="row-' + rowIndex + '-slot" min="1" max="64" value="' + rowIndex + '"></td>'
+    + '<td><input type="text" name="row-' + rowIndex + '-name" placeholder="mcl_core:dirt"></td>'
+    + '<td><input type="number" name="row-' + rowIndex + '-count" min="1" max="64" value="1"></td>'
+    + '<td><input type="text" name="row-' + rowIndex + '-wear" placeholder=""></td>'
+    + '<td><button type="button" class="row-remove" title="{% trans "Zeile entfernen" %}">×</button></td>';
+    tbody.appendChild(tr);
+    rowIndex++;
+    bindRemove(tr.querySelector('.row-remove'));
+  }
+  function bindRemove(btn) {
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var tr = btn.closest('tr');
+      var tbody = document.getElementById('inv-editor-body');
+      if (tr && tbody && tbody.querySelectorAll('tr').length > 1) {
+        tr.remove();
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.row-remove').forEach(bindRemove);
+    var addBtn = document.getElementById('inv-add-row');
+    if (addBtn) addBtn.addEventListener('click', addRow);
+  });
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="luanti-admin">
+  <p class="muted" style="margin-bottom:1rem;">
+    <a href="{% url 'admin:luanti_accounts' %}">{% trans "Accounts" %}</a>
+    → <a href="{% url 'admin:luanti_account_detail' account.pk %}">{{ account.login_name }}</a>
+    → {% trans "Inventar" %} {{ mode_label }}
+  </p>
+  <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 0.5rem;">{{ title }}</h1>
+  <p class="muted">{% trans "Revision" %} {{ inv.revision }} · {% trans "Aktualisiert" %} {{ inv.updated_at }}</p>
+
+  <div class="card">
+    <h3>{% trans "Vorschau (gespeichert)" %}</h3>
+    {{ preview_table }}
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>{% trans "Inventar bearbeiten" %}</h3>
+    <p class="muted">{% trans "Plan-Metadaten bleiben erhalten, wenn Slot und Item unverändert sind. Leere Item-Zeilen werden ignoriert." %}</p>
+    <form method="post">
+      {% csrf_token %}
+      <table class="mcc-inv-editor-table">
+        <colgroup>
+          <col class="slot">
+          <col>
+          <col class="count">
+          <col class="wear">
+          <col style="width:2.5rem;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>{% trans "Slot" %}</th>
+            <th>{% trans "Item (name)" %}</th>
+            <th>{% trans "Menge" %}</th>
+            <th>{% trans "Wear" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="inv-editor-body">
+          {% for row in editor_rows %}
+          <tr data-row-index="{{ forloop.counter0 }}">
+            <td><input type="number" name="row-{{ forloop.counter0 }}-slot" min="1" max="64" value="{{ row.slot }}"></td>
+            <td><input type="text" name="row-{{ forloop.counter0 }}-name" value="{{ row.name }}"></td>
+            <td><input type="number" name="row-{{ forloop.counter0 }}-count" min="1" max="64" value="{{ row.count }}"></td>
+            <td><input type="text" name="row-{{ forloop.counter0 }}-wear" value="{{ row.wear }}"></td>
+            <td><button type="button" class="row-remove" title="{% trans "Zeile entfernen" %}">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="btn-row">
+        <button type="button" id="inv-add-row" class="info">{% trans "Zeile hinzufügen" %}</button>
+        <button type="submit" class="primary">{% trans "Speichern &amp; live pushen" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

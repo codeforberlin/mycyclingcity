@@ -8944,6 +8944,7 @@ from minecraft.waitlist_views import (
 from luanti.admin_views import (
     luanti_accounts,
     luanti_account_detail,
+    luanti_account_inventory_edit,
     luanti_account_reveal_password,
     luanti_action,
     luanti_arena,
@@ -9036,6 +9037,11 @@ def get_urls_with_custom_views():
             'luanti/accounts/<int:account_id>/',
             admin.site.admin_view(luanti_account_detail),
             name='luanti_account_detail',
+        ),
+        path(
+            'luanti/accounts/<int:account_id>/inventory/<str:mode>/',
+            admin.site.admin_view(luanti_account_inventory_edit),
+            name='luanti_account_inventory_edit',
         ),
         path('luanti/sessions/', admin.site.admin_view(luanti_sessions), name='luanti_sessions'),
         path('luanti/shop-ops/', admin.site.admin_view(luanti_shop_ops), name='luanti_shop_ops'),

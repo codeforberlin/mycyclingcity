@@ -146,6 +146,14 @@
                   {% if selected_top_id %}<input type="hidden" name="top" value="{{ selected_top_id }}">{% endif %}
                   <input type="hidden" name="session_id" value="{{ s.session_id }}">
                   <input type="hidden" name="action" value="set_mode">
+                  <input type="hidden" name="mode" value="plan">
+                  <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'plan' %} is-current{% endif %}">{% trans "Planung" %}</button>
+                </form>
+                <form method="post">
+                  {% csrf_token %}
+                  {% if selected_top_id %}<input type="hidden" name="top" value="{{ selected_top_id }}">{% endif %}
+                  <input type="hidden" name="session_id" value="{{ s.session_id }}">
+                  <input type="hidden" name="action" value="set_mode">
                   <input type="hidden" name="mode" value="build">
                   <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'build' %} is-current{% endif %}">{% trans "Bauen" %}</button>
                 </form>
@@ -178,6 +186,14 @@
                 <input type="hidden" name="account_id" value="{{ a.pk }}">
                 <input type="hidden" name="mode" value="play">
                 <button type="submit" class="lt-btn lt-btn-mode{% if a.default_mode == 'play' or not a.default_mode %} is-current{% endif %}">{% trans "Spielen" %}</button>
+              </form>
+              <form method="post">
+                {% csrf_token %}
+                {% if selected_top_id %}<input type="hidden" name="top" value="{{ selected_top_id }}">{% endif %}
+                <input type="hidden" name="action" value="set_default_mode">
+                <input type="hidden" name="account_id" value="{{ a.pk }}">
+                <input type="hidden" name="mode" value="plan">
+                <button type="submit" class="lt-btn lt-btn-mode{% if a.default_mode == 'plan' %} is-current{% endif %}">{% trans "Planung" %}</button>
               </form>
               <form method="post">
                 {% csrf_token %}

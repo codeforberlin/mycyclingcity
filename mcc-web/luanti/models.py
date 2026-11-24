@@ -149,10 +149,12 @@ class LuantiAccount(models.Model):
     """Unified play/build account (mode switches privileges + inventory)."""
 
     MODE_PLAY = "play"
+    MODE_PLAN = "plan"
     MODE_BUILD = "build"
     MODE_WATCH = "watch"
     MODE_CHOICES = [
         (MODE_PLAY, _("Spielen")),
+        (MODE_PLAN, _("Planung")),
         (MODE_BUILD, _("Bauen")),
         (MODE_WATCH, _("Zuschauen")),
     ]
@@ -185,7 +187,7 @@ class LuantiAccount(models.Model):
     allowed_modes = models.JSONField(
         default=list,
         verbose_name=_("Erlaubte Modi"),
-        help_text=_('Liste z. B. ["play","build","watch"]. Leer = alle drei.'),
+        help_text=_('Liste z. B. ["play","plan","build","watch"]. Leer = alle vier.'),
     )
     default_mode = models.CharField(
         max_length=16,
@@ -290,7 +292,12 @@ class LuantiAccount(models.Model):
     def resolved_allowed_modes(self) -> list[str]:
         modes = self.allowed_modes or []
         if not modes:
-            return [self.MODE_PLAY, self.MODE_BUILD, self.MODE_WATCH]
+            return [
+                self.MODE_PLAY,
+                self.MODE_PLAN,
+                self.MODE_BUILD,
+                self.MODE_WATCH,
+            ]
         return [m for m in modes if m in dict(self.MODE_CHOICES)]
 
     def save(self, *args, **kwargs):
@@ -456,6 +463,7 @@ class LuantiPlayerInventory(models.Model):
         max_length=16,
         choices=[
             (LuantiAccount.MODE_PLAY, _("Spielen")),
+            (LuantiAccount.MODE_PLAN, _("Planung")),
             (LuantiAccount.MODE_BUILD, _("Bauen")),
         ],
         verbose_name=_("Modus"),
