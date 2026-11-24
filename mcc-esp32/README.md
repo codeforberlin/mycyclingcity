@@ -82,12 +82,40 @@ pio run
 ### Upload to Device
 
 ```bash
-# Upload to connected device
+# Heltec WiFi LoRa 32 V3 (ESP32-S3)
+pio run -e heltec_wifi_lora_32_V3 -t upload
+
+# Heltec WiFi LoRa 32 V2 (ESP32, nicht S3!)
+pio run -e heltec_wifi_lora_32_V2 -t upload
+
+# Wemos D1 Mini32
 pio run -e wemos_d1_mini32 -t upload
 
-# Monitor serial output
-pio device monitor -e wemos_d1_mini32
+# Seriellausgabe (115200, Port siehe platformio.ini)
+pio device monitor -e heltec_wifi_lora_32_V3
 ```
+
+Beenden des Monitors: **Strg+C** (der Monitor blockiert absichtlich und wartet auf Daten).
+
+### Heltec: Upload / Monitor hängt oder „Connecting…“
+
+| Symptom | Ursache | Lösung |
+|--------|---------|--------|
+| `Permission denied` auf `/dev/ttyUSB0` | Benutzer nicht in `dialout` | `sudo usermod -aG dialout <user>`, **neu anmelden** |
+| Upload `Connecting…` sehr lange, dann Fehler | Chip nicht im **Download-Modus** | Siehe Schritte unten |
+| Monitor leer, „klemmt“ | Offener Monitor blockiert Port / falsches Env | Monitor mit Strg+C beenden; nur ein Programm auf `ttyUSB0` |
+| Falsches Environment | V2-Board mit V3-Firmware (oder umgekehrt) | Auf dem Chip prüfen: **V3 = ESP32-S3**, V2 = ESP32 |
+
+**Manueller Download-Modus (Heltec, CP2102 / `ttyUSB0`):**
+
+1. **PRG** (BOOT) **gedrückt halten**
+2. Kurz **RST** drücken und loslassen
+3. Upload starten (`pio run -e heltec_wifi_lora_32_V3 -t upload`)
+4. Sobald `Connecting…` erscheint: **PRG loslassen**
+
+Ohne eingestecktes Board reagiert `esptool` nicht — dann erscheint „No serial data received“ (wirkt wie ein Hänger in der Konsole, dauert oft ~10–30 s).
+
+Linux: `99-platformio-udev.rules` setzt für CP2102 u. a. `MODE=0666`; optional ModemManager testweise stoppen: `sudo systemctl stop ModemManager`.
 
 ## Configuration
 

@@ -16,6 +16,7 @@
 #include "driver/pcnt.h"
 #include "configserver.h"
 #include "esp_system.h" // unique chip ID
+#include "esp_mac.h"    // esp_read_mac() — required since Arduino-ESP32 3.x
 #include "led_control.h" // Header for LED control
 #include "device_management.h" // Device management APIs
 // getFirmwareVersion() is declared in device_management.h
