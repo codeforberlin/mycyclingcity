@@ -52,8 +52,8 @@ def _assert_shop_plan_session(session) -> None:
         raise ShopError("shop_plan_requires_plan")
 
 
-def purchase_credit_holder_chain(wallet: Group) -> list[Group]:
-    """Wallet first, then parents — institution pooled sell-back credit."""
+def _purchase_credit_holder_chain_full(wallet: Group) -> list[Group]:
+    """Wallet first, then parents (ignores TOP sell restriction)."""
     chain: list[Group] = []
     seen: set[int] = set()
     current: Group | None = wallet
@@ -64,6 +64,30 @@ def purchase_credit_holder_chain(wallet: Group) -> list[Group]:
         if not parent_id:
             break
         current = Group.objects.filter(pk=parent_id).first()
+    return chain
+
+
+def luanti_shop_sell_own_wallet_restricted(wallet: Group | None) -> bool:
+    """True when a TOP ancestor restricts sell to own-wallet purchase credit only."""
+    if wallet is None:
+        return False
+    current: Group | None = wallet
+    seen: set[int] = set()
+    while current is not None and current.pk not in seen:
+        if current.luanti_shop_sell_own_wallet_credit_only:
+            return True
+        seen.add(current.pk)
+        if not current.parent_id:
+            break
+        current = Group.objects.filter(pk=current.parent_id).first()
+    return False
+
+
+def purchase_credit_holder_chain(wallet: Group) -> list[Group]:
+    """Wallet first, then parents unless TOP blocks pooled parent credit."""
+    chain = _purchase_credit_holder_chain_full(wallet)
+    if luanti_shop_sell_own_wallet_restricted(wallet):
+        return chain[:1]
     return chain
 
 
@@ -97,6 +121,23 @@ def foreign_purchase_credit_group(*, wallet: Group | None, shop_item_name: str) 
     return (row.group.name if row and row.group else "") or ""
 
 
+def _parent_pool_locked_holder(
+    *, wallet: Group | None, item_name: str
+) -> Group | None:
+    if wallet is None or not luanti_shop_sell_own_wallet_restricted(wallet):
+        return None
+    for holder in _purchase_credit_holder_chain_full(wallet)[1:]:
+        row = (
+            LuantiShopPurchaseCredit.objects.filter(
+                group=holder, item_name=item_name, quantity__gt=0
+            )
+            .first()
+        )
+        if row is not None:
+            return holder
+    return None
+
+
 def sell_hint_for_inventory_name(*, login_name: str, inventory_name: str) -> dict:
     wallet = resolve_group_for_player(login_name)
     wallet_name = (wallet.name if wallet else "") or ""
@@ -108,6 +149,14 @@ def sell_hint_for_inventory_name(*, login_name: str, inventory_name: str) -> dic
             "wallet_group_name": wallet_name,
         }
     buy_price = int(item.buy_price_velos or 0)
+    if wallet is None:
+        return {
+            "sellable": False,
+            "reason": "no_credit",
+            "wallet_group_name": wallet_name,
+            "shop_item_name": item.item_name,
+            "buy_price_velos": buy_price,
+        }
     credit, holder = find_purchase_credit(wallet=wallet, item_name=item.item_name)
     if credit is not None and int(credit.quantity or 0) > 0:
         credit_name = (holder.name if holder else wallet_name) or wallet_name
@@ -117,6 +166,16 @@ def sell_hint_for_inventory_name(*, login_name: str, inventory_name: str) -> dic
             "wallet_group_name": wallet_name,
             "credit_group_name": credit_name,
             "credit_available": int(credit.quantity),
+            "shop_item_name": item.item_name,
+            "buy_price_velos": buy_price,
+        }
+    pool_holder = _parent_pool_locked_holder(wallet=wallet, item_name=item.item_name)
+    if pool_holder is not None:
+        return {
+            "sellable": False,
+            "reason": "parent_pool_locked",
+            "wallet_group_name": wallet_name,
+            "credit_group_name": (pool_holder.name or "").strip() or str(pool_holder.pk),
             "shop_item_name": item.item_name,
             "buy_price_velos": buy_price,
         }
@@ -311,13 +370,18 @@ def parse_planning_flag(value) -> bool:
     return text in {"1", "true", "yes", "on"}
 
 
-def _plan_item_meta(item: LuantiShopItem) -> dict:
+def _plan_item_meta(item: LuantiShopItem, *, lang: str = "de") -> dict:
+    from luanti.services.shop_labels import normalize_language_code, resolve_item_display_name
+
+    lang = normalize_language_code(lang)
+    display_name = resolve_item_display_name(item, lang)
     return {
         "mcc_plan": "1",
         "mcc_shop_item_id": str(item.pk),
         "mcc_purchase_velos": "0",
         "mcc_buy_price_velos": str(item.buy_price_velos),
         "mcc_target_name": item.item_name,
+        "mcc_shop_display_name": display_name[:128],
     }
 
 
@@ -352,6 +416,7 @@ def shop_buy(
     quantity: int,
     client_tx_id: str,
     planning: bool = False,
+    lang: str = "de",
 ) -> dict:
     if not client_tx_id:
         raise ShopError("missing_client_tx_id")
@@ -365,7 +430,7 @@ def shop_buy(
         if tx.side == LuantiShopTransaction.SIDE_PLAN_BUY:
             item_ref = LuantiShopItem.objects.filter(item_name=tx.item_name).first()
             if item_ref:
-                grant_entry["meta"] = _plan_item_meta(item_ref)
+                grant_entry["meta"] = _plan_item_meta(item_ref, lang=lang)
         _log_shop_buy(
             login_name=login_name,
             item_id=item_id,
@@ -418,7 +483,7 @@ def shop_buy(
                 {
                     "item_name": item.item_name,
                     "count": physical_grant_count(quantity),
-                    "meta": _plan_item_meta(item),
+                    "meta": _plan_item_meta(item, lang=lang),
                 }
             ],
         }

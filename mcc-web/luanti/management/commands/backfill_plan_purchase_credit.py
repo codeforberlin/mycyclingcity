@@ -35,6 +35,8 @@ class Command(BaseCommand):
                 _grant_materialize_purchase_credit(
                     block=block,
                     fallback_login=block.placed_by or "",
+                    debits=None,
+                    actor_group=None,
                 )
                 block.refresh_from_db(fields=["purchase_credit_granted"])
                 if block.purchase_credit_granted and not before:

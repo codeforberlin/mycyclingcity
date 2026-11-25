@@ -234,6 +234,15 @@ class Group(models.Model):
     )
     managers = models.ManyToManyField(User, related_name='managed_groups', blank=True, verbose_name=_("Manager"))
     comments = models.TextField(blank=True, null=True, verbose_name=_("Interne Kommentare (Admin)"))
+    luanti_shop_sell_own_wallet_credit_only = models.BooleanField(
+        default=False,
+        verbose_name=_("Luanti: Verkauf nur eigenes Kaufguthaben (TOP)"),
+        help_text=_(
+            "Nur für TOP-Gruppen: Kind-Gruppen dürfen im Luanti-Shop Blöcke "
+            "nur zurückverkaufen, wenn Kaufguthaben auf ihrer eigenen Shop-Wallet liegt "
+            "(nicht TOP-Pool)."
+        ),
+    )
 
     class Meta:
         verbose_name = _("Group")

@@ -309,6 +309,7 @@ def luanti_shop_catalog(request):
                 wp = wallet_payload(account, session=session)
                 payload["velos_spendable"] = wp.get("velos_spendable", 0)
                 payload["wallet_group_name"] = wp.get("wallet_group_name") or ""
+                payload["wallet_group_id"] = wp.get("wallet_group_id")
                 if session:
                     payload["session_ok"] = True
                     payload["session_paused"] = bool(session.is_paused)
@@ -354,6 +355,9 @@ def luanti_shop_buy(request):
         quantity,
         planning,
     )
+    from luanti.services.shop_labels import normalize_language_code
+
+    lang = normalize_language_code(str(data.get("lang") or ""))
     try:
         result = shop_buy(
             login_name=login_name,
@@ -361,6 +365,7 @@ def luanti_shop_buy(request):
             quantity=quantity,
             client_tx_id=str(data.get("client_tx_id") or ""),
             planning=planning,
+            lang=lang,
         )
     except (TypeError, ValueError):
         return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
@@ -702,6 +707,10 @@ def luanti_plan_convert(request):
             client_tx_id=str(data.get("client_tx_id") or ""),
             max_count=int(data.get("max_count") or 1),
             mode=str(data.get("mode") or "manual"),
+            world=str(data.get("world") or "world"),
+            x=int(data["x"]) if data.get("x") is not None else None,
+            y=int(data["y"]) if data.get("y") is not None else None,
+            z=int(data["z"]) if data.get("z") is not None else None,
         )
     except (TypeError, ValueError):
         return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)

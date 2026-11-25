@@ -1158,7 +1158,21 @@ class LuantiPlanMaterializeTransaction(models.Model):
         null=True,
         blank=True,
         related_name="luanti_plan_materialize_txs",
-        verbose_name=_("Gruppe"),
+        verbose_name=_("Abbuchungs-Gruppe (primär)"),
+        help_text=_(
+            "Primär belastete Gruppe bei der Velo-Abbuchung (nicht zwingend Verkaufsguthaben)."
+        ),
+    )
+    credit_group = models.ForeignKey(
+        "api.Group",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="luanti_plan_materialize_credit_txs",
+        verbose_name=_("Verkaufsguthaben-Gruppe"),
+        help_text=_(
+            "Gruppe, die Kaufguthaben für Verkauf nach Umwandlung erhielt (Actor oder Regional-TOP)."
+        ),
     )
     world = models.CharField(max_length=64, default="world")
     x = models.IntegerField()

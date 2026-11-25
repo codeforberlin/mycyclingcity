@@ -1,0 +1,75 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+  {% if transfer_all_from_groups %}
+  {% blocktrans count counter=source_group_count %}
+  Alle Kaufguthaben einer Quell-Gruppe werden übertragen ({{ counter }} Gruppe).
+  {% plural %}
+  Alle Kaufguthaben von {{ counter }} Quell-Gruppen werden übertragen.
+  {% endblocktrans %}
+  {% else %}
+  {% blocktrans count counter=selected_count %}
+  Ein Kaufguthaben wird übertragen.
+  {% plural %}
+  {{ counter }} Kaufguthaben werden übertragen.
+  {% endblocktrans %}
+  {% endif %}
+</p>
+
+{% if source_groups %}
+<ul style="max-height: 8rem; overflow: auto; margin: 0.75rem 0; padding-left: 1.25rem;">
+  {% for g in source_groups %}
+  <li>{{ g.name }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if queryset and not transfer_all_from_groups %}
+<ul style="max-height: 14rem; overflow: auto; margin: 1rem 0; padding-left: 1.25rem;">
+  {% for obj in queryset %}
+  <li><strong>{{ obj.group }}</strong> — <code>{{ obj.item_name }}</code> × {{ obj.quantity }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="post" value="yes">
+  <input type="hidden" name="action" value="{{ admin_action_name }}">
+  <input type="hidden" name="select_across" value="{{ select_across }}">
+  <input type="hidden" name="index" value="{{ index }}">
+  {% if transfer_all_from_groups %}
+  <input type="hidden" name="transfer_all_from_groups" value="1">
+  {% for gid in source_group_id_list %}
+  <input type="hidden" name="source_group_ids" value="{{ gid }}">
+  {% endfor %}
+  {% else %}
+  {% for obj in queryset %}
+  <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+  {% endfor %}
+  {% endif %}
+
+  <fieldset class="module aligned" style="margin: 1rem 0;">
+    <div class="form-row">
+      <label for="id_target_group">{% trans "Ziel-Gruppe" %}:</label>
+      <select name="target_group_pk" id="id_target_group" required>
+        <option value="">— {% trans "Bitte wählen" %} —</option>
+        {% for g in groups %}
+        <option value="{{ g.pk }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </fieldset>
+
+  <div class="submit-row" style="margin-top: 1rem;">
+    <input type="submit" class="default" value="{% trans "Übertragen" %}">
+    <a href="{{ cancel_url }}" class="button cancel-link" style="margin-left: 0.5rem;">{% trans "Abbrechen" %}</a>
+  </div>
+</form>
+{% endblock %}

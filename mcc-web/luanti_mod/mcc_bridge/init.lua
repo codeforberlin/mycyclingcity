@@ -412,6 +412,8 @@ local function apply_regions_catalog(payload_or_rows)
             end
             protected_regions[#protected_regions + 1] = {
                 region_id = tostring(r.region_id or ""),
+                display_name = tostring(r.display_name or r.region_id or ""),
+                parent_id = r.parent_id and tostring(r.parent_id) or nil,
                 protect_build = protect,
                 members = members,
                 min_x = math.min(tonumber(min[1]) or 0, tonumber(max[1]) or 0),
@@ -613,6 +615,7 @@ local function stack_to_inventory_entry(stack, slot_index)
             mcc_purchase_velos = im:get_string("mcc_purchase_velos"),
             mcc_buy_price_velos = im:get_string("mcc_buy_price_velos"),
             mcc_target_name = im:get_string("mcc_target_name"),
+            mcc_shop_display_name = im:get_string("mcc_shop_display_name"),
         }
     end
     return entry
@@ -1249,6 +1252,103 @@ local function pos_in_region(pos, region)
         and z <= region.max_z
 end
 
+local function region_volume(region)
+    return (region.max_x - region.min_x + 1)
+        * (region.max_y - region.min_y + 1)
+        * (region.max_z - region.min_z + 1)
+end
+
+local function protected_region_by_id(rid)
+    if not rid or rid == "" then
+        return nil
+    end
+    for _, region in ipairs(protected_regions) do
+        if region.region_id == rid then
+            return region
+        end
+    end
+    return nil
+end
+
+--- Member on region or inherited via parent chain (like Django account_is_region_member).
+local function account_is_region_member(key, region)
+    if not region or not key then
+        return false
+    end
+    if region.members[key] then
+        return true
+    end
+    if region.parent_id then
+        local parent = protected_region_by_id(region.parent_id)
+        if parent then
+            return account_is_region_member(key, parent)
+        end
+    end
+    return false
+end
+
+local function player_has_build_access_at(pos, key)
+    if not pos or not has_protect_build_region or not key then
+        return false
+    end
+    for _, region in ipairs(protected_regions) do
+        if region.protect_build and pos_in_region(pos, region) then
+            if account_is_region_member(key, region) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+--- Smallest protect_build region at pos (sub preferred over master), like Django resolve_build_region_at.
+local function resolve_build_region_at_pos(pos)
+    if not pos or not has_protect_build_region then
+        return nil
+    end
+    local candidates = {}
+    for _, region in ipairs(protected_regions) do
+        if region.protect_build and pos_in_region(pos, region) then
+            local depth = region.parent_id and 1 or 0
+            candidates[#candidates + 1] = {
+                region = region,
+                depth = depth,
+                vol = region_volume(region),
+            }
+        end
+    end
+    if #candidates == 0 then
+        return nil
+    end
+    table.sort(candidates, function(a, b)
+        if a.depth ~= b.depth then
+            return a.depth > b.depth
+        end
+        return a.vol < b.vol
+    end)
+    return candidates[1].region
+end
+
+function mcc_bridge.build_region_at_player(player_name)
+    local player = core.get_player_by_name(player_name)
+    if not player then
+        return nil
+    end
+    local key = string.lower(tostring(player_name))
+    local pos = player:get_pos()
+    if not player_has_build_access_at(pos, key) then
+        return nil
+    end
+    local region = resolve_build_region_at_pos(pos)
+    if not region then
+        return nil
+    end
+    return {
+        region_id = region.region_id,
+        display_name = region.display_name or region.region_id,
+    }
+end
+
 local function build_mode_is_protected(pos, name)
     if not has_protect_build_region then
         return false
@@ -1291,6 +1391,38 @@ local function mode_protects_world(name)
     return mode == "play" or mode == "watch" or mode == "paused"
 end
 
+local PLAN_REAL_BLOCKS_MSG =
+    "Im Planungsmodus nur Geister-Steine — echte Steine im Bau-Modus."
+local plan_real_block_hint_at = {}
+local PLAN_REAL_BLOCK_HINT_COOLDOWN = 4
+
+local function plan_node_is_hologram(nodename)
+    local mp = rawget(_G, "mcc_plan")
+    if mp and mp.is_plan_hologram then
+        return mp.is_plan_hologram(nodename)
+    end
+    if not nodename or nodename == "" or nodename == "air" then
+        return false
+    end
+    return core.get_item_group(nodename, "mcc_plan_holo") > 0
+        or nodename:sub(1, 9) == "mcc_plan:"
+end
+
+local function maybe_plan_real_block_hint(player_name)
+    if not player_name or player_name == "" then
+        return
+    end
+    local now = os.time()
+    if (plan_real_block_hint_at[player_name] or 0) + PLAN_REAL_BLOCK_HINT_COOLDOWN > now then
+        return
+    end
+    plan_real_block_hint_at[player_name] = now
+    core.chat_send_player(
+        player_name,
+        core.colorize("#FFEE55", PLAN_REAL_BLOCKS_MSG)
+    )
+end
+
 local function install_play_mode_world_protection()
     local old_is_protected = core.is_protected
     function core.is_protected(pos, name)
@@ -1300,6 +1432,9 @@ local function install_play_mode_world_protection()
         local mode_here = name and get_stored_mode(name) or ""
         if name and pos and (mode_here == "build" or mode_here == "plan") then
             if build_mode_is_protected(pos, name) then
+                return true
+            end
+            if mode_here == "plan" and not plan_node_is_hologram(core.get_node(pos).name) then
                 return true
             end
         end
@@ -1318,6 +1453,10 @@ local function install_play_mode_world_protection()
             return
         end
         local mode_v = get_stored_mode(name)
+        if mode_v == "plan" and pos and not build_mode_is_protected(pos, name) then
+            maybe_plan_real_block_hint(name)
+            return
+        end
         if (mode_v == "build" or mode_v == "plan") and build_mode_is_protected(pos, name) then
             local hint = "Hier darfst du nicht bauen (keine Bauzone / kein Member). / Build zone required."
             if mode_v == "plan" then

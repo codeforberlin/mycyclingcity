@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max, Prefetch, QuerySet
 from django.utils.translation import gettext as _
@@ -24,6 +25,27 @@ from luanti.services.region_ops import (
 
 def top_groups_queryset() -> QuerySet[Group]:
     return Group.objects.filter(parent__isnull=True, is_visible=True).order_by("name")
+
+
+def plan_funding_groups_max() -> int:
+    return max(1, int(getattr(settings, "LUANTI_PLAN_FUNDING_GROUPS_MAX", 10)))
+
+
+def normalize_plan_funding_group_ids(group_ids: list[int]) -> list[int]:
+    """Deduplicate and enforce admin/UI limit for plan-Velos pool groups."""
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for gid in group_ids:
+        if gid in seen:
+            continue
+        seen.add(gid)
+        ordered.append(gid)
+    limit = plan_funding_groups_max()
+    if len(ordered) > limit:
+        raise ValueError(
+            _("Maximal %(max)s Plan-Velos-Gruppen pro Region.") % {"max": limit}
+        )
+    return ordered
 
 
 def region_label(region: LuantiProtectedRegion) -> str:
@@ -345,7 +367,9 @@ def save_region_from_post(post, *, user) -> LuantiProtectedRegion:
     region.members.set(
         LuantiAccount.objects.filter(pk__in=member_ids, is_active=True)
     )
-    funding_ids = [int(v) for v in post.getlist("rg_plan_funding_groups") if str(v).isdigit()]
+    funding_ids = normalize_plan_funding_group_ids(
+        [int(v) for v in post.getlist("rg_plan_funding_groups") if str(v).isdigit()]
+    )
     region.plan_funding_links.all().delete()
     for idx, gid in enumerate(funding_ids):
         LuantiRegionPlanFunding.objects.create(

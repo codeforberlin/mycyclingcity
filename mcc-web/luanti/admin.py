@@ -41,7 +41,13 @@ from luanti.services.inventory_admin import (
     format_inventory_table_html,
     inventory_item_count,
 )
+from luanti.services.purchase_credit_transfer import (
+    PurchaseCreditTransferError,
+    transfer_all_credits_from_groups,
+    transfer_purchase_credits_to_group,
+)
 from luanti.services.session_control import clear_account_inventory
+from api.models import Group
 
 
 @admin.register(LuantiIntegrationConfig)
@@ -453,6 +459,171 @@ class LuantiShopItemAdmin(admin.ModelAdmin):
 @admin.register(LuantiShopPurchaseCredit)
 class LuantiShopPurchaseCreditAdmin(admin.ModelAdmin):
     list_display = ("group", "item_name", "quantity")
+    list_filter = ("group",)
+    search_fields = ("item_name", "group__name")
+    actions = ("action_transfer_to_group", "action_transfer_all_from_group")
+
+    def _groups_for_transfer_picker(self):
+        return Group.objects.filter(is_visible=True).order_by("name")
+
+    @admin.action(description=_("Auswahl auf andere Gruppe übertragen…"))
+    def action_transfer_to_group(self, request, queryset):
+        if request.POST.get("post") != "yes":
+            return self._render_transfer_confirmation(
+                request,
+                queryset,
+                admin_action_name=self.action_transfer_to_group.__name__,
+                transfer_all_from_groups=False,
+            )
+        return self._execute_transfer(request, queryset, transfer_all_from_groups=False)
+
+    @admin.action(description=_("Gesamtes Kaufguthaben der Quell-Gruppe(n) übertragen…"))
+    def action_transfer_all_from_group(self, request, queryset):
+        if not queryset.exists():
+            self.message_user(
+                request,
+                _("Bitte mindestens ein Guthaben aus einer Quell-Gruppe auswählen."),
+                level=messages.WARNING,
+            )
+            return HttpResponseRedirect(
+                reverse("admin:luanti_luantishoppurchasecredit_changelist")
+            )
+        source_group_ids = list(queryset.values_list("group_id", flat=True).distinct())
+        if request.POST.get("post") != "yes":
+            return self._render_transfer_confirmation(
+                request,
+                queryset,
+                admin_action_name=self.action_transfer_all_from_group.__name__,
+                transfer_all_from_groups=True,
+                source_group_ids=source_group_ids,
+            )
+        return self._execute_transfer(
+            request,
+            queryset,
+            transfer_all_from_groups=True,
+            source_group_ids=source_group_ids,
+        )
+
+    def _render_transfer_confirmation(
+        self,
+        request,
+        queryset,
+        *,
+        admin_action_name: str,
+        transfer_all_from_groups: bool,
+        source_group_ids: list[int] | None = None,
+    ):
+        source_group_ids = source_group_ids or list(
+            queryset.values_list("group_id", flat=True).distinct()
+        )
+        source_groups = list(
+            Group.objects.filter(pk__in=source_group_ids).order_by("name")
+        )
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Kaufguthaben auf andere Gruppe übertragen"),
+            "queryset": queryset,
+            "selected_count": queryset.count(),
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+            "admin_action_name": admin_action_name,
+            "select_across": request.POST.get("select_across", "0"),
+            "index": request.POST.get("index", "0"),
+            "groups": self._groups_for_transfer_picker(),
+            "cancel_url": reverse("admin:luanti_luantishoppurchasecredit_changelist"),
+            "transfer_all_from_groups": transfer_all_from_groups,
+            "source_groups": source_groups,
+            "source_group_count": len(source_groups),
+            "source_group_id_list": source_group_ids,
+        }
+        return TemplateResponse(
+            request,
+            "admin/luanti/luantishoppurchasecredit/transfer_group_confirmation.html",
+            context,
+        )
+
+    def _execute_transfer(
+        self,
+        request,
+        queryset,
+        *,
+        transfer_all_from_groups: bool,
+        source_group_ids: list[int] | None = None,
+    ):
+        changelist_url = reverse("admin:luanti_luantishoppurchasecredit_changelist")
+        raw_pk = (request.POST.get("target_group_pk") or "").strip()
+        if not raw_pk.isdigit():
+            self.message_user(
+                request,
+                _("Ungültige Ziel-Gruppe."),
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(changelist_url)
+        try:
+            target = Group.objects.get(pk=int(raw_pk))
+        except Group.DoesNotExist:
+            self.message_user(
+                request,
+                _("Ziel-Gruppe existiert nicht."),
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(changelist_url)
+
+        try:
+            if transfer_all_from_groups:
+                ids = source_group_ids or list(
+                    queryset.values_list("group_id", flat=True).distinct()
+                )
+                result = transfer_all_credits_from_groups(
+                    target_group=target,
+                    source_group_ids=ids,
+                )
+            else:
+                selected = request.POST.getlist(ACTION_CHECKBOX_NAME)
+                if not selected and queryset.exists():
+                    credit_ids = list(queryset.values_list("pk", flat=True))
+                else:
+                    credit_ids = [int(x) for x in selected if str(x).isdigit()]
+                result = transfer_purchase_credits_to_group(
+                    target_group=target,
+                    credit_ids=credit_ids,
+                )
+        except PurchaseCreditTransferError:
+            self.message_user(
+                request,
+                _("Übertragung fehlgeschlagen."),
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(changelist_url)
+
+        if result.transferred_rows:
+            self.message_user(
+                request,
+                _(
+                    "%(rows)s Position(en), %(qty)s Einheiten nach „%(group)s“ "
+                    "übertragen (Quell-Gruppen: %(src)s)."
+                )
+                % {
+                    "rows": result.transferred_rows,
+                    "qty": result.total_quantity,
+                    "group": target.name,
+                    "src": result.source_groups,
+                },
+                messages.SUCCESS,
+            )
+        if result.skipped_same_group:
+            self.message_user(
+                request,
+                _("%(n)s Position(en) übersprungen (lagen bereits auf der Ziel-Gruppe).")
+                % {"n": result.skipped_same_group},
+                messages.INFO,
+            )
+        if result.transferred_rows == 0 and result.skipped_same_group == 0:
+            self.message_user(
+                request,
+                _("Nichts zu übertragen (leere Auswahl oder Ziel = Quelle)."),
+                level=messages.WARNING,
+            )
+        return HttpResponseRedirect(changelist_url)
 
 
 @admin.register(LuantiShopTransaction)
@@ -497,6 +668,7 @@ class LuantiPlanMaterializeTransactionAdmin(admin.ModelAdmin):
         "login_name",
         "region",
         "group",
+        "credit_group",
         "velos_delta",
         "world",
         "x",
@@ -511,6 +683,7 @@ class LuantiPlanMaterializeTransactionAdmin(admin.ModelAdmin):
         "client_tx_id",
         "region",
         "group",
+        "credit_group",
         "world",
         "x",
         "y",

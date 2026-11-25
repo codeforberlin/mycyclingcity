@@ -11,10 +11,39 @@ local HOLO_FULL_COLLISION = {
 	type = "fixed",
 	fixed = { -0.5, -0.5, -0.5, 0.5, 0.5, 0.5 },
 }
--- Plain paths: colorize + opacity; complex modifier chains: opacity only (safe append).
-local HOLO_TINT = "^[colorize:#44CCFF:200"
-local HOLO_ALPHA = 140
-local HOLO_OPACITY = "^[opacity:" .. tostring(HOLO_ALPHA)
+-- Plan hologram look: default opacity only (material stays recognizable); optional colorize/border via minetest.conf.
+local HOLO_COLORIZE_HEX = "#44CCFF"
+local HOLO_BORDER_TEX = "^[border:2px_#55CCFF66"
+
+local function holo_visual_settings()
+    local s = core.settings
+    local opacity = 165
+    local colorize_alpha = 0
+    local border = false
+    if s then
+        opacity = tonumber(s:get("mcc_plan.holo_opacity")) or opacity
+        colorize_alpha = tonumber(s:get("mcc_plan.holo_colorize_alpha")) or colorize_alpha
+        border = s:get_bool("mcc_plan.holo_border", false)
+    end
+    return opacity, colorize_alpha, border
+end
+
+local function node_uses_palette(base)
+    if not base or type(base) ~= "table" then
+        return false
+    end
+    if type(base.palette) == "string" and base.palette ~= "" then
+        return true
+    end
+    local p2 = base.paramtype2
+    if p2 == "color" or p2 == "colorfacedir" or p2 == "colorwallmounted" then
+        return true
+    end
+    if type(base.colors) == "table" and #base.colors > 0 then
+        return true
+    end
+    return false
+end
 -- Stored id is mccplan_gh_<original with ':' -> '_'>; register as ":mccplan_gh_..." (no mod context at on_mods_loaded).
 local GHOST_ID_PREFIX = "mccplan_gh_"
 local itemdefs_registration_open = true
@@ -53,6 +82,7 @@ local PLAN_ERROR_CHAT = {
     missing_client_tx_id = "Interner Fehler (Transaktion).",
     http_unreachable = "Web-App nicht erreichbar.",
     convert_requires_build = "Umwandlung nur im Bau-Modus (Session).",
+    convert_requires_position = "Umwandeln nur in deiner erlaubten Bauzone (hierher stellen).",
 }
 
 local function plan_error_message(data)
@@ -83,11 +113,26 @@ local function plan_placement_session(name)
     return get_stored_mode(name) == "plan"
 end
 
+local PLAN_MODE_MSG = "Nur im Planungs-Modus (Session)."
+local PLAN_REAL_BLOCKS_MSG =
+    "Im Planungsmodus nur Geister-Steine — echte Steine im Bau-Modus."
+local HOLO_DIG_BUILD_HINT =
+    "Im Bau-Modus keine Hologramme abbauen — Planung nutzen oder Shop → Umwandeln."
+
+local function should_show_zone_hud(name)
+    local m = get_stored_mode(name)
+    return m == "build" or m == "plan"
+end
+
 mcc_plan = rawget(_G, "mcc_plan") or {}
 rawset(_G, "mcc_plan", mcc_plan)
 
 function mcc_plan.set_api_post(fn)
     api_post = fn
+end
+
+function mcc_plan.plan_error_message(data)
+    return plan_error_message(data)
 end
 
 function mcc_plan.is_active(name)
@@ -149,6 +194,7 @@ local function read_plan_fields(stack)
         shop_item_id = meta:get_string("mcc_shop_item_id"),
         buy_price_velos = meta:get_string("mcc_buy_price_velos"),
         target_name = meta:get_string("mcc_target_name"),
+        shop_display_name = meta:get_string("mcc_shop_display_name"),
     }
 end
 
@@ -162,9 +208,10 @@ function mcc_plan.plan_item_description(meta_table, stack_name)
     meta_table = meta_table or {}
     local target = meta_table.mcc_target_name or stack_name or "?"
     local convert_velos = meta_table.mcc_buy_price_velos or "?"
-    local label = plan_stack_short_label(target)
+    local display = tostring(meta_table.mcc_shop_display_name or ""):match("^%s*(.-)%s*$") or ""
+    local label = display ~= "" and display or plan_stack_short_label(target)
     return string.format(
-        "Planung · %s · Kauf 0 Velo · Umwandlung %s Velo",
+        "Planung · %s\n0 Velos jetzt · Umwandlung %s Velos",
         label,
         tostring(convert_velos)
     )
@@ -220,6 +267,7 @@ local function holo_meta_table(fields, target_name, param2)
         target_param2 = tostring(param2 or 0),
         shop_item_id = fields.shop_item_id or "",
         buy_price_velos = fields.buy_price_velos or "1",
+        mcc_shop_display_name = fields.shop_display_name or "",
     }
 end
 
@@ -234,6 +282,10 @@ local function is_plan_hologram(nodename)
         return true
     end
     return core.get_item_group(nodename, HOLO_GROUP) > 0
+end
+
+function mcc_plan.is_plan_hologram(nodename)
+    return is_plan_hologram(nodename)
 end
 
 local function safe_register_node(reg_spec, def)
@@ -262,25 +314,34 @@ local function texture_is_tintable(name)
     return true
 end
 
-local function holo_texture_name(name)
+local function holo_texture_suffix(name, skip_colorize)
+    local opacity, colorize_alpha, use_border = holo_visual_settings()
+    local mods = "^[opacity:" .. tostring(opacity)
+    if not skip_colorize and colorize_alpha > 0 and texture_is_tintable(name) then
+        mods = string.format("^[colorize:%s:%d", HOLO_COLORIZE_HEX, colorize_alpha) .. mods
+    end
+    if use_border and texture_is_tintable(name) then
+        mods = mods .. HOLO_BORDER_TEX
+    end
+    return mods
+end
+
+local function holo_texture_name(name, skip_colorize)
     if type(name) ~= "string" or name == "" then
         return name
     end
-    if texture_is_tintable(name) then
-        return name .. HOLO_TINT .. HOLO_OPACITY
-    end
-    return name .. HOLO_OPACITY
+    return name .. holo_texture_suffix(name, skip_colorize)
 end
 
-local function tint_tile_entry(entry)
+local function tint_tile_entry(entry, skip_colorize)
     if type(entry) == "string" then
-        return holo_texture_name(entry)
+        return holo_texture_name(entry, skip_colorize)
     end
     if type(entry) == "table" then
         local out = {}
         for k, v in pairs(entry) do
             if (k == "name" or k == "image") and type(v) == "string" then
-                out[k] = holo_texture_name(v)
+                out[k] = holo_texture_name(v, skip_colorize)
             else
                 out[k] = v
             end
@@ -290,21 +351,21 @@ local function tint_tile_entry(entry)
     return entry
 end
 
-local function tint_tiles(tiles)
+local function tint_tiles(tiles, skip_colorize)
     if type(tiles) == "string" then
-        return holo_texture_name(tiles)
+        return holo_texture_name(tiles, skip_colorize)
     end
     if type(tiles) == "table" then
         local out = {}
         for i = 1, #tiles do
-            out[i] = tint_tile_entry(tiles[i])
+            out[i] = tint_tile_entry(tiles[i], skip_colorize)
         end
         return out
     end
     return tiles
 end
 
-local function tint_special(special)
+local function tint_special(special, skip_colorize)
     if type(special) ~= "table" then
         return special
     end
@@ -314,7 +375,7 @@ local function tint_special(special)
             local ct = {}
             for k, v in pairs(st) do
                 if (k == "name" or k == "image") and type(v) == "string" then
-                    ct[k] = holo_texture_name(v)
+                    ct[k] = holo_texture_name(v, skip_colorize)
                 else
                     ct[k] = v
                 end
@@ -492,15 +553,16 @@ local function apply_holo_walk_policy(def)
 end
 
 local function clone_minimal_holo_def(base, holo_can_dig_fn, holo_on_dig_fn)
+    local skip_colorize = node_uses_palette(base)
     local def = { description = "Planung (Vorschau)" }
     for k, _ in pairs(VISUAL_CLONE_KEYS) do
         local v = base[k]
         if v == nil then
             -- skip
         elseif k == "tiles" or k == "overlay_tiles" then
-            def[k] = tint_tiles(v)
+            def[k] = tint_tiles(v, skip_colorize)
         elseif k == "special_tiles" then
-            def[k] = tint_special(v)
+            def[k] = tint_special(v, skip_colorize)
         elseif type(v) == "table" then
             def[k] = clone_def_table(v)
         else
@@ -522,15 +584,16 @@ local function clone_minimal_holo_def(base, holo_can_dig_fn, holo_on_dig_fn)
 end
 
 local function clone_nodedef_for_holo_preview(base, holo_can_dig_fn, holo_on_dig_fn)
+    local skip_colorize = node_uses_palette(base)
     local def = {}
     for k, v in pairs(base) do
         if not is_forbidden_clone_key(k) and type(v) ~= "function" then
             if k == "tiles" then
-                def[k] = tint_tiles(v)
+                def[k] = tint_tiles(v, skip_colorize)
             elseif k == "special_tiles" then
-                def[k] = tint_special(v)
+                def[k] = tint_special(v, skip_colorize)
             elseif k == "overlay_tiles" then
-                def[k] = tint_tiles(v)
+                def[k] = tint_tiles(v, skip_colorize)
             elseif STRUCTURE_CLONE_KEYS[k] or type(v) == "table" then
                 def[k] = clone_def_table(v)
             else
@@ -642,6 +705,8 @@ end
 
 -- Last wielded plan stack (on_placenode often receives an empty stack after the final item).
 local plan_wield_snapshot = {}
+local wield_hud_ids = {}
+local wield_hud_last_sig = {}
 
 local function plan_fields_from_place(player_name, itemstack)
     local fields = read_plan_fields(itemstack)
@@ -673,6 +738,7 @@ local function plan_refund_stack(fields, fallback_node_name)
         mcc_buy_price_velos = fields and fields.buy_price_velos or "1",
         mcc_target_name = shop_target,
         mcc_purchase_velos = "0",
+        mcc_shop_display_name = fields and fields.shop_display_name or "",
     })
 end
 
@@ -721,18 +787,19 @@ local function hologram_info_line(meta, max_len, short_label)
     if target == "" then
         target = "?"
     end
-    local label = short_label and short_item_label(target) or target
-    local sid = meta:get_string("shop_item_id")
+    local display = meta:get_string("mcc_shop_display_name")
+    display = tostring(display or ""):match("^%s*(.-)%s*$") or ""
+    local label
+    if display ~= "" then
+        label = display
+    else
+        label = short_label and short_item_label(target) or target
+    end
     local price = meta:get_string("buy_price_velos")
     if price == "" then
         price = "?"
     end
-    local line
-    if sid ~= "" then
-        line = string.format("Plan %s #%s %sV", label, sid, price)
-    else
-        line = string.format("Plan %s %sV", label, price)
-    end
+    local line = string.format("Plan: %s · %s Velos", label, price)
     if #line > max_len then
         line = line:sub(1, max_len - 1) .. "…"
     end
@@ -806,11 +873,33 @@ local function register_removed_api(pos, player_name)
     end)
 end
 
+local holo_dig_hint_at = {}
+local HOLO_DIG_HINT_COOLDOWN = 4
+
+local function maybe_holo_dig_plan_hint(player)
+    if not player or not player:is_player() then
+        return
+    end
+    local name = player:get_player_name()
+    if plan_placement_session(name) then
+        return
+    end
+    local now = os.time()
+    if (holo_dig_hint_at[name] or 0) + HOLO_DIG_HINT_COOLDOWN > now then
+        return
+    end
+    holo_dig_hint_at[name] = now
+    core.chat_send_player(name, core.colorize("#FFEE55", HOLO_DIG_BUILD_HINT))
+end
+
 local function hologram_can_dig(pos, player)
     if not player or not player:is_player() then
-        return true
+        return false
     end
-    return not player:get_player_control().sneak
+    if player:get_player_control().sneak then
+        return false
+    end
+    return plan_placement_session(player:get_player_name())
 end
 
 function mcc_plan.clear_hologram_at(pos)
@@ -836,6 +925,9 @@ function mcc_plan.remove_hologram_at(pos, digger, opts)
     if not is_plan_hologram(node.name) then
         return false
     end
+    if digger and digger:is_player() and not plan_placement_session(digger:get_player_name()) then
+        return false
+    end
     local meta = core.get_meta(pos)
     local shape = meta:get_string(META_ORIGINAL)
     if shape == "" then
@@ -853,15 +945,9 @@ function mcc_plan.remove_hologram_at(pos, digger, opts)
             shop_item_id = meta:get_string("shop_item_id"),
             buy_price_velos = meta:get_string("buy_price_velos"),
             target_name = shop_target,
+            shop_display_name = meta:get_string("mcc_shop_display_name"),
         }
-        local stack = plan_refund_stack(
-            {
-                shop_item_id = fields.shop_item_id,
-                buy_price_velos = fields.buy_price_velos,
-                target_name = shop_target,
-            },
-            shop_target
-        )
+        local stack = plan_refund_stack(fields, shop_target)
         if not stack then
             stack = ItemStack(shop_target .. " 1")
         end
@@ -883,6 +969,9 @@ end
 
 local function hologram_on_dig(pos, node, digger)
     if not digger or not digger:is_player() then
+        return
+    end
+    if not plan_placement_session(digger:get_player_name()) then
         return
     end
     return mcc_plan.remove_hologram_at(pos, digger, { give_item = true, register_api = true })
@@ -1033,7 +1122,7 @@ end
 core.register_node(HOLO_NAME, {
     description = "Planung: Shift+Linksklick = Infos · sonst abbauen · /mccplan look",
     drawtype = "glasslike",
-    tiles = { "default_glass.png^[colorize:#44CCFF:80" },
+    tiles = { holo_texture_name("default_glass.png", true) },
     use_texture_alpha = "blend",
     paramtype = "light",
     sunlight_propagates = true,
@@ -1054,10 +1143,11 @@ core.register_on_punchnode(function(pos, node, puncher, pointed_thing)
     if not puncher or not puncher:is_player() then
         return
     end
-    if not puncher:get_player_control().sneak then
+    if puncher:get_player_control().sneak then
+        send_hologram_info(puncher, pos)
         return
     end
-    send_hologram_info(puncher, pos)
+    maybe_holo_dig_plan_hint(puncher)
 end)
 
 -- Refresh compact infotext on existing map (one-time per node when chunk is loaded).
@@ -1074,14 +1164,30 @@ core.register_lbm({
 core.register_globalstep(function()
     for _, player in ipairs(core.get_connected_players()) do
         local name = player:get_player_name()
+        local wield = player:get_wielded_item()
         if mcc_plan.is_active(name) then
-            local wield = player:get_wielded_item()
             if mcc_plan.stack_has_plan_meta(wield) then
                 plan_wield_snapshot[name] = wield:to_string()
             end
         else
             plan_wield_snapshot[name] = nil
         end
+        if should_show_zone_hud(name) then
+            local sig = wield:to_string()
+            if wield_hud_last_sig[name] ~= sig then
+                mcc_plan.refresh_wield_hud(name)
+            end
+        end
+    end
+end)
+
+core.register_on_player_inventory_action(function(player, action, inventory, info)
+    if not player or not player:is_player() then
+        return
+    end
+    local name = player:get_player_name()
+    if should_show_zone_hud(name) then
+        mcc_plan.refresh_wield_hud(name)
     end
 end)
 
@@ -1142,8 +1248,20 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
                 )
             )
         end)
+    elseif plan_place and not had_plan then
+        local saved_old = oldnode
+        local wield_copy = (itemstack and not itemstack:is_empty()) and itemstack:clone() or ItemStack()
+        core.after(0, function()
+            core.set_node(pos, saved_old)
+            if not wield_copy:is_empty() then
+                give_item_to_player(placer, wield_copy)
+            end
+            core.chat_send_player(
+                name,
+                core.colorize("#FFEE55", PLAN_REAL_BLOCKS_MSG)
+            )
+        end)
     end
-    -- Plan AN + echte Blöcke: durchlassen (kein Zurücksetzen mehr).
 end)
 
 function mcc_plan.register_all_ghost_mirrors()
@@ -1176,8 +1294,8 @@ end)
 -- Second pass after every mod's init.lua, while register_node is still allowed.
 mcc_plan.register_all_ghost_mirrors()
 
-local materialize_job_id = 0
 local DEFAULT_CONVERT_LAYER_DELAY = tonumber(core.settings:get("mcc_plan.convert_layer_delay")) or 0.35
+local convert_tx_seq = 0
 local DEFAULT_CONVERT_BLOCK_DELAY = tonumber(core.settings:get("mcc_plan.convert_block_delay")) or 0.0
 
 local function sort_materialize_blocks(blocks)
@@ -1242,8 +1360,9 @@ function mcc_plan.materialize_blocks_staggered(blocks, opts)
     sort_materialize_blocks(sorted)
     local layers = group_blocks_by_y(sorted)
 
-    materialize_job_id = materialize_job_id + 1
-    local job = materialize_job_id
+    -- Do not cancel in-flight stagger when another convert starts: Django already
+    -- marked those blocks materialized; skipped callbacks left holograms in the world
+    -- with no matching ledger rows (invisible in shop convert tab).
     local t = 0
     for layer_idx, layer in ipairs(layers) do
         if layer_idx > 1 then
@@ -1253,9 +1372,6 @@ function mcc_plan.materialize_blocks_staggered(blocks, opts)
             for bi, block in ipairs(layer.blocks) do
                 local delay = t + (bi - 1) * block_delay
                 core.after(delay, function()
-                    if materialize_job_id ~= job then
-                        return
-                    end
                     mcc_plan.materialize_block(block)
                 end)
             end
@@ -1266,9 +1382,6 @@ function mcc_plan.materialize_blocks_staggered(blocks, opts)
             local layer_t = t
             local layer_blocks = layer.blocks
             core.after(layer_t, function()
-                if materialize_job_id ~= job then
-                    return
-                end
                 for _, block in ipairs(layer_blocks) do
                     mcc_plan.materialize_block(block)
                 end
@@ -1296,6 +1409,20 @@ function mcc_plan.materialize_block(entry)
         param2 = p2,
     })
     if not ok then
+        local cur = core.get_node(pos)
+        core.log(
+            "warning",
+            "[mcc_plan] materialize failed pos="
+                .. tostring(pos.x)
+                .. ","
+                .. tostring(pos.y)
+                .. ","
+                .. tostring(pos.z)
+                .. " node="
+                .. tostring(cur.name)
+                .. " target="
+                .. target
+        )
         return
     end
     if core.add_particlespawner then
@@ -1327,6 +1454,7 @@ local AUTOCONVERT_MAX_BLOCKS = tonumber(core.settings:get("mcc_plan.autoconvert_
 local AUTOCONVERT_CHAT_COOLDOWN = 30
 -- Screen position 0..1 (0 = top); was 0.88 — too close to hotbar.
 local PLAN_HUD_Y = 0.82
+local PLAN_WIELD_HUD_Y = 0.895
 
 local function player_feet_pos(player)
     local pos = player:get_pos()
@@ -1340,13 +1468,7 @@ local function player_feet_pos(player)
     }
 end
 
-local function should_show_zone_hud(name)
-    local m = get_stored_mode(name)
-    return m == "build" or m == "plan"
-end
-
 local BUILD_MODE_MSG = "Nur im Bau-Modus (Session)."
-local PLAN_MODE_MSG = "Nur im Planungs-Modus (Session)."
 
 local function require_build_session(name)
     if get_stored_mode(name) ~= "build" then
@@ -1362,6 +1484,66 @@ local function require_plan_session(name)
     return true
 end
 
+local function plan_wield_hud_text(stack)
+    if not stack or stack:is_empty() or not mcc_plan.stack_has_plan_meta(stack) then
+        return ""
+    end
+    local meta = stack:get_meta()
+    if not meta then
+        return ""
+    end
+    local display = tostring(meta:get_string("mcc_shop_display_name") or ""):match("^%s*(.-)%s*$") or ""
+    if display == "" then
+        local target = meta:get_string("mcc_target_name")
+        if target == "" then
+            target = stack:get_name()
+        end
+        display = plan_stack_short_label(target)
+    end
+    local velos = meta:get_string("mcc_buy_price_velos")
+    if velos == "" then
+        velos = "?"
+    end
+    return string.format("Plan: %s · Umwandlung %s Velos", display, velos)
+end
+
+local function remove_wield_hud(name, player)
+    player = player or core.get_player_by_name(name)
+    if player and wield_hud_ids[name] then
+        player:hud_remove(wield_hud_ids[name])
+    end
+    wield_hud_ids[name] = nil
+    wield_hud_last_sig[name] = nil
+end
+
+function mcc_plan.refresh_wield_hud(name)
+    local player = core.get_player_by_name(name)
+    if not player or not should_show_zone_hud(name) then
+        remove_wield_hud(name, player)
+        return
+    end
+    local text = plan_wield_hud_text(player:get_wielded_item())
+    if text == "" then
+        remove_wield_hud(name, player)
+        return
+    end
+    if not wield_hud_ids[name] then
+        wield_hud_ids[name] = player:hud_add({
+            type = "text",
+            position = { x = 0.5, y = PLAN_WIELD_HUD_Y },
+            offset = { x = 0, y = 0 },
+            alignment = { x = 0, y = 0 },
+            scale = { x = 100, y = 100 },
+            text = text,
+            number = 0xAAEEFF,
+        })
+    else
+        player:hud_change(wield_hud_ids[name], "position", { x = 0.5, y = PLAN_WIELD_HUD_Y })
+        player:hud_change(wield_hud_ids[name], "text", text)
+    end
+    wield_hud_last_sig[name] = player:get_wielded_item():to_string()
+end
+
 function mcc_plan.refresh_hud(name)
     local player = core.get_player_by_name(name)
     if not player or not should_show_zone_hud(name) then
@@ -1372,6 +1554,7 @@ function mcc_plan.refresh_hud(name)
             end
             hud_ids[name] = nil
         end
+        remove_wield_hud(name, player)
         return
     end
     local text = hud_cache[name]
@@ -1392,6 +1575,7 @@ function mcc_plan.refresh_hud(name)
         player:hud_change(hud_ids[name], "position", { x = 0.5, y = PLAN_HUD_Y })
         player:hud_change(hud_ids[name], "text", text)
     end
+    mcc_plan.refresh_wield_hud(name)
 end
 
 local function format_zone_summary_line(data)
@@ -1559,6 +1743,87 @@ local function run_autoconvert_tick(name)
     end)
 end
 
+local function convert_success_chat_message(converted, fx_stagger)
+    converted = tonumber(converted) or 0
+    if converted <= 0 then
+        return "Keine geplanten Blöcke zum Umwandeln (erst Hologramme setzen)."
+    end
+    if fx_stagger == nil then
+        fx_stagger = true
+    end
+    if converted > 1 and fx_stagger then
+        return "Umwandlung gestartet: " .. tostring(converted) .. " Blöcke (schichtweise von unten)."
+    end
+    return "Umgewandelt: " .. tostring(converted) .. " Blöcke."
+end
+
+--- Manual materialize (build session); optional done_cb(ok, chat_message, data2).
+function mcc_plan.run_convert(player_name, max_count, done_cb)
+    max_count = math.max(1, math.min(tonumber(max_count) or 1, 256))
+    if not api_post then
+        return false, "Bridge offline."
+    end
+    local player = core.get_player_by_name(player_name)
+    local feet = player and player_feet_pos(player)
+    if not feet then
+        return false, "Keine Position."
+    end
+    api_post("/api/luanti/plan/summary/", {
+        player = player_name,
+        world = plan_world_name(),
+        x = feet.x,
+        y = feet.y,
+        z = feet.z,
+    }, function(ok, data)
+        if not ok or not data or not data.region_id then
+            local msg = plan_error_message(data)
+            if done_cb then
+                done_cb(false, msg)
+            else
+                core.chat_send_player(player_name, msg)
+            end
+            return
+        end
+        convert_tx_seq = convert_tx_seq + 1
+        local tx_us = core.get_us_time and core.get_us_time() or (os.time() * 1000000)
+        local tx = player_name
+            .. "-plan-conv-"
+            .. tostring(tx_us)
+            .. "-"
+            .. tostring(convert_tx_seq)
+        api_post("/api/luanti/plan/convert/", {
+            player = player_name,
+            world = plan_world_name(),
+            region_id = data.region_id,
+            client_tx_id = tx,
+            max_count = max_count,
+            mode = "manual",
+            x = feet.x,
+            y = feet.y,
+            z = feet.z,
+        }, function(ok2, data2)
+            if ok2 and data2 and data2.ok then
+                local conv = tonumber(data2.converted) or 0
+                local msg = convert_success_chat_message(conv, data2.fx_stagger)
+                poll_summary(player_name)
+                if done_cb then
+                    done_cb(true, msg, data2)
+                else
+                    core.chat_send_player(player_name, msg)
+                end
+            else
+                local msg = plan_error_message(data2)
+                if done_cb then
+                    done_cb(false, msg)
+                else
+                    core.chat_send_player(player_name, msg)
+                end
+            end
+        end)
+    end)
+    return true
+end
+
 local function send_status_to_chat(name)
     local st = mcc_plan.is_active(name) and "AN" or "AUS"
     local auto_st = mcc_plan.is_autoconvert_on(name) and "AN" or "AUS"
@@ -1640,6 +1905,7 @@ core.register_on_leaveplayer(function(player)
     mcc_plan.set_autoconvert_on(name, false)
     autoconvert_pending[name] = nil
     autoconvert_chat_throttle[name] = nil
+    remove_wield_hud(name, player)
 end)
 
 core.register_globalstep(function(dtime)
@@ -1843,66 +2109,15 @@ core.register_chatcommand("mccplan", {
             end
             return run_plan_clear_from_feet(name, max_n)
         elseif p == "convert" then
-            -- require_build_session checked above
             local n = tonumber((param or ""):match("convert%s+(%d+)")) or 1
-            if not api_post then
-                return false, "Bridge offline."
-            end
-            local feet = player_feet_pos(core.get_player_by_name(name))
-            if not feet then
-                return false, "Keine Position."
-            end
-            api_post("/api/luanti/plan/summary/", {
-                player = name,
-                world = plan_world_name(),
-                x = feet.x,
-                y = feet.y,
-                z = feet.z,
-            }, function(ok, data)
-                if not ok or not data or not data.region_id then
-                    core.chat_send_player(name, plan_error_message(data))
-                    return
+            local started, err = mcc_plan.run_convert(name, n, function(ok, msg)
+                if msg and msg ~= "" then
+                    core.chat_send_player(name, msg)
                 end
-                local tx = name .. "-plan-conv-" .. tostring(os.time())
-                api_post("/api/luanti/plan/convert/", {
-                    player = name,
-                    region_id = data.region_id,
-                    client_tx_id = tx,
-                    max_count = n,
-                    mode = "manual",
-                }, function(ok2, data2)
-                    if ok2 and data2 and data2.ok then
-                        local n = tonumber(data2.converted) or 0
-                        if n <= 0 then
-                            core.chat_send_player(
-                                name,
-                                "Keine geplanten Blöcke zum Umwandeln (erst Hologramme setzen)."
-                            )
-                        else
-                            local fx = data2.fx_stagger
-                            if fx == nil then
-                                fx = true
-                            end
-                            if n > 1 and fx then
-                                core.chat_send_player(
-                                    name,
-                                    "Umwandlung gestartet: "
-                                        .. tostring(n)
-                                        .. " Blöcke (schichtweise von unten)."
-                                )
-                            else
-                                core.chat_send_player(
-                                    name,
-                                    "Umgewandelt: " .. tostring(n) .. " Blöcke."
-                                )
-                            end
-                        end
-                        poll_summary(name)
-                    else
-                        core.chat_send_player(name, plan_error_message(data2))
-                    end
-                end)
             end)
+            if not started then
+                return false, err or "Umwandlung fehlgeschlagen."
+            end
             return true, "Umwandlung …"
         else
             return send_status_to_chat(name)

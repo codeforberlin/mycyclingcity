@@ -2096,7 +2096,7 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
     list_display = ('name', 'short_name', 'group_type', 'distance_total_display', 'parent_display', 'is_visible', 'color_preview', 'logo_preview')
     list_editable = ('is_visible', 'short_name')
     search_fields = ('name', 'short_name')
-    readonly_fields = ('logo_preview', 'color_preview')
+    readonly_fields = ('logo_preview', 'color_preview', 'admin_luanti_shop_sell_policy')
     change_list_template = 'admin/api/group_change_list.html'
     inlines = [GroupMilestoneAchievementInline]
     filter_horizontal = ('managers',)  # Verwende FilteredSelectMultiple Widget für managers-Feld
@@ -2139,6 +2139,13 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
         }),
         (_('Statistiken'), {
             'fields': ('distance_total', 'velos_total', 'velos_spendable', 'mc_username', 'luanti_username')
+        }),
+        (_('Luanti Shop'), {
+            'fields': ('luanti_shop_sell_own_wallet_credit_only',),
+            'description': _(
+                'Nur TOP-Gruppen (ohne übergeordnete Gruppe): Kind-Gruppen dürfen '
+                'dann im Luanti-Shop kein Kaufguthaben der TOP-Wallet mehr für Verkäufe nutzen.'
+            ),
         }),
         (_('Verwaltung'), {
             'fields': ('managers', 'comments')
@@ -2190,6 +2197,43 @@ class GroupAdmin(RetryOnDbLockMixin, BaseAdmin):
             # Operator kann TOP-Gruppe nicht löschen
             return False
         return True
+
+    def _group_top(self, obj: Group) -> Group | None:
+        if obj is None or obj.pk is None:
+            return None
+        current = obj
+        while current.parent_id is not None:
+            parent = current.parent
+            if parent is None:
+                break
+            current = parent
+        return current
+
+    @admin.display(description=_('Luanti Verkauf (Kind-Gruppe)'))
+    def admin_luanti_shop_sell_policy(self, obj: Group) -> str:
+        top = self._group_top(obj)
+        if top is None:
+            return _('—')
+        if top.luanti_shop_sell_own_wallet_credit_only:
+            return _('Nur eigenes Kaufguthaben (TOP-Pool gesperrt)')
+        return _('TOP-Pool für Verkauf erlaubt (Standard)')
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj is not None and obj.parent_id is not None:
+            out = []
+            for title, options in fieldsets:
+                if title == _('Luanti Shop'):
+                    options = {
+                        **options,
+                        'fields': ('admin_luanti_shop_sell_policy',),
+                        'description': _(
+                            'Verkaufsregel der zugehörigen TOP-Gruppe (hier nicht änderbar).'
+                        ),
+                    }
+                out.append((title, options))
+            return out
+        return fieldsets
     
     def get_readonly_fields(self, request, obj=None):
         """managers-Feld ist für Operatoren readonly, damit sie keine Manager hinzufügen oder entfernen können."""

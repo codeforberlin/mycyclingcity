@@ -723,6 +723,11 @@ LUANTI_PLAN_LIVE_CONVERT_MIN_BLOCKS_PER_EARN = 1
 LUANTI_PLAN_AUTO_CONVERT_ORDER = "y_asc"
 LUANTI_PLAN_HUD_SUMMARY_SECONDS = 8
 LUANTI_PLAN_FUNDING_DEBIT_ORDER = "explicit_groups_then_top"
+# Manual convert: debit session shop wallet before plan pool; purchase credit on actor only
+# when the full block price came from that wallet alone (see plan.materialize_blocks).
+LUANTI_PLAN_CONVERT_ACTOR_WALLET_FIRST = True
+# Plan funding groups per protected region (admin checkboxes + shop convert pool UI).
+LUANTI_PLAN_FUNDING_GROUPS_MAX = 10
 LUANTI_PLAN_FX_ENABLED = True
 LUANTI_PLAN_CONVERT_LAYER_DELAY = 0.35
 LUANTI_PLAN_CONVERT_BLOCK_DELAY = 0.0

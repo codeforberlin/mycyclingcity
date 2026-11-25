@@ -295,6 +295,7 @@ def luanti_regions_admin(request):
     if region_draft is None:
         region_draft = empty_region_draft()
 
+    from luanti.services.region_admin import plan_funding_groups_max
     from luanti.services.region_plan_live import plan_summary_for_admin
 
     regions = annotate_move_flags(hierarchical_region_list())
@@ -329,6 +330,11 @@ def luanti_regions_admin(request):
             "rg_member_choices": account_choices(),
             "rg_online_players": online_player_names(),
             "rg_funding_group_choices": Group.objects.order_by("name")[:400],
+            "plan_funding_groups_max": plan_funding_groups_max(),
+            "plan_funding_groups_limit_message": _(
+                "Maximal %(max)s Plan-Velos-Gruppen auswählbar."
+            )
+            % {"max": plan_funding_groups_max()},
             "integration_config": cfg,
         },
     )

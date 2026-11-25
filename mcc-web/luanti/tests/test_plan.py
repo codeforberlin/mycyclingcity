@@ -26,6 +26,7 @@ from luanti.services.plan import (
     remove_planned_blocks,
     resolve_build_region_at,
     set_plan_live_convert,
+    shop_wallet_plan_pool_status,
     summary_for_player,
     tick_plan_live_convert_on_earn,
     tick_plan_live_convert_regions,
@@ -111,6 +112,43 @@ def test_register_and_summary(plan_setup):
     assert summary["planned_count"] == 1
     assert summary["total_velos_planned"] == 5
     assert summary["available_velos"] == 200
+    assert summary["available_pool_velos"] == 200
+    assert summary["funding_include_master_top"] is False
+    pools = summary["funding_pools"]
+    assert len(pools) == 1
+    assert pools[0]["group_name"] == "OmaTeam"
+    assert pools[0]["velos_spendable"] == 200
+    assert sum(p["velos_spendable"] for p in pools) == summary["available_velos"]
+    pw = summary["player_wallet"]
+    assert pw["group_name"] == "TopPlan"
+    assert pw["in_plan_pool"] is False
+    assert pools[0]["is_shop_wallet"] is False
+    assert summary["available_pool_velos"] == 200
+    assert summary["available_convert_velos"] == 700
+    top_group = summary["region_top_group"]
+    assert top_group["group_name"] == "TopPlan"
+
+
+@pytest.mark.django_db
+def test_summary_wallet_parent_pool_leaf(plan_setup):
+    """Shop wallet on TOP, plan pool on leaf: convert debits leaf, not TOP."""
+    top = plan_setup["top"]
+    extra = plan_setup["extra"]
+    account = plan_setup["account"]
+    account.wallet_mode = LuantiAccount.WALLET_POOL
+    account.save(update_fields=["wallet_mode"])
+    status = shop_wallet_plan_pool_status(top, [extra])
+    assert status["pool_relation"] == "related_child_in_pool"
+    assert status["in_plan_pool"] is False
+    summary = summary_for_player(
+        login_name=account.login_name,
+        world="world",
+        x=1,
+        y=2,
+        z=3,
+    )
+    assert summary["player_wallet"]["pool_relation"] == "related_child_in_pool"
+    assert "OmaTeam" in summary["player_wallet"]["pool_debit_names"]
 
 
 @pytest.mark.django_db
@@ -134,8 +172,11 @@ def test_materialize_debits_funding_group(plan_setup):
         max_count=1,
     )
     assert result["converted"] == 1
+    top = plan_setup["top"]
+    top.refresh_from_db()
     extra.refresh_from_db()
-    assert extra.velos_spendable == 190
+    assert top.velos_spendable == 490
+    assert extra.velos_spendable == 200
     assert LuantiPlanBlock.objects.filter(status=LuantiPlanBlock.STATUS_MATERIALIZED).count() == 1
 
 
@@ -227,6 +268,177 @@ def test_materialize_purchase_credit_on_region_top_not_leaf_wallet(db):
         group=school_top, item_name="default:dirt"
     )
     assert credit.quantity == 1
+
+
+@pytest.mark.django_db
+def test_materialize_purchase_credit_actor_pays_full_own_wallet(db):
+    """Kid pays entire price from shop wallet → sell credit on kid group, not school TOP."""
+    gtype, _ = GroupType.objects.get_or_create(name="ActorPayType")
+    school_top = Group.objects.create(
+        name="SchoolACTOP", group_type=gtype, velos_spendable=0, parent=None
+    )
+    class_leaf = Group.objects.create(
+        name="ClassACTLeaf", group_type=gtype, velos_spendable=80, parent=school_top
+    )
+    oma = Group.objects.create(
+        name="OmaACT", group_type=gtype, velos_spendable=200, parent=None
+    )
+    account = LuantiAccount.objects.create(
+        login_name="KidActorPay",
+        id_tag="rfid-kid-actor-pay",
+        assigned_to_group=school_top,
+        active_wallet=class_leaf,
+        wallet_mode=LuantiAccount.WALLET_FIXED,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    region = LuantiProtectedRegion.objects.create(
+        region_id="actor-pay-zone",
+        assigned_to_group=school_top,
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        protect_build=True,
+        enabled=True,
+        plan_funding_include_master_top=False,
+    )
+    region.members.add(account)
+    LuantiRegionPlanFunding.objects.create(region=region, group=oma, sort_order=10)
+    LuantiPlanBlock.objects.create(
+        region=region,
+        world="world",
+        x=4,
+        y=1,
+        z=4,
+        target_name="mcl_core:dirt",
+        buy_price_velos=10,
+        placed_by="KidActorPay",
+        status=LuantiPlanBlock.STATUS_PLANNED,
+    )
+    materialize_blocks(
+        login_name="KidActorPay",
+        region_id=region.region_id,
+        client_tx_id="mat-actor-full",
+        max_count=1,
+        mode="manual",
+        world="world",
+        x=4,
+        y=1,
+        z=4,
+    )
+    class_leaf.refresh_from_db()
+    oma.refresh_from_db()
+    assert class_leaf.velos_spendable == 70
+    assert oma.velos_spendable == 200
+    credit = LuantiShopPurchaseCredit.objects.get(
+        group=class_leaf, item_name="default:dirt"
+    )
+    assert credit.quantity == 1
+    assert not LuantiShopPurchaseCredit.objects.filter(
+        group=school_top, item_name="default:dirt"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_materialize_purchase_credit_actor_partial_pay_top_credit(db):
+    """Any velo from plan pool → sell credit stays on regional TOP (even tiny pool share)."""
+    gtype, _ = GroupType.objects.get_or_create(name="ActorMixType")
+    school_top = Group.objects.create(
+        name="SchoolMixTOP", group_type=gtype, velos_spendable=0, parent=None
+    )
+    class_leaf = Group.objects.create(
+        name="ClassMixLeaf", group_type=gtype, velos_spendable=5, parent=school_top
+    )
+    oma = Group.objects.create(
+        name="OmaMix", group_type=gtype, velos_spendable=200, parent=None
+    )
+    account = LuantiAccount.objects.create(
+        login_name="KidMix",
+        id_tag="rfid-kid-mix",
+        assigned_to_group=school_top,
+        active_wallet=class_leaf,
+        wallet_mode=LuantiAccount.WALLET_FIXED,
+        allowed_modes=["play", "build"],
+    )
+    start_session(account=account, mode="build", duration=30)
+    region = LuantiProtectedRegion.objects.create(
+        region_id="actor-mix-zone",
+        assigned_to_group=school_top,
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        protect_build=True,
+        enabled=True,
+        plan_funding_include_master_top=False,
+    )
+    region.members.add(account)
+    LuantiRegionPlanFunding.objects.create(region=region, group=oma, sort_order=10)
+    LuantiPlanBlock.objects.create(
+        region=region,
+        world="world",
+        x=6,
+        y=1,
+        z=6,
+        target_name="mcl_core:dirt",
+        buy_price_velos=10,
+        placed_by="KidMix",
+        status=LuantiPlanBlock.STATUS_PLANNED,
+    )
+    materialize_blocks(
+        login_name="KidMix",
+        region_id=region.region_id,
+        client_tx_id="mat-actor-mix",
+        max_count=1,
+        mode="manual",
+        world="world",
+        x=6,
+        y=1,
+        z=6,
+    )
+    credit = LuantiShopPurchaseCredit.objects.get(
+        group=school_top, item_name="default:dirt"
+    )
+    assert credit.quantity == 1
+    assert not LuantiShopPurchaseCredit.objects.filter(
+        group=class_leaf, item_name="default:dirt"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_materialize_auto_mode_no_actor_wallet_first(plan_setup):
+    """Live/auto convert ignores actor wallet prepay order."""
+    region = plan_setup["region"]
+    top = plan_setup["top"]
+    extra = plan_setup["extra"]
+    LuantiPlanBlock.objects.create(
+        region=region,
+        world="world",
+        x=9,
+        y=1,
+        z=9,
+        target_name="mcl_core:dirt",
+        buy_price_velos=10,
+        status=LuantiPlanBlock.STATUS_PLANNED,
+    )
+    top_before = int(top.velos_spendable or 0)
+    extra_before = int(extra.velos_spendable or 0)
+    materialize_blocks(
+        login_name="",
+        region_id=region.region_id,
+        client_tx_id="mat-auto-pool",
+        max_count=1,
+        mode="auto",
+    )
+    top.refresh_from_db()
+    extra.refresh_from_db()
+    assert top.velos_spendable == top_before
+    assert extra.velos_spendable == extra_before - 10
 
 
 @pytest.mark.django_db
@@ -493,6 +705,7 @@ def test_shop_planning_buy_zero_velo(client, plan_setup):
     item = LuantiShopItem.objects.create(
         category=cat,
         item_name="mcl_core:stone",
+        display_name="Steinblock",
         buy_price_velos=7,
         stack_size=64,
     )
@@ -519,6 +732,7 @@ def test_shop_planning_buy_zero_velo(client, plan_setup):
     assert meta["mcc_plan"] == "1"
     assert meta["mcc_purchase_velos"] == "0"
     assert meta["mcc_buy_price_velos"] == "7"
+    assert meta["mcc_shop_display_name"] == "Steinblock"
     group.refresh_from_db()
     assert group.velos_spendable == 500
     assert not LuantiShopPurchaseCredit.objects.filter(group=group).exists()
@@ -910,6 +1124,76 @@ def test_summary_parent_region_membership(db, plan_setup):
             z=5,
         )
     assert exc.value.code == "not_member"
+
+
+@pytest.mark.django_db
+def test_master_summary_excludes_subregion_planned_blocks(plan_setup):
+    """Only the zone at the player's feet counts (sub blocks not visible from master area)."""
+    from luanti.models import Group, LuantiProtectedRegion, LuantiRegionPlanFunding
+
+    top = Group.objects.create(
+        name="MasterTop",
+        id_tag="g-master-top",
+        velos_spendable=50,
+    )
+    master = LuantiProtectedRegion.objects.create(
+        region_id="master-plan-wide",
+        display_name="Master wide",
+        assigned_to_group=top,
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=30,
+        max_y=10,
+        max_z=30,
+        protect_build=True,
+        enabled=True,
+    )
+    master.members.add(plan_setup["account"])
+    sub = LuantiProtectedRegion.objects.create(
+        region_id="sub-plan-inner",
+        display_name="Sub inner",
+        parent=master,
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        protect_build=True,
+        enabled=True,
+    )
+    LuantiRegionPlanFunding.objects.create(
+        region=sub, group=plan_setup["extra"], sort_order=1
+    )
+    register_placed_block(
+        login_name="Builder1",
+        world="world",
+        x=5,
+        y=1,
+        z=5,
+        target_name="mcl_core:dirt",
+        buy_price_velos=3,
+    )
+    in_sub = summary_for_player(
+        login_name="Builder1",
+        world="world",
+        x=5,
+        y=1,
+        z=5,
+    )
+    assert in_sub["region_id"] == "sub-plan-inner"
+    assert in_sub["planned_count"] == 1
+
+    in_master = summary_for_player(
+        login_name="Builder1",
+        world="world",
+        x=20,
+        y=1,
+        z=20,
+    )
+    assert in_master["region_id"] == "master-plan-wide"
+    assert in_master["planned_count"] == 0
 
 
 @pytest.mark.django_db

@@ -84,6 +84,18 @@
     form.addEventListener('submit', function () {
       try { sessionStorage.setItem(KEY, JSON.stringify(collect(form))); } catch (e) {}
     });
+    var planFundingMax = {{ plan_funding_groups_max|default:10 }};
+    var planFundingLimitMsg = "{{ plan_funding_groups_limit_message|default:'Maximal 10 Plan-Velos-Gruppen auswählbar.'|escapejs }}";
+    form.addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (!t || t.name !== 'rg_plan_funding_groups' || t.type !== 'checkbox') return;
+      if (!t.checked) return;
+      var n = form.querySelectorAll('[name=rg_plan_funding_groups]:checked').length;
+      if (n > planFundingMax) {
+        t.checked = false;
+        alert(planFundingLimitMsg);
+      }
+    });
   });
 })();
 </script>
@@ -362,7 +374,7 @@
     </div>
     <div>
       <label style="font-size:0.78rem;font-weight:700;">{% trans "Plan-Velos (zusätzliche Gruppen)" %}</label>
-      <p class="wb-hint">{% trans "Radler dieser Gruppen finanzieren die Umwandlung von Hologrammen in dieser Zone." %}</p>
+      <p class="wb-hint">{% blocktrans with max=plan_funding_groups_max %}Radler dieser Gruppen finanzieren die Umwandlung von Hologrammen in dieser Zone (max. {{ max }} Gruppen).{% endblocktrans %}</p>
       <div class="wb-members">
         {% for g in rg_funding_group_choices %}
         <label>

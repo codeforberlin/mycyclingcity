@@ -116,16 +116,41 @@ Optional vorher: **Minecraft-Shop importieren** (spiegelt MC-Kategorien/Preise; 
 | Modus | `/mccshop` |
 |-------|------------|
 | **Spielen** / **Zuschauen** | Katalog nur ansehen (kein Kauf/Verkauf) |
-| **Planung** | Plan-Käufe (0 Velo); Tabs **Planen** / **Entfernen** (unbenutzte Plan-Items aus Inventar, ohne Velos) |
-| **Bauen** | Reale Käufe + Verkauf (Purchase Credit) |
+| **Planung** | Plan-Käufe (0 Velo); Tabs **Planen** / **Entfernen**; in der Welt **nur Geister-Steine** legen/abbauen (keine echten Blöcke graben/setzen) |
+| **Bauen** | Reale Käufe + Verkauf (Purchase Credit) + Tab **Umwandeln** (Geister-Blöcke, Plan-Pool, Auto-Umwandlung) |
 
 ## Planmodus (Hologramme / Umwandlung)
 
 - **Shop ingame (Kinder-UI):** Plan-Session erklärt Geister-Blöcke/0 Velos; Wallet-Zeile **Kauf später von:** (keine sofortige Abbuchung). Stöbern ohne Freigabe: Hinweis statt technischer Session-Meldung.
 - **Shop-Wallet** (`Velos:` im `/mccshop`) = spendbare Velos der aufgelösten Gruppe. Im **Bau**-Modus rechts vom Tab **Verkaufen** **Abbuchung:** bzw. **Gutschrift:** mit Wallet-Gruppenname je nach Tab (dieselbe Gruppe). Optional setzt die aktive **Session** ein festes `wallet_group` (Admin Session-Kontrolle).
-- **Umwandlung** (`/mccplan convert`, Auto-Umwandlung) belastet den **Plan-Velos-Pool** der Bauzone (Admin: geschützte Region → Plan-Velos-Gruppen). Strampeln muss Velos auf eine dieser Gruppen buchen, nicht nur auf die Shop-Wallet.
-- **Verkauf nach Umwandlung:** Purchase Credit liegt auf der **effektiven TOP** der Zone — bei **Master** die dort gewählte TOP; bei **Sub** optional **eigene TOP** (Admin: TOP-Gruppe), sonst TOP der Master. Kinder/Enkel mit Leaf-Wallet können über die Parent-Kette verkaufen; die **Velos-Gutschrift** geht auf die **aktuelle Session-Wallet** des Verkäufers (z. B. Omas Velos finanzieren Umwandeln, die Klasse verkauft wieder und füllt ihr Konto).
-- Session **Planung**: Shop liefert Hologramm-Items; Platzierung nur in zugewiesenen Bauzonen. Unplatzierte Plan-Items: **`/mccshop` → Tab Entfernen** (Kind-UI); alternativ `/mccplan discard hand|all`. Platzierte Hologramme: abbauen, `/mccplan remove`, `/mccplan clear`.
+- **Umwandlung (manuell)** (`/mccshop` → Tab **Umwandeln**, `/mccplan convert`): Velos werden in dieser **Reihenfolge** abgebucht:
+  1. **Shop-Wallet des Spielers**, der umwandelt (Session, wie bei Kaufen/Verkaufen) — **auch wenn** diese Gruppe **nicht** in den Admin-Plan-Velos-Gruppen steht.
+  2. Danach der **Plan-Velos-Pool** der Zone (Admin: geschützte Region → Plan-Velos-Gruppen, optional Regional-TOP).
+  Im Tab **Umwandeln** siehst du den Pool, dein Wallet und kindgerechte Hinweise (Lua `shop_gui.lua`). `available_convert_velos` in der Plan-Summary zählt Pool **plus** dein Wallet, wenn es nicht schon im Pool enthalten ist.
+- **Auto-Umwandlung / Live-Umwandlung** (Strampeln, Admin-START, kein Spieler am Knopf): **nur Plan-Pool**, **kein** Vorziehen des Spieler-Wallets — wie bisher.
+- **Verkauf nach Umwandlung (Kaufguthaben):** strikte, einfache Regel — gut erklärbar für Kinder:
+  - Zahlt **eine Person beim manuellen Umwandeln den ganzen Blockpreis allein aus ihrem Shop-Wallet** → Kaufguthaben für den späteren Verkauf liegt auf **dieser Gruppe**.
+  - Wenn **irgendein Velo** aus dem Plan-Pool (oder einer zweiten Gruppe) mitbezahlt wird → Kaufguthaben auf der **effektiven Regional-TOP** der Zone (Master- oder Sub-TOP). **Kein** Anteilssplit — auch 1 Velo aus dem Pool reicht für TOP-Guthaben. Das belohnt **Eigenfinanzierung** (Anreiz, selbst Velos aufzubringen).
+  - Beim **Verkaufen** gilt weiter: wer verkauft, bekommt die **Velos** auf die aktuelle Session-Wallet; Kaufguthaben muss auf der Gruppe der TOP-Kette liegen, damit der Block verkaufbar ist (Standard: eigene Wallet, sonst TOP-Pool).
+- **Verkauf nur eigenes Kaufguthaben (TOP-Sperre):** Admin → **Gruppen** → TOP-Gruppe → Feldset **Luanti Shop** → Checkbox **Luanti: Verkauf nur eigenes Kaufguthaben (TOP)**. Wenn aktiv, dürfen Kind-Gruppen **kein** Kaufguthaben der TOP-Wallet mehr für Verkäufe nutzen (nur noch Guthaben auf der eigenen Shop-Wallet). Standard = aus (Pool-Verkauf wie bisher). Sinnvoll bei gemeinsamem Bau mehrerer Gruppen, um „TOP-Guthaben verkaufen, Velos auf die eigene Gruppe buchen“ zu verhindern. Im Shop-Tooltip: *TOP-Pool für eure Gruppe gesperrt*.
+- **Admin → Luanti → Plan-Umwandlungs-Transaktionen:** Spalte **Verkaufsguthaben-Gruppe** (`credit_group`) zeigt, wer das spätere Verkaufsguthaben bekam; **Abbuchungs-Gruppe (primär)** ist die zuerst belastete Gruppe bei der Velo-Abbuchung.
+
+### Umwandeln — Erklärung für Kinder (und Eltern)
+
+Stell dir vor, du hast Geister-Steine geplant und willst daraus echte Blöcke machen:
+
+1. **Zuerst** schauen wir auf **dein Velos-Konto im Shop** (dein Wallet). Hast du genug Velos? Dann nehmen wir sie von dort.
+2. **Fehlt etwas?** Dann helfen die **Rad-Velos eurer Zone** (Plan-Pool) — das sind Velos, die beim Radfahren auf Omas Team, die Klasse oder ähnliche Gruppen gebucht wurden.
+3. **Wenn du den Block später wieder verkaufen willst:**
+   - Hast du **alles selbst bezahlt** → deine Gruppe darf verkaufen und behält das **Verkaufsguthaben**.
+   - Hat **jemand anderes mitgezahlt** (auch nur ein bisschen aus dem Plan-Pool) → das Verkaufsguthaben liegt bei der **großen TOP-Gruppe** eurer Zone (Schule, Bezirk). Ihr könnt trotzdem verkaufen, aber der Erlös gehört der TOP — fairer Tausch: wer mitfinanziert, besitzt den Wiederverkauf.
+
+**Tipp fürs Spiel:** Eigene Velos sparen lohnt sich, wenn du später selbst vom Verkauf profitieren willst.
+
+**Auto beim Strampeln** (ohne dass du auf Umwandeln drückst): hier zählt **nur** der Plan-Pool — so kann Oma strampeln und eure Geister werden echt, ohne dass dein Wallet automatisch angefasst wird.
+- Session **Planung**: Shop liefert Hologramm-Items; Platzierung nur in zugewiesenen Bauzonen. **Echte** Blöcke (Erde, Stein, …) dürfen in Plan **nicht** abgebaut oder gesetzt werden — nur **Geister**. Echten Aushub/Bau: Session **Bauen**. Unplatzierte Plan-Items: **`/mccshop` → Tab Entfernen**; alternativ `/mccplan discard hand|all`. Platzierte Hologramme: abbauen, `/mccplan remove`, `/mccplan clear`.
+- **Tunnel/Straße (Betreuer):** (1) **Bauen** — ausheben, (2) **Planung** — Geister planen, (3) **Bauen** — kaufen oder umwandeln (Velos).
+- **Plan-Hologramme (Erkennbarkeit):** Vorschau-Klone behalten die Original-Textur (halbtransparent), kein einheitliches Cyan mehr. Inventar-Tooltip und Block-`infotext` nutzen den **Shop-Anzeigenamen**. Optionale Client-Settings in `minetest.conf` / `luanti.conf`: `mcc_plan.holo_opacity` (Default 165), `mcc_plan.holo_colorize_alpha` (0 = aus), `mcc_plan.holo_border` (Default `false`, Rand-Modifier testweise).
 - `/mccplan convert [n]` — manuelle Umwandlung (max. 256 pro Aufruf), **nur Session Bauen**, wenn der Pool Velos hat.
 - **`/mccplan autoconvert on`** — Wartet im **Bau**-Modus auf Pool-Velos (Radfahren) und wandelt fortlaufend Hologramme um (Standard bis 4 Blöcke alle 5 s, `minetest.conf`: `mcc_plan.autoconvert_interval`, `mcc_plan.autoconvert_max_blocks`).
 - **`/mccplan autoconvert off`** — stoppt die Schleife.
@@ -144,7 +169,7 @@ Wenn beim Kaufen im Planungsmodus Velos vom Konto verschwinden:
 1. **Admin → Luanti → Shop-Transaktionen** nach Spieler (`login_name`) und Zeit filtern.
    - **Plan-Kauf** (`plan_buy`) mit `velos_delta=0`: Kauf war korrekt; Abzug kommt von **Umwandlung** oder vom **Plan-Velos-Pool**.
    - **Kauf** (`buy`) mit negativem Delta: der Client hat `planning` nicht gesendet (Plan-Häkchen aus, `/mccbuy` ohne Plan-Modus, oder `mcc_plan` nicht geladen).
-2. **Admin → Luanti → Plan-Umwandlungs-Transaktionen**: jede Zeile ist ein umgewandelter Hologramm-Block; `velos_delta` negativ belastet den Pool.
+2. **Admin → Luanti → Plan-Umwandlungs-Transaktionen**: jede Zeile ist ein umgewandelter Hologramm-Block; `velos_delta` negativ; `group` = primär abbuchbare Gruppe; `credit_group` = Verkaufsguthaben-Empfänger.
 3. **Admin → Luanti → Geschützte Regionen** → **Plan-Velos-Gruppen**: hängt die Session-Wallet in diesem Pool, sinkt `Velos:` im Shop bei der Umwandlung — das ist Konfiguration, kein Plan-Kauf-Bug.
 4. Im Spiel: Planungs- vs. Bau-Session prüfen, Mod `mcc_plan` geladen.
 

@@ -14,13 +14,44 @@ local UI = {
     wallet_buy_prefix = "Abbuchung:",
     wallet_sell_prefix = "Gutschrift:",
     wallet_plan_buy_prefix = "Kauf später von:",
-    wallet_play_buy_prefix = "Dein Velos-Konto:",
+    wallet_play_buy_prefix = "Dein Shop-Konto:",
     wallet_play_sell_note = "Verkauf erst im Bau-Modus",
     wallet_unknown = "Kein Wallet",
     buy = "Kaufen",
     plan_buy_tab = "Planen",
     plan_buy_action = "Planen",
     sell = "Verkaufen",
+    convert_tab = "Umwandeln",
+    convert_headline = "Geister-Steine werden echte Blöcke",
+    convert_velos_order = "Belastetes Konto: zuerst dein Shop-Konto, dann Plan-Pool",
+    convert_shop_account_fmt = "Dein Shop-Konto: %s (%s Velos)",
+    convert_sell_section_lines = {
+        "Abbau und Verkauf nach Umwandlung — Wem gehören die Blöcke?",
+    },
+    convert_sell_own_fmt = "Du zahlst alles → Gruppe: %s",
+    convert_sell_top_fmt = "Pool zahlt mit → TOP: %s",
+    convert_zone = "Bauzone",
+    convert_current_zone = "Aktuelle Zone",
+    convert_planned = "Geister-Blöcke",
+    convert_velos_need = "Für Umwandlung nötig",
+    convert_pool_total = "Plan-Pool aktuelle Zone: %s Velos",
+    convert_pool_line = "%d. %s · %d Velos",
+    convert_pool_more = "… und %d weitere Gruppen",
+    convert_pool_empty = "Plan-Pool leer — Umwandeln nach Rad-Velos auf Plan-Gruppen.",
+    convert_pool_line_shop = "%d. %s · %d Velos (dein Shop-Konto)",
+    convert_action = "Umwandeln",
+    convert_busy = "Bitte warten …",
+    convert_failed = "Umwandlung fehlgeschlagen",
+    convert_qty_all = "Alle",
+    convert_qty_label = "Blöcke",
+    wallet_plan_pool_prefix = "Plan-Pool:",
+    autoconvert_label = "Auto-Umwandlung beim Strampeln",
+    shop_mode_convert_denied = "Umwandeln nur im Bau-Modus (Session)",
+    err_no_region = "Keine geschützte Bauzone an dieser Position.",
+    err_not_member = "Du bist kein Mitglied dieser Bauzone.",
+    err_no_funding_pool = "Kein Velo-Pool für die Planungsumwandlung.",
+    err_convert_requires_build = "Umwandlung nur im Bau-Modus (Session).",
+    err_convert_requires_position = "Umwandeln nur in deiner Bauzone — bitte in die Planungszone gehen.",
     discard_tab = "Entfernen",
     discard_zone = "Auswahl zum Entfernen",
     discard_hint = "Plan-Blöcke hierher ziehen",
@@ -57,7 +88,7 @@ local UI = {
     play_browse_note = "Nur Stöbern. Zum Planen oder Kaufen muss ein Betreuer den Modus freigeben.",
     shop_mode_buy_denied = "Hier kannst du noch nichts kaufen. Bitte „Planen“ oder „Bauen“ freigeben lassen.",
     shop_mode_sell_denied = "Verkauf nur im Bau-Modus (Session)",
-    plan_session_note = "Du planst: Geister-Blöcke (0 Velos). Echte Steine kommen später beim Bauen und Radfahren.",
+    plan_session_note = "Du planst: nur Geister-Blöcke (0 Velos). Ausheben und echte Steine: Bau-Modus.",
     err_session_paused = "Session ist pausiert",
     err_item_not_found = "Artikel nicht im Shop",
     err_insufficient_velos = "Nicht genug Velos",
@@ -74,6 +105,7 @@ local UI = {
     sell_tip_ok = "Verkaufbar · Shop-Guthaben (%d) bei %s",
     sell_tip_ok_wallet = "Verkaufbar · Guthaben deiner Wallet %s",
     sell_tip_other = "Nicht verkaufbar: Shop-Kauf bei Gruppe %s — aktuelle Wallet: %s",
+    sell_tip_parent_pool_locked = "Nicht verkaufbar: TOP-Pool für eure Gruppe gesperrt — Guthaben bei %s",
     sell_tip_no_credit = "Nicht verkaufbar: kein Shop-Kaufguthaben für diese Wallet",
     sell_tip_not_shop = "Nicht verkaufbar: kein Shop-Artikel",
     sell_tip_refund_total = "Gesamtsumme: %d Velos",
@@ -121,6 +153,8 @@ local SELL_HINT_META_MARK = "mcc_shop_sell_ann"
 
 local api_post -- injected
 local player_state = {} -- name -> state table
+-- Forward: shop_apply_tab_change / run_shop_convert call this before its definition below.
+local show_shop
 
 local function shop_debugf(fmt, ...)
     local bridge = rawget(_G, "mcc_bridge")
@@ -155,6 +189,15 @@ local function shop_buy_error_message(code)
     return tostring(code or "buy_failed")
 end
 
+local function shop_plan_error_message(data)
+    local mp = mcc_plan_mod()
+    if mp and mp.plan_error_message then
+        return mp.plan_error_message(data)
+    end
+    local code = data and (data.error or (data.ok == false and "http_error"))
+    return shop_buy_error_message(code)
+end
+
 local function shop_get_session_mode(name)
 	local bridge = rawget(_G, "mcc_bridge")
 	if bridge and bridge.get_stored_mode then
@@ -176,15 +219,16 @@ local function shop_session_allows_trade(name)
 	return m == "build" or m == "plan"
 end
 
-local TAB_BUY_X = 0.3
-local TAB_BUY_W = 2.2
-
 local function shop_show_sell_tab(name)
 	return shop_session_build_mode(name)
 end
 
 local function shop_show_discard_tab(name)
 	return shop_session_plan_mode(name)
+end
+
+local function shop_show_convert_tab(name)
+	return shop_session_build_mode(name)
 end
 
 local function shop_show_secondary_tab(name)
@@ -198,11 +242,70 @@ local function shop_show_secondary_tab(name)
 	return false
 end
 
+local function shop_tab_id_list(name)
+	local ids = { "buy" }
+	if shop_show_discard_tab(name) then
+		ids[#ids + 1] = "sell"
+		return ids
+	end
+	if shop_show_sell_tab(name) then
+		ids[#ids + 1] = "sell"
+	end
+	if shop_show_convert_tab(name) then
+		ids[#ids + 1] = "convert"
+	end
+	if not shop_session_allows_trade(name) and #ids == 1 then
+		ids[#ids + 1] = "sell"
+	end
+	return ids
+end
+
 local function shop_secondary_tab_label(name)
 	if shop_show_discard_tab(name) then
 		return UI.discard_tab
 	end
 	return UI.sell
+end
+
+local function shop_buy_tab_label(name)
+	if shop_session_plan_mode(name) then
+		return UI.plan_buy_tab
+	end
+	return UI.buy
+end
+
+local function shop_tab_tablist_string(name)
+	local ids = shop_tab_id_list(name)
+	local parts = {}
+	for _, id in ipairs(ids) do
+		local label
+		if id == "buy" then
+			label = shop_buy_tab_label(name)
+		elseif id == "sell" then
+			label = shop_secondary_tab_label(name)
+		else
+			label = UI.convert_tab
+		end
+		parts[#parts + 1] = F(tostring(label or ""))
+	end
+	return table.concat(parts, ",")
+end
+
+local function shop_tab_index_for(name, tab)
+	local ids = shop_tab_id_list(name)
+	tab = tab or "buy"
+	for i, id in ipairs(ids) do
+		if id == tab then
+			return i
+		end
+	end
+	return 1
+end
+
+local function shop_tab_id_for_index(name, index)
+	local ids = shop_tab_id_list(name)
+	index = tonumber(index) or 1
+	return ids[index] or ids[1] or "buy"
 end
 
 local function plan_discard_stack_allowed(stack)
@@ -283,7 +386,8 @@ local function should_apply_plan_toggle(fields, st, player_name)
 	if want == player_planning_shop(player_name) then
 		return false
 	end
-	if fields.do_buy or fields.do_sell or fields.sell_all or fields.plan_discard or fields.tab_buy or fields.tab_sell
+	if fields.do_buy or fields.do_sell or fields.sell_all or fields.plan_discard or fields.do_convert
+		or fields.shop_tabs or fields.tab_buy or fields.tab_sell
 		or fields.page_prev
 		or fields.page_next or fields.do_filter or fields.clear_filter or fields.return_sell
 		or fields.qty_dec or fields.qty_inc or fields.close or fields.quit then
@@ -327,6 +431,44 @@ local function apply_wallet_from_response(st, data)
     if st and data and data.wallet_group_name ~= nil then
         st.wallet_group_name = tostring(data.wallet_group_name or "")
     end
+    if st and data and data.wallet_group_id ~= nil then
+        st.wallet_group_id = tonumber(data.wallet_group_id)
+    end
+end
+
+local function normalize_group_label(name)
+    if name == nil then
+        return ""
+    end
+    local s = tostring(name):match("^%s*(.-)%s*$") or ""
+    s = string.lower(s)
+    s = s:gsub("%s+", " ")
+    s = s:gsub("–", "-"):gsub("—", "-"):gsub("−", "-")
+    return s
+end
+
+local function shop_wallet_matches_funding_pool(sum, st)
+    local wid = tonumber(st and st.wallet_group_id)
+    if not wid and type(sum.player_wallet) == "table" then
+        wid = tonumber(sum.player_wallet.group_id)
+    end
+    local wname = normalize_group_label(wallet_display_name(st))
+    local pools = type(sum) == "table" and sum.funding_pools
+    if type(pools) ~= "table" then
+        return false
+    end
+    for _, row in ipairs(pools) do
+        if wid and tonumber(row.group_id) == wid then
+            return true
+        end
+        if row.is_shop_wallet == true then
+            return true
+        end
+        if wname ~= "" and normalize_group_label(row.group_name) == wname then
+            return true
+        end
+    end
+    return false
 end
 
 local SHOP_SEARCH_HITS_SUFFIX_DE = "Treffer im gesamten Shop"
@@ -353,10 +495,10 @@ local G = {
 	PAGE_BTN_W = 1.2,
 	PAGE_SEL_GAP = 0.34,
 	FILTER_FIELD_W = 3.85,
-	TAB_ROW_Y = 0.48,
-	TAB_ROW_H = 0.7,
-	TAB_SELL_X = 2.6,
-	TAB_SELL_W = 2.2,
+	TAB_ROW_Y = 0.38,
+	TAB_HEADER_H = 0.63,
+	TAB_HEADER_W = 7.2,
+	WALLET_HINT_X = 7.0,
 }
 G.ITEM_PANEL_X = G.CAT_LIST_X + G.CAT_LIST_W + 0.2
 G.BUY_QTY_ROW_Y = G.FORMSPEC_H - G.BUY_BOTTOM_PAD - G.BUY_ROW_H
@@ -397,40 +539,69 @@ G.PAGE_PREV_X = G.BUY_PANEL_X
 G.PAGE_NEXT_X = G.BUY_PANEL_X + G.PAGE_BTN_W
 G.PAGE_TEXT_X = G.PAGE_NEXT_X + G.PAGE_BTN_W + 0.12
 G.PAGE_TEXT_Y_OFFSET = 0.26
-G.TAB_SELL_END = G.TAB_SELL_X + G.TAB_SELL_W
-G.TAB_WALLET_HINT_X = G.TAB_SELL_END + 0.15
--- Vertically align caption labels with centered text on tab row buttons (Kaufen/Verkaufen height).
-G.TAB_ROW_CAPTION_Y = G.TAB_ROW_Y + (G.TAB_ROW_H - 0.35) * 0.5 + 0.16
-G.TAB_WALLET_HINT_Y = G.TAB_ROW_CAPTION_Y
--- Plan / mode hints sit on a second row so they do not overlap wallet captions beside tab_sell.
+G.TAB_WALLET_HINT_Y = 1.08
+-- Plan session: wallet line centered under tabs (slightly above default right-aligned row).
+G.PLAN_WALLET_HINT_Y = 1.04 - G.BUY_INFO_LINE_DY
+G.CONVERT_LINE_DY = 0.36
+G.CONVERT_SECTION_GAP = 0.14
+G.CONVERT_ZONE_Y = 1.35
+G.CONVERT_HEADLINE_Y = G.CONVERT_ZONE_Y - G.CONVERT_LINE_DY
+G.CONVERT_NOTE_Y = G.CONVERT_ZONE_Y + G.CONVERT_LINE_DY
+G.CONVERT_FUNDING_COLS = 2
+G.CONVERT_FUNDING_ROWS_PER_COL = 5
+G.CONVERT_FUNDING_MAX_ENTRIES = 10
+G.CONVERT_FUNDING_COL1_X = 0.45
+G.CONVERT_FUNDING_COL2_X = 6.35
+G.CONVERT_QTY_BELOW_AUTO_DY = 0.48
+G.CONVERT_BTN_W = 2.8
+G.CONVERT_BTN_Y = G.FORMSPEC_H - G.BUY_BOTTOM_PAD - G.BUY_ROW_H
+G.CONVERT_BTN_X = (G.FORMSPEC_W - G.CONVERT_BTN_W) * 0.5
+-- Plan / mode hints sit on a second row below wallet caption.
 G.TAB_STATUS_LINE_X = 0.3
-G.TAB_STATUS_LINE_Y = G.TAB_ROW_Y + G.TAB_ROW_H + 0.16
+G.TAB_STATUS_LINE_Y = 1.32 - G.BUY_INFO_LINE_DY
+-- Play/watch browse hint above centered shop-konto (buy tab) — avoid label overlap.
+G.PLAY_BROWSE_NOTE_Y = G.TAB_WALLET_HINT_Y - 0.5
+-- Plan note: below tab row.
+G.PLAN_STATUS_LINE_Y = G.TAB_ROW_Y + G.TAB_HEADER_H + 0.22
 G.TITLE_X = (G.FORMSPEC_W - G.TITLE_APPROX_W) * 0.5
 
-local function shop_wallet_hint_x(name, _tab)
-	if shop_session_plan_mode(name) and shop_show_secondary_tab(name) then
-		return G.TAB_WALLET_HINT_X
-	end
-	if not shop_show_secondary_tab(name) then
-		return TAB_BUY_X + TAB_BUY_W + 0.15
-	end
-	return G.TAB_WALLET_HINT_X
+local function shop_wallet_hint_x(_name, _tab)
+	return G.WALLET_HINT_X
+end
+
+local function shop_wallet_velos_suffix(st)
+	local v = tonumber(st and st.velos) or 0
+	return " (" .. UI.velos .. ": " .. tostring(v) .. ")"
 end
 
 local function shop_wallet_caption(name, tab, st)
-	if shop_session_plan_mode(name) then
-		return UI.wallet_plan_buy_prefix .. " " .. wallet_display_name(st)
-	end
-	if tab == "sell" then
+	local base
+	if tab == "convert" then
+		return ""
+	elseif shop_session_plan_mode(name) then
+		base = UI.wallet_plan_buy_prefix .. " " .. wallet_display_name(st)
+	elseif tab == "sell" then
 		if shop_session_build_mode(name) then
-			return UI.wallet_sell_prefix .. " " .. wallet_display_name(st)
+			base = UI.wallet_sell_prefix .. " " .. wallet_display_name(st)
+		else
+			base = UI.wallet_play_sell_note
 		end
-		return UI.wallet_play_sell_note
+	elseif shop_session_allows_trade(name) then
+		base = UI.wallet_buy_prefix .. " " .. wallet_display_name(st)
+	else
+		base = UI.wallet_play_buy_prefix .. " " .. wallet_display_name(st)
 	end
-	if shop_session_allows_trade(name) then
-		return UI.wallet_buy_prefix .. " " .. wallet_display_name(st)
+	return base .. shop_wallet_velos_suffix(st)
+end
+
+local function shop_status_line_y(name)
+	if shop_session_plan_mode(name) then
+		return G.PLAN_STATUS_LINE_Y
 	end
-	return UI.wallet_play_buy_prefix .. " " .. wallet_display_name(st)
+	if not shop_session_allows_trade(name) then
+		return G.PLAY_BROWSE_NOTE_Y
+	end
+	return G.TAB_STATUS_LINE_Y
 end
 
 local function shop_status_line_text(name)
@@ -441,13 +612,6 @@ local function shop_status_line_text(name)
 		return UI.play_browse_note
 	end
 	return nil
-end
-
-local function shop_buy_tab_label(name)
-	if shop_session_plan_mode(name) then
-		return UI.plan_buy_tab
-	end
-	return UI.buy
 end
 
 local function shop_primary_buy_button_label(name)
@@ -469,6 +633,210 @@ local function append_sell_area_label(fs, y, text, x_shift)
     local tw = approx_sell_label_width(text)
     local x = G.SELL_LIST_X + math.max(0, (G.SELL_LIST_PANEL_W - tw) * 0.5) + x_shift
     fs[#fs + 1] = string.format("label[%f,%f;%s]", x, y, esc(text))
+end
+
+local function append_centered_header_label(fs, y, text)
+    local tw = approx_sell_label_width(text)
+    local panel_w = G.FORMSPEC_W - 0.6
+    local x = 0.3 + math.max(0, (panel_w - tw) * 0.5)
+    fs[#fs + 1] = string.format("label[%f,%f;%s]", x, y, esc(text))
+    return y
+end
+
+-- Heading without styled element names (some Luanti builds reject label[x,y;name;text]).
+local function append_convert_headline(fs, y, text)
+    local display = "— " .. tostring(text or "") .. " —"
+    return append_centered_header_label(fs, y, display)
+end
+
+local function append_convert_wrapped_lines(fs, y, lines)
+	if type(lines) ~= "table" then
+		return y
+	end
+	for _, line in ipairs(lines) do
+		if line and line ~= "" then
+			fs[#fs + 1] = string.format("label[0.3,%f;%s]", y, esc(line))
+			y = y + G.CONVERT_LINE_DY
+		end
+	end
+	return y
+end
+
+local function append_convert_funding_pool_lines(fs, sum, y, summary_ok, pool_total)
+	local pool = pool_total
+	if pool == nil and summary_ok then
+		pool = tonumber(sum.available_velos)
+	end
+	local pool_text = pool ~= nil and tostring(pool) or "—"
+	fs[#fs + 1] = string.format(
+		"label[0.3,%f;%s]",
+		y,
+		esc(string.format(UI.convert_pool_total, pool_text))
+	)
+	y = y + G.CONVERT_LINE_DY
+	local pools = summary_ok and sum.funding_pools
+	if type(pools) == "table" and #pools > 0 then
+		local max_show = math.min(#pools, G.CONVERT_FUNDING_MAX_ENTRIES)
+		local rows_used
+		if max_show <= G.CONVERT_FUNDING_ROWS_PER_COL then
+			rows_used = max_show
+		else
+			rows_used = G.CONVERT_FUNDING_ROWS_PER_COL
+		end
+		local function pool_entry_label(idx)
+			local row = pools[idx]
+			if type(row) ~= "table" then
+				return nil
+			end
+			local gname = tostring(row.group_name or "?")
+			local gv = tonumber(row.velos_spendable) or 0
+			local line_tpl = UI.convert_pool_line
+			if row.is_shop_wallet == true then
+				line_tpl = UI.convert_pool_line_shop
+			end
+			return string.format(line_tpl, idx, gname, gv)
+		end
+		for r = 1, rows_used do
+			local row_y = y + (r - 1) * G.CONVERT_LINE_DY
+			local left_idx = r
+			local right_idx = r + G.CONVERT_FUNDING_ROWS_PER_COL
+			if left_idx <= max_show then
+				local text = pool_entry_label(left_idx)
+				if text then
+					fs[#fs + 1] = string.format(
+						"label[%f,%f;%s]",
+						G.CONVERT_FUNDING_COL1_X,
+						row_y,
+						esc(text)
+					)
+				end
+			end
+			if right_idx <= max_show then
+				local text = pool_entry_label(right_idx)
+				if text then
+					fs[#fs + 1] = string.format(
+						"label[%f,%f;%s]",
+						G.CONVERT_FUNDING_COL2_X,
+						row_y,
+						esc(text)
+					)
+				end
+			end
+		end
+		y = y + rows_used * G.CONVERT_LINE_DY
+		local rest = #pools - max_show
+		if rest > 0 then
+			fs[#fs + 1] = string.format(
+				"label[0.45,%f;%s]",
+				y,
+				esc(string.format(UI.convert_pool_more, rest))
+			)
+			y = y + G.CONVERT_LINE_DY
+		end
+	elseif summary_ok and pool and pool > 0 then
+		fs[#fs + 1] = string.format(
+			"label[0.45,%f;%s]",
+			y,
+			esc(UI.wallet_plan_pool_prefix .. " " .. tostring(pool) .. " Velos")
+		)
+		y = y + G.CONVERT_LINE_DY
+	elseif summary_ok then
+		fs[#fs + 1] = string.format(
+			"label[0.45,%f;%s]",
+			y,
+			esc(UI.err_no_funding_pool)
+		)
+		y = y + G.CONVERT_LINE_DY
+	end
+	return y
+end
+
+local function append_convert_shop_account_line(fs, y, st, sum, summary_ok)
+	if not summary_ok then
+		return y
+	end
+	local wname = wallet_display_name(st)
+	if wname == UI.wallet_unknown then
+		return y
+	end
+	local velos = tonumber(st.velos) or 0
+	local pw = sum.player_wallet
+	if type(pw) == "table" and (pw.group_name or "") ~= "" then
+		wname = tostring(pw.group_name)
+	end
+	if type(pw) == "table" and pw.velos_spendable ~= nil then
+		velos = tonumber(pw.velos_spendable) or velos
+	end
+	fs[#fs + 1] = string.format(
+		"label[0.3,%f;%s]",
+		y,
+		esc(string.format(UI.convert_shop_account_fmt, wname, tostring(velos)))
+	)
+	return y + G.CONVERT_LINE_DY
+end
+
+local function convert_sell_owner_lines(sum)
+	local lines = {}
+	for _, line in ipairs(UI.convert_sell_section_lines) do
+		lines[#lines + 1] = line
+	end
+	local wname = "—"
+	local pw = sum and sum.player_wallet
+	if type(pw) == "table" and (pw.group_name or "") ~= "" then
+		wname = tostring(pw.group_name)
+	end
+	local tname = "—"
+	local top = sum and sum.region_top_group
+	if type(top) == "table" and (top.group_name or "") ~= "" then
+		tname = tostring(top.group_name)
+	end
+	lines[#lines + 1] = string.format(UI.convert_sell_own_fmt, wname)
+	lines[#lines + 1] = string.format(UI.convert_sell_top_fmt, tname)
+	return lines
+end
+
+local function convert_spendable_velos(sum)
+	if type(sum) ~= "table" then
+		return 0
+	end
+	local extra = tonumber(sum.available_convert_velos)
+	if extra ~= nil then
+		return extra
+	end
+	return tonumber(sum.available_velos) or 0
+end
+
+local function append_wallet_hint_label(fs, name, tab, st)
+	if tab == "convert" then
+		return
+	end
+	local text = shop_wallet_caption(name, tab, st)
+	if shop_session_plan_mode(name) and tab ~= "convert" then
+		local tw = approx_sell_label_width(text)
+		local panel_w = G.FORMSPEC_W - 0.6
+		local x = 0.3 + math.max(0, (panel_w - tw) * 0.5)
+		fs[#fs + 1] = string.format(
+			"label[%f,%f;%s]",
+			x,
+			G.PLAN_WALLET_HINT_Y,
+			esc(text)
+		)
+		return
+	end
+	if tab == "sell" then
+		append_sell_area_label(fs, G.TAB_WALLET_HINT_Y, text, G.SELL_HDR_LABEL_X_SHIFT)
+		return
+	end
+	if tab == "buy" then
+		append_centered_header_label(fs, G.TAB_WALLET_HINT_Y, text)
+		return
+	end
+	fs[#fs + 1] = string.format(
+		"label[%f,%f;%s]",
+		shop_wallet_hint_x(name, tab),
+		G.TAB_WALLET_HINT_Y,
+		esc(text)
+	)
 end
 
 local SELL_BTN_READY_BG = "#16e34a"
@@ -822,6 +1190,10 @@ local function sell_hint_tooltip_line(hint, stack_count)
         local wallet = tostring(hint.wallet_group_name or "?")
         return string.format(UI.sell_tip_other, other, wallet)
     end
+    if hint.reason == "parent_pool_locked" then
+        local pool = tostring(hint.credit_group_name or "?")
+        return string.format(UI.sell_tip_parent_pool_locked, pool)
+    end
     if hint.reason == "not_in_shop" then
         return UI.sell_tip_not_shop
     end
@@ -852,19 +1224,152 @@ local function clear_sell_inventory_tooltips(player)
     end
 end
 
-local function ensure_shop_tab_for_session(name, st)
-	if not st or shop_show_secondary_tab(name) then
-		return
-	end
-	if (st.tab or "buy") ~= "sell" then
-		return
-	end
-	st.tab = "buy"
+local function leave_sell_tab_side_effects(name)
 	local player = core.get_player_by_name(name)
 	if player then
 		clear_sell_inventory_tooltips(player)
 	end
 	return_sell_slots_to_player(name)
+end
+
+local function ensure_shop_tab_for_session(name, st)
+	if not st then
+		return
+	end
+	local tab = st.tab or "buy"
+	if tab == "convert" and not shop_show_convert_tab(name) then
+		st.tab = "buy"
+		tab = "buy"
+	end
+	if tab == "sell" and not shop_show_secondary_tab(name) then
+		st.tab = "buy"
+		leave_sell_tab_side_effects(name)
+		return
+	end
+	if shop_session_plan_mode(name) and tab == "convert" then
+		st.tab = "buy"
+	end
+end
+
+local function shop_world_name()
+	local bridge = rawget(_G, "mcc_bridge")
+	if bridge and bridge.mcc_world_name then
+		return bridge.mcc_world_name()
+	end
+	return "mycyclingcity"
+end
+
+local function player_feet_block(player)
+	local pos = player and player:get_pos()
+	if not pos then
+		return nil
+	end
+	return {
+		x = math.floor(pos.x + 0.5),
+		y = math.floor(pos.y + 0.5),
+		z = math.floor(pos.z + 0.5),
+	}
+end
+
+local PLAN_SUMMARY_REFRESH_SEC = 2
+
+local function shop_client_build_zone(name)
+	local bridge = rawget(_G, "mcc_bridge")
+	if bridge and bridge.build_region_at_player then
+		return bridge.build_region_at_player(name)
+	end
+	return nil
+end
+
+local function shop_plan_summary_stale(st)
+	if not st or st.plan_summary_busy then
+		return false
+	end
+	local sum = st.plan_summary
+	if not sum or sum.ok ~= true or not sum.region_id then
+		return true
+	end
+	local fetched = tonumber(st.plan_summary_fetched_at) or 0
+	if fetched <= 0 then
+		return true
+	end
+	return os.time() - fetched >= PLAN_SUMMARY_REFRESH_SEC
+end
+
+local function fetch_shop_plan_summary(name, st, cb)
+	if not api_post then
+		st.plan_summary = nil
+		if cb then
+			cb(false)
+		end
+		return
+	end
+	local player = core.get_player_by_name(name)
+	local feet = player and player_feet_block(player)
+	if not feet then
+		st.plan_summary = { ok = false, error = "convert_requires_position" }
+		if cb then
+			cb(false)
+		end
+		return
+	end
+	local body = {
+		player = name,
+		world = shop_world_name(),
+		x = feet.x,
+		y = feet.y,
+		z = feet.z,
+	}
+	if st.plan_summary_busy then
+		if cb then
+			cb(false)
+		end
+		return
+	end
+	st.plan_summary_busy = true
+	api_post("/api/luanti/plan/summary/", body, function(ok, data)
+		st.plan_summary_busy = false
+		if ok and data and data.ok then
+			st.plan_summary = data
+			st.plan_summary_fetched_at = os.time()
+			if type(data.player_wallet) == "table" and data.player_wallet.group_id ~= nil then
+				st.wallet_group_id = tonumber(data.player_wallet.group_id)
+			end
+			if type(data.player_wallet) == "table" and data.player_wallet.group_name then
+				st.wallet_group_name = tostring(data.player_wallet.group_name)
+			end
+		else
+			st.plan_summary = data or { ok = false, error = "no_region" }
+		end
+		if cb then
+			cb(ok and data and data.ok)
+		end
+	end)
+end
+
+local function maybe_refresh_shop_plan_summary(name, st)
+	if not shop_session_build_mode(name) then
+		return
+	end
+	if (st.tab or "buy") ~= "convert" then
+		return
+	end
+	if not shop_plan_summary_stale(st) then
+		return
+	end
+	fetch_shop_plan_summary(name, st, function()
+		show_shop(name)
+	end)
+end
+
+local function clamp_convert_qty(qty, st)
+	qty = tonumber(qty) or 4
+	qty = math.max(1, math.min(qty, 256))
+	local planned = st and st.plan_summary and tonumber(st.plan_summary.planned_count)
+	if planned and planned > 0 then
+		qty = math.min(qty, planned)
+	end
+	return qty
 end
 
 local function apply_sell_inventory_tooltips(player, hints)
@@ -1098,28 +1603,209 @@ local function clear_shop_selection(st)
     end
 end
 
--- Tab buttons: active tab vivid; idle tab darker but still clearly a button (border on).
-local TAB_BTN_ACTIVE_BG = "#1e9bff"
-local TAB_BTN_ACTIVE_TEXT = "#ffffff"
-local TAB_BTN_IDLE_BG = "#1a2638"
-local TAB_BTN_IDLE_TEXT = "#8ab4d8"
+local function append_convert_tab_body(fs, name, st)
+    st.convert_qty = clamp_convert_qty(st.convert_qty or 4, st)
+	local sum = st.plan_summary or {}
+	local busy = st.plan_summary_busy and " …" or ""
+	local summary_ok = sum.ok == true and (sum.region_id or "") ~= ""
+	local client_zone = shop_client_build_zone(name)
+	local zone_label
+	if summary_ok then
+		zone_label = tostring(sum.display_name or sum.region_id or "—")
+	elseif client_zone and client_zone.display_name then
+		zone_label = client_zone.display_name
+	else
+		local err = shop_plan_error_message(sum)
+		if err == "" or err == "?" then
+			local code = sum and sum.error
+			if code == "convert_requires_position" then
+				err = UI.err_convert_requires_position
+			elseif code == "no_region" then
+				err = UI.err_no_region
+			elseif code == "not_member" then
+				err = UI.err_not_member
+			else
+				err = UI.err_no_region
+			end
+		end
+		zone_label = err
+	end
+	local planned = summary_ok and (tonumber(sum.planned_count) or 0) or 0
+	local velos_need = summary_ok and (tonumber(sum.total_velos_planned) or 0) or 0
+	local pool = summary_ok and convert_spendable_velos(sum)
+	local pool_only = summary_ok and tonumber(sum.available_velos)
+	local y = G.CONVERT_HEADLINE_Y
+	y = append_convert_headline(fs, y, UI.convert_headline)
+	y = y + G.CONVERT_LINE_DY
+	fs[#fs + 1] = string.format(
+		"label[0.3,%f;%s]",
+		y,
+		esc(UI.convert_current_zone .. ": " .. tostring(zone_label or "—") .. busy)
+	)
+	y = y + G.CONVERT_LINE_DY
+	fs[#fs + 1] = string.format("label[0.3,%f;%s]", y, esc(UI.convert_velos_order))
+	y = y + G.CONVERT_LINE_DY
+    fs[#fs + 1] = string.format(
+        "label[0.3,%f;%s]",
+        y,
+        esc(UI.convert_planned .. ": " .. tostring(planned))
+    )
+    y = y + G.CONVERT_LINE_DY
+    fs[#fs + 1] = string.format(
+        "label[0.3,%f;%s]",
+        y,
+        esc(UI.convert_velos_need .. ": " .. tostring(velos_need) .. " Velos")
+    )
+    y = y + G.CONVERT_LINE_DY
+	y = append_convert_shop_account_line(fs, y, st, sum, summary_ok)
+    y = y + G.CONVERT_SECTION_GAP
+	if summary_ok then
+		y = append_convert_wrapped_lines(fs, y, convert_sell_owner_lines(sum))
+		y = y + G.CONVERT_SECTION_GAP
+	end
+	y = append_convert_funding_pool_lines(fs, sum, y, summary_ok, pool_only)
+	if summary_ok and (pool or 0) <= 0 and planned > 0 and not st.plan_summary_busy then
+		fs[#fs + 1] = string.format("label[0.3,%f;%s]", y, esc(UI.convert_pool_empty))
+		y = y + G.CONVERT_LINE_DY
+	end
+    local mp = mcc_plan_mod()
+    local auto_on = mp and mp.is_autoconvert_on and mp.is_autoconvert_on(name)
+    y = y + G.CONVERT_LINE_DY + 0.08
+    fs[#fs + 1] = string.format(
+        "checkbox[0.3,%f;autoconvert_toggle;%s;%s]",
+        y,
+        esc(UI.autoconvert_label),
+        auto_on and "true" or "false"
+    )
+    local qty_y = y + G.CONVERT_QTY_BELOW_AUTO_DY
+    local can_convert = summary_ok and planned > 0 and (pool or 0) > 0 and not st.busy
+        and not st.plan_summary_busy
+    append_sell_action_button_styles(fs, can_convert, "do_convert")
+    local qty = st.convert_qty
+    fs[#fs + 1] = string.format(
+        "button[%f,%f;0.8,%f;convert_qty_dec;-]",
+        G.BUY_PANEL_X,
+        qty_y,
+        G.BUY_ROW_H
+    )
+    fs[#fs + 1] = string.format(
+        "field[%f,%f;1.4,%f;convert_qty;%s;%s]",
+        G.QTY_FIELD_X,
+        qty_y,
+        G.BUY_ROW_H,
+        esc(UI.convert_qty_label),
+        tostring(qty)
+    )
+    fs[#fs + 1] = "field_close_on_enter[convert_qty;false]"
+    fs[#fs + 1] = string.format(
+        "button[%f,%f;0.8,%f;convert_qty_inc;+]",
+        G.QTY_INC_X,
+        qty_y,
+        G.BUY_ROW_H
+    )
+    fs[#fs + 1] = string.format(
+        "button[%f,%f;1.1,%f;convert_qty_all;%s]",
+        G.QTY_INC_X + 1.0,
+        qty_y,
+        G.BUY_ROW_H,
+        esc(UI.convert_qty_all)
+    )
+    fs[#fs + 1] = string.format(
+        "button[%f,%f;%f,%f;do_convert;%s]",
+        G.CONVERT_BTN_X,
+        G.CONVERT_BTN_Y,
+        G.CONVERT_BTN_W,
+        G.BUY_ROW_H,
+        esc(UI.convert_action)
+    )
+end
 
-local function append_shop_tab_button_styles(fs, tab, show_secondary_tab)
-    local buy_active = tab ~= "sell" or not show_secondary_tab
-    local function tab_style(name, active)
-        local bg = active and TAB_BTN_ACTIVE_BG or TAB_BTN_IDLE_BG
-        local fg = active and TAB_BTN_ACTIVE_TEXT or TAB_BTN_IDLE_TEXT
-        fs[#fs + 1] = string.format("style[%s;bgcolor=%s;textcolor=%s;border=true]", name, bg, fg)
-        fs[#fs + 1] = string.format(
-            "style[%s:pressed;bgcolor=%s;textcolor=%s;border=true]",
-            name,
-            active and "#0d7fd9" or "#243246",
-            active and TAB_BTN_ACTIVE_TEXT or TAB_BTN_IDLE_TEXT
-        )
+local function shop_apply_tab_change(name, st, new_tab)
+    local prev = st.tab or "buy"
+    if new_tab == prev then
+        return
     end
-    tab_style("tab_buy", buy_active)
-    if show_secondary_tab then
-        tab_style("tab_sell", not buy_active)
+    if prev == "sell" and new_tab ~= "sell" then
+        leave_sell_tab_side_effects(name)
+        st.sell_hints_ready = false
+        st.sell_hints = nil
+    end
+    st.tab = new_tab
+    if new_tab == "sell" then
+        if shop_show_discard_tab(name) then
+            ensure_sell_inv(name)
+            st.sell_slots_ready = sell_list_has_items(name)
+            show_shop(name)
+        elseif shop_show_sell_tab(name) then
+            ensure_sell_inv(name)
+            st.sell_slots_ready = sell_list_has_items(name)
+            st.sell_hints_ready = false
+            sync_sell_hints_for_player(name, function()
+                show_shop(name)
+            end)
+        else
+            core.chat_send_player(name, UI.shop_mode_sell_denied)
+            st.tab = "buy"
+            show_shop(name)
+        end
+    elseif new_tab == "convert" then
+        if not shop_show_convert_tab(name) then
+            core.chat_send_player(name, UI.shop_mode_convert_denied)
+            st.tab = "buy"
+            show_shop(name)
+            return
+        end
+        st.convert_qty = st.convert_qty or 4
+        st.plan_summary = nil
+        st.plan_summary_fetched_at = nil
+        fetch_shop_plan_summary(name, st, function()
+            show_shop(name)
+        end)
+        show_shop(name)
+    else
+        show_shop(name)
+    end
+end
+
+local function run_shop_convert(name, st)
+    if not shop_session_build_mode(name) then
+        core.chat_send_player(name, UI.shop_mode_convert_denied)
+        return
+    end
+    if st.busy or st.plan_summary_busy then
+        core.chat_send_player(name, UI.convert_busy)
+        return
+    end
+    local qty = clamp_convert_qty(st.convert_qty, st)
+    st.convert_qty = qty
+    local mp = mcc_plan_mod()
+    if not mp or not mp.run_convert then
+        core.chat_send_player(name, UI.convert_failed)
+        return
+    end
+    st.busy = true
+    show_shop(name)
+    local started, err = mp.run_convert(name, qty, function(ok, msg, data2)
+        st.busy = false
+        if msg and msg ~= "" then
+            if ok then
+                core.chat_send_player(name, msg)
+            else
+                core.chat_send_player(name, UI.convert_failed .. ": " .. tostring(msg))
+            end
+        end
+        if ok then
+            st.plan_summary = nil
+            st.plan_summary_fetched_at = nil
+        end
+        fetch_shop_plan_summary(name, st, function()
+            show_shop(name)
+        end)
+    end)
+    if not started then
+        st.busy = false
+        core.chat_send_player(name, UI.convert_failed .. ": " .. tostring(err or "?"))
+        show_shop(name)
     end
 end
 
@@ -1129,7 +1815,6 @@ local function build_formspec(name)
         return ""
     end
     ensure_shop_tab_for_session(name, st)
-    local velos = tonumber(st.velos) or 0
     local tab = st.tab or "buy"
     local show_secondary_tab = shop_show_secondary_tab(name)
     local plan_discard_tab = shop_session_plan_mode(name)
@@ -1138,60 +1823,36 @@ local function build_formspec(name)
         "size[" .. tostring(G.FORMSPEC_W) .. "," .. tostring(G.FORMSPEC_H) .. "]",
         "position[0.5,0.5]",
         "anchor[0.5,0.5]",
-        string.format(
-            "label[%f,%f;%s]",
-            G.TITLE_X,
-            G.HEADER_Y,
-            esc(UI.title)
-        ),
-        string.format(
-            "label[8.5,%f;%s]",
-            G.HEADER_Y,
-            esc(UI.velos .. ": " .. tostring(velos))
-        ),
     }
-    append_shop_tab_button_styles(fs, tab, show_secondary_tab)
+    append_centered_header_label(fs, G.HEADER_Y, UI.title)
+    local tab_idx = shop_tab_index_for(name, tab)
+    fs[#fs + 1] = "style_type[tabheader;textcolor=#e8f4ff]"
+    -- Auto tab width (H-only syntax); no draw_border — fixed W left empty stripe + black edge.
     fs[#fs + 1] = string.format(
-        "button[%f,%f;%f,%f;tab_buy;%s]",
-        TAB_BUY_X,
+        "tabheader[0.3,%f;%f;shop_tabs;%s;%d;true;false]",
         G.TAB_ROW_Y,
-        TAB_BUY_W,
-        G.TAB_ROW_H,
-        esc(shop_buy_tab_label(name))
+        G.TAB_HEADER_H,
+        shop_tab_tablist_string(name),
+        tab_idx
     )
-    if show_secondary_tab then
-        fs[#fs + 1] = string.format(
-            "button[%f,%f;%f,%f;tab_sell;%s]",
-            G.TAB_SELL_X,
-            G.TAB_ROW_Y,
-            G.TAB_SELL_W,
-            G.TAB_ROW_H,
-            esc(shop_secondary_tab_label(name))
-        )
-    end
-    fs[#fs + 1] = string.format(
-        "button_exit[10.8,%f;1.7,%f;close;%s]",
-        G.TAB_ROW_Y,
-        G.TAB_ROW_H,
-        esc(UI.close)
-    )
-    local wallet_hint = shop_wallet_caption(name, tab, st)
-    fs[#fs + 1] = string.format(
-        "label[%f,%f;%s]",
-        shop_wallet_hint_x(name, tab),
-        G.TAB_WALLET_HINT_Y,
-        esc(wallet_hint)
-    )
+    append_wallet_hint_label(fs, name, tab, st)
 
-    if tab == "buy" then
+    if tab == "convert" then
+        append_convert_tab_body(fs, name, st)
+    elseif tab == "buy" then
         local status_line = shop_status_line_text(name)
         if status_line then
-            fs[#fs + 1] = string.format(
-                "label[%f,%f;%s]",
-                G.TAB_STATUS_LINE_X,
-                G.TAB_STATUS_LINE_Y,
-                esc(status_line)
-            )
+			local status_y = shop_status_line_y(name)
+			if not shop_session_allows_trade(name) and not shop_session_plan_mode(name) then
+				append_centered_header_label(fs, status_y, status_line)
+			else
+				fs[#fs + 1] = string.format(
+					"label[%f,%f;%s]",
+					G.TAB_STATUS_LINE_X,
+					status_y,
+					esc(status_line)
+				)
+			end
         end
         -- Plan region stats (e.g. "Planungs-Sub …") only in mcc_plan HUD, not in shop UI.
         -- Full category list (all categories, including empty).
@@ -1382,7 +2043,7 @@ local function build_formspec(name)
             esc(shop_primary_buy_button_label(name))
         )
         -- Buy tab: no player inventory row (items are delivered via API after "Kaufen").
-    else
+    elseif tab == "sell" then
         -- Sell tab (build) or discard tab (plan): same slot grid layout.
         ensure_sell_inv(name)
         local zone_title = plan_discard_tab
@@ -1449,7 +2110,7 @@ local function build_formspec(name)
     return table.concat(fs, "")
 end
 
-local function show_shop(name)
+show_shop = function(name)
     local st = get_state(name)
     if not st then
         core.log("warning", "[mcc_bridge shop] show_shop no state player=" .. tostring(name))
@@ -1464,6 +2125,7 @@ local function show_shop(name)
     end
     shop_debugf("show_shop player=%s form_len=%s", name, tostring(#fs))
     core.show_formspec(name, FORMNAME, fs)
+    maybe_refresh_shop_plan_summary(name, st)
 end
 
 local function refresh_sell_button_if_needed(name)
@@ -1485,6 +2147,9 @@ local function refresh_after_catalog(name, data)
     st.by_id = by_id
     st.velos = tonumber(data.velos_spendable) or st.velos or 0
     st.wallet_group_name = tostring(data.wallet_group_name or st.wallet_group_name or "")
+    if data.wallet_group_id ~= nil then
+        st.wallet_group_id = tonumber(data.wallet_group_id)
+    end
     st.tab = st.tab or "buy"
     st.cat_idx = st.cat_idx or 1
     if st.cat_idx > #cats then
@@ -1827,9 +2492,10 @@ core.register_on_player_receive_fields(function(player, formname, fields)
         end
         return true
     end
-    local buy_tab = (st.tab or "buy") == "buy"
+    local active_tab = st.tab or "buy"
+    local buy_tab = active_tab == "buy"
 
-    if (st.tab or "buy") == "sell" then
+    if active_tab == "sell" then
         core.log(
             "action",
             "[mcc_bridge shop] receive_fields player="
@@ -1839,7 +2505,55 @@ core.register_on_player_receive_fields(function(player, formname, fields)
         )
     end
 
+    -- Tab bar first: convert tab echoes checkbox/fields on every submit and would block shop_tabs.
+    if fields.shop_tabs then
+        local idx = tonumber(fields.shop_tabs)
+        if idx then
+            local new_tab = shop_tab_id_for_index(name, idx)
+            shop_apply_tab_change(name, st, new_tab)
+        end
+        return true
+    end
+
     -- Primary actions first (clients echo qty/filter/catlist on sell tab).
+    if fields.do_convert then
+        run_shop_convert(name, st)
+        return true
+    end
+    if fields.autoconvert_toggle ~= nil and active_tab == "convert" and not fields.do_convert
+        and fields.shop_tabs == nil then
+        if shop_session_build_mode(name) then
+            local mp = mcc_plan_mod()
+            local want = fields.autoconvert_toggle == "true"
+            local cur = mp and mp.is_autoconvert_on and mp.is_autoconvert_on(name)
+            if mp and mp.set_autoconvert_on and want ~= cur then
+                mp.set_autoconvert_on(name, want)
+            end
+        end
+        show_shop(name)
+        return true
+    end
+    if active_tab == "convert" and fields.convert_qty_dec then
+        st.convert_qty = clamp_convert_qty((st.convert_qty or 4) - 1, st)
+        show_shop(name)
+        return true
+    end
+    if active_tab == "convert" and fields.convert_qty_inc then
+        st.convert_qty = clamp_convert_qty((st.convert_qty or 4) + 1, st)
+        show_shop(name)
+        return true
+    end
+    if active_tab == "convert" and fields.convert_qty_all then
+        local planned = st.plan_summary and tonumber(st.plan_summary.planned_count) or 256
+        st.convert_qty = clamp_convert_qty(math.max(planned, 1), st)
+        show_shop(name)
+        return true
+    end
+    if active_tab == "convert" and fields.key_enter_field == "convert_qty" then
+        st.convert_qty = clamp_convert_qty(tonumber(fields.convert_qty) or st.convert_qty, st)
+        show_shop(name)
+        return true
+    end
     if shop_wants_plan_discard(fields) then
         core.log("action", "[mcc_bridge shop] plan_discard player=" .. name)
         run_shop_plan_discard(name, st)
@@ -1883,6 +2597,7 @@ core.register_on_player_receive_fields(function(player, formname, fields)
             quantity = q,
             client_tx_id = tx,
             planning = planning,
+            lang = normalize_language_code(st.catalog_lang or client_language_code()),
         }, function(ok, data)
             st.busy = false
             if not ok or not data or not data.ok then
@@ -1944,8 +2659,8 @@ core.register_on_player_receive_fields(function(player, formname, fields)
     end
 
     if fields.quit or fields.close then
-        if shop_wants_sell(fields) or fields.do_buy ~= nil or fields.tab_sell or fields.tab_buy
-            or fields.return_sell then
+        if shop_wants_sell(fields) or fields.do_buy ~= nil or fields.do_convert
+            or fields.shop_tabs or fields.tab_sell or fields.tab_buy or fields.return_sell then
             return true
         end
         if fields.key_enter_field == "filter" then
@@ -1972,47 +2687,9 @@ core.register_on_player_receive_fields(function(player, formname, fields)
         player_state[name] = nil
         return true
     end
-    if fields.tab_sell and (st.tab or "buy") ~= "sell" then
-        if shop_show_discard_tab(name) then
-            st.tab = "sell"
-            ensure_sell_inv(name)
-            local p = core.get_player_by_name(name)
-            if p then
-                clear_sell_inventory_tooltips(p)
-            end
-            st.sell_hints_ready = false
-            st.sell_hints = nil
-            st.sell_slots_ready = sell_list_has_items(name)
-            show_shop(name)
-        elseif shop_show_sell_tab(name) then
-            st.tab = "sell"
-            ensure_sell_inv(name)
-            st.sell_slots_ready = sell_list_has_items(name)
-            st.sell_hints_ready = false
-            sync_sell_hints_for_player(name, function()
-                show_shop(name)
-            end)
-        else
-            core.chat_send_player(name, UI.shop_mode_sell_denied)
-            st.tab = "buy"
-            show_shop(name)
-        end
-        return true
-    end
-    if fields.tab_buy and (st.tab or "buy") == "sell" then
-        local p = core.get_player_by_name(name)
-        if p then
-            clear_sell_inventory_tooltips(p)
-        end
-        st.sell_hints_ready = false
-        st.sell_hints = nil
-        st.tab = "buy"
-        show_shop(name)
-        return true
-    end
     if fields.return_sell then
         return_sell_slots_to_player(name)
-        if shop_session_build_mode(name) and (st.tab or "buy") == "sell" then
+        if shop_session_build_mode(name) and active_tab == "sell" then
             sync_sell_hints_for_player(name, function()
                 show_shop(name)
             end)

@@ -476,3 +476,52 @@ def test_regions_admin_save_exclude_master_top_persists(region_staff, top_group)
     html = follow.content.decode("utf-8")
     m = re.search(r'name="rg_plan_funding_include_master_top"[^>]*>', html)
     assert m is not None and "checked" not in m.group(0)
+
+
+@pytest.mark.django_db
+@override_settings(LUANTI_PLAN_FUNDING_GROUPS_MAX=10)
+def test_regions_admin_rejects_more_than_ten_plan_funding_groups(region_staff, top_group):
+    fund_groups = [
+        Group.objects.create(
+            name=f"FundCap{i}",
+            group_type=top_group.group_type,
+            parent=top_group,
+        )
+        for i in range(11)
+    ]
+    region = LuantiProtectedRegion.objects.create(
+        region_id="fund_cap",
+        world="world",
+        min_x=0,
+        min_y=0,
+        min_z=0,
+        max_x=10,
+        max_y=10,
+        max_z=10,
+        assigned_to_group=top_group,
+    )
+    client = Client()
+    client.force_login(region_staff)
+    save = client.post(
+        reverse("admin:luanti_regions"),
+        {
+            "action": "save",
+            "rg_pk": str(region.pk),
+            "rg_region_id": region.region_id,
+            "rg_display_name": "",
+            "rg_world": "world",
+            "rg_assigned_to_group": str(top_group.pk),
+            "rg_min_x": "0",
+            "rg_min_y": "0",
+            "rg_min_z": "0",
+            "rg_max_x": "10",
+            "rg_max_y": "10",
+            "rg_max_z": "10",
+            "rg_protect_build": "on",
+            "rg_enabled": "on",
+            "rg_plan_funding_groups": [str(g.pk) for g in fund_groups],
+        },
+    )
+    assert save.status_code == 200
+    assert b"Maximal 10 Plan-Velos-Gruppen" in save.content
+    assert region.plan_funding_links.count() == 0

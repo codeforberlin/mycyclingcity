@@ -120,7 +120,12 @@ def get_active_session(login_name: str) -> LuantiSession | None:
             login_name__iexact=login_name.strip(),
             status__in=LuantiSession.OPEN_STATUSES,
         )
-        .select_related("account", "spawn_region", "spawn_region__parent")
+        .select_related(
+            "account",
+            "wallet_group",
+            "spawn_region",
+            "spawn_region__parent",
+        )
         .first()
     )
 

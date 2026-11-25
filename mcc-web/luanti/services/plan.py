@@ -6,6 +6,9 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F, Sum
@@ -99,6 +102,204 @@ def available_velos_for_region(region: LuantiProtectedRegion) -> int:
     return total
 
 
+def _actor_wallet_first_enabled() -> bool:
+    return bool(getattr(settings, "LUANTI_PLAN_CONVERT_ACTOR_WALLET_FIRST", True))
+
+
+def resolve_materialize_actor_group(login_name: str) -> Group | None:
+    """Session shop wallet group for manual materialize (convert)."""
+    key = (login_name or "").strip()
+    if not key:
+        return None
+    from luanti.services.shop import resolve_group_for_player
+
+    return resolve_group_for_player(key)
+
+
+def resolve_materialize_funding_groups(
+    region: LuantiProtectedRegion,
+    login_name: str,
+    *,
+    mode: str,
+) -> tuple[list[Group], Group | None]:
+    """
+    Debit order for materialize. Manual + player: actor shop wallet first (even outside
+    admin plan pool), then plan pool. Auto/live: plan pool only; actor_group None.
+    """
+    pool = resolved_plan_funding_groups(region)
+    actor: Group | None = None
+    mode_key = (mode or "manual").strip().lower()
+    key = (login_name or "").strip()
+    if mode_key == "manual" and key and _actor_wallet_first_enabled():
+        actor = resolve_materialize_actor_group(key)
+        if actor is not None:
+            merged: list[Group] = [actor]
+            seen = {actor.pk}
+            for group in pool:
+                if group.pk not in seen:
+                    merged.append(group)
+                    seen.add(group.pk)
+            return merged, actor
+    return list(pool), None
+
+
+def manual_convert_spendable_velos(
+    region: LuantiProtectedRegion,
+    login_name: str,
+) -> int:
+    """Pool velos plus actor wallet when manual actor-first debits apply."""
+    pool_total = available_velos_for_region(region)
+    key = (login_name or "").strip()
+    if not key or not _actor_wallet_first_enabled():
+        return pool_total
+    actor = resolve_materialize_actor_group(key)
+    if actor is None:
+        return pool_total
+    pool_ids = {g.pk for g in resolved_plan_funding_groups(region)}
+    if actor.pk in pool_ids:
+        return pool_total
+    return pool_total + max(0, int(actor.velos_spendable or 0))
+
+
+def _credit_group_for_materialize(
+    *,
+    block: LuantiPlanBlock,
+    fallback_login: str,
+    debits: list[tuple[Group, int]] | None,
+    actor_group: Group | None,
+) -> Group | None:
+    """
+    Sell-back purchase credit group: actor when they alone paid the full block price;
+    otherwise regional TOP (same as legacy behaviour for pool / mixed funding).
+    """
+    price = max(0, int(block.buy_price_velos or 0))
+    if (
+        actor_group is not None
+        and debits
+        and price > 0
+        and len(debits) == 1
+        and debits[0][0].pk == actor_group.pk
+        and int(debits[0][1]) == price
+    ):
+        return actor_group
+    region = block.region
+    if region is not None:
+        top = region.effective_top_group()
+        if top is not None:
+            return top
+    from luanti.services.shop import resolve_group_for_player
+
+    owner = (block.placed_by or fallback_login or "").strip()
+    if owner:
+        return resolve_group_for_player(owner)
+    return None
+
+
+def normalize_group_name(name: str | None) -> str:
+    """Case/spacing/hyphen tolerant label match for wallet vs plan-pool rows."""
+    raw = unicodedata.normalize("NFKC", (name or "").strip()).casefold()
+    for ch in ("\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2212", "\u00ad"):
+        raw = raw.replace(ch, "-")
+    return re.sub(r"\s+", " ", raw)
+
+
+def _group_ancestor_ids(group: Group) -> set[int]:
+    """Self plus all ancestor group pks."""
+    ids = {group.pk}
+    current_id = group.parent_id
+    seen: set[int] = set()
+    while current_id and current_id not in seen:
+        seen.add(current_id)
+        ids.add(current_id)
+        current_id = (
+            Group.objects.filter(pk=current_id).values_list("parent_id", flat=True).first()
+        )
+    return ids
+
+
+def shop_wallet_plan_pool_status(
+    wallet: Group | None,
+    funding_groups: list[Group],
+) -> dict:
+    """
+    How the session shop wallet relates to region plan-funding groups (materialize debits).
+
+    pool_relation:
+      direct — same group as a funding entry (will be debited).
+      related_child_in_pool — pool debits a descendant leaf; wallet is a parent (e.g. school TOP).
+      related_parent_in_pool — pool entry is ancestor of wallet (unusual config).
+      separate — no tree overlap; convert only touches listed pool groups.
+    """
+    pool_names = [(g.name or "").strip() or str(g.pk) for g in funding_groups]
+    if wallet is None:
+        return {
+            "in_plan_pool": False,
+            "pool_relation": "separate",
+            "pool_debit_names": pool_names,
+        }
+    fund_ids = {g.pk for g in funding_groups}
+    if wallet.pk in fund_ids:
+        return {
+            "in_plan_pool": True,
+            "pool_relation": "direct",
+            "pool_debit_names": pool_names,
+        }
+    wnorm = normalize_group_name(wallet.name)
+    for group in funding_groups:
+        if wnorm and normalize_group_name(group.name) == wnorm:
+            return {
+                "in_plan_pool": True,
+                "pool_relation": "direct",
+                "pool_debit_names": pool_names,
+            }
+    for group in funding_groups:
+        if wallet.pk in _group_ancestor_ids(group) and wallet.pk != group.pk:
+            return {
+                "in_plan_pool": False,
+                "pool_relation": "related_child_in_pool",
+                "pool_debit_names": pool_names,
+            }
+    wallet_anc = _group_ancestor_ids(wallet)
+    for group in funding_groups:
+        if group.pk in wallet_anc and group.pk != wallet.pk:
+            return {
+                "in_plan_pool": False,
+                "pool_relation": "related_parent_in_pool",
+                "pool_debit_names": pool_names,
+            }
+    return {
+        "in_plan_pool": False,
+        "pool_relation": "separate",
+        "pool_debit_names": pool_names,
+    }
+
+
+def plan_funding_pools_payload(
+    region: LuantiProtectedRegion,
+    *,
+    shop_wallet_group_id: int | None = None,
+    shop_wallet_name: str | None = None,
+) -> list[dict]:
+    """Ordered plan-funding groups for UI (same order as materialize debits)."""
+    rows: list[dict] = []
+    wnorm = normalize_group_name(shop_wallet_name)
+    for group in resolved_plan_funding_groups(region):
+        is_shop = False
+        if shop_wallet_group_id is not None and int(group.pk) == int(shop_wallet_group_id):
+            is_shop = True
+        elif wnorm and normalize_group_name(group.name) == wnorm:
+            is_shop = True
+        rows.append(
+            {
+                "group_id": group.pk,
+                "group_name": (group.name or "").strip() or str(group.pk),
+                "velos_spendable": int(group.velos_spendable or 0),
+                "is_shop_wallet": is_shop,
+            }
+        )
+    return rows
+
+
 def region_summary(region: LuantiProtectedRegion) -> dict:
     planned_qs = LuantiPlanBlock.objects.filter(
         region=region, status=LuantiPlanBlock.STATUS_PLANNED
@@ -110,6 +311,14 @@ def region_summary(region: LuantiProtectedRegion) -> dict:
     materialized = LuantiPlanBlock.objects.filter(
         region=region, status=LuantiPlanBlock.STATUS_MATERIALIZED
     ).count()
+    pool_total = available_velos_for_region(region)
+    top = region.effective_top_group()
+    region_top_group = None
+    if top is not None:
+        region_top_group = {
+            "group_id": top.pk,
+            "group_name": (top.name or "").strip() or str(top.pk),
+        }
     return {
         "region_id": region.region_id,
         "region_pk": region.pk,
@@ -117,7 +326,11 @@ def region_summary(region: LuantiProtectedRegion) -> dict:
         "planned_count": count,
         "materialized_count": materialized,
         "total_velos_planned": total_velos,
-        "available_velos": available_velos_for_region(region),
+        "available_velos": pool_total,
+        "available_pool_velos": pool_total,
+        "funding_pools": plan_funding_pools_payload(region),
+        "funding_include_master_top": bool(region.plan_funding_include_master_top),
+        "region_top_group": region_top_group,
     }
 
 
@@ -196,43 +409,40 @@ def _materialize_credit_item_name(block: LuantiPlanBlock) -> str:
     return shop_credit_item_name((block.target_name or "").strip())
 
 
-def _grant_materialize_purchase_credit(*, block: LuantiPlanBlock, fallback_login: str) -> bool:
-    """Sell-back credit for one materialized block (region TOP, else placer wallet)."""
-    from luanti.services.shop import resolve_group_for_player
-
+def _grant_materialize_purchase_credit(
+    *,
+    block: LuantiPlanBlock,
+    fallback_login: str,
+    debits: list[tuple[Group, int]] | None = None,
+    actor_group: Group | None = None,
+) -> tuple[bool, Group | None]:
+    """Sell-back credit for one materialized block; returns (granted, credit_group)."""
     if block.purchase_credit_granted:
         logger.info(
             "[plan] materialize purchase_credit skipped block_id=%s item=%s reason=already_granted",
             block.pk,
             _materialize_credit_item_name(block),
         )
-        return False
+        return False, None
     item_name = _materialize_credit_item_name(block)
     if not item_name:
         logger.warning(
             "[plan] materialize purchase_credit skipped block_id=%s reason=missing_item",
             block.pk,
         )
-        return False
-    group = None
-    region = block.region
-    if region is not None:
-        group = region.effective_top_group()
-    if group is None:
-        owner = (block.placed_by or fallback_login or "").strip()
-        if not owner:
-            logger.warning(
-                "[plan] materialize purchase_credit skipped block_id=%s reason=no_region_top_or_owner",
-                block.pk,
-            )
-            return False
-        group = resolve_group_for_player(owner)
+        return False, None
+    group = _credit_group_for_materialize(
+        block=block,
+        fallback_login=fallback_login,
+        debits=debits,
+        actor_group=actor_group,
+    )
     if group is None:
         logger.warning(
             "[plan] materialize purchase_credit skipped block_id=%s reason=no_credit_group",
             block.pk,
         )
-        return False
+        return False, None
     credit, _ = LuantiShopPurchaseCredit.objects.select_for_update().get_or_create(
         group=group,
         item_name=item_name,
@@ -248,7 +458,7 @@ def _grant_materialize_purchase_credit(*, block: LuantiPlanBlock, fallback_login
         group.pk,
         item_name,
     )
-    return True
+    return True, group
 
 
 def register_placed_block(
@@ -317,19 +527,74 @@ def summary_for_player(
     z: int | None = None,
 ) -> dict:
     region = None
-    if region_id:
-        region = LuantiProtectedRegion.objects.filter(region_id=region_id, enabled=True).first()
-    if region is None and x is not None and y is not None and z is not None:
-        region = resolve_build_region_at(world=world, x=x, y=y, z=z)
-    if region is None:
-        raise PlanError("no_region")
     if x is not None and y is not None and z is not None:
+        region = resolve_build_region_at(world=world, x=x, y=y, z=z)
+        if region is None:
+            raise PlanError("no_region")
         if not account_has_build_access_at(login_name, world=world, x=x, y=y, z=z):
             raise PlanError("not_member")
-    elif not account_is_region_member(login_name, region):
-        raise PlanError("not_member")
+    elif region_id:
+        region = LuantiProtectedRegion.objects.filter(region_id=region_id, enabled=True).first()
+        if region is None:
+            raise PlanError("no_region")
+        if not account_is_region_member(login_name, region):
+            raise PlanError("not_member")
+    else:
+        raise PlanError("no_region")
     payload = region_summary(region)
     payload["ok"] = True
+    # Session shop wallet vs plan pool (convert tab).
+    from luanti.models import LuantiAccount
+    from luanti.services.session_control import get_active_session
+    from luanti.services.wallet import wallet_payload
+
+    wallet_gid: int | None = None
+    player_wallet: dict | None = None
+    account = (
+        LuantiAccount.objects.filter(login_name__iexact=(login_name or "").strip())
+        .select_related("assigned_to_group", "active_wallet")
+        .first()
+    )
+    if account is not None:
+        session = get_active_session(account.login_name)
+        wp = wallet_payload(account, session=session)
+        wallet_gid = wp.get("wallet_group_id")
+        if wallet_gid is not None:
+            wallet_gid = int(wallet_gid)
+        wallet_name = (wp.get("wallet_group_name") or "").strip()
+        funding_groups = resolved_plan_funding_groups(region)
+        wallet_group = None
+        if wallet_gid is not None:
+            wallet_group = Group.objects.filter(pk=wallet_gid).first()
+        pool_status = shop_wallet_plan_pool_status(wallet_group, funding_groups)
+        payload["funding_pools"] = plan_funding_pools_payload(
+            region,
+            shop_wallet_group_id=wallet_gid,
+            shop_wallet_name=wallet_name,
+        )
+        in_pool = pool_status["in_plan_pool"]
+        pool_relation = pool_status["pool_relation"]
+        if not in_pool and wallet_gid is not None:
+            for row in payload["funding_pools"]:
+                if int(row["group_id"]) == int(wallet_gid) or row.get("is_shop_wallet"):
+                    in_pool = True
+                    pool_relation = "direct"
+                    break
+        player_wallet = {
+            "group_id": wallet_gid,
+            "group_name": wallet_name,
+            "velos_spendable": int(wp.get("velos_spendable") or 0),
+            "in_plan_pool": in_pool,
+            "pool_relation": pool_relation,
+            "pool_debit_names": pool_status["pool_debit_names"],
+        }
+    payload["player_wallet"] = player_wallet
+    if account is not None:
+        payload["available_convert_velos"] = manual_convert_spendable_velos(
+            region, account.login_name
+        )
+    else:
+        payload["available_convert_velos"] = payload.get("available_velos") or 0
     return payload
 
 
@@ -342,6 +607,10 @@ def materialize_blocks(
     max_count: int = 1,
     mode: str = "manual",
     max_velos_budget: int | None = None,
+    world: str | None = None,
+    x: int | None = None,
+    y: int | None = None,
+    z: int | None = None,
 ) -> dict:
     if not client_tx_id:
         raise PlanError("missing_client_tx_id")
@@ -359,7 +628,17 @@ def materialize_blocks(
         session = get_active_session(login_name.strip())
         if session is None or session.mode != LuantiAccount.MODE_BUILD:
             raise PlanError("convert_requires_build")
-    if mode != "auto" and not account_is_region_member(login_name, region):
+        if x is None or y is None or z is None:
+            raise PlanError("convert_requires_position")
+        w = (world or "world").strip() or "world"
+        at_region = resolve_build_region_at(world=w, x=int(x), y=int(y), z=int(z))
+        if at_region is None or at_region.pk != region.pk:
+            raise PlanError("no_region")
+        if not account_has_build_access_at(
+            login_name, world=w, x=int(x), y=int(y), z=int(z)
+        ):
+            raise PlanError("not_member")
+    elif mode != "auto" and not account_is_region_member(login_name, region):
         raise PlanError("not_member")
 
     max_count = max(1, min(int(max_count or 1), 256))
@@ -384,7 +663,9 @@ def materialize_blocks(
     if not blocks:
         return {"ok": True, "blocks": [], "converted": 0}
 
-    funding_groups = resolved_plan_funding_groups(region)
+    funding_groups, actor_group = resolve_materialize_funding_groups(
+        region, login_name, mode=mode
+    )
     if not funding_groups:
         raise PlanError("no_funding_pool")
 
@@ -410,12 +691,16 @@ def materialize_blocks(
             raise
         block.status = LuantiPlanBlock.STATUS_MATERIALIZED
         block.save(update_fields=["status", "updated_at"])
-        credit_granted = _grant_materialize_purchase_credit(
-            block=block, fallback_login=login_name
+        credit_granted, credit_group = _grant_materialize_purchase_credit(
+            block=block,
+            fallback_login=login_name,
+            debits=debits,
+            actor_group=actor_group,
         )
         primary_group = debits[0][0] if debits else None
         logger.info(
-            "[plan] materialize block_id=%s pos=%s,%s,%s price=%s debited=%s credit_granted=%s funding_group_id=%s",
+            "[plan] materialize block_id=%s pos=%s,%s,%s price=%s debited=%s credit_granted=%s "
+            "debit_group_id=%s credit_group_id=%s",
             block.pk,
             block.x,
             block.y,
@@ -424,12 +709,14 @@ def materialize_blocks(
             sum(d for _, d in debits),
             credit_granted,
             primary_group.pk if primary_group else None,
+            credit_group.pk if credit_group else None,
         )
         debited_total += sum(d for _, d in debits)
         LuantiPlanMaterializeTransaction.objects.create(
             client_tx_id=tx_part,
             region=region,
             group=primary_group,
+            credit_group=credit_group,
             world=block.world,
             x=block.x,
             y=block.y,

@@ -116,15 +116,25 @@ Optional first step: **Import Minecraft shop** (mirrors MC categories/prices; do
 | Mode | `/mccshop` |
 |------|------------|
 | **Play** / **Watch** | Catalog view only (no buy/sell) |
-| **Plan** | Plan buys (0 Velos); tabs **Plan** / **Remove** (discard unplaced plan items from inventory, no Velos) |
-| **Build** | Real buys + sell (purchase credit) |
+| **Plan** | Plan buys (0 Velos); tabs **Plan** / **Remove**; in-world **holograms only** (no dig/place of real blocks) |
+| **Build** | Real buys + sell (purchase credit) + **Umwandeln** tab (holograms, plan pool, auto-convert) |
 
 ## Plan mode (holograms / convert)
 
 - **Ingame shop (kid-facing DE copy):** plan session explains holograms / 0 Velos; wallet line **Kauf später von:** (“debited later”). Browse without release: friendly hint instead of admin jargon.
 - **Shop wallet** (`Velos:` in `/mccshop`) = spendable Velos on the resolved group. In **build** mode, to the right of the **Sell** tab: **Abbuchung:** / **Gutschrift:** plus wallet group name per tab (same group). An active **session** may pin `wallet_group` (Admin session control).
-- **Materialization** (`/mccplan convert`, auto-convert) debits the region **plan Velo pool** (Admin: protected region → plan funding groups). Cycling must credit Velos to one of those groups, not only the shop wallet.
-- Session **Plan**: shop delivers hologram items; placement only in assigned build regions. Unplaced plan items: **`/mccshop` → Remove tab** (kid UI); or `/mccplan discard hand|all`. Placed holograms: dig, `/mccplan remove`, `/mccplan clear`.
+- **Manual materialization** (`/mccshop` → **Umwandeln**, `/mccplan convert`) debits in order: (1) **converting player’s shop wallet** (session), even if not listed in admin plan funding groups; (2) the region **plan Velo pool**. Plan summary field `available_convert_velos` includes pool plus non-pool wallet velos for the button enable logic.
+- **Auto / live conversion** (cycling, admin START, no player button): **plan pool only** — no actor-wallet-first rule.
+- **Sell credit after convert:** binary rule — **100% from actor wallet** on manual convert → purchase credit on **that group**; **any** plan-pool velo in the mix → credit on **regional effective TOP**. Incentivizes self-funding; no proportional split. Admin materialize transactions log `credit_group`.
+- Direct build buy/sell still uses the shop wallet. Cycling must credit Velos to a plan funding group for pool-backed converts.
+- **Sell own purchase credit only (TOP lock):** Admin → **Groups** → TOP group → **Luanti Shop** → **Luanti: Verkauf nur eigenes Kaufguthaben (TOP)**. When enabled, child groups cannot use the TOP wallet’s purchase credit for sells (only credit on their own shop wallet). Default off (pooled TOP credit allowed as today). Use when several groups build together to prevent “sell using TOP credit, book Velos to our group”. Ingame tooltip: *TOP-Pool für eure Gruppe gesperrt* (DE UI).
+
+### Convert — kid-friendly explanation (DE UI strings)
+
+The ingame **Umwandeln** tab uses German copy aimed at children: own wallet first, then plan pool; sell credit goes to your group only if you paid the full block price yourself, otherwise regional TOP — see German section in `docs/de/admin/luanti.md` for the full story parents can read aloud.
+- Session **Plan**: hologram shop items; placement only in assigned build regions. **Real** nodes cannot be dug or placed in plan — **holograms only**. Real digging/building: **Build** session. Unplaced plan items: **`/mccshop` → Remove`**; or `/mccplan discard hand|all`. Placed holograms: dig, `/mccplan remove`, `/mccplan clear`.
+- **Tunnel/road (staff):** (1) **Build** — dig out, (2) **Plan** — place holograms, (3) **Build** — buy or convert (Velos).
+- **Plan holograms (recognition):** shape previews keep the real block texture (semi-transparent), not a uniform cyan tint. Inventory tooltip and block `infotext` use the **shop display name**. Optional client settings in `minetest.conf` / `luanti.conf`: `mcc_plan.holo_opacity` (default 165), `mcc_plan.holo_colorize_alpha` (0 = off), `mcc_plan.holo_border` (default `false`, optional edge highlight).
 - `/mccplan convert [n]` — manual convert (max 256 per call), **build session only**, when the pool has Velos.
 - **`/mccplan autoconvert on`** — **build** session: polls every 5s (configurable) and converts up to 4 blocks when pool Velos arrive (cycling).
 - **`/mccplan autoconvert off`** — stop the loop.
