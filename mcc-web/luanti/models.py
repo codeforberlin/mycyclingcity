@@ -154,7 +154,7 @@ class LuantiAccount(models.Model):
     MODE_WATCH = "watch"
     MODE_CHOICES = [
         (MODE_PLAY, _("Spielen")),
-        (MODE_PLAN, _("Planung")),
+        (MODE_PLAN, _("Planen")),
         (MODE_BUILD, _("Bauen")),
         (MODE_WATCH, _("Zuschauen")),
     ]
@@ -463,7 +463,7 @@ class LuantiPlayerInventory(models.Model):
         max_length=16,
         choices=[
             (LuantiAccount.MODE_PLAY, _("Spielen")),
-            (LuantiAccount.MODE_PLAN, _("Planung")),
+            (LuantiAccount.MODE_PLAN, _("Planen")),
             (LuantiAccount.MODE_BUILD, _("Bauen")),
         ],
         verbose_name=_("Modus"),
@@ -476,6 +476,12 @@ class LuantiPlayerInventory(models.Model):
     class Meta:
         verbose_name = _("Spieler-Inventar")
         verbose_name_plural = _("Spieler-Inventare")
+        permissions = [
+            (
+                "sell_luantiplayerinventory",
+                _("Spieler-Inventar verkaufen (Admin)"),
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["account", "mode"],

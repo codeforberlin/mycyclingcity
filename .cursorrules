@@ -74,7 +74,9 @@ This is a **Mono-Repo** containing two main sub-projects:
 - **Build Environments**: `heltec_wifi_lora_32_V3`, `heltec_wifi_lora_32_V2`, `wemos_d1_mini32`, `test_mode`, `native`
 
 ### Python/Django
-- **Virtual Environment**: Stored locally in user's home directory (not in project folder)
+- **Virtual Environment (canonical)**: `/data/appl/mcc/venv` — **always** use this venv for Django/`mcc-web` on this workstation (not `mcc-web/venv`, not ad-hoc `python3` from PATH unless the user explicitly requests another interpreter).
+  - Examples: `/data/appl/mcc/venv/bin/python`, `/data/appl/mcc/venv/bin/pytest`, `source /data/appl/mcc/venv/bin/activate`
+  - Covers: local PROD under `/data/appl/mcc/mcc-web`, NAS dev tree checks (`migrate`, `pytest`, `utils/deploy_production.py`), and Gunicorn workers (same venv).
 - **Project Path**: `/data/appl/mcc/mcc-web` (production; often a symlink to a versioned dir)
 - **Development Path**: `mcc-web/` (relative to repo root)
 - **Settings (source of truth for app config)**: `mcc-web/config/settings.py`
@@ -156,10 +158,9 @@ pio test -e native                  # Run unit tests
 ### Django Development
 ```bash
 cd mcc-web
-python manage.py runserver          # Run development server
-pytest api/tests/                   # Run tests
-make test                           # Run test suite
-python manage.py migrate            # Run migrations
+/data/appl/mcc/venv/bin/python manage.py runserver   # Dev server
+/data/appl/mcc/venv/bin/pytest api/tests/            # Tests (or luanti/tests/, etc.)
+/data/appl/mcc/venv/bin/python manage.py migrate    # Migrations
 ```
 
 ### Production deploy (`mcc-web`) — Gunicorn (CRITICAL)
@@ -170,7 +171,7 @@ After syncing or deploying **`mcc-web`** to production (e.g. `/data/appl/mcc/mcc
 /data/appl/mcc/mcc-web/scripts/mcc-web.sh restart
 ```
 
-Use `status` to verify afterward. Optional: run `utils/deploy_production.py` from the production tree before restart (migrate, backup).
+Use `status` to verify afterward. Optional: run `/data/appl/mcc/venv/bin/python utils/deploy_production.py` from the production tree before restart (migrate, backup).
 
 **Luanti Lua/mod changes** (`mcc-web/luanti_mod/` in NAS dev; PROD: rsync to `/data/appl/mcc/mcc-web/luanti_mod` via `scripts/sync_luanti_mod.sh` / `deploy_production.py`; game dir `/data/games/mcc/luanti/mods/` symlinks only via `link_luanti_mods.sh`) require **`luanti_server.sh restart`**, not Gunicorn.
 

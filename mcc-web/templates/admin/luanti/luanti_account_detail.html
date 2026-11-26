@@ -113,7 +113,7 @@
     <p>
       {% if account.is_active %}{% trans "Aktiv" %}{% else %}{% trans "Inaktiv" %}{% endif %}
       {% if account.server_op %}· {% trans "Server-OP" %}{% endif %}
-      · {% trans "Modus" %} {{ account.default_mode }}
+      · {% trans "Modus" %} {{ account.get_default_mode_display }}
     </p>
     <p>
       {% trans "Passwort" %}:
@@ -154,6 +154,22 @@
       · {% trans "Schritt ±" %}
       {% if account.session_add_minutes %}{{ account.session_add_minutes }}{% else %}—{% endif %}
     </p>
+
+    <div class="card-actions">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_default_mode">
+        <label for="default-mode-detail">{% trans "Standard-Modus" %}</label>
+        <select id="default-mode-detail" name="default_mode">
+          {% for value, label in mode_choices %}
+          <option value="{{ value }}"{% if account.default_mode == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="btn-row">
+          <button type="submit" class="primary">{% trans "Standard-Modus speichern" %}</button>
+        </div>
+      </form>
+    </div>
 
     <div class="card-actions">
       <form method="post">
@@ -215,6 +231,18 @@
 
     {% if can_set_password %}
     <div class="card-actions">
+      <form method="post" style="margin-bottom:12px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="provision_server_password">
+        <p class="muted" style="margin:0 0 8px;">
+          {% trans "Gespeichertes Passwort erneut auf den Luanti-Server schreiben (ohne Passwortänderung)." %}
+        </p>
+        <div class="btn-row">
+          <button type="submit" class="primary"{% if not account.login_password %} disabled{% endif %}>
+            {% trans "Auf Server synchronisieren" %}
+          </button>
+        </div>
+      </form>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="reset_password">
@@ -265,6 +293,9 @@
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">
               {% if can_edit_inventory %}
               <a href="{% url 'admin:luanti_account_inventory_edit' account.pk s.mode %}">{% trans "Bearbeiten" %}</a>
+              {% if can_sell_inventory and s.mode == "build" %}
+              · <a href="{% url 'admin:luanti_account_inventory_edit' account.pk s.mode %}#sell">{% trans "Verkaufen" %}</a>
+              {% endif %}
               {% else %}
               —
               {% endif %}

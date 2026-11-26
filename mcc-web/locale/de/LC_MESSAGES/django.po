@@ -4604,6 +4604,9 @@ msgstr ""
 msgid "Spielen"
 msgstr "Spieler"
 
+msgid "Planen"
+msgstr "Planen"
+
 msgid "Bauen"
 msgstr ""
 
@@ -11740,8 +11743,8 @@ msgstr ""
 msgid "Stichprobe im Spiel (/mccshop) bleibt maßgeblich."
 msgstr ""
 
-msgid "Plan-Hologramm (Planungsmodus):"
-msgstr ""
+msgid "Plan-Hologramm (Planen-Modus):"
+msgstr "Plan-Hologramm (Planen-Modus):"
 
 msgid "Form-Klon (Server-Test)"
 msgstr ""

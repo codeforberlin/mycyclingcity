@@ -229,11 +229,13 @@ function M.apply_catalog(payload, region_rows)
     local bounds_log = {}
     for _, region in ipairs(regions) do
         bounds_log[#bounds_log + 1] = string.format(
-            "%s[%d,%d→%d,%d]",
+            "%s[x:%d..%d y:%d..%d z:%d..%d]",
             region.region_id,
             region.min_x,
-            region.min_z,
             region.max_x,
+            region.min_y,
+            region.max_y,
+            region.min_z,
             region.max_z
         )
     end

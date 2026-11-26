@@ -4,7 +4,7 @@
 from django.core.management.base import BaseCommand
 
 from luanti.models import LuantiAccount
-from luanti.services.passwords import provision_account_password
+from luanti.services.passwords import bulk_provision_account_passwords
 
 
 class Command(BaseCommand):
@@ -19,14 +19,28 @@ class Command(BaseCommand):
             action="store_true",
             help="Also provision accounts marked inactive.",
         )
+        parser.add_argument(
+            "--only-unprovisioned",
+            action="store_true",
+            help="Skip accounts already marked password_provisioned in Django.",
+        )
 
     def handle(self, *args, **options):
         qs = LuantiAccount.objects.exclude(login_password="")
         if not options["include_inactive"]:
             qs = qs.filter(is_active=True)
-        count = 0
-        for account in qs.order_by("login_name"):
-            provision_account_password(account, account.login_password)
-            count += 1
-            self.stdout.write(f"queued SET_PASSWORD for {account.login_name}")
-        self.stdout.write(self.style.SUCCESS(f"Done. Queued {count} account(s)."))
+        if options["only_unprovisioned"]:
+            qs = qs.filter(password_provisioned=False)
+        result = bulk_provision_account_passwords(
+            qs.order_by("login_name"),
+            only_unprovisioned=options["only_unprovisioned"],
+        )
+        for name in result.queued_login_names:
+            self.stdout.write(f"queued SET_PASSWORD for {name}")
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Done. Queued {result.queued} account(s). "
+                f"Skipped: no_password={result.skipped_no_password}, "
+                f"already_ok={result.skipped_already_provisioned}."
+            )
+        )

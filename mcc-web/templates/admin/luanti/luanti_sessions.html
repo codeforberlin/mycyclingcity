@@ -147,7 +147,7 @@
                   <input type="hidden" name="session_id" value="{{ s.session_id }}">
                   <input type="hidden" name="action" value="set_mode">
                   <input type="hidden" name="mode" value="plan">
-                  <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'plan' %} is-current{% endif %}">{% trans "Planung" %}</button>
+                  <button type="submit" class="lt-btn lt-btn-mode{% if s.mode == 'plan' %} is-current{% endif %}">{% trans "Planen" %}</button>
                 </form>
                 <form method="post">
                   {% csrf_token %}
@@ -193,7 +193,7 @@
                 <input type="hidden" name="action" value="set_default_mode">
                 <input type="hidden" name="account_id" value="{{ a.pk }}">
                 <input type="hidden" name="mode" value="plan">
-                <button type="submit" class="lt-btn lt-btn-mode{% if a.default_mode == 'plan' %} is-current{% endif %}">{% trans "Planung" %}</button>
+                <button type="submit" class="lt-btn lt-btn-mode{% if a.default_mode == 'plan' %} is-current{% endif %}">{% trans "Planen" %}</button>
               </form>
               <form method="post">
                 {% csrf_token %}

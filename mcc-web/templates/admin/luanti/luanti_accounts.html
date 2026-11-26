@@ -86,6 +86,12 @@
       <select id="create-wallet" name="active_wallet" data-selected="">
         <option value="">— {% trans "Zuerst Heimat-Gruppe wählen" %}</option>
       </select>
+      <label for="create-default-mode">{% trans "Standard-Modus" %}</label>
+      <select id="create-default-mode" name="default_mode">
+        {% for value, label in mode_choices %}
+        <option value="{{ value }}"{% if value == "play" %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
       <label for="create-mode">{% trans "Wallet-Modus" %}</label>
       <select id="create-mode" name="wallet_mode">
         {% for value, label in wallet_mode_choices %}
@@ -105,6 +111,46 @@
       </div>
     </form>
   </div>
+
+  {% if can_set_password %}
+  <div class="card" style="margin-bottom:16px;">
+    <h3>{% trans "Passwörter auf Luanti-Server synchronisieren" %}</h3>
+    <p class="muted">
+      {% trans "Nach Welt-Restore oder neuem auth: gespeicherte Login-Passwörter erneut an den Server senden (SET_PASSWORD). Es ändern sich keine Passwörter in MCC." %}
+    </p>
+    {% if provision_pending_count %}
+    <p class="muted">
+      {% blocktrans count n=provision_pending_count %}
+      Im aktuellen Filter: {{ n }} aktiver Account mit Passwort, noch nicht auf dem Server.
+      {% plural %}
+      Im aktuellen Filter: {{ n }} aktive Accounts mit Passwort, noch nicht auf dem Server.
+      {% endblocktrans %}
+    </p>
+    {% endif %}
+  <p class="muted">
+      {% if bridge_online %}{% trans "Bridge: online" %}{% else %}{% trans "Bridge: offline (Warteschlange)" %}{% endif %}
+    </p>
+    <form method="post" onsubmit="return confirm('{% trans "Passwörter für alle Accounts im aktuellen Filter auf den Luanti-Server synchronisieren?" %}');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="provision_server_passwords">
+      <input type="hidden" name="top" value="{% if selected_top_id is not None %}{{ selected_top_id }}{% endif %}">
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      <input type="hidden" name="q" value="{{ search_q }}">
+      <label>
+        <input type="checkbox" name="only_unprovisioned" value="1" checked>
+        {% trans "Nur Accounts, die noch nicht auf dem Server gesetzt sind" %}
+      </label>
+      <br>
+      <label>
+        <input type="checkbox" name="include_inactive" value="1">
+        {% trans "Inaktive Accounts einbeziehen (wenn Filter „Alle“)" %}
+      </label>
+      <div class="btn-row" style="margin-top:10px;">
+        <button type="submit" class="primary">{% trans "Synchronisieren" %}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 
   <div class="card">
     <h3>{% trans "Accounts" %}</h3>

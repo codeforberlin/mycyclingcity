@@ -105,5 +105,71 @@
       </div>
     </form>
   </div>
+
+  {% if can_sell %}
+  <div class="card" style="margin-top:12px;" id="sell">
+    <h3>{% trans "Stacks verkaufen (Shop)" %}</h3>
+    <p class="muted">{% trans "Verkauf nutzt dieselben Regeln wie ingame: Kaufguthaben und Velos-Rückerstattung. Plan-Items sind ausgeschlossen. Unwiderruflich nach Bestätigung." %}</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="submit_sell" value="1">
+      <table class="mcc-inv-editor-table">
+        <thead>
+          <tr>
+            <th>{% trans "Verkaufen" %}</th>
+            <th>{% trans "Slot" %}</th>
+            <th>{% trans "Item" %}</th>
+            <th>{% trans "Stack" %}</th>
+            <th>{% trans "Menge verkaufen" %}</th>
+            <th>{% trans "Shop-Guthaben" %}</th>
+            <th>{% trans "Velos (max.)" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row, meta in editor_sell_pairs %}
+          {% if meta %}
+          <tr>
+            <td>
+              {% if meta.sellable %}
+              <input type="checkbox" name="row-{{ forloop.counter0 }}-sell">
+              {% else %}
+              <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <input type="hidden" name="row-{{ forloop.counter0 }}-slot" value="{{ meta.slot }}">
+              {{ meta.slot }}
+            </td>
+            <td><code>{{ row.name }}</code></td>
+            <td style="text-align:right;">{{ meta.count }}</td>
+            <td>
+              {% if meta.sellable %}
+              <input type="number" name="row-{{ forloop.counter0 }}-sell-qty" min="1" max="{{ meta.count }}" value="{{ meta.count }}" style="max-width:5rem;">
+              <input type="hidden" name="row-{{ forloop.counter0 }}-count" value="{{ meta.count }}">
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td>{{ meta.credit_label }}</td>
+            <td style="text-align:right;">
+              {% if meta.sellable %}{{ meta.expected_velos_full }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+      <p style="margin:12px 0;">
+        <label>
+          <input type="checkbox" name="sell_confirm" value="yes" required>
+          {% trans "Ich bestätige den unwiderruflichen Verkauf der ausgewählten Stacks." %}
+        </label>
+      </p>
+      <div class="btn-row">
+        <button type="submit" class="danger">{% trans "Auswahl verkaufen" %}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -31,6 +31,13 @@
       <td>
         {% if a.is_active %}<span class="badge ok">{% trans "Aktiv" %}</span>{% else %}<span class="badge muted">{% trans "Inaktiv" %}</span>{% endif %}
         {% if a.server_op %}<span class="badge op">{% trans "OP" %}</span>{% endif %}
+        {% if a.login_password %}
+          {% if a.password_provisioned %}
+          <span class="badge ok" title="{% trans 'Passwort auf Server' %}">{% trans "Auth OK" %}</span>
+          {% else %}
+          <span class="badge muted" title="{% trans 'Passwort noch nicht auf Server' %}">{% trans "Auth …" %}</span>
+          {% endif %}
+        {% endif %}
       </td>
       <td>
         <a href="{% url 'admin:luanti_account_detail' a.pk %}">{% trans "Bearbeiten" %}</a>

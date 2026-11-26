@@ -252,7 +252,7 @@ def format_inventory_table_html(
 
 def inventory_summaries_for_account(account: LuantiAccount) -> list[dict]:
     summaries = []
-    labels = dict(LuantiPlayerInventory._meta.get_field("mode").choices)
+    labels = dict(LuantiAccount.MODE_CHOICES)
     for mode in INVENTORY_MODES:
         inv = LuantiPlayerInventory.objects.filter(account=account, mode=mode).first()
         count = inventory_item_count(inv.payload if inv else None)

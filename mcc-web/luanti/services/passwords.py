@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 
 from django.utils import timezone
 
@@ -58,6 +60,41 @@ def provision_account_password(
         }
     )
     return raw
+
+
+@dataclass
+class BulkPasswordProvisionResult:
+    queued: int = 0
+    skipped_no_password: int = 0
+    skipped_permission: int = 0
+    skipped_already_provisioned: int = 0
+    queued_login_names: list[str] = field(default_factory=list)
+
+
+def bulk_provision_account_passwords(
+    accounts: Iterable[LuantiAccount],
+    *,
+    only_unprovisioned: bool = False,
+    can_provision: Callable[[LuantiAccount], bool] | None = None,
+) -> BulkPasswordProvisionResult:
+    """
+    Re-send SET_PASSWORD for existing login_password values (world restore / recovery).
+    """
+    result = BulkPasswordProvisionResult()
+    for account in accounts:
+        if can_provision is not None and not can_provision(account):
+            result.skipped_permission += 1
+            continue
+        if not (account.login_password or "").strip():
+            result.skipped_no_password += 1
+            continue
+        if only_unprovisioned and account.password_provisioned:
+            result.skipped_already_provisioned += 1
+            continue
+        provision_account_password(account, account.login_password)
+        result.queued += 1
+        result.queued_login_names.append(account.login_name)
+    return result
 
 
 def ack_password_provisioned(

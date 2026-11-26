@@ -4419,6 +4419,9 @@ msgstr "Pending Commands"
 msgid "Spielen"
 msgstr "Play"
 
+msgid "Planen"
+msgstr "Plan"
+
 msgid "Bauen"
 msgstr "Build"
 
@@ -11633,7 +11636,7 @@ msgstr ""
 msgid "Stichprobe im Spiel (/mccshop) bleibt maßgeblich."
 msgstr ""
 
-msgid "Plan-Hologramm (Planungsmodus):"
+msgid "Plan-Hologramm (Planen-Modus):"
 msgstr ""
 
 msgid "Form-Klon (Server-Test)"

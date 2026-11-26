@@ -37,6 +37,7 @@ from luanti.models import (
 )
 from luanti.services.arena import cart_command
 from luanti.services.bridge_connection import (
+    bridge_is_online,
     get_connected_server_ids,
     mark_all_bridges_disconnected,
 )
@@ -49,6 +50,7 @@ from luanti.services.permissions import (
     user_can_access_luanti_city,
     user_can_access_luanti_shop,
     user_can_change_luanti_player_inventory,
+    user_can_sell_luanti_player_inventory,
     user_can_manage_luanti_accounts,
     user_can_manage_luanti_sessions,
     user_can_manage_luanti_stations,
@@ -57,11 +59,19 @@ from luanti.services.permissions import (
     user_can_view_luanti_account_password,
     user_can_view_luanti_account_password_for,
 )
+from luanti.services.admin_inventory_sell import (
+    SELL_ERROR_MESSAGES,
+    AdminInventorySellError,
+    admin_sell_inventory_slots,
+    parse_sell_post,
+    sell_preview_rows,
+)
 from luanti.services.inventory_admin import (
     INVENTORY_ERROR_MESSAGES,
     InventoryAdminError,
     editor_rows_from_payload,
     format_inventory_table_html,
+    format_shop_credit_admin_label,
     inventory_summaries_for_account,
     live_push_status_message,
     normalize_mode,
@@ -296,8 +306,8 @@ def _luanti_top_groups_for_user(user):
     return list(top_qs), allowed_tops
 
 
-def _parse_luanti_accounts_top_filter(request, allowed_tops):
-    raw = (request.GET.get("top") or "").strip()
+def _parse_luanti_accounts_top_filter(params, allowed_tops):
+    raw = (params.get("top") or "").strip()
     if not raw:
         return None
     try:
@@ -348,8 +358,39 @@ def _luanti_accounts_list_redirect(request):
     return redirect(url)
 
 
+def _accounts_list_filters_from_mapping(mapping, allowed_tops) -> tuple:
+    selected_top_id = _parse_luanti_accounts_top_filter(mapping, allowed_tops)
+    search_q = (mapping.get("q") or "").strip()
+    status_filter = (mapping.get("status") or "all").strip()
+    if status_filter not in ("active", "inactive", "all"):
+        status_filter = "all"
+    return selected_top_id, search_q, status_filter
+
+
+def _provision_bridge_messages(request, *, queued: int) -> None:
+    if queued <= 0:
+        return
+    messages.success(
+        request,
+        _("%(count)s Passwort/Passwörter zur Übertragung an den Luanti-Server vorgemerkt.")
+        % {"count": queued},
+    )
+    if not bridge_is_online():
+        messages.warning(
+            request,
+            _(
+                "Bridge derzeit offline — Befehle liegen in der Warteschlange. "
+                "Luanti-Server starten und kurz warten, bis „Auf Server gesetzt“ erscheint."
+            ),
+        )
+
+
 def _luanti_account_detail_redirect(account_id: int):
     return redirect("admin:luanti_account_detail", account_id=account_id)
+
+
+def luanti_account_mode_choices():
+    return [(value, str(label)) for value, label in LuantiAccount.MODE_CHOICES]
 
 
 def _handle_luanti_account_post(request, account: LuantiAccount) -> bool:
@@ -359,6 +400,16 @@ def _handle_luanti_account_post(request, account: LuantiAccount) -> bool:
     from luanti.services.wallet import candidate_wallet_groups
 
     action = request.POST.get("action")
+    valid_modes = {value for value, _ in LuantiAccount.MODE_CHOICES}
+    if action == "set_default_mode":
+        mode = (request.POST.get("default_mode") or "").strip()
+        if mode not in valid_modes:
+            messages.error(request, _("Ungültiger Modus."))
+            return True
+        account.default_mode = mode
+        account.save(update_fields=["default_mode", "updated_at"])
+        messages.success(request, _("Standard-Modus gespeichert."))
+        return True
     if action == "set_flags":
         account.is_active = bool(request.POST.get("is_active"))
         account.server_op = bool(request.POST.get("server_op"))
@@ -390,6 +441,38 @@ def _handle_luanti_account_post(request, account: LuantiAccount) -> bool:
                 request,
                 _("Neues Passwort für %(name)s (bitte kopieren): %(pwd)s")
                 % {"name": account.login_name, "pwd": stored},
+            )
+        return True
+    if action == "provision_server_password":
+        if not user_can_set_luanti_account_password_for(request.user, account):
+            messages.error(
+                request,
+                _("Passwort synchronisieren ist für diesen Account nicht erlaubt."),
+            )
+            return True
+        if not (account.login_password or "").strip():
+            messages.error(
+                request,
+                _("Kein Passwort in MCC gespeichert — zuerst Passwort setzen."),
+            )
+            return True
+        provision_account_password(account, account.login_password)
+        log_luanti_password_action(
+            action="provision",
+            user_id=request.user.pk,
+            account=account,
+        )
+        messages.success(
+            request,
+            _("Passwort für %(name)s zur Übertragung an den Luanti-Server vorgemerkt.")
+            % {"name": account.login_name},
+        )
+        if not bridge_is_online():
+            messages.warning(
+                request,
+                _(
+                    "Bridge offline — Befehl liegt in der Warteschlange, bis der Server heartbeated."
+                ),
             )
         return True
     if action == "set_wallet":
@@ -508,10 +591,14 @@ def luanti_accounts(request):
                             _("Diese Heimat-Gruppe dürfen Sie nicht zuweisen."),
                         )
                     return _luanti_accounts_list_redirect(request)
+                valid_modes = {value for value, _ in LuantiAccount.MODE_CHOICES}
+                default_mode = (request.POST.get("default_mode") or "play").strip()
+                if default_mode not in valid_modes:
+                    default_mode = LuantiAccount.MODE_PLAY
                 defaults = {
                     "id_tag": id_tag or login_name,
                     "allowed_modes": ["play", "plan", "build", "watch"],
-                    "default_mode": "play",
+                    "default_mode": default_mode,
                     "is_active": request.POST.get("is_active") == "1",
                     "server_op": request.POST.get("server_op") == "1",
                     "wallet_mode": wallet_mode
@@ -559,11 +646,73 @@ def luanti_accounts(request):
                     messages.info(request, _("Account existiert bereits."))
                 return _luanti_account_detail_redirect(account.pk)
             return _luanti_accounts_list_redirect(request)
+        if action == "provision_server_passwords":
+            if not can_set_password:
+                messages.error(
+                    request,
+                    _("Keine Berechtigung zum Synchronisieren von Login-Passwörtern."),
+                )
+                return _luanti_accounts_list_redirect(request)
+            from luanti.services.password_audit import log_luanti_password_bulk_provision
+            from luanti.services.passwords import bulk_provision_account_passwords
+
+            selected_top_id, search_q, status_filter = _accounts_list_filters_from_mapping(
+                request.POST, allowed_tops
+            )
+            include_inactive = request.POST.get("include_inactive") == "1"
+            only_unprovisioned = request.POST.get("only_unprovisioned") == "1"
+            accounts = _luanti_accounts_queryset(
+                request.user,
+                selected_top_id=selected_top_id,
+                search_q=search_q,
+                status_filter=status_filter,
+            )
+            if not include_inactive and status_filter == "all":
+                accounts = accounts.filter(is_active=True)
+            result = bulk_provision_account_passwords(
+                accounts.order_by("login_name"),
+                only_unprovisioned=only_unprovisioned,
+                can_provision=lambda a: user_can_set_luanti_account_password_for(
+                    request.user, a
+                ),
+            )
+            log_luanti_password_bulk_provision(
+                user_id=request.user.pk,
+                queued=result.queued,
+                skipped_permission=result.skipped_permission,
+                skipped_no_password=result.skipped_no_password,
+                skipped_already_provisioned=result.skipped_already_provisioned,
+            )
+            if result.queued == 0:
+                messages.info(
+                    request,
+                    _("Keine Accounts zur Synchronisation ausgewählt (Filter oder bereits gesetzt)."),
+                )
+            else:
+                _provision_bridge_messages(request, queued=result.queued)
+            if result.skipped_permission:
+                messages.warning(
+                    request,
+                    _("%(n)s Account(s) übersprungen (keine Berechtigung).")
+                    % {"n": result.skipped_permission},
+                )
+            from django.http import QueryDict
+
+            redirect_params = QueryDict(mutable=True)
+            for key in ("top", "status", "q", "page"):
+                val = (request.POST.get(key) or "").strip()
+                if val:
+                    redirect_params[key] = val
+            url = reverse("admin:luanti_accounts")
+            if redirect_params:
+                return redirect(f"{url}?{redirect_params.urlencode()}")
+            return redirect(url)
         account_id = request.POST.get("account_id")
         if account_id and action in (
             "set_flags",
             "toggle",
             "reset_password",
+            "provision_server_password",
             "set_wallet",
             "set_session_limits",
         ):
@@ -576,11 +725,9 @@ def luanti_accounts(request):
         )
         return _luanti_accounts_list_redirect(request)
 
-    selected_top_id = _parse_luanti_accounts_top_filter(request, allowed_tops)
-    search_q = (request.GET.get("q") or "").strip()
-    status_filter = (request.GET.get("status") or "all").strip()
-    if status_filter not in ("active", "inactive", "all"):
-        status_filter = "all"
+    selected_top_id, search_q, status_filter = _accounts_list_filters_from_mapping(
+        request.GET, allowed_tops
+    )
 
     accounts = _luanti_accounts_queryset(
         request.user,
@@ -606,6 +753,12 @@ def luanti_accounts(request):
     if "page" in query_params:
         del query_params["page"]
 
+    provision_pending_count = (
+        accounts.exclude(login_password="")
+        .filter(password_provisioned=False, is_active=True)
+        .count()
+    )
+
     return render(
         request,
         "admin/luanti/luanti_accounts.html",
@@ -621,11 +774,14 @@ def luanti_accounts(request):
             "list_query": query_params.urlencode(),
             "leaves_by_home": leaves_by_home_payload(top_groups),
             "wallet_mode_choices": LuantiAccount.WALLET_MODE_CHOICES,
+            "mode_choices": luanti_account_mode_choices(),
             "can_set_password": can_set_password,
             "require_home_top": allowed_tops is not None,
             "create_default_top_id": selected_top_id
             if selected_top_id and selected_top_id != LUANTI_TOP_UNASSIGNED
             else None,
+            "bridge_online": bridge_is_online(),
+            "provision_pending_count": provision_pending_count,
         },
     )
 
@@ -660,6 +816,7 @@ def luanti_account_detail(request, account_id: int):
             "top_groups": top_groups,
             "leaves_by_home": leaves_by_home_payload(top_groups),
             "wallet_mode_choices": LuantiAccount.WALLET_MODE_CHOICES,
+            "mode_choices": luanti_account_mode_choices(),
             "can_view_password": user_can_view_luanti_account_password_for(
                 request.user, account
             ),
@@ -669,6 +826,7 @@ def luanti_account_detail(request, account_id: int):
             "require_home_top": operator_session_top_ids(request.user) is not None,
             "inventory_summaries": inventory_summaries_for_account(account),
             "can_edit_inventory": can_edit_inventory,
+            "can_sell_inventory": user_can_sell_luanti_player_inventory(request.user),
         },
     )
 
@@ -685,24 +843,115 @@ def luanti_account_inventory_edit(request, account_id: int, mode: str):
     inv = get_or_create_inventory(account, mode)
     labels = dict(inv._meta.get_field("mode").choices)
     mode_label = str(labels.get(mode, mode))
+    can_sell = user_can_sell_luanti_player_inventory(request.user) and (
+        mode == LuantiAccount.MODE_BUILD
+    )
 
     if request.method == "POST":
-        try:
-            rows = parse_inventory_post(request.POST)
-            inv, pushed = save_player_inventory(inv, rows)
-            messages.success(request, live_push_status_message(pushed, inv))
-            return redirect(
-                "admin:luanti_account_inventory_edit",
-                account_id=account.pk,
-                mode=mode,
-            )
-        except InventoryAdminError as exc:
-            messages.error(
-                request,
-                INVENTORY_ERROR_MESSAGES.get(exc.code, str(exc)),
-            )
+        if request.POST.get("submit_sell"):
+            if not can_sell:
+                messages.error(request, _("Keine Berechtigung zum Verkauf."))
+            elif request.POST.get("sell_confirm") != "yes":
+                messages.error(
+                    request,
+                    SELL_ERROR_MESSAGES.get("confirm_required"),
+                )
+            else:
+                try:
+                    selections = parse_sell_post(request.POST)
+                    result = admin_sell_inventory_slots(
+                        inv=inv,
+                        selections=selections,
+                        operator_user=request.user,
+                    )
+                    inv = result["inv"]
+                    consumed = result["consumed"]
+                    rejected = result["rejected"]
+                    if consumed:
+                        msg = _(
+                            "Verkauft: %(n)s Stack(s), %(velos)s Velos gutgeschrieben"
+                            " (Wallet: %(wallet)s)."
+                        ) % {
+                            "n": len(consumed),
+                            "velos": result["refunded_total"],
+                            "wallet": result["wallet_group_name"] or "—",
+                        }
+                        if result["pushed"]:
+                            msg = _("%(msg)s %(live)s") % {
+                                "msg": msg,
+                                "live": _("Live an verbundenen Spieler übertragen."),
+                            }
+                        messages.success(request, msg)
+                    elif not rejected:
+                        messages.warning(
+                            request,
+                            SELL_ERROR_MESSAGES.get("nothing_selected"),
+                        )
+                    for row in rejected:
+                        messages.warning(
+                            request,
+                            _("Slot %(slot)s (%(item)s): %(reason)s")
+                            % {
+                                "slot": row.get("slot", "?"),
+                                "item": row.get("item_name") or "—",
+                                "reason": row.get("label") or row.get("reason"),
+                            },
+                        )
+                    return redirect(
+                        "admin:luanti_account_inventory_edit",
+                        account_id=account.pk,
+                        mode=mode,
+                    )
+                except AdminInventorySellError as exc:
+                    messages.error(
+                        request,
+                        SELL_ERROR_MESSAGES.get(exc.code, str(exc)),
+                    )
+        else:
+            try:
+                rows = parse_inventory_post(request.POST)
+                inv, pushed = save_player_inventory(inv, rows)
+                messages.success(request, live_push_status_message(pushed, inv))
+                return redirect(
+                    "admin:luanti_account_inventory_edit",
+                    account_id=account.pk,
+                    mode=mode,
+                )
+            except InventoryAdminError as exc:
+                messages.error(
+                    request,
+                    INVENTORY_ERROR_MESSAGES.get(exc.code, str(exc)),
+                )
 
     editor_rows = editor_rows_from_payload(inv.payload)
+    sell_meta_by_index: list[dict | None] = []
+    if can_sell:
+        preview = sell_preview_rows(account, inv.payload)
+        by_slot = {int(r["slot"]): r for r in preview if r.get("slot") is not None}
+        for er in editor_rows:
+            if not (er.get("name") or "").strip():
+                sell_meta_by_index.append(None)
+                continue
+            try:
+                slot = int(er.get("slot") or 0)
+            except (TypeError, ValueError):
+                slot = 0
+            pr = by_slot.get(slot) or {}
+            hint = pr.get("sell_hint") or {}
+            sell_meta_by_index.append(
+                {
+                    "slot": slot,
+                    "is_plan": pr.get("is_plan", False),
+                    "sellable": bool(hint.get("sellable")) and not pr.get("is_plan"),
+                    "credit_label": format_shop_credit_admin_label(hint),
+                    "expected_velos_full": pr.get("expected_velos_full", 0),
+                    "buy_price_velos": int(hint.get("buy_price_velos") or 0),
+                    "count": int(er.get("count") or 1),
+                }
+            )
+    else:
+        sell_meta_by_index = [None] * len(editor_rows)
+
     return render(
         request,
         "admin/luanti/luanti_account_inventory_edit.html",
@@ -715,6 +964,8 @@ def luanti_account_inventory_edit(request, account_id: int, mode: str):
             "inv": inv,
             "editor_rows": editor_rows,
             "preview_table": format_inventory_table_html(inv.payload, account=account),
+            "can_sell": can_sell,
+            "editor_sell_pairs": list(zip(editor_rows, sell_meta_by_index, strict=False)),
         },
     )
 

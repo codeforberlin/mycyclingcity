@@ -294,3 +294,82 @@ def test_scoped_helpers(tops, luanti_admin_operator):
     assert user_can_set_luanti_account_password_for(luanti_admin_operator, acc_a)
     assert not user_can_view_luanti_account_password_for(luanti_admin_operator, acc_b)
     assert not user_can_set_luanti_account_password_for(luanti_admin_operator, acc_b)
+
+
+@pytest.mark.django_db
+def test_bulk_provision_server_passwords_scoped(client, luanti_admin_operator, tops):
+    from luanti.models import LuantiPendingCommand
+
+    top_a, top_b = tops
+    acc_a = LuantiAccount.objects.create(
+        login_name="sync_a",
+        id_tag="sync_a",
+        login_password="PassA1",
+        assigned_to_group=top_a,
+        password_provisioned=False,
+    )
+    LuantiAccount.objects.create(
+        login_name="sync_b",
+        id_tag="sync_b",
+        login_password="PassB1",
+        assigned_to_group=top_b,
+        password_provisioned=False,
+    )
+    before = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).count()
+    client.force_login(luanti_admin_operator)
+    url = reverse("admin:luanti_accounts")
+    response = client.post(
+        url,
+        {
+            "action": "provision_server_passwords",
+            "status": "all",
+            "only_unprovisioned": "1",
+        },
+    )
+    assert response.status_code == 302
+    after = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).count()
+    assert after == before + 1
+    pending = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).order_by("-id").first()
+    assert pending.payload["type"] == "SET_PASSWORD"
+    assert pending.payload["player"] == acc_a.login_name
+    acc_a.refresh_from_db()
+    assert acc_a.password_provisioned is False
+    assert acc_a.login_password == "PassA1"
+
+
+@pytest.mark.django_db
+def test_operator_bulk_provision_rejected(client, operator_user, account_with_password):
+    client.force_login(operator_user)
+    url = reverse("admin:luanti_accounts")
+    response = client.post(
+        url,
+        {"action": "provision_server_passwords", "status": "all"},
+    )
+    assert response.status_code == 302
+    content = client.get(url).content.decode()
+    assert "provision_server_passwords" not in content
+    assert "Passwörter auf Luanti-Server synchronisieren" not in content
+
+
+@pytest.mark.django_db
+def test_account_detail_provision_server_password(client, luanti_admin_operator, tops):
+    from luanti.models import LuantiPendingCommand
+
+    top_a, _ = tops
+    account = LuantiAccount.objects.create(
+        login_name="sync_detail",
+        id_tag="sync_detail",
+        login_password="KeepMe1",
+        assigned_to_group=top_a,
+        password_provisioned=True,
+    )
+    before = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).count()
+    client.force_login(luanti_admin_operator)
+    url = reverse("admin:luanti_account_detail", args=[account.pk])
+    response = client.post(url, {"action": "provision_server_password"})
+    assert response.status_code == 302
+    after = LuantiPendingCommand.objects.filter(delivered_at__isnull=True).count()
+    assert after == before + 1
+    account.refresh_from_db()
+    assert account.login_password == "KeepMe1"
+    assert account.password_provisioned is False

@@ -123,6 +123,11 @@ class LuantiAccountAdmin(admin.ModelAdmin):
             kwargs["empty_label"] = _("—")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    def formfield_for_choice_field(self, db_field, request, **kwargs):
+        if db_field.name == "default_mode":
+            kwargs["choices"] = LuantiAccount.MODE_CHOICES
+        return super().formfield_for_choice_field(db_field, request, **kwargs)
+
     @admin.display(description=_("Heimat-Gruppe"), ordering="assigned_to_group__name")
     def assigned_to_group_link(self, obj):
         group = obj.assigned_to_group
@@ -165,6 +170,11 @@ class LuantiSessionAdmin(admin.ModelAdmin):
     list_filter = ("status", "mode", "source")
     search_fields = ("login_name",)
 
+    def formfield_for_choice_field(self, db_field, request, **kwargs):
+        if db_field.name == "mode":
+            kwargs["choices"] = LuantiAccount.MODE_CHOICES
+        return super().formfield_for_choice_field(db_field, request, **kwargs)
+
 
 @admin.register(LuantiPlayerInventory)
 class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
@@ -190,6 +200,11 @@ class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
         "editor_link",
     )
     fields = readonly_fields
+
+    def formfield_for_choice_field(self, db_field, request, **kwargs):
+        if db_field.name == "mode":
+            kwargs["choices"] = LuantiPlayerInventory._meta.get_field("mode").choices
+        return super().formfield_for_choice_field(db_field, request, **kwargs)
 
     class Media:
         css = {"all": ("admin/css/group_admin.css",)}

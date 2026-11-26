@@ -59,11 +59,12 @@ Unter **Luanti → Accounts**:
 - **Liste:** Filter nach **TOP-Gruppe** (wie bei Sessions), Textsuche (`Login`, RFID, Anzeigename), Status aktiv/inaktiv, Seiten à 25 Einträge. Superuser: zusätzlich Filter **Ohne TOP**.
 - **Anlegen** bleibt oben auf der Liste; Heimat-TOP wird vorausgewählt, wenn ein TOP-Filter aktiv ist.
 - **Bearbeiten** öffnet die **Detailseite** pro Account (Wallet, Session-Dauer, Flags, Passwort).
+- **Spieler-Inventar (Admin):** Pro Modus (`play` / `plan` / `build`) Inventar ansehen und bearbeiten (`change_luantiplayerinventory`). Bei **Bauen** optional **Stacks verkaufen** (`sell_luantiplayerinventory`, Preset `luanti_admin`): dieselben Shop-Regeln wie ingame (Kaufguthaben, Velos-Rückerstattung, TOP-Sperre `luanti_shop_sell_own_wallet_credit_only`). Plan-Items sind nicht verkaufbar. Nach Verkauf wird das DB-Inventar angepasst und bei passender Online-Session per `SET_INVENTORY` live synchronisiert.
 
 ### Login-Passwörter (Luanti Client)
 
 - Passwörter werden **ausschließlich** in MCC verwaltet und per Bridge (`SET_PASSWORD`) auf den Luanti-Server gespiegelt. Status **„Auf Server gesetzt“** (`password_provisioned`) erst nach Bridge-ACK.
-- Nach Deploy oder Welt-Restore: `python manage.py provision_all_luanti_passwords` (Bridge muss laufen).
+- Nach Deploy oder Welt-Restore: **Luanti → Accounts** → *Passwörter auf Luanti-Server synchronisieren* (Filter beachten), oder pro Account auf der Detailseite *Auf Server synchronisieren*. Alternativ CLI: `python manage.py provision_all_luanti_passwords` (Bridge muss laufen).
 - Unbekannte / nicht provisionierte Namen: Client sieht einen **Abbruch-Hinweis** (Registrierung deaktiviert, zentral in MCC). **Falsches Passwort:** Standard-Meldung des Luanti-Clients (vom Engine, nicht anpassbar).
 - Empfohlen in `minetest.conf`: `enable_player_registration = false`; optional `motd` mit Hinweis auf zentrale Account-Verwaltung.
 - **Superuser:** alle Accounts, Anzeigen und Setzen.

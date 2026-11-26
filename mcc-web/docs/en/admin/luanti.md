@@ -59,11 +59,12 @@ Under **Luanti → Accounts**:
 - **List:** filter by **TOP group** (same as Sessions), text search (login, RFID, display name), active/inactive status, 25 rows per page. Superusers also get **No TOP** filter.
 - **Create** stays at the top of the list; home TOP is pre-selected when a TOP filter is active.
 - **Edit** opens the **detail page** per account (wallet, session duration, flags, password).
+- **Player inventory (admin):** View and edit per mode (`play` / `plan` / `build`) with `change_luantiplayerinventory`. For **build** mode, **sell stacks** with `sell_luantiplayerinventory` (preset `luanti_admin`): same shop rules as in-game (purchase credit, Velos refund, TOP flag `luanti_shop_sell_own_wallet_credit_only`). Plan items cannot be sold. The DB inventory is updated and pushed live via `SET_INVENTORY` when the player is online in matching mode.
 
 ### Login passwords (Luanti client)
 
 - Passwords are managed **only** in MCC and mirrored to the Luanti server via `SET_PASSWORD`. **“Provisioned on server”** (`password_provisioned`) is set only after a bridge ACK.
-- After deploy or world restore: `python manage.py provision_all_luanti_passwords` (bridge must be running).
+- After deploy or world restore: **Luanti → Accounts** → *Sync passwords to Luanti server* (respect filters), or per account on the detail page *Sync to server*. CLI alternative: `python manage.py provision_all_luanti_passwords` (bridge must be running).
 - Unknown / unprovisioned names: client disconnect reason explains central MCC account management. **Wrong password:** standard Luanti client message (engine default).
 - Recommended in `minetest.conf`: `enable_player_registration = false`; optional `motd` pointing to MCC account management.
 - **Superuser:** all accounts; view and set passwords.

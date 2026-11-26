@@ -540,6 +540,7 @@ def shop_sell(
     item_id: int | None = None,
     quantity: int,
     client_tx_id: str,
+    require_active_build_session: bool = True,
 ) -> dict:
     if LuantiShopTransaction.objects.filter(client_tx_id=client_tx_id).exists():
         tx = LuantiShopTransaction.objects.get(client_tx_id=client_tx_id)
@@ -552,8 +553,9 @@ def shop_sell(
             "refunded": int(tx.velos_delta),
             "take": [{"item_name": tx.item_name, "count": tx.quantity}],
         }
-    session = _active_shop_session(login_name)
-    _assert_shop_real_session(session)
+    if require_active_build_session:
+        session = _active_shop_session(login_name)
+        _assert_shop_real_session(session)
     item = None
     if item_id is not None:
         item = (
@@ -607,6 +609,7 @@ def shop_sell_batch(
     login_name: str,
     items: list,
     client_tx_id: str,
+    require_active_build_session: bool = True,
 ) -> dict:
     """Sell multiple stacks; consume purchase credit partially per item.
 
@@ -640,8 +643,9 @@ def shop_sell_batch(
             "rejected": [],
         }
 
-    session = _active_shop_session(login_name)
-    _assert_shop_real_session(session)
+    if require_active_build_session:
+        session = _active_shop_session(login_name)
+        _assert_shop_real_session(session)
     group = resolve_group_for_player(login_name)
     if group is None:
         raise ShopError("no_group")

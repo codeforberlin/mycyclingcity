@@ -1360,7 +1360,7 @@ local function build_mode_is_protected(pos, name)
     local member_here = false
     for _, region in ipairs(protected_regions) do
         if region.protect_build and pos_in_region(pos, region) then
-            if region.members[key] then
+            if account_is_region_member(key, region) then
                 member_here = true
                 break
             end
@@ -1434,8 +1434,14 @@ local function install_play_mode_world_protection()
             if build_mode_is_protected(pos, name) then
                 return true
             end
-            if mode_here == "plan" and not plan_node_is_hologram(core.get_node(pos).name) then
-                return true
+            -- Plan: dig/replace only holograms; allow placing into air (mcc_plan converts on_placenode).
+            if mode_here == "plan" then
+                local existing = core.get_node(pos).name
+                if existing ~= "air" and existing ~= "ignore" then
+                    if not plan_node_is_hologram(existing) then
+                        return true
+                    end
+                end
             end
         end
         return old_is_protected(pos, name)

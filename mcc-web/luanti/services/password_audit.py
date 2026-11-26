@@ -25,3 +25,22 @@ def log_luanti_password_action(
         account.login_name,
         account.assigned_to_group_id,
     )
+
+
+def log_luanti_password_bulk_provision(
+    *,
+    user_id: int | None,
+    queued: int,
+    skipped_permission: int = 0,
+    skipped_no_password: int = 0,
+    skipped_already_provisioned: int = 0,
+) -> None:
+    logger.info(
+        "luanti_password_action action=bulk_provision user_id=%s queued=%s "
+        "skipped_permission=%s skipped_no_password=%s skipped_already_provisioned=%s",
+        user_id,
+        queued,
+        skipped_permission,
+        skipped_no_password,
+        skipped_already_provisioned,
+    )
