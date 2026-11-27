@@ -1,4 +1,6 @@
 from django.contrib import admin, messages
+from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from minecraft.models import (
@@ -627,21 +629,6 @@ class MinecraftWorkerStateAdmin(admin.ModelAdmin):
         return False
 
 
-class MinecraftShopItemInline(admin.TabularInline):
-    model = MinecraftShopItem
-    extra = 1
-    fields = (
-        "esgui_item_key",
-        "esgui_item_loc",
-        "material",
-        "display_name",
-        "buy_price_velos",
-        "stack_size",
-        "sort_order",
-        "enabled",
-    )
-
-
 class ZeroVelosPriceFilter(admin.SimpleListFilter):
     title = _("Velos-Preis")
     parameter_name = "velos_price"
@@ -662,11 +649,44 @@ class ZeroVelosPriceFilter(admin.SimpleListFilter):
 
 @admin.register(MinecraftShopCategory)
 class MinecraftShopCategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "esgui_section", "sort_order", "enabled")
+    list_display = (
+        "name",
+        "slug",
+        "esgui_section",
+        "sort_order",
+        "enabled",
+        "admin_shop_items_count",
+    )
     list_filter = ("enabled",)
     search_fields = ("name", "slug", "esgui_section")
     prepopulated_fields = {"slug": ("name",)}
-    inlines = [MinecraftShopItemInline]
+    readonly_fields = ("admin_shop_items_link",)
+
+    def get_fields(self, request, obj=None):
+        fields = list(super().get_fields(request, obj))
+        if obj is not None and "admin_shop_items_link" not in fields:
+            fields.append("admin_shop_items_link")
+        return fields
+
+    @admin.display(description=_("Shop-Artikel"))
+    def admin_shop_items_count(self, obj: MinecraftShopCategory) -> int:
+        return obj.items.count()
+
+    @admin.display(description=_("Shop-Artikel"))
+    def admin_shop_items_link(self, obj: MinecraftShopCategory):
+        if not obj or not obj.pk:
+            return "—"
+        count = obj.items.count()
+        url = (
+            reverse("admin:minecraft_minecraftshopitem_changelist")
+            + f"?category__id__exact={obj.pk}"
+        )
+        return format_html(
+            '<a href="{}">{}</a> — {}',
+            url,
+            _("%(count)s Artikel in der Shop-Artikel-Liste bearbeiten") % {"count": count},
+            _("Filter: diese Kategorie."),
+        )
 
 
 @admin.register(MinecraftRconPreset)

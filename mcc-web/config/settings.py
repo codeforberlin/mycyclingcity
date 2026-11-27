@@ -77,6 +77,9 @@ CSRF_TRUSTED_ORIGINS = config(
 # AJAX dashboards (Bau-/Spieler-Sessions) expect JSON on CSRF failure, not HTML 403.
 CSRF_FAILURE_VIEW = 'config.csrf.csrf_failure'
 
+# Cap GET/POST field count (DoS mitigation). Staff admin still has large inlines (e.g. milestones).
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 3000
+
 # 2. SSL/HTTPS-Proxy-Header (CRITICAL for security)
 # This tells Django to trust the 'X-Forwarded-Proto' header,
 # which you set in your Apache configuration.

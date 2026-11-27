@@ -274,11 +274,6 @@ class LuantiPlayerInventoryAdmin(admin.ModelAdmin):
         )
 
 
-class LuantiShopItemInline(admin.TabularInline):
-    model = LuantiShopItem
-    extra = 0
-
-
 class LuantiShopItemLabelInline(admin.TabularInline):
     model = LuantiShopItemLabel
     extra = 0
@@ -293,9 +288,36 @@ class LuantiShopCategoryLabelInline(admin.TabularInline):
 
 @admin.register(LuantiShopCategory)
 class LuantiShopCategoryAdmin(admin.ModelAdmin):
-    list_display = ("slug", "name", "enabled", "sort_order")
+    list_display = ("slug", "name", "enabled", "sort_order", "admin_shop_items_count")
     search_fields = ("name", "slug", "labels__display_name")
-    inlines = [LuantiShopCategoryLabelInline, LuantiShopItemInline]
+    inlines = [LuantiShopCategoryLabelInline]
+    readonly_fields = ("admin_shop_items_link",)
+
+    def get_fields(self, request, obj=None):
+        fields = list(super().get_fields(request, obj))
+        if obj is not None and "admin_shop_items_link" not in fields:
+            fields.append("admin_shop_items_link")
+        return fields
+
+    @admin.display(description=_("Shop-Artikel"))
+    def admin_shop_items_count(self, obj: LuantiShopCategory) -> int:
+        return obj.items.count()
+
+    @admin.display(description=_("Shop-Artikel"))
+    def admin_shop_items_link(self, obj: LuantiShopCategory):
+        if not obj or not obj.pk:
+            return "—"
+        count = obj.items.count()
+        url = (
+            reverse("admin:luanti_luantishopitem_changelist")
+            + f"?category__id__exact={obj.pk}"
+        )
+        return format_html(
+            '<a href="{}">{}</a> — {}',
+            url,
+            _("%(count)s Artikel in der Shop-Artikel-Liste bearbeiten") % {"count": count},
+            _("Filter: diese Kategorie."),
+        )
 
 
 @admin.register(LuantiShopItem)

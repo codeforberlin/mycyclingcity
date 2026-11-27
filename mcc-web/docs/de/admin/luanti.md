@@ -104,6 +104,8 @@ Im Spiel: **Luanti-Client-Sprache** steuert Menü (`mcc_bridge` `.tr`), **Katego
 
 **Kategorie-Titel (Tabs):** `LuantiShopCategoryLabel` (de/en). Shop Ops: **Kategorie-Titel DE/EN (Slug-Vorschläge)** oder `python manage.py sync_luanti_shop_labels --categories`. Gängige Slugs (`blocks`, `tools`, …) werden automatisch deutsch benannt (z. B. „Blöcke“, „Werkzeuge“); Anpassung im Admin unter Shop-Kategorien → Inline Übersetzungen.
 
+**Shop-Artikel pro Kategorie:** nicht als Inline auf der Kategorie-Change-Seite (vermeidet `TooManyFieldsSent` bei großen Kategorien). Preise, Sortierung und Aktiv-Flag unter **Shop-Artikel** (Changelist, Filter **Kategorie**; Link auf der Kategorie-Change-Seite). Massenverschieben: Shop-Artikel → Action **In andere Kategorie verschieben…**
+
 **Tab-Reihenfolge im `/mccshop`:** Kategorien alphabetisch nach **lokalisiertem Tab-Titel** (Client-Sprache / Katalog-`lang`), nicht nach DB-`sort_order`. `sort_order` gilt weiter für Admin-Listen und Shop Ops.
 
 **Suche im `/mccshop`:** mit gesetztem Suchtext alle Kategorien; Treffer in Anzeigename, allen Labels und `item_name`.
